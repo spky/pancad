@@ -4,15 +4,17 @@ sys.path.append('../src')
 
 from text2freecad.inkscape_interface import InkscapeDocument
 
-filename = "input_sketch_test.svg"
+in_filename = "input_sketch_test.svg"
+out_filename = "output_sketch_test.svg"
 
-ink = InkscapeDocument(filename)
+ink = InkscapeDocument(in_filename)
 
-#print(ink._svg_element)
+print(ink.layers)
+layer = ink.layers["Layer 1"]
+path = layer.paths["path1"]
 
-#for e in ink.elements:
-#    print(e.tag)
-#print(ink.NAMESPACES)
+#new_coords = [[1,1],[2,.5]]
 
-for path in ink.layers["Layer 1"].paths:
-    print(ink.layers["Layer 1"].paths[path].d)
+#path.d = path.absolute_move_to(new_coords)
+
+ink.write(out_filename)

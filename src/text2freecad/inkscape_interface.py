@@ -1,12 +1,7 @@
 import xml.etree.ElementTree as ET
+import xml.dom.minidom as mdom
+from text2freecad.svg_interface import SVGPath
 
-class SVGPath:
-    
-    def __init__(self, element):
-        self.element = element
-        self.ID = element.get("id")
-        self.style = element.get("style")
-        self.d = element.get("d")
 
 class InkscapeLayer:
     
@@ -16,13 +11,13 @@ class InkscapeLayer:
         ns = self._document.NAMESPACES
         
         label_search = document._xpath("label", ns["inkscape"])
-        self._label = self.root.get(label_search)
-        self._id = self.root.get("id")
+        self._label = self.root.getAttributeNS(ns["inkscape"], "label")
+        self._id = self.root.getAttribute("id")
         
         self.paths = {}
-        for element in self.root.findall("default:path", ns):
+        for element in self.root.getElementsByTagName("path"):
             path = SVGPath(element)
-            self.paths[path.ID] = path
+            self.paths[path.svg_id] = path
     
     @property
     def label(self):
@@ -36,10 +31,10 @@ class InkscapeDocument:
     "sodipodi": "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd",
     }
     def __init__(self, filepath):
-        self._svg_tree = ET.parse(filepath)
-        
-        self._svg_element = self._svg_tree.getroot()
-        named_views = self.xpath_find_all('./sodipodi:namedview')
+        self.document = mdom.parse(filepath)
+        self._svg_element = self.document.documentElement
+        named_views = self.document.getElementsByTagNameNS(
+                          self.NAMESPACES["sodipodi"], "namedview")
         if len(named_views) == 1:
             self._named_view = named_views[0]
         else:
@@ -47,26 +42,20 @@ class InkscapeDocument:
                   page will be read")
             self._named_view = named_views[0]
         
-        self._unit = self._named_view.get(
-            self._xpath("document-units", self.NAMESPACES["inkscape"])
-        )
+        self._unit = self._named_view.getAttributeNS(
+            self.NAMESPACES["inkscape"], "document-units")
         
-        self.width = self._svg_element.get("width")
-        self.height = self._svg_element.get("height")
+        self.width = self._svg_element.getAttribute("width")
+        self.height = self._svg_element.getAttribute("height")
         
         self.layers = {}
         layer_search = './svg:g[@inkscape:groupmode="layer"]'
-        for element in self.xpath_find_all(layer_search):
+        for element in self._svg_element.getElementsByTagNameNS(
+                           self.NAMESPACES["svg"],
+                           "g"
+                           ):
             layer = InkscapeLayer(element, self)
             self.layers[layer.label] = layer
-        
-        self._elements = []
-        for element in self._svg_tree.iter():
-            self._elements.append(element)
-    
-    @property
-    def elements(self):
-        return self._elements
     
     @property
     def width(self):
@@ -75,7 +64,7 @@ class InkscapeDocument:
     @width.setter
     def width(self, value):
         string, number = self._parse_float_set_value(value)
-        self._svg_element.set("width", string)
+        self._svg_element.setAttribute("width", string)
         self._width = number
     
     @property
@@ -85,7 +74,7 @@ class InkscapeDocument:
     @height.setter
     def height(self, value):
         string, number = self._parse_float_set_value(value)
-        self._svg_element.set("height", string)
+        self._svg_element.setAttribute("height", string)
         self._height = number
     
     @property
@@ -97,6 +86,18 @@ class InkscapeDocument:
         # To-Do: make it so that when the unit is set all numbers get 
         # converted to the corresponding unit
         print("unit conversion not yet supported")
+    
+    def write(self, filename):
+        with open(filename, "w") as xmlfile:
+            prettyxml = self.document.toprettyxml(encoding="UTF-8", 
+                                                  indent='  ',
+                                                  newl="",
+                                                  standalone="no"
+                                                  )
+            output_text = prettyxml.decode("UTF-8")
+            output_text = output_text.replace("\" ","\"\n")
+            output_text = output_text.replace("><",">\n<")
+            xmlfile.write(output_text)
     
     def xpath_find_all(self, search):
         list_ = []
