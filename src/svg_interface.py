@@ -1,4 +1,5 @@
 import re
+
 import svg_parsers as sp
 
 class SVGPath:
