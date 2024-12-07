@@ -1,9 +1,9 @@
 import sys
 import unittest
 
-sys.path.append('../src')
+sys.path.append('src')
 
-from text2freecad.svg_interface import SVGPath
+from svg_interface import SVGPath
 
 class TestSVGPath(unittest.TestCase):
     
