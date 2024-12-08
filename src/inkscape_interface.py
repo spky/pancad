@@ -1,6 +1,10 @@
+"""A module providing classes for interfacing with inkscape generated 
+documents.
+"""
+
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as mdom
-from text2freecad.svg_interface import SVGPath
+from svg_interface import SVGPath
 
 
 class InkscapeLayer:

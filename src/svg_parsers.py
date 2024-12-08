@@ -1,15 +1,21 @@
+"""A module to provide functions for parsing svg tag information out into 
+other formats
+"""
+
 import re
 
-def parse_coordinate_string(coordinate_string):
-    """
-    Uses re to figure out what string of coordinates are in path 
+def parse_coordinate_string(coordinate: str) -> list:
+    """Uses re to figure out what string of coordinates are in path 
     data's coordinate string and returns a list of coordinate pairs
+    
+    :param coordinate: coordinate string from an svg tag
+    :return: list of coordinate pairs in the coordinate string
     """
-    coordinate_string = coordinate_string.strip()
+    coordinate = coordinate.strip()
     
     xy_pattern = "([-+]?[0-9]*\.?[0-9]+)[ |,]*([-+]?[0-9]*\.?[0-9]+)"
     coordinate_re = re.compile(xy_pattern)
-    coordinate_list = re.findall(coordinate_re, coordinate_string)
+    coordinate_list = re.findall(coordinate_re, coordinate)
     
     out = []
     for c in coordinate_list:
@@ -17,12 +23,11 @@ def parse_coordinate_string(coordinate_string):
         out.append(pair)
     return out
 
-def match_front_cmd(path_data):
-    """
-    Uses re to figure out what type of command is the first in the 
-    path data and then returns a dictionary with the "type" of 
-    command and the "match" of the regex. If no command is found, 
-    returns None
+def match_front_cmd(path_data: str) -> dict:
+    """Returns a dictionary with the "type" and "match of the first path data command.
+    
+    :param path_data: path data of an svg path object
+    :return: dictionary of the first command with keys "type" and "match"
     """
     command_type_regexs = {
         "M": "(?P<type>^M)[ ]?(?P<coord>.*)(?P<leftover>[ ]?[a-zA-Z].*)",
@@ -47,3 +52,19 @@ def match_front_cmd(path_data):
             }
             return out
     return None
+
+def split_path_data(path_data:str) -> list:
+    """Returns a list of the commands in the svg path's data in the order 
+    that they appear
+    :param path_data: path data of an svg path object
+    :return: list all commands in the path tag's data
+    """
+    
+    command_pattern = "[A-Za-z].*(?=[ ]?[A-Za-z].*)"
+    #command_pattern = "[A].*(?=[A-Za-z])"
+    #command_pattern = "[A].*$?"
+    #command_pattern = ".*(?=[A-Za-z]?)"
+    command_re = re.compile(command_pattern)
+    command_list = re.search(command_re, path_data)
+    #command_list = re.split(command_re, path_data)
+    return command_list

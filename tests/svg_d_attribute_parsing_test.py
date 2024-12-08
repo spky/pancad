@@ -4,6 +4,7 @@ import unittest
 sys.path.append('src')
 
 from svg_interface import SVGPath
+from svg_parsers import split_path_data
 
 class TestSVGPath(unittest.TestCase):
     
@@ -53,6 +54,12 @@ class TestSVGPath(unittest.TestCase):
         coordinate_list = [[100, 150], [200, 250]]
         move_to = SVGPath.absolute_move_to(coordinate_list)
         self.assertEqual(move_to, "M 100 150\nM 200 250")
+    
+    def test_split_path_data_two_cmds(self):
+        path_data = "M 1.4429557,0.40800819 A 0.31844541,0.31844541 0 0 1 1.2957424,0.67649852 0.31844541,0.31844541 0 0 1 0.99021212,0.6967494 M 1.4429557,0.40800819"
+        cmds = split_path_data(path_data)
+        print(cmds)
+        #print(len(cmds))
 
 if __name__ == "__main__":
     unittest.main()

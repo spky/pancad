@@ -1,4 +1,4 @@
-"""This module provides classes to wrap FreeCAD objects into more 
+"""A module to provide classes to wrap FreeCAD objects into more 
 user-friendly structures.
 
 class:
