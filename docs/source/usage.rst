@@ -27,3 +27,12 @@ Reading design information from SVG files
 .. autofunction:: svg_parsers.parse_lineto
 .. autofunction:: svg_parsers.parse_horizontal
 .. autofunction:: svg_parsers.parse_vertical
+
+Generating SVG commands
+#########################################
+
+.. autofunction:: svg_generators.make_moveto
+.. autofunction:: svg_generators.make_arc
+.. autofunction:: svg_generators.make_lineto
+.. autofunction:: svg_generators.make_horizontal
+.. autofunction:: svg_generators.make_vertical

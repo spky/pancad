@@ -8,3 +8,4 @@ API
    inkscape_interface
    svg_parsers
    svg_interface
+   svg_generators

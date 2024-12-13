@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path('..','..', 'src').resolve()))
 import svg_parsers
 import inkscape_interface
 import svg_interface
+import svg_generators
 import free_cad_object_wrappers
 
 # -- General configuration ---------------------------------------------------
