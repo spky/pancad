@@ -9,3 +9,4 @@ API
    svg_parsers
    svg_interface
    svg_generators
+   svg_validators

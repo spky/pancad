@@ -22,6 +22,7 @@ svg_test: $(TESTS)/svg_d_attribute_parsing_test.py $(VENV_ACTIVATE)
 	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)
 	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_generators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_writers.py)
+	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_validators.py)
 
 setup: $(VENV_ACTIVATE)
 	$(PIP) install -r requirements.txt

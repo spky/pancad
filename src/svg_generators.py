@@ -87,5 +87,8 @@ def make_vertical(lengths: list, relative: bool = False) -> str:
         cmd += " " + str(length)
     return cmd
 
+def make_circle():
+    pass
+
 def make_style(style_dict):
     pass
