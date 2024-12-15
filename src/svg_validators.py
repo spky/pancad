@@ -98,3 +98,21 @@ def color(setting: str) -> str:
         raise ValueError("Provided value of '"
                          + str(setting)
                          + "' does not match any supported color input format")
+
+def fill(setting:str) -> str:
+    """Returns the setting with 'fill:' prepended to it after 
+    checking that it meets the rules for a color svg setting
+    
+    :param setting: the setting to set an svg fill setting.
+    :returns: the setting with 'fill:' prepended to it
+    """
+    return "fill:" + color(setting)
+
+def stroke(setting:str) -> str:
+    """Returns the setting with 'stroke:' prepended to it after 
+    checking that it meets the rules for a color svg setting
+    
+    :param setting: the setting to set an svg stroke setting.
+    :returns: the setting with 'stroke:' prepended to it
+    """
+    return "stroke:" + color(setting)

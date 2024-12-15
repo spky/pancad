@@ -8,6 +8,8 @@ from svg_validators import (
     stroke_linejoin,
     stroke_opacity,
     color,
+    fill,
+    stroke,
 )
 
 class TestSVGValidators(unittest.TestCase):
@@ -89,6 +91,12 @@ class TestSVGValidators(unittest.TestCase):
             with self.subTest(ans=ans):
                 with self.assertRaises(ValueError, msg="Value given: "+str(ans)):
                     color(ans)
+    
+    def test_fill(self):
+        self.assertEqual(fill("#FFFFFF"), "fill:#FFFFFF")
+    
+    def test_stroke(self):
+        self.assertEqual(stroke("#FFFFFF"), "stroke:#FFFFFF")
 
 if __name__ == "__main__":
     unittest.main()

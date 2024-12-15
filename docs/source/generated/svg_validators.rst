@@ -8,6 +8,9 @@
 
    .. autosummary::
    
+      color
+      fill
+      stroke
       stroke_linecap
       stroke_linejoin
       stroke_opacity

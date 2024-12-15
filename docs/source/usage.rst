@@ -43,3 +43,6 @@ Validating SVG syntax
 .. autofunction:: svg_validators.stroke_linecap
 .. autofunction:: svg_validators.stroke_linejoin
 .. autofunction:: svg_validators.stroke_opacity
+.. autofunction:: svg_validators.color
+.. autofunction:: svg_validators.fill
+.. autofunction:: svg_validators.stroke

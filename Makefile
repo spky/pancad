@@ -1,9 +1,11 @@
-VENV = venv
+VENV = ./venv
 VENV_ACTIVATE = $(VENV)/Scripts/activate
 PYTHON = $(VENV)/Scripts/python
 PIP = $(VENV)/Scripts/pip
-PYCACHE = ./src/__pycache__
+SRC = ./src
+PYCACHE = SRC/__pycache__
 TESTS = ./tests
+DOCS = ./docs
 
 # Redefine OS dependent commands for Windows or Linux
 ifdef OS
@@ -18,11 +20,17 @@ else
    endif
 endif
 
-svg_test: $(TESTS)/svg_d_attribute_parsing_test.py $(VENV_ACTIVATE)
+null:
+	@:
+
+test: $(TESTS)/svg_d_attribute_parsing_test.py $(VENV_ACTIVATE)
 	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)
 	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_generators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_writers.py)
 	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_validators.py)
+
+docs: $(SRC)
+	make -f $(call FixPath, Makefile) -C $(call FixPath, $(DOCS)) html
 
 setup: $(VENV_ACTIVATE)
 	$(PIP) install -r requirements.txt
