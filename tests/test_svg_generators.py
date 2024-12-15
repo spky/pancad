@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 import unittest
 
 sys.path.append('src')
@@ -9,7 +10,8 @@ from svg_generators import (
     make_lineto,
     make_horizontal,
     make_vertical,
-    make_path_data
+    make_path_data,
+    make_style,
 )
 
 class TestSVGgenerators(unittest.TestCase):
@@ -65,6 +67,21 @@ class TestSVGgenerators(unittest.TestCase):
         ans = "M 100 150 200 250 300 350\na 0.31844541 0.31844541 0 0 1 1.2957424 0.67649852"
         test = make_path_data(commands, delimiter)
         self.assertEqual(test, ans)
+    
+    def test_make_style(self):
+        style_dict = {
+            "fill": "none",
+            "stroke": "#000000",
+            "stroke-width": "0.010467px",
+            "stroke-linecap": "butt",
+            "stroke-linejoin": "miter",
+            "stroke-opacity": 1,
+        }
+        ans = "fill:none;stroke:#000000;stroke-width:0.010467px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+        test = make_style(style_dict)
+        self.assertEqual(test, ans)
 
 if __name__ == "__main__":
+    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
+        f.write("finished")
     unittest.main()

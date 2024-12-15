@@ -1,5 +1,6 @@
 """A module to provide functions for creating svg paths.
 """
+import svg_validators as sv
 
 def make_path_data(commands: list, delimiter: str = "\n"):
     """Returns a string of svg commands joined together with a delimiter. 
@@ -90,5 +91,16 @@ def make_vertical(lengths: list, relative: bool = False) -> str:
 def make_circle():
     pass
 
-def make_style(style_dict):
-    pass
+def make_style(style_dict: dict) -> str:
+    """Returns a path style using each key of the given style 
+    dictionary as a different property.
+    
+    :param style_dict: A dictionary full of key value pairs of the 
+                       format 'property_name':'property_value'
+    :returns: a style string ready to be assigned to a path's style property
+    
+    """
+    properties = []
+    for key in style_dict:
+        properties.append(sv.path_style_property(key, style_dict[key]))
+    return ";".join(properties)

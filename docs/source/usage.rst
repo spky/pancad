@@ -46,3 +46,5 @@ Validating SVG syntax
 .. autofunction:: svg_validators.color
 .. autofunction:: svg_validators.fill
 .. autofunction:: svg_validators.stroke
+.. autofunction:: svg_validators.stroke_width
+.. autofunction:: svg_validators.path_style_property

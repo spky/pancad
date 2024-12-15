@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 import unittest
 
 sys.path.append('src')
@@ -121,4 +122,6 @@ class TestSVGPath(unittest.TestCase):
         self.assertCountEqual(test, ans)
 
 if __name__ == "__main__":
+    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
+        f.write("finished")
     unittest.main()

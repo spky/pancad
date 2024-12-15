@@ -25,13 +25,13 @@ def stroke_linecap(setting: str) -> str:
 def stroke_linejoin(setting: str) -> str:
     """Returns the setting with 'stroke-linejoin:' prepended to it after 
     checking that it meets the rules for a stroke-linejoin svg setting. If 
-    the setting is not mitre, round, bevel, or inherit, it will raise a 
+    the setting is not miter, round, bevel, or inherit, it will raise a 
     ValueError
     
     :param setting: the setting to set an svg stroke-linejoin setting.
     :returns: the setting with stroke-linejoin: prepended to it
     """
-    allowable_values = [ "mitre", "round", "bevel", "inherit"]
+    allowable_values = [ "miter", "round", "bevel", "inherit"]
     if setting not in allowable_values:
         raise ValueError("Provided setting value '" 
                          + str(setting)
@@ -66,7 +66,8 @@ def color(setting: str) -> str:
     another setting function, ex: fill, stroke, etc. If it does not meet 
     the rules for color input, it will raise a ValueError
     
-    :param setting: the color setting to be fed into a more specific setting
+    :param setting: the color setting to be fed into a more specific 
+                    setting
     :returns: the color setting
     """
     if re.match(r"^#[0-9A-Fa-f]{6}$", setting):
@@ -106,7 +107,10 @@ def fill(setting:str) -> str:
     :param setting: the setting to set an svg fill setting.
     :returns: the setting with 'fill:' prepended to it
     """
-    return "fill:" + color(setting)
+    if setting == "none":
+        return "fill:" + setting
+    else:
+        return  "fill:" + color(setting)
 
 def stroke(setting:str) -> str:
     """Returns the setting with 'stroke:' prepended to it after 
@@ -116,3 +120,74 @@ def stroke(setting:str) -> str:
     :returns: the setting with 'stroke:' prepended to it
     """
     return "stroke:" + color(setting)
+
+def stroke_width(setting: str | int | float) -> str:
+    """Returns the setting with 'stroke-width:' prepended to it after 
+    checking that the value is greater than 0 and that the unit is em, ex, 
+    px, in, cm, mm, pt, or pc
+    
+    | em = relative top the font-size of the element
+    | ex = relative to the x-height of the current font
+    | px = pixels, where 1px = 1/96th of 1 inch
+    | in = inches
+    | cm = centimeters
+    | mm = millimeters
+    | pt = points, where 1pt = 1/72 of 1 inch
+    | pc = picas where 1pc = 12pt
+    | None = not recommended, svg 1.1 spec says that it represents a 
+      distance in the current user coordinate system. This is the only 
+      unit available if setting is a int or float
+    
+    :param setting: the setting to set an svg stroke-width setting.
+    :returns: the setting with 'stroke-width:' prepended to it
+    """
+    allowable_units = ["em", "ex", "px", "in", "cm", "mm", "pt", "pc"]
+    setting = str(setting)
+    if re.match(r"^[0-9]+(\.[0-9]+)?$", setting):
+        if float(setting) < 0:
+            raise ValueError("Provided stroke-width value '" 
+                             + setting
+                             + "' must be greater than 0")
+        else:
+            return "stroke-width:" + setting
+    elif re.match(r"[0-9]+(\.[0-9]+)?[A-Za-z]+", setting):
+        setting_value = float(setting[:-2])
+        setting_unit = setting[-2:]
+        if float(setting_value) < 0:
+            raise ValueError("Provided stroke-width value '" 
+                             + setting
+                             + "' must be greater than 0")
+        elif setting_unit not in allowable_units:
+            raise ValueError("Provided unit '" 
+                             + str(unit)
+                             + " is not supported by svg 1.1")
+        else:
+            return "stroke-width:" + setting
+    else:
+        raise ValueError("Provided value '"
+                         + setting
+                         + "' does not match the format of an svg 1.1 <length>")
+
+def path_style_property(property_name: str, value: str | int | float) -> str:
+    """Returns the path style setting with the appropriate prepended 
+    property name after checking that it meets the svg format
+    
+    :param property_name: the name of the svg path property. Can be 
+                          stroke-linecap, stroke-linejoin, fill, stroke, 
+                          stroke-opacity, or stroke-width.
+    :param value: the value that the path property is going to be set to
+    :returns: the setting with its prepended property name
+    """
+    match property_name:
+        case "stroke-linecap":
+            return stroke_linecap(value)
+        case "stroke-linejoin":
+            return stroke_linejoin(value)
+        case "fill":
+            return fill(value)
+        case "stroke":
+            return stroke(value)
+        case "stroke-opacity":
+            return stroke_opacity(value)
+        case "stroke-width":
+            return stroke_width(value)

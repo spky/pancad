@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 import unittest
 
 sys.path.append('src')
@@ -10,6 +11,7 @@ from svg_validators import (
     color,
     fill,
     stroke,
+    stroke_width,
 )
 
 class TestSVGValidators(unittest.TestCase):
@@ -30,7 +32,7 @@ class TestSVGValidators(unittest.TestCase):
                     stroke_linecap(ans)
     
     def test_valid_stroke_linejoin(self):
-        answers = ["mitre", "round", "bevel", "inherit"]
+        answers = ["miter", "round", "bevel", "inherit"]
         for ans in answers:
             with self.subTest(ans=ans):
                 self.assertEqual(
@@ -93,10 +95,53 @@ class TestSVGValidators(unittest.TestCase):
                     color(ans)
     
     def test_fill(self):
-        self.assertEqual(fill("#FFFFFF"), "fill:#FFFFFF")
+        answers = [
+            "#FFFFFF",
+            "none"
+        ]
+        for ans in answers:
+            with self.subTest(ans=ans):
+                self.assertEqual(fill(ans), "fill:"+ans)
     
     def test_stroke(self):
         self.assertEqual(stroke("#FFFFFF"), "stroke:#FFFFFF")
+    
+    def test_stroke_width(self):
+        answers = [
+            "1.01px",
+            "1px",
+            "1em",
+            "1ex",
+            "1in",
+            "1cm",
+            "1mm",
+            "1pt",
+            "1pc"]
+        for ans in answers:
+            with self.subTest(ans=ans):
+                self.assertEqual(
+                    stroke_width(ans),
+                    "stroke-width:" + ans)
+    
+    def test_stroke_width_default_arg(self):
+        answers = [1.01, 1]
+        for ans in answers:
+            with self.subTest(ans=ans):
+                self.assertEqual(
+                    stroke_width(ans),
+                    "stroke-width:" + str(ans))
+    
+    def test_stroke_width_exceptions(self):
+        answers = [
+            "-1.01in",
+            "1.01slugs",
+        ]
+        for ans in answers:
+            with self.subTest(ans=ans):
+                with self.assertRaises(ValueError, msg="Value given: "+str(ans)):
+                    stroke_width(ans)
 
 if __name__ == "__main__":
+    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
+        f.write("finished")
     unittest.main()
