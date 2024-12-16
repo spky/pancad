@@ -48,3 +48,12 @@ Validating SVG syntax
 .. autofunction:: svg_validators.stroke
 .. autofunction:: svg_validators.stroke_width
 .. autofunction:: svg_validators.path_style_property
+.. autofunction:: svg_validators.length
+
+Writing SVG elements and files
+##############################
+
+.. autofunction:: svg_writers.xml_properties
+.. autofunction:: svg_writers.xml_declaration
+.. autofunction:: svg_writers.svg_element_defaults
+.. autofunction:: svg_writers.write_xml

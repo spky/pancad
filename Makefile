@@ -26,7 +26,6 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_svg_generators.py \
 	test_svg_writers.py \
 	test_svg_validators.py \
-	test_svg_writers.py \
 	)
 
 

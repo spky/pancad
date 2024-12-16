@@ -126,6 +126,16 @@ def stroke_width(setting: str | int | float) -> str:
     checking that the value is greater than 0 and that the unit is em, ex, 
     px, in, cm, mm, pt, or pc
     
+    :param setting: the setting to set an svg stroke-width setting.
+    :returns: the setting with 'stroke-width:' prepended to it
+    """
+    return "stroke-width:" + length(setting)
+
+def length(setting: str) -> str:
+    """Returns the setting as is or after turning it to a string after 
+    checking that it fulfills the svg length requirements
+    
+    | Valid Units:
     | em = relative top the font-size of the element
     | ex = relative to the x-height of the current font
     | px = pixels, where 1px = 1/96th of 1 inch
@@ -138,23 +148,23 @@ def stroke_width(setting: str | int | float) -> str:
       distance in the current user coordinate system. This is the only 
       unit available if setting is a int or float
     
-    :param setting: the setting to set an svg stroke-width setting.
-    :returns: the setting with 'stroke-width:' prepended to it
+    :param setting: the setting to set an svg length setting.
+    :returns: the setting after being validated
     """
     allowable_units = ["em", "ex", "px", "in", "cm", "mm", "pt", "pc"]
     setting = str(setting)
     if re.match(r"^[0-9]+(\.[0-9]+)?$", setting):
         if float(setting) < 0:
-            raise ValueError("Provided stroke-width value '" 
+            raise ValueError("Provided length value '" 
                              + setting
                              + "' must be greater than 0")
         else:
-            return "stroke-width:" + setting
+            return setting
     elif re.match(r"[0-9]+(\.[0-9]+)?[A-Za-z]+", setting):
         setting_value = float(setting[:-2])
         setting_unit = setting[-2:]
         if float(setting_value) < 0:
-            raise ValueError("Provided stroke-width value '" 
+            raise ValueError("Provided length value '" 
                              + setting
                              + "' must be greater than 0")
         elif setting_unit not in allowable_units:
@@ -162,7 +172,7 @@ def stroke_width(setting: str | int | float) -> str:
                              + str(unit)
                              + " is not supported by svg 1.1")
         else:
-            return "stroke-width:" + setting
+            return setting
     else:
         raise ValueError("Provided value '"
                          + setting

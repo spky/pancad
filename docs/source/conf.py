@@ -20,6 +20,7 @@ import svg_parsers
 import inkscape_interface
 import svg_interface
 import svg_generators
+import svg_writers
 import free_cad_object_wrappers
 
 # -- General configuration ---------------------------------------------------

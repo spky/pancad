@@ -10,6 +10,7 @@ from svg_writers import (
     xml_declaration,
     svg_top,
     write_xml,
+    svg_element_defaults,
 )
 
 class TestGenerators(unittest.TestCase):
@@ -38,8 +39,13 @@ class TestGenerators(unittest.TestCase):
                          'xml version="1.0" encoding="UTF-8" standalone="yes"')
     
     def test_svg_top(self):
-        top_element = svg_top(self.svg, "  ")
-        print(top_element)
+        top_element = svg_top(self.svg, None)
+        ans = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<svg><g><path id="path1" /></g></svg>'
+        self.assertEqual(ET.tostring(top_element, encoding="UTF-8"), ans)
+    
+    def test_svg_element_defaults(self):
+        test = svg_element_defaults("svg1", "1.0in", "1.0in")
+        print(test)
 
 class TestWriters(unittest.TestCase):
     def setUp(self):
