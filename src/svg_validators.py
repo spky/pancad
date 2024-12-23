@@ -178,6 +178,25 @@ def length(setting: str) -> str:
                          + setting
                          + "' does not match the format of an svg 1.1 <length>")
 
+def length_value(setting:str) -> float | int:
+    """Returns just the number of the given length without the unit.
+    
+    :param setting: the setting to set an svg length setting.
+    :returns: the number value of the setting
+    """
+    setting = length(setting)
+    if re.match(r"^[0-9]+(\.[0-9]+)?[a-zA-Z]{2}$", setting):
+        setting = setting[:-2]
+    
+    if re.match(r"^[0-9]+\.[0-9]+$", setting):
+        return float(setting)
+    elif re.match(r"^[0-9]+$", setting):
+        return int(setting)
+    else:
+        raise ValueError("Provided value of '"
+                         + setting
+                         + "'pass length(), but is not recognized")
+
 def path_style_property(property_name: str, value: str | int | float) -> str:
     """Returns the path style setting with the appropriate prepended 
     property name after checking that it meets the svg format

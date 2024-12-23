@@ -12,6 +12,7 @@ from svg_validators import (
     fill,
     stroke,
     stroke_width,
+    length_value,
 )
 
 class TestSVGValidators(unittest.TestCase):
@@ -140,6 +141,19 @@ class TestSVGValidators(unittest.TestCase):
             with self.subTest(ans=ans):
                 with self.assertRaises(ValueError, msg="Value given: "+str(ans)):
                     stroke_width(ans)
+    
+    def test_length_value(self):
+        tests = [
+            ["1in", 1],
+            ["1.0in", 1.0],
+            ["2223.0in", 2223.0],
+            ["2223in", 2223],
+            [1, 1],
+            [1.0, 1.0],
+        ]
+        for test in tests:
+            with self.subTest(test=test):
+                self.assertEqual(length_value(test[0]), test[1])
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

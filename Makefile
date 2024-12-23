@@ -19,13 +19,15 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	svg_writers.py \
 	inkscape_interface.py \
 	free_cad_object_wrappers.py \
-	svg_validators.py)
+	svg_validators.py \
+	svg_file.py)
 
 PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	svg_d_attribute_parsing_test.py \
 	test_svg_generators.py \
 	test_svg_writers.py \
 	test_svg_validators.py \
+	test_svg_file.py \
 	)
 
 
@@ -49,6 +51,7 @@ test:
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
+	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
 
 #test: 
 #	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)

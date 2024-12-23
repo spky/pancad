@@ -10,7 +10,11 @@ from svg_writers import (
     xml_declaration,
     svg_top,
     write_xml,
-    svg_element_defaults,
+    svg_property_defaults,
+    inkscape_svg_property_defaults,
+    make_svg_element,
+    make_g_element,
+    make_path_element,
 )
 
 class TestGenerators(unittest.TestCase):
@@ -39,13 +43,48 @@ class TestGenerators(unittest.TestCase):
                          'xml version="1.0" encoding="UTF-8" standalone="yes"')
     
     def test_svg_top(self):
-        top_element = svg_top(self.svg, None)
+        top_element = svg_top([self.svg], None)
         ans = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<svg><g><path id="path1" /></g></svg>'
         self.assertEqual(ET.tostring(top_element, encoding="UTF-8"), ans)
     
-    def test_svg_element_defaults(self):
-        test = svg_element_defaults("svg1", "1.0in", "1.0in")
-        print(test)
+    def test_svg_property_defaults(self):
+        test = svg_property_defaults("svg1", "1.0in", "2.1in")
+        ans = {
+            "id": "svg1",
+            "width": "1.0in",
+            "height": "2.1in",
+            "xmlns": "http://www.w3.org/2000/svg",
+            "xmlns:svg": "http://www.w3.org/2000/svg",
+        }
+        self.assertDictEqual(test,ans)
+    
+    def test_inkscape_svg_property_defaults(self):
+        test = inkscape_svg_property_defaults("inkscape_svg.svg")
+        ans = {
+            "xmlns:inkscape": "http://www.inkscape.org/namespaces/inkscape",
+            "xmlns:sodipodi": "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd",
+            "sodipodi:docname": "inkscape_svg.svg",
+        }
+        self.assertDictEqual(test,ans)
+    
+    def test_make_svg_element(self):
+        test = make_svg_element("svg1", "1.0in", "2.1in")
+        test_text = ET.tostring(test, encoding="UTF-8")
+        ans = b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="1.0in" height="2.1in" viewBox="0 0 1.0 2.1" id="svg1" />'
+        self.assertEqual(test_text, ans)
+    
+    def test_make_g_element(self):
+        test = make_g_element("layer1")
+        test_text = ET.tostring(test, encoding="UTF-8")
+        ans = b'<g id="layer1" />'
+        self.assertEqual(test_text, ans)
+    
+    def test_make_path_element(self):
+        test = make_path_element("path1", "fill:none", "M 1.01 2.02")
+        test_text = ET.tostring(test, encoding="UTF-8")
+        ans = b'<path style="fill:none" d="M 1.01 2.02" id="path1" />'
+        self.assertEqual(test_text, ans)
+    
 
 class TestWriters(unittest.TestCase):
     def setUp(self):
@@ -60,7 +99,7 @@ class TestWriters(unittest.TestCase):
     
     def test_write_xml(self):
         filename = "tests/test_output_dump/test_write_xml_out.svg"
-        top_element = svg_top(self.svg, "  ")
+        top_element = svg_top([self.svg], "  ")
         write_xml(filename, top_element)
 
 
