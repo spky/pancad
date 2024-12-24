@@ -1,3 +1,7 @@
+"""A module providing a class to represent the file and collect xml 
+elements to be written to files.
+"""
+
 import svg_writers as sw
 import svg_generators as sg
 

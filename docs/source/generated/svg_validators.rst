@@ -11,6 +11,7 @@
       color
       fill
       length
+      length_value
       path_style_property
       stroke
       stroke_linecap

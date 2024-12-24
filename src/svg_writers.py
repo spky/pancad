@@ -149,7 +149,7 @@ def make_g_element(id_: str, property_dicts: list = None) -> ET.Element:
     
     :param id_: the id of the element
     :param property_dicts: the additional properties of the group in 
-    dictionaries
+                           dictionaries
     """
     properties = [{
         "id": id_,
@@ -181,6 +181,12 @@ def make_path_element(
         properties = properties + property_dicts
     return make_element("path", properties)
 
-def write_xml(filename: str, top_element: ET.Element) -> None:
+def write_xml(filepath: str, top_element: ET.Element) -> None:
+    """Writes the given element to an xml file
+    
+    :param filepath: the filepath of the new file
+    :param top_element: the element to be written
+    """
+    
     tree = ET.ElementTree(top_element)
-    tree.write(filename)
+    tree.write(filepath)
