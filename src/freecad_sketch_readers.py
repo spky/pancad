@@ -27,10 +27,11 @@ def read_2d_vector(obj: App.Base.Vector) -> list:
 def read_line_segment(obj: Part.LineSegment) -> dict:
     """Returns a dictionary with properties that define the given 
     FreeCAD Sketch LineSegment. Does not do any unit conversions, FreeCAD 
-    usually defaults to mm. Will only work on Sketcher line segments.
+    usually defaults to mm. Will only work on Sketcher 
+    'Part::GeomLineSegment' type line segments.
     
     :param obj: A line segment object from FreeCAD
-    :returns: A dictionary of line segment properties
+    :returns: A dictionary of line segment id, start and end properties
     """
     if obj.hasExtensionOfType("Sketcher::SketchGeometryExtension"):
         GEO_EXT = "Sketcher::SketchGeometryExtension"
@@ -43,3 +44,21 @@ def read_line_segment(obj: Part.LineSegment) -> dict:
     else:
         raise ValueError("Line does not have SketchGeometryExtension, so "
                          "it may not be a Sketcher line!")
+
+def read_point(obj: Part.Point) -> dict:
+    """Returns a dictionary with the FreeCAD Sketch point's 
+    properties. Will only work on Sketcher 'Part::GeomPoint' type 
+    objects
+    
+    :param obj: A point object from FreeCAD
+    :returns: A dictionary of point properties
+    """
+    
+    
+    pass
+
+def read_circle(obj: Part.Circle) -> dict:
+    pass
+
+def read_circle_arc(obj: Part.ArcOfCircle) -> dict:
+    pass
