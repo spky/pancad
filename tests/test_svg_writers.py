@@ -15,6 +15,7 @@ from svg_writers import (
     make_svg_element,
     make_g_element,
     make_path_element,
+    make_circle_element,
 )
 
 class TestGenerators(unittest.TestCase):
@@ -84,6 +85,12 @@ class TestGenerators(unittest.TestCase):
         test_text = ET.tostring(test, encoding="UTF-8")
         ans = b'<path style="fill:none" d="M 1.01 2.02" id="path1" />'
         self.assertEqual(test_text, ans)
+    
+    def test_make_circle_element(self):
+        test = make_circle_element("circle1", "fill:none", ["1in", "1in"], "0.5in")
+        test_text = ET.tostring(test, encoding="UTF-8")
+        ans = b'<circle style="fill:none" cx="1" cy="1" r="0.5" id="circle1" />'
+        self.assertEqual(test_text,ans)
     
 
 class TestWriters(unittest.TestCase):

@@ -13,6 +13,7 @@ class TestSVGFile(unittest.TestCase):
     def setUp(self):
         file_name = "init_test.svg"
         self.file = sf.SVGFile(file_name)
+        self.folder = "tests/test_output_dump"
     
     def test_add_svg(self):
         self.file.add_svg()
@@ -72,8 +73,14 @@ class TestSVGFile(unittest.TestCase):
         self.file.add_g("layer1")
         self.file.add_path("path1",
                            "M 0.1 0.1 0.9 0.9 0.1 0.9 z")
-        folder = "tests/test_output_dump"
-        self.file.write(folder)
+        self.file.write(self.folder)
+    
+    def test_write_circle(self):
+        self.file.name = "test_write_circle_svg.svg"
+        self.file.add_svg(id_="svg1", width="1in", height="1in")
+        self.file.add_g("layer1")
+        self.file.add_circle("circle1", ["0.5in", "0.5in"], "0.25in")
+        self.file.write(self.folder)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

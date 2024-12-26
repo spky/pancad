@@ -78,6 +78,17 @@ class SVGFile:
         find_term = "./g[@id='" + self.active_g + "']"
         self.svgs[self.active_svg].find(find_term).append(path)
     
+    def add_circle(
+            self, id_: str, center_xy: str, radius: str, 
+            style: str = None, property_dicts: list = None) -> None:
+        """Adds a new circle element to the active layer"""
+        if style is None:
+            style = self.default_line_style
+        circle = sw.make_circle_element(id_, style, center_xy, radius,
+                                        property_dicts)
+        find_term = "./g[@id='" + self.active_g + "']"
+        self.svgs[self.active_svg].find(find_term).append(circle)
+    
     def write_single_svg(
             self, svg_id: str, folder: str, indent: str = "  ") -> None:
         """Writes the specified svg's information to a file in the 

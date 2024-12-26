@@ -181,6 +181,33 @@ def make_path_element(
         properties = properties + property_dicts
     return make_element("path", properties)
 
+def make_circle_element(
+        id_: str, style: str, center_xy: list, radius: str,
+        property_dicts: list = None):
+    """Returns a 'circle' tagged element with at least the id, style, 
+    center location, and radius properties filled out. Will also assign 
+    additional properties from the dictionaries in property_dicts if it is 
+    provided.
+    
+    :param id_: the id of the element
+    :param style: the svg style of the circle
+    :param center_xy: the location of the circle center in list form 
+                      [x, y] where x and y are length strings
+    :param radius: the radius of the circle
+    :property_dicts: the additional properties of the circle in dictionaries
+    :returns: a circle element with the properties above assigned to it
+    """
+    properties = [{
+        "style": style,
+        "cx": str(sv.length_value(center_xy[0])),
+        "cy": str(sv.length_value(center_xy[1])),
+        "r": str(sv.length_value(radius)),
+        "id": id_,
+    }]
+    if property_dicts is not None:
+        properties = properties + property_dicts
+    return make_element("circle", properties)
+
 def write_xml(filepath: str, top_element: ET.Element) -> None:
     """Writes the given element to an xml file
     

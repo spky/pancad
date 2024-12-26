@@ -24,6 +24,7 @@ class TestFreeCADSketchReaders(unittest.TestCase):
             [[1.0, 1.0, 0], [1.0, 1.0]],
             [[-1, -1, 0], [-1, -1]],
             [[0, 0, 0], [0, 0]],
+            [[1e-7, 1e-7, 1e-7], [0, 0]],
         ]
         for xyz in coordinates:
             with self.subTest(xyz=xyz):
@@ -51,7 +52,43 @@ class TestFreeCADSketchReaders(unittest.TestCase):
             "start": [0.0, 0.0],
             "end": [25.4, 25.4],
         }
-        print(test)
+        self.assertDictEqual(test, ans)
+    
+    def test_read_point(self):
+        sketch = self.document.getObjectsByLabel("xy_point")[0]
+        geometry = sketch.Geometry
+        point = sketch.Geometry[0]
+        test = fsr.read_point(point)
+        ans = {
+            "location": [50.8, 50.8]
+        }
+        self.assertDictEqual(test, ans)
+    
+    def test_read_circle(self):
+        sketch = self.document.getObjectsByLabel("xy_origin_circle")[0]
+        geometry = sketch.Geometry
+        circle = sketch.Geometry[0]
+        test = fsr.read_circle(circle)
+        ans = {
+            "id": 1,
+            "location": [0, 0],
+            "radius": 12.7,
+        }
+        self.assertDictEqual(test, ans)
+    
+    def test_read_circle_arc(self):
+        sketch = self.document.getObjectsByLabel("xy_origin_upper_right_arc")[0]
+        geometry = sketch.Geometry
+        arc = sketch.Geometry[0]
+        test = fsr.read_circle_arc(arc)
+        ans = {
+            "id": 1,
+            "location": [0, 0],
+            "radius": 38.1,
+            "start": [38.1, 0],
+            "end": [0, 38.1],
+        }
+        self.assertDictEqual(test, ans)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

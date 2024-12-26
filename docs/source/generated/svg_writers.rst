@@ -9,6 +9,7 @@
    .. autosummary::
    
       inkscape_svg_property_defaults
+      make_circle_element
       make_element
       make_g_element
       make_path_element
