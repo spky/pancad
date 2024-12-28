@@ -3,6 +3,7 @@ appear until the user tries to open it with inkscape or a browser
 """
 
 import re
+import trigonometry as trig
 
 def stroke_linecap(setting: str) -> str:
     """Returns the setting with 'stroke-linecap:' prepended to it after 

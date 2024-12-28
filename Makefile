@@ -23,6 +23,7 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	svg_file.py \
 	free_cad_object_wrappers.py \
 	freecad_sketch_readers.py \
+	trigonometry.py \
 	)
 
 PYTHON_TEST_FILES = $(addprefix $(TESTS), \
@@ -33,6 +34,7 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_svg_file.py \
 	test_freecad_object_wrappers.py \
 	test_freecad_sketch_readers.py \
+	test_trigonometry.py \
 	)
 
 
@@ -59,6 +61,7 @@ test:
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_object_wrappers.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketch_readers.py)
+	$(PYTHON) $(call FixPath, $(TESTS)test_trigonometry.py)
 
 #test: 
 #	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)
