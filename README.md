@@ -5,6 +5,11 @@
  Development Notes
 --------------------------------------------------------------------------------
 
+## Future Work
+
+- [ ] Comb through significant figure implementation and unit test for 
+arbitrary decimal places
+
 - [Packaging Python Projects Reference][DN1]
 - [sampleproject github][DN2]
 

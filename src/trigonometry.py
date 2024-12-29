@@ -108,21 +108,69 @@ def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     :returns: midpoint between points 1 and 2
     """
     return (point_1 + point_2)/2
-"""
-def new_origin_2d(point: np.ndarray, origin: np.ndarray) -> np.ndarray:
-    \"""Returns the point as represented relative to the new origin
+
+def ellipse_point(center_point: np.ndarray,
+                  major_radius: float, minor_radius: float,
+                  major_axis_angle: float, angle: float,
+                  decimals: int = 6) -> np.ndarray:
+    """Returns the point at the specified angle centered at the 
+    ellipse center and wrt the x-axis on the given ellipse.
     
-    :param point: Point as an [x, y] numpy array
-    :param origin: New origin point as an [x, y] numpy array
-    :returns: Point relative to new origin
-    \"""
-    return point - origin
-"""
-def elliptical_arc_endpoint_to_center(point_1: np.ndarray, point_2: np.ndarray,
-                           large_arc_flag: bool, sweep_flag: bool,
-                           major_radius: float, minor_radius: float,
-                           major_axis_angle: float,
-                           decimals: int = 6) -> list[np.ndarray, float, float]:
+    :param center_point: the center point of the ellipse
+    :param major_radius: the major axis radius of the ellipse
+    :param minor_radius: the minor axis radius of the ellipse
+    :param major_axis_angle: the ellipse's major axis angle wrt the 
+                             x-axis in radians
+    :param angle: the angle that the desired point is at on the 
+                  ellipse in radians
+    :param decimals: the number of decimals the output is rounded to
+    :returns: the coordinate of the ellipse point
+    """
+    a = major_radius
+    b = minor_radius
+    angle = angle % np.pi if abs(angle) > np.pi else angle
+    t = round(angle, decimals)
+    major_axis_rotation = rotation_2d(major_axis_angle)
+    if t == 0:
+        x = a
+        y = 0
+    elif abs(t) == round(np.pi, decimals):
+        x = -a
+        y = 0
+    elif t == round(np.pi/2, decimals):
+        x = 0
+        y = b
+    elif t == round(-np.pi/2, decimals):
+        x = 0
+        y = -b
+    else:
+        x = (a * b)/math.sqrt(b**2 + a**2 * math.tan(t)**2)
+        y = (a * b)/math.sqrt(b**2 / math.tan(t)**2 + a**2)
+        x = x if t >= -np.pi/2 and t <= np.pi/2 else -x
+        y = y if t >= 0 and t <= np.pi else -y
+    unrotated_ellipse_pt = point_2d([x, y])
+    ellipse_pt = major_axis_rotation @ unrotated_ellipse_pt + center_point
+    return round_array(ellipse_pt, decimals)
+
+def circle_point(center_point: np.ndarray, radius: float, angle: float,
+                 decimals: int = 6) -> np.ndarray:
+    """Returns the point at the specified angle centered at the 
+    circle center and wrt the x-axis on the given circle.
+    
+    :param center_point: the center point of the circle
+    :param radius: the radius of the circle
+    :param angle: the angle that the desired point is at on the 
+                  circle in radians
+    :param decimals: the number of decimals the output is rounded to
+    :returns: the coordinate of the circle point
+    """
+    return ellipse_point(center_point, radius, radius, 0, angle, decimals)
+
+def elliptical_arc_endpoint_to_center(
+        point_1: np.ndarray, point_2: np.ndarray,
+        large_arc_flag: bool, sweep_flag: bool,
+        major_radius: float, minor_radius: float, major_axis_angle: float,
+        decimals: int = 6) -> list[np.ndarray, float, float]:
     """Returns the center coordinate and angles [cx, cy, theta_1, 
     delta_theta] of an arc. Method based on  of section F.6.5 of the 
     SVG 1.1 specification. Keep in mind that SVGs are effectively 
@@ -139,6 +187,7 @@ def elliptical_arc_endpoint_to_center(point_1: np.ndarray, point_2: np.ndarray,
     :param minor_radius: the semi-minor axis radius
     :param major_axis_angle: angle from the x-axis to the major axis 
                              in radians
+    :param decimals:  the number of decimals the output is rounded to
     :returns: The arc's center point [cx, cy], the first point's 
               angle, and the arc's extent angle
     """
@@ -159,7 +208,7 @@ def elliptical_arc_endpoint_to_center(point_1: np.ndarray, point_2: np.ndarray,
                                  + ry**2 * x1p**2)
     step_2_term_1 = math.sqrt(step_2_term_1_numerator
                               / step_2_term_1_denominator)
-    if fa ^ fs:
+    if not fa ^ fs:
         step_2_term_1 = -step_2_term_1
     step_2_term_2 = np.array([[rx * y1p / ry], [-ry * x1p / rx]])
     center_pt_p = step_2_term_1 * step_2_term_2
@@ -174,8 +223,8 @@ def elliptical_arc_endpoint_to_center(point_1: np.ndarray, point_2: np.ndarray,
     )
     
     delta_theta = angle_between_vectors_2d(
-        -pt1_p - center_pt_p,
-        pt1_p - center_pt_p
+        pt1_p - center_pt_p,
+        -pt1_p - center_pt_p
     )
     delta_theta = delta_theta % (2*np.pi)
     if not sweep_flag and delta_theta > 0:
@@ -187,5 +236,79 @@ def elliptical_arc_endpoint_to_center(point_1: np.ndarray, point_2: np.ndarray,
             round(theta_1, decimals),
             round(delta_theta, decimals)]
 
-def arc_center_to_endpoint():
-    pass
+def circle_arc_endpoint_to_center(
+        point_1: np.ndarray, point_2: np.ndarray,
+        large_arc_flag: bool, sweep_flag: bool, radius: float,
+        decimals: int = 6) -> list[np.ndarray, float, float]:
+    """Returns the center coordinate and angles [cx, cy, theta_1, 
+    delta_theta] of an arc. Uses the 
+    elliptical_arc_endpoint_to_center function with the inputs set 
+    for a circle
+    
+    :param point_1: The first arc point coordinate [x1, y1]
+    :param point_2: The second arc point coordinate [x2, y2]
+    :param large_arc_flag: If true the arc sweep greater than or 
+                           equal to 180 degrees is chosen
+    :param sweep_flag: If true than the positive angle direction arc 
+                       is chosen
+    :param radius: the arc's radius
+    :returns: The arc's center point [cx, cy], the first point's 
+              angle, and the arc's extent angle
+    """
+    return elliptical_arc_endpoint_to_center(point_1, point_2,
+                                             large_arc_flag, sweep_flag,
+                                             radius, radius, 0, decimals)
+
+def elliptical_arc_center_to_endpoint(
+        center_point: np.ndarray, major_radius: float,
+        minor_radius: float, major_axis_angle: float,
+        point_1_angle: float, sweep_angle: float,
+        decimals: int = 6) -> list:
+    """Returns a list of arc end points and flag values. Method based 
+    on section F.6.4 of the SVG 1.1 specification. The SVG 1.1 
+    equation F.6.4.1 is incorrect (or at least unclear) since they 
+    are assuming you have access to the eccentric anomaly, so the 
+    ellipse_point function uses a separately derived equation to 
+    determine the point coordinates
+    
+    :param center_point: Center point of the arc's ellipse
+    :param major_radius: the semi-major axis radius
+    :param minor_radius: the semi-minor axis radius
+    :param major_axis_angle: angle from the x-axis to the major axis 
+                             in radians
+    :param point_1_angle: the angle that the first arc point is at on the 
+                          ellipse in radians
+    :param sweep_angle: the between the start and end points of the arc
+    :param decimals:  the number of decimals the output is rounded to
+    :returns: The start point coordinate, end point coordinate, the 
+              svg 1.1 large arc flag, and the svg 1.1 sweep flag
+    """
+    pt1 = ellipse_point(center_point, major_radius, minor_radius,
+                        major_axis_angle, point_1_angle,
+                        decimals)
+    pt2 = ellipse_point(center_point, major_radius, minor_radius,
+                        major_axis_angle, point_1_angle + sweep_angle,
+                        decimals)
+    fa = True if abs(sweep_angle) > np.pi else False
+    fs = True if sweep_angle > 0 else False
+    return [pt1, pt2, fa, fs]
+
+def circle_arc_center_to_endpoint(
+        center_point: np.ndarray, radius: float,
+        point_1_angle: float, sweep_angle: float, decimals: int = 6) -> list:
+    """Returns a list of arc end points and flag values. Uses the 
+    elliptical_arc_center_to_endpoint function with the inputs set 
+    for a circle
+    
+    :param center_point: Center point of the arc's circle
+    :param radius: the semi-major axis radius
+    :param point_1_angle: the angle that the first arc point is at on the 
+                          circle in radians
+    :param sweep_angle: the between the start and end points of the arc
+    :param decimals:  the number of decimals the output is rounded to
+    :returns: The start point coordinate, end point coordinate, the 
+              svg 1.1 large arc flag, and the svg 1.1 sweep flag
+    """
+    return elliptical_arc_center_to_endpoint(center_point, radius, radius,
+                                             0, point_1_angle, sweep_angle,
+                                             decimals)
