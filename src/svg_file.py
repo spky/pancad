@@ -79,7 +79,7 @@ class SVGFile:
         self.svgs[self.active_svg].find(find_term).append(path)
     
     def add_circle(
-            self, id_: str, center_xy: str, radius: str, 
+            self, id_: str, center_xy: list[str, str], radius: str, 
             style: str = None, property_dicts: list = None) -> None:
         """Adds a new circle element to the active layer"""
         if style is None:

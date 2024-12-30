@@ -51,6 +51,7 @@ class TestFreeCADSketchReaders(unittest.TestCase):
             "id": 1,
             "start": [0.0, 0.0],
             "end": [25.4, 25.4],
+            "geometry_type": "line",
         }
         self.assertDictEqual(test, ans)
     
@@ -60,7 +61,8 @@ class TestFreeCADSketchReaders(unittest.TestCase):
         point = sketch.Geometry[0]
         test = fsr.read_point(point)
         ans = {
-            "location": [50.8, 50.8]
+            "location": [50.8, 50.8],
+            "geometry_type": "point",
         }
         self.assertDictEqual(test, ans)
     
@@ -73,6 +75,7 @@ class TestFreeCADSketchReaders(unittest.TestCase):
             "id": 1,
             "location": [0, 0],
             "radius": 12.7,
+            "geometry_type": "circle",
         }
         self.assertDictEqual(test, ans)
     
@@ -87,8 +90,25 @@ class TestFreeCADSketchReaders(unittest.TestCase):
             "radius": 38.1,
             "start": [38.1, 0],
             "end": [0, 38.1],
+            "geometry_type": "circular_arc",
         }
         self.assertDictEqual(test, ans)
+    
+    def test_read_sketch_geometry(self):
+        sketch = self.document.getObjectsByLabel("xz_rounded_rectangle_with_circle")[0]
+        # Here just to check this doesn't error out for some reason
+        out = fsr.read_sketch_geometry(sketch)
+
+class TestFreeCADSketchObjectReaders(unittest.TestCase):
+    
+    def setUp(self):
+        self.FOLDER = 'tests/sample_freecad/'
+        self.FILENAME = 'test_sketch_readers.FCStd'
+        self.path = self.FOLDER + self.FILENAME
+    
+    def test_read_all_sketches_from_file(self):
+        # Checks whether this errors out, mediocre test
+        out = fsr.read_all_sketches_from_file(self.path)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

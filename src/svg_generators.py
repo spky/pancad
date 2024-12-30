@@ -34,9 +34,14 @@ def make_arc(
     
     :param rx: x-axis radius
     :param ry: y-axis radius
-    :param x_axis_rotation: angle that the ellipse's x-axis is rotated relative to the current coordinate system in degrees
-    :param large_arc_flag: if 1, the >180 degree arc will be chosen, if 0, the < 180 degree arc will be chosen
-    :param sweep_flag: if 1, the arc is drawn in the positive angle direction, if 0 it will be drawn in the negative angle direction
+    :param x_axis_rotation: angle that the ellipse's x-axis is rotated 
+                            relative to the current coordinate system 
+                            in degrees
+    :param large_arc_flag: if 1, the >180 degree arc will be chosen, if 
+                           0, the < 180 degree arc will be chosen
+    :param sweep_flag: if 1, the arc is drawn in the positive angle 
+                       direction, if 0 it will be drawn in the negative 
+                       angle direction
     :param x: end x location
     :param y: end y location
     :param relative: determines whether the command will be relative
@@ -95,8 +100,8 @@ def make_style(style_dict: dict) -> str:
     
     :param style_dict: A dictionary full of key value pairs of the 
                        format 'property_name':'property_value'
-    :returns: a style string ready to be assigned to a path's style property
-    
+    :returns: a style string ready to be assigned to a path's style 
+              property
     """
     properties = []
     for key in style_dict:

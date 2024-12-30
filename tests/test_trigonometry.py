@@ -55,6 +55,20 @@ class TestTrigonometry(unittest.TestCase):
                                               radians = False)
                 self.assertEqual(angle, test[1])
     
+    def test_three_point_angle(self):
+        dec = 6
+        tests = [
+            [[trig.point_2d([1, 0]), trig.point_2d([0, 1]), trig.point_2d([0,0])], round(np.radians(90), dec)],
+            [[trig.point_2d([0, 1]), trig.point_2d([1, 0]), trig.point_2d([0,0])], round(np.radians(-90), dec)],
+            [[trig.point_2d([0, 1.5]), trig.point_2d([1.5, 0]), trig.point_2d([0,0])], round(np.radians(-90), dec)],
+            [[trig.point_2d([1, 1]), trig.point_2d([1, 0]), trig.point_2d([0,0])], round(np.radians(-45), dec)],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                angle = trig.three_point_angle(i[0], i[1], i[2], dec)
+                self.assertEqual(angle, t[1])
+    
     def test_rotation_2d(self):
         dec = 6
         tests = [

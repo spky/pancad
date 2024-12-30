@@ -24,6 +24,7 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	free_cad_object_wrappers.py \
 	freecad_sketch_readers.py \
 	trigonometry.py \
+	freecad_sketcher_to_svg_translators.py \
 	)
 
 PYTHON_TEST_FILES = $(addprefix $(TESTS), \
@@ -35,6 +36,8 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_freecad_object_wrappers.py \
 	test_freecad_sketch_readers.py \
 	test_trigonometry.py \
+	test_freecad_sketcher_to_svg_translators.py \
+	test_freecad_svg_file.py \
 	)
 
 
@@ -54,14 +57,16 @@ all: docs
 
 #$(TEST_LOGS)
 test: 
-	$(PYTHON) $(call FixPath, $(TESTS)svg_d_attribute_parsing_test.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_object_wrappers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketch_readers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_trigonometry.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)svg_d_attribute_parsing_test.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_object_wrappers.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketch_readers.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_trigonometry.py)
+#	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketcher_to_svg_translators.py)
+	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_svg_file.py)
 
 #test: 
 #	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)

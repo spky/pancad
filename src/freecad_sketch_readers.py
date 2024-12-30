@@ -6,11 +6,27 @@ FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows
 sys.path.append(FREECADPATH) 
 import FreeCAD as App
 import Part
+import Sketcher
 
 def print_object_attributes(obj):
     print(str(obj.__doc__) + " Properties:")
     for prop in dir(obj):
         print(prop + " | " + str(getattr(obj,prop)))
+
+def read_all_sketches_from_file(filepath: str) -> list[Sketcher.Sketch]:
+    """Returns a list of all the sketches in a FCStd file
+    """
+    if filepath.endswith(".FCStd"):
+        document = App.open(filepath)
+        sketches = []
+        for obj in document.Objects:
+            if obj.TypeId == "Sketcher::SketchObject":
+                sketches.append(obj)
+        return sketches
+    else:
+        raise ValueError("Provided filepath'"
+                         + str(filepath)
+                         + "' is not a FreeCAD file!")
 
 def read_2d_vector(obj: App.Base.Vector, decimals: int = 6) -> list: 
     """Returns the [x, y] list of a FreeCAD vector after checking 
@@ -39,6 +55,7 @@ def read_line_segment(obj: Part.LineSegment) -> dict:
             "id": obj.getExtensionOfType(GEO_EXT).Id,
             "start": read_2d_vector(obj.StartPoint),
             "end": read_2d_vector(obj.EndPoint),
+            "geometry_type": "line",
         }
         return properties
     else:
@@ -57,6 +74,7 @@ def read_point(obj: Part.Point) -> dict:
     if math.isclose(obj.Z, 0):
         properties = {
             "location": [obj.X, obj.Y],
+            "geometry_type": "point",
         }
         return properties
     else:
@@ -77,6 +95,7 @@ def read_circle(obj: Part.Circle) -> dict:
             "id": obj.getExtensionOfType(GEO_EXT).Id,
             "location": read_2d_vector(obj.Location),
             "radius": obj.Radius,
+            "geometry_type": "circle",
         }
         return properties
     else:
@@ -99,9 +118,30 @@ def read_circle_arc(obj: Part.ArcOfCircle) -> dict:
             "location": read_2d_vector(obj.Location),
             "radius": obj.Radius,
             "start": read_2d_vector(obj.StartPoint),
-            "end": read_2d_vector(obj.EndPoint)
+            "end": read_2d_vector(obj.EndPoint),
+            "geometry_type": "circular_arc",
         }
         return properties
     else:
         raise ValueError("Arc does not have SketchGeometryExtension, so "
                          "it may not be a Sketcher line!")
+
+def read_sketch_geometry(obj: Sketcher.Sketch) -> list[dict]:
+    """Returns a list of dictionaries describing each geometry object 
+    in given FreeCAD sketch. The Sketcher.Sketch type may not be the 
+    right type hint, it needs to be verified!
+    """
+    geometry = []
+    for g in obj.Geometry:
+        match g.TypeId:
+            case "Part::GeomLineSegment":
+                geometry.append(read_line_segment(g))
+            case "Part::GeomPoint":
+                geometry.append(read_point(g))
+            case "Part::GeomArcOfCircle":
+                geometry.append(read_circle_arc(g))
+            case "Part::GeomCircle":
+                geometry.append(read_circle(g))
+            case _:
+                raise ValueError(str(g.TypeId) + "is not a supported TypeId")
+    return geometry

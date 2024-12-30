@@ -32,6 +32,21 @@ def point_line_angle(point_a: np.ndarray, point_b: np.ndarray,
     else:
         return math.degrees(angle)
 
+def three_point_angle(point_1: np.ndarray, point_2: np.ndarray,
+                      root_point: np.ndarray, decimals: int = 6) -> float:
+    """Returns the angle between the lines created by the root point 
+    and points 1 and 2
+    
+    :param point_1: first point's coordinate
+    :param point_2: second point's coordinate
+    :param root_point: the line intersection point
+    :returns: the angle between the two lines in radians
+    """
+    u = point_1 - root_point
+    v = point_2 - root_point
+    return angle_between_vectors_2d(u, v, decimals)
+    
+
 def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
                              decimals: int = 6, radians: bool = True) -> float:
     """Returns the angle between two 2d vectors represented as numpy 
@@ -312,3 +327,4 @@ def circle_arc_center_to_endpoint(
     return elliptical_arc_center_to_endpoint(center_point, radius, radius,
                                              0, point_1_angle, sweep_angle,
                                              decimals)
+

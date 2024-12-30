@@ -42,7 +42,8 @@ def xml_declaration(properties: dict = {"version": "1.0",
     element.tail = tail
     return element
 
-def svg_top(svg_elements: list, indent: str = "  ", declaration: ET.Element = None) -> ET.Element:
+def svg_top(svg_elements: list, indent: str = "  ",
+            declaration: ET.Element = None) -> ET.Element:
     """Returns a ET.Element that has the xml declaration at the top 
     and the svg right below it. Will create its own default 
     declaration if none are given, and will indent the svg 
