@@ -60,7 +60,7 @@ class TestTranslators(unittest.TestCase):
         tests = [
             [
                 {"id": 1, "location": [0, 0], "radius": 1.5, "start": [0, 1.5], "end": [1.5, 0]},
-                {"id": "circular_arc1", "d": "M 0 1.5 a 1.5 1.5 0 0 0 1.5 0", "geometry_type": "circular_arc"}
+                {"id": "circular_arc1", "d": "M 0 1.5 A 1.5 1.5 0 0 0 1.5 0", "geometry_type": "circular_arc"}
             ],
         ]
         for t in tests:
