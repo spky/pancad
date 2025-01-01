@@ -260,6 +260,81 @@ class TestTrigonometry(unittest.TestCase):
                 self.assertAlmostEqual(out[1].reshape(2).tolist()[1], t[2][1],3)
                 self.assertEqual(out[2], t[3])
                 self.assertEqual(out[3], t[4])
+    
+    def test_line_fit_box(self):
+        tests = [
+            [
+                [trig.point_2d([0,0]), trig.point_2d([1,1])],
+                [[0,0], [1,1]]
+            ],
+            [
+                [trig.point_2d([0,0]), trig.point_2d([-1,-1])],
+                [[-1,-1], [0,0]]
+            ],
+            [
+                [trig.point_2d([0,1]), trig.point_2d([1,0])],
+                [[0,0], [1,1]]
+            ],
+            [
+                [trig.point_2d([-0.1,1.1]), trig.point_2d([1.1,-0.1])],
+                [[-0.1,-0.1], [1.1,1.1]]
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = trig.line_fit_box(i[0], i[1])
+                out_list = [out[0].reshape(2).tolist(),
+                            out[1].reshape(2).tolist()]
+                self.assertCountEqual(out_list, t[1])
+    
+    def test_circle_fit_box(self):
+        tests = [
+            [
+                [trig.point_2d([0,0]), 1],
+                [[-1,-1], [1,1]]
+            ],
+            [
+                [trig.point_2d([1,1]), 1],
+                [[0,0], [2,2]]
+            ],
+            [
+                [trig.point_2d([-1,-1]), 1],
+                [[-2,-2], [0,0]]
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = trig.circle_fit_box(i[0], i[1])
+                out_list = [out[0].reshape(2).tolist(),
+                            out[1].reshape(2).tolist()]
+                self.assertCountEqual(out_list, t[1])
+    
+    def test_ellipse_fit_box(self):
+        tests = [
+            [
+                [trig.point_2d([0,0]), 1, 0.5, math.radians(0)],
+                [[-1,-.5], [1,.5]]
+            ],
+            [
+                [trig.point_2d([0,0]), 1, 0.5, math.radians(20)],
+                [[-0.955127,-0.581148], [0.955127,0.581148]]
+            ],
+            [
+                [trig.point_2d([1,1]), 1, 0.5, math.radians(20)],
+                [[round(-0.955127+1,6),round(-0.581148+1,6)], [round(0.955127+1,6),round(0.581148+1,6)]]
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = trig.ellipse_fit_box(i[0], i[1], i[2], i[3])
+                out_list = [out[0].reshape(2).tolist(),
+                            out[1].reshape(2).tolist()]
+                out_list = [[round(out_list[0][0],6), round(out_list[0][1],6)],
+                            [round(out_list[1][0],6), round(out_list[1][1],6)]]
+                self.assertCountEqual(out_list, t[1])
 
 
 if __name__ == "__main__":

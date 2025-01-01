@@ -328,3 +328,73 @@ def circle_arc_center_to_endpoint(
                                              0, point_1_angle, sweep_angle,
                                              decimals)
 
+def line_fit_box(start: np.ndarray,
+              end: np.ndarray) -> list[np.ndarray, np.ndarray]:
+    """Returns the corners of the smallest box that the line would 
+    fit into. Used for sizing graphics.
+    
+    :param start: The start point of the line
+    :param end: The end point of the line
+    :returns: a list of the minimum corner and the maximum corner 
+    points of the smallest box that would fit the line
+    """
+    min_x = min(start[0][0], end[0][0])
+    min_y = min(start[1][0], end[1][0])
+    max_x = max(start[0][0], end[0][0])
+    max_y = max(start[1][0], end[1][0])
+    return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
+
+def circle_fit_box(center_point: np.ndarray, radius: float):
+    """Returns the corners of the smallest box that the circle would fit into. 
+    Used for sizing graphics.
+    
+    :param center_point: The center point of the circle
+    :param radius: The radius of the circle
+    :returns: a list of the minimum corner and the maximum corner 
+    points of the smallest box that would fit the circle
+    """
+    v = [(center_point + point_2d([0, radius])).reshape(2),
+         (center_point + point_2d([0, -radius])).reshape(2),
+         (center_point + point_2d([radius, 0])).reshape(2),
+         (center_point + point_2d([-radius, 0])).reshape(2)]
+    min_x = min(v[0][0], v[1][0], v[2][0], v[3][0])
+    max_x = max(v[0][0], v[1][0], v[2][0], v[3][0])
+    min_y = min(v[0][1], v[1][1], v[2][1], v[3][1])
+    max_y = max(v[0][1], v[1][1], v[2][1], v[3][1])
+    return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
+
+def ellipse_fit_box(center_point: np.ndarray, major_radius: float,
+                    minor_radius: float, major_axis_angle: float):
+    """Returns the corners of the smallest box that the ellipse would fit into. 
+    Used for sizing graphics.
+    
+    :param center_point: The center point of the circle
+    :param major_radius: The major axis radius of the ellipse
+    :param minor_radius: The minor axis radius of the ellipse
+    :param major_axis_angle: The angle between the coordinate system's 
+                             x axis and the ellipse's major_axis
+    :returns: a list of the minimum corner and the maximum corner 
+    points of the smallest box that would fit the circle
+    """
+    left_right_offset = math.sqrt(
+        major_radius**2 * math.cos(major_axis_angle)**2
+        + minor_radius**2 * math.sin(major_axis_angle)**2)
+    up_down_offset = math.sqrt(
+        minor_radius**2 * math.cos(major_axis_angle)**2
+        + major_radius**2 * math.sin(major_axis_angle)**2)
+    
+    v = [(center_point + point_2d([0, up_down_offset])).reshape(2),
+         (center_point + point_2d([0, -up_down_offset])).reshape(2),
+         (center_point + point_2d([left_right_offset, 0])).reshape(2),
+         (center_point + point_2d([-left_right_offset, 0])).reshape(2)]
+    min_x = min(v[0][0], v[1][0], v[2][0], v[3][0])
+    max_x = max(v[0][0], v[1][0], v[2][0], v[3][0])
+    min_y = min(v[0][1], v[1][1], v[2][1], v[3][1])
+    max_y = max(v[0][1], v[1][1], v[2][1], v[3][1])
+    return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
+
+def circle_arc_fit_box():
+    pass
+
+def elliptical_arc_fit_box():
+    pass
