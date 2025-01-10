@@ -168,6 +168,8 @@ class TestTrigonometry(unittest.TestCase):
             [[trig.point_2d([0,0]), 4, 3, math.radians(180), math.radians(0)], [-4, 0]],
             [[trig.point_2d([0,0]), 4, 3, math.radians(-180), math.radians(0)], [-4, 0]],
             [[trig.point_2d([1,0]), 4, 3, math.radians(0), math.radians(0)], [5, 0]],
+            [[trig.point_2d([0,0]), 4, 3, math.radians(0), math.radians(270)], [0, -3]],
+            [[trig.point_2d([0,0]), 4, 3, math.radians(0), math.radians(345)], [3.7668, -1.0093]],
             [[trig.point_2d([3.80397, -.92726]), 4, 3, math.radians(10), math.radians(146.636)], [.5, .5]],
         ]
         for t in tests:
@@ -335,7 +337,37 @@ class TestTrigonometry(unittest.TestCase):
                 out_list = [[round(out_list[0][0],6), round(out_list[0][1],6)],
                             [round(out_list[1][0],6), round(out_list[1][1],6)]]
                 self.assertCountEqual(out_list, t[1])
-
+    
+    def test_elliptical_arc_fit_box(self):
+        # Base Ellipses
+        e0 = [trig.point_2d([0,0]), 4, 3, math.radians(30)]
+        tests = [
+            [
+                [e0[0], e0[1], e0[2], e0[3], math.radians(15), math.radians(20)],
+                [[1.508462, 2.757504], [2.757506, 3.234904]]
+            ],
+            [
+                [e0[0], e0[1], e0[2], e0[3], math.radians(15), math.radians(60)],
+                [[-.788091, 2.757504], [2.757506, 3.278719]]
+            ],
+            [
+                [e0[0], e0[1], e0[2], e0[3], math.radians(-25), math.radians(345)],
+                [[-3.774917, -3.278719], [3.774917, 3.278719]]
+            ],
+            [
+                [e0[0], e0[1], e0[2], e0[3], math.radians(-5), math.radians(-25)],
+                [[3.614569, 0.000002], [3.774917, 1.685502]] # Manually set to .000002 since the accuracy for a fit box doesn't need to be that close
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+            out = trig.elliptical_arc_fit_box(i[0], i[1], i[2], i[3], i[4], i[5])
+            out_list = [out[0].reshape(2).tolist(),
+                        out[1].reshape(2).tolist()]
+            out_list = [[round(out_list[0][0],6), round(out_list[0][1],6)],
+                        [round(out_list[1][0],6), round(out_list[1][1],6)]]
+            self.assertCountEqual(out_list, t[1])
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

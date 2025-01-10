@@ -143,9 +143,14 @@ def ellipse_point(center_point: np.ndarray,
     """
     a = major_radius
     b = minor_radius
-    angle = angle % np.pi if abs(angle) > np.pi else angle
+    angle = angle_mod(angle) if abs(angle) > (2*np.pi) else angle
     t = round(angle, decimals)
     major_axis_rotation = rotation_2d(major_axis_angle)
+    # E = Eccentric Anomaly
+    E = math.atan2(a * math.sin(t), b * math.cos(t))
+    x = a * math.cos(E)
+    y = b * math.sin(E)
+    """
     if t == 0:
         x = a
         y = 0
@@ -163,6 +168,7 @@ def ellipse_point(center_point: np.ndarray,
         y = (a * b)/math.sqrt(b**2 / math.tan(t)**2 + a**2)
         x = x if t >= -np.pi/2 and t <= np.pi/2 else -x
         y = y if t >= 0 and t <= np.pi else -y
+    """
     unrotated_ellipse_pt = point_2d([x, y])
     ellipse_pt = major_axis_rotation @ unrotated_ellipse_pt + center_point
     return round_array(ellipse_pt, decimals)
@@ -241,7 +247,7 @@ def elliptical_arc_endpoint_to_center(
         pt1_p - center_pt_p,
         -pt1_p - center_pt_p
     )
-    delta_theta = delta_theta % (2*np.pi)
+    delta_theta = angle_mod(delta_theta)
     if not sweep_flag and delta_theta > 0:
         delta_theta = delta_theta - 2*np.pi
     elif sweep_flag and delta_theta < 0:
@@ -393,8 +399,109 @@ def ellipse_fit_box(center_point: np.ndarray, major_radius: float,
     max_y = max(v[0][1], v[1][1], v[2][1], v[3][1])
     return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
 
-def circle_arc_fit_box():
-    pass
+def angle_mod(angle: float) -> float:
+    """Returns the angle bounded from -2pi to +2pi since python's modulo 
+    operator by default always returns the divisor's sign, which is 
+    different that C and C++
+    
+    :param angle: The angle in radians
+    :returns: The equivalent angle bounded between -2pi and +2pi
+    """
+    if angle >= 0:
+        return angle % (2*np.pi)
+    else:
+        return angle % (-2*np.pi)
 
-def elliptical_arc_fit_box():
-    pass
+def positive_angle(angle: float) -> float:
+    """Returns the angle bounded from 0 to 2pi
+    """
+    if angle >= 0:
+        return angle_mod(angle)
+    else:
+        return angle_mod(angle) + 2*np.pi
+
+def elliptical_arc_fit_box(center_point: np.ndarray, major_radius: float,
+        minor_radius: float, major_axis_angle: float,
+        point_1_angle: float, sweep_angle: float) -> list:
+    """Returns the corners of the smallest box that the elliptical arc 
+    would fit into. Used for sizing graphics.
+    
+    :param center_point: The center point of the ellipse
+    :param major_radius: The major axis radius of the ellipse
+    :param minor_radius: The minor axis radius of the ellipse
+    :param major_axis_angle: The angle between the coordinate system's 
+                             x axis and the ellipse's major_axis
+    :param point_1_angle: The angle from the major axis of the ellipse to 
+    the arc's first point, in radians
+    :param sweep_angle: The angle from the first point to the second 
+    point, in radians
+    :returns: a list of the minimum corner and the maximum corner 
+    points of the smallest box that would fit the elliptical arc
+    """
+    start_angle = positive_angle(point_1_angle)
+    end_angle = positive_angle(start_angle + angle_mod(sweep_angle))
+    
+    if sweep_angle > 0:
+        cw_angle = start_angle
+        ccw_angle = end_angle
+    else:
+        cw_angle = end_angle
+        ccw_angle = start_angle
+    sweep = positive_angle(ccw_angle - cw_angle)
+    # E = Eccentric Anomaly. A huge number of guides online mix up the 
+    # angle between the major axis and the ellipse point with E!
+    max_Es = []
+    max_Es.append(positive_angle(
+        -math.atan2(minor_radius * math.sin(major_axis_angle),
+                    major_radius * math.cos(major_axis_angle))
+    ))
+    max_Es.append(positive_angle(np.pi + max_Es[-1]))
+    max_Es.append(positive_angle(
+        math.atan2(minor_radius * math.cos(major_axis_angle),
+                   major_radius * math.sin(major_axis_angle))
+    ))
+    max_Es.append(positive_angle(np.pi + max_Es[-1]))
+    extremes = []
+    extremes.append(ellipse_point(center_point, major_radius, minor_radius,
+                                  major_axis_angle, cw_angle))
+    extremes.append(ellipse_point(center_point, major_radius, minor_radius,
+                                  major_axis_angle, ccw_angle))
+    for E in max_Es:
+        theta = positive_angle(
+            math.atan2(minor_radius*math.sin(E),
+                       major_radius*math.cos(E))
+        )
+        # Relative angle is relative to cw_angle
+        relative_angle = theta - cw_angle
+        if relative_angle < 0:
+            relative_angle = relative_angle + 2*np.pi
+        if relative_angle > 0 and relative_angle < sweep:
+            extremes.append(ellipse_point(center_point, major_radius,
+                                          minor_radius, major_axis_angle,
+                                          theta))
+    x_extremes = []
+    y_extremes = []
+    for ext in extremes:
+        x_extremes.append(ext[0][0])
+        y_extremes.append(ext[1][0])
+    
+    return [point_2d([min(x_extremes), min(y_extremes)]),
+            point_2d([max(x_extremes), max(y_extremes)])]
+
+def circle_arc_fit_box(center_point: np.ndarray, radius: float,
+        point_1_angle: float, sweep_angle: float):
+    """Returns the corners of the smallest box that the circular arc 
+    would fit into. Used for sizing graphics. Uses the 
+    elliptical_arc_fit_box function with its inputs set up for a circle
+    
+    :param center_point: The center point of the circle
+    :param radius: The major axis radius of the ellipse
+    :param point_1_angle: The angle from the x-axis to the arc's first 
+    point, in radians
+    :param sweep_angle: The angle from the first point to the second 
+    point, in radians
+    :returns: a list of the minimum corner and the maximum corner 
+    points of the smallest box that would fit the circle
+    """
+    return elliptical_arc_fit_box(center_point, radius, radius, 0,
+                                  point_1_angle, sweep_angle)
