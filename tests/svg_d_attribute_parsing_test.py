@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-from svg_interface import SVGPath
+#from svg_interface import SVGPath
 from svg_parsers import (
     split_path_data, 
     parse_moveto, 
@@ -12,56 +12,12 @@ from svg_parsers import (
     parse_arc, 
     parse_lineto,
     parse_horizontal,
+    path_cmd_type,
+    path_data_to_dicts,
+    clean_command
 )
 
 class TestSVGPath(unittest.TestCase):
-    
-    def test_d_M_spaces_with_cooordinate_commas(self):
-        c = SVGPath._parse_path_data("M 100,150 200,250 L 200,200")[0]
-        self.assertEqual(c["type"], "M")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L 200,200")
-    
-    def test_d_M_min_spaces_no_commas(self):
-        c = SVGPath._parse_path_data("M100 150 200 250L200 200")[0]
-        self.assertEqual(c["type"], "M")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L200 200")
-    
-    def test_d_M_no_spaces_all_commas(self):
-        c = SVGPath._parse_path_data("M100,150,200,250L200,200")[0]
-        self.assertEqual(c["type"], "M")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L200,200")
-    
-    def test_d_M_no_spaces_all_commas_float(self):
-        c = SVGPath._parse_path_data("M100.1,150.2,200.3,250.4L200.1,200.2")[0]
-        self.assertEqual(c["type"], "M")
-        self.assertCountEqual(c["coordinates"], [[100.1, 150.2], [200.3, 250.4]])
-        self.assertEqual(c["leftover"], "L200.1,200.2")
-    
-    def test_d_low_m_spaces_with_cooordinate_commas(self):
-        c = SVGPath._parse_path_data("m 100,150 200,250 L 200,200")[0]
-        self.assertEqual(c["type"], "m")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L 200,200")
-    
-    def test_d_low_m_min_spaces_no_commas(self):
-        c = SVGPath._parse_path_data("m100 150 200 250L200 200")[0]
-        self.assertEqual(c["type"], "m")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L200 200")
-    
-    def test_d_low_m_no_spaces_all_commas(self):
-        c = SVGPath._parse_path_data("m100,150,200,250L200,200")[0]
-        self.assertEqual(c["type"], "m")
-        self.assertCountEqual(c["coordinates"], [[100, 150], [200, 250]])
-        self.assertEqual(c["leftover"], "L200,200")
-    
-    def test_absolute_move_to(self):
-        coordinate_list = [[100, 150], [200, 250]]
-        move_to = SVGPath.absolute_move_to(coordinate_list)
-        self.assertEqual(move_to, "M 100 150\nM 200 250")
     
     def test_split_path_data(self):
         path_data = "M 1.4429557,0.40800819 A 0.31844541,0.31844541 0 0 1 1.2957424,0.67649852 0.31844541,0.31844541 0 0 1 0.99021212,0.6967494 M 1.4429557,0.40800819z"
@@ -73,6 +29,19 @@ class TestSVGPath(unittest.TestCase):
         ]
         cmds = split_path_data(path_data)
         self.assertCountEqual(cmds, ans)
+    
+    def test_clean_command(self):
+        tests = [
+            ["A 0.3 0.3 0 0 1 2 2", "0.3,0.3,0,0,1,2,2"],
+            ["A 0.3,0.3,0,0,1,2,2", "0.3,0.3,0,0,1,2,2"],
+            ["A 0.3,0.3,0,0,1,2,2 ", "0.3,0.3,0,0,1,2,2"],
+            ["A 0.3,0.3 0 0 1 2, 2", "0.3,0.3,0,0,1,2,2"],
+            ["M 0.3,0.3 0 0 ", "0.3,0.3,0,0"],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                out = clean_command(t[0])
+                self.assertEqual(out, t[1])
     
     def test_parse_moveto(self):
         cmd = "M 1.4429557,0.40800819 0.31844541,0.31844541"
@@ -120,6 +89,50 @@ class TestSVGPath(unittest.TestCase):
         ans = [1.4429557, 0.40800819]
         test = parse_horizontal(cmd)
         self.assertCountEqual(test, ans)
+    
+    def test_path_cmd_type(self):
+        tests = [
+            ["M 1.4429557,0.40800819", "absolute_moveto"],
+            ["m 1.4429557,0.40800819", "relative_moveto"],
+            ["A 0.31844541,0.31844541 0 0 1 1.2957424,0.67649852 0.31844541,0.31844541 0 0 1 0.99021212,0.6967494", "absolute_arc"],
+            ["a 0.31844541,0.31844541 0 0 1 1.2957424,0.67649852 0.31844541,0.31844541 0 0 1 0.99021212,0.6967494", "relative_arc"],
+            ["z", "closepath"],
+            ["Z", "closepath"],
+            ["L 1.4429557,0.40800819 0.31844541,0.31844541", "absolute_lineto"],
+            ["l 1.4429557,0.40800819 0.31844541,0.31844541", "relative_lineto"],
+            ["H 1.4429557,0.40800819", "absolute_horizontal"],
+            ["h 1.4429557,0.40800819", "relative_horizontal"],
+            ["V 1.4429557,0.40800819", "absolute_vertical"],
+            ["v 1.4429557,0.40800819", "relative_vertical"],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = path_cmd_type(i)
+                self.assertEqual(out, t[1])
+    
+    def test_path_data_to_dicts(self):
+        tests = [
+            [["M 1.0,1.0 2.0,2.0 3.0,3.0", "path1"], None],
+            [["m 1.0,1.0 2.0,2.0 3.0,3.0", "path2"], None],
+            [["m 0.1 0.1 0.9 0.9", "path3"], None],
+            [["M 0.1,0.1 0.9,0.9 0.1,0.9z", "path4"], None],
+            [["M 1.0,1.0", "path5"], None],
+            [["m 1.0,1.0", "path6"], None],
+            [["m 0.1,0.1 0.9,0.9 -0.9,0z", "path7"], None],
+            [["A 0.3,0.3 0 0 1 1.2,0.6 0.3,0.3 0 0 1 0.9,0.6", "path8"], None],
+            [["A 0.3,0.3 0 0 1 1.2,0.6", "path8"], None],
+            [["M 1.0 1.0 A 0.31844541,0.31844541 0 0 1 2, 2", "path9"], None],
+            [["M 1.0 1.0 a 0.31844541,0.31844541 0 0 1 2, 2", "path10"], None],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = path_data_to_dicts(i[0], i[1])
+                print(out)
+    
+    def test_absolute_moveto_to_dict(self):
+        pass
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

@@ -75,6 +75,17 @@ class TestSVGFile(unittest.TestCase):
                            "M 0.1 0.1 0.9 0.9 0.1 0.9 z")
         self.file.write(self.folder)
     
+    def test_auto_size_view(self):
+        self.file.name = "test_write_svg.svg"
+        self.file.add_svg(id_="svg1", width="1in", height="1in")
+        self.file.add_g("layer1")
+        self.file.add_path("path1",
+                           "M 0.1 0.1 0.9 0.9")
+        self.file.add_path("path2",
+                           "M 0 1.5 A 1.5 1.5 0 0 0 1.5 0")
+        self.file.add_circle("circle1", ["0.5in", "0.5in"], "0.25in")
+        self.file.auto_size_view()
+    
     def test_write_circle(self):
         self.file.name = "test_write_circle_svg.svg"
         self.file.add_svg(id_="svg1", width="1in", height="1in")

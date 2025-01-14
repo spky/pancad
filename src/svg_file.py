@@ -4,6 +4,7 @@ elements to be written to files.
 
 import svg_writers as sw
 import svg_generators as sg
+import svg_parsers as sp
 
 class SVGFile:
     
@@ -88,6 +89,23 @@ class SVGFile:
                                         property_dicts)
         find_term = "./g[@id='" + self.active_g + "']"
         self.svgs[self.active_svg].find(find_term).append(circle)
+    
+    def auto_size_view(self):
+        """Sizes the svg viewbox based on the active g element's 
+        subelements
+        """
+        if self.active_g is None:
+            raise ValueError("No g element is active, "
+                             + "svg cannot be auto-sized")
+        find_term = "./g[@id='" + self.active_g + "']"
+        g = self.svgs[self.active_svg].find(find_term)
+        paths = g.findall("./path")
+        circles = g.findall("./circle")
+        for p in paths:
+            d = p.get("d")
+            split_d = sp.split_path_data(d)
+            print(split_d)
+        
     
     def write_single_svg(
             self, svg_id: str, folder: str, indent: str = "  ") -> None:
