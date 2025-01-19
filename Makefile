@@ -17,7 +17,6 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	svg_generators.py \
 	svg_parsers.py \
 	svg_writers.py \
-	inkscape_interface.py \
 	free_cad_object_wrappers.py \
 	svg_validators.py \
 	svg_file.py \

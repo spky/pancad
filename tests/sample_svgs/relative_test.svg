@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="6in" height="6in" viewBox="-3 -3 6 6" id="svg1">
+  <g id="layer1">
+    <!--
+    <path style="fill:none;stroke:#000000;stroke-width:0.010467px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
+          d="m 0.1 0.1 0.9 0.9 0 .5"
+          id="path1" />
+    -->
+    <!--
+    <path style="fill:none;stroke:#000000;stroke-width:0.010467px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
+          d="z"
+          id="path1" />
+    -->
+    <!--
+    <path style="fill:none;stroke:#000000;stroke-width:0.010467px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
+          d="M 0 0 A 0.31844541,0.31844541 0 0 1 1.2957424,0.67649852"
+          id="path1" />
+    -->
+    <path style="fill:none;stroke:#000000;stroke-width:0.010467px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" 
+        d="M -6 -6 6 6"
+        id="path1" />
+    <circle id="path3"
+        style="fill:#000000;stroke:none;stroke-width:0.0104167"
+        cx="0"
+        cy="0"
+        r="3"/>    
+    </g>  
+</svg>
