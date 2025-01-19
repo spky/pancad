@@ -5,17 +5,7 @@ import unittest
 sys.path.append('src')
 
 #from svg_interface import SVGPath
-from svg_parsers import (
-    split_path_data, 
-    parse_moveto, 
-    create_sublists, 
-    parse_arc, 
-    parse_lineto,
-    parse_horizontal,
-    path_cmd_type,
-    path_data_to_dicts,
-    clean_command
-)
+import svg_parsers as sp
 
 class TestSVGPath(unittest.TestCase):
     
@@ -27,7 +17,7 @@ class TestSVGPath(unittest.TestCase):
             "M 1.4429557,0.40800819",
             "z",
         ]
-        cmds = split_path_data(path_data)
+        cmds = sp.split_path_data(path_data)
         self.assertCountEqual(cmds, ans)
     
     def test_clean_command(self):
@@ -40,7 +30,21 @@ class TestSVGPath(unittest.TestCase):
         ]
         for t in tests:
             with self.subTest(t=t):
-                out = clean_command(t[0])
+                out = sp.clean_command(t[0])
+                self.assertEqual(out, t[1])
+    
+    def test_length_unit(self):
+        tests = [
+            ["1.0in", "in"],
+            ["1mm", "mm"],
+            ["1", ""],
+            [1, ""],
+            [1.1, ""],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = sp.length_unit(i)
                 self.assertEqual(out, t[1])
     
     def test_parse_moveto(self):
@@ -49,20 +53,20 @@ class TestSVGPath(unittest.TestCase):
             [1.4429557, 0.40800819],
             [0.31844541,0.31844541],
         ]
-        test = parse_moveto(cmd)
+        test = sp.parse_moveto(cmd)
         self.assertCountEqual(test, ans)
     
     def test_create_sublists(self):
         list_ = [100, 150, 200, 250, 300, 350]
         no_parameters = 2
-        test = create_sublists(list_, no_parameters)
+        test = sp.create_sublists(list_, no_parameters)
         ans = [[100, 150], [200, 250], [300, 350]]
         self.assertCountEqual(test, ans)
     
     def test_create_sublists_single_element(self):
         list_ = [100, 150]
         no_parameters = 2
-        test = create_sublists(list_, no_parameters)
+        test = sp.create_sublists(list_, no_parameters)
         ans = [[100, 150]]
         self.assertCountEqual(test, ans)
     
@@ -72,7 +76,7 @@ class TestSVGPath(unittest.TestCase):
             [0.31844541,0.31844541, 0, 0, 1, 1.2957424, 0.67649852],
             [0.31844541,0.31844541, 0, 0, 1, 0.99021212, 0.6967494],
         ]
-        test = parse_arc(cmd)
+        test = sp.parse_arc(cmd)
         self.assertCountEqual(test, ans)
     
     def test_parse_lineto(self):
@@ -81,13 +85,13 @@ class TestSVGPath(unittest.TestCase):
             [1.4429557, 0.40800819],
             [0.31844541,0.31844541],
         ]
-        test = parse_lineto(cmd)
+        test = sp.parse_lineto(cmd)
         self.assertCountEqual(test, ans)
     
     def test_parse_horizontal(self):
         cmd = "H 1.4429557,0.40800819"
         ans = [1.4429557, 0.40800819]
-        test = parse_horizontal(cmd)
+        test = sp.parse_horizontal(cmd)
         self.assertCountEqual(test, ans)
     
     def test_path_cmd_type(self):
@@ -108,7 +112,7 @@ class TestSVGPath(unittest.TestCase):
         for t in tests:
             with self.subTest(t=t):
                 i = t[0]
-                out = path_cmd_type(i)
+                out = sp.path_cmd_type(i)
                 self.assertEqual(out, t[1])
     
     def test_path_data_to_dicts(self):
@@ -122,16 +126,143 @@ class TestSVGPath(unittest.TestCase):
             [["m 0.1,0.1 0.9,0.9 -0.9,0z", "path7"], None],
             [["A 0.3,0.3 0 0 1 1.2,0.6 0.3,0.3 0 0 1 0.9,0.6", "path8"], None],
             [["A 0.3,0.3 0 0 1 1.2,0.6", "path8"], None],
-            [["M 1.0 1.0 A 0.31844541,0.31844541 0 0 1 2, 2", "path9"], None],
-            [["M 1.0 1.0 a 0.31844541,0.31844541 0 0 1 2, 2", "path10"], None],
+            [["M 1.0 1.0 A 0.3,0.3 0 0 1 2, 2", "path9a"], None],
+            [["M 1.0 1.0 A 0.4,0.3 0 0 1 2, 2", "path9b"], None],
+            [["M 1.0 1.0 a 0.3,0.3 0 0 1 2, 2", "path10a"], None],
+            [["M 1.0 1.0 a 0.4,0.3 0 0 1 2, 2", "path10b"], None],
+            [["L 1.0,1.0", "path11"], None],
+            [["M 1.0 1.0 l 1.0,1.0", "path12"], None],
+            [["M 1.0 1.0 H 2.0", "path13"], None],
+            [["M 1.0 1.0 h 2.0", "path14"], None],
+            [["M 1.0 1.0 V 2.0", "path15"], None],
+            [["M 1.0 1.0 v 2.0", "path16"], None],
+            [["M 1.0 1.0 H 2.0 v 1.0", "path13"], None],
         ]
         for t in tests:
             with self.subTest(t=t):
                 i = t[0]
-                out = path_data_to_dicts(i[0], i[1])
-                print(out)
+                out = sp.path_data_to_dicts(i[0], i[1])
     
     def test_absolute_moveto_to_dict(self):
+        tests = [
+            [
+                ["M 1.0 1.0", "path1", 0],
+                [[1.0, 1.0], [], None, 0]
+            ],
+            [
+                ["M 1.0 1.0 2.0 2.0", "path1", 0], # Input
+                [
+                    [2.0, 2.0], # Current Point
+                    [
+                        sp.line("path1", 0, [1.0, 1.0], [2.0, 2.0]),
+                    ], # Lines
+                    [1.0, 1.0], # Subpath Initial Point
+                    1 # Shape Count
+                ] # Output
+            ],
+            [
+                ["M 1.0 1.0 2.0 2.0 3.0 3.0", "path1", 0], # Input
+                [
+                    [3.0, 3.0], # Current Point
+                    [
+                        sp.line("path1", 0, [1.0, 1.0], [2.0, 2.0]),
+                        sp.line("path1", 1, [2.0, 2.0], [3.0, 3.0]),
+                    ], # Lines
+                    [1.0, 1.0], # Subpath Initial Point
+                    2 # Shape Count
+                ] # Output
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = sp.absolute_moveto_to_dict(i[0], i[1], i[2])
+                self.assertCountEqual(out, t[1])
+        
+    def test_relative_moveto_to_dict(self):
+        tests = [
+            [
+                ["m 1.0 1.0",[0, 0], 0, "path1", 0],
+                [[1.0, 1.0], [], None, 0]
+            ],
+            [
+                ["m 1.0 1.0",[1, 1], 1, "path1", 0],
+                [[2.0, 2.0], [], None, 0]
+            ],
+            [
+                ["m 1.0 1.0 2.0 2.0", [0, 0], 0, "path1", 0], # Input
+                [
+                    [3.0, 3.0], # Current Point
+                    [
+                        sp.line("path1", 0, [1.0, 1.0], [3.0, 3.0]),
+                    ], # Lines
+                    [1.0, 1.0], # Subpath Initial Point
+                    1 # Shape Count
+                ] # Output
+            ],
+            [
+                ["m 1.0 1.0 2.0 2.0 3.0 3.0",[0, 0], 0, "path1", 0], # Input
+                [
+                    [6.0, 6.0], # Current Point
+                    [
+                        sp.line("path1", 0, [1.0, 1.0], [3.0, 3.0]),
+                        sp.line("path1", 1, [3.0, 3.0], [6.0, 6.0]),
+                    ], # Lines
+                    [1.0, 1.0], # Subpath Initial Point
+                    2 # Shape Count
+                ] # Output
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = sp.relative_moveto_to_dict(i[0], i[1], i[2], i[3], i[4])
+                self.assertCountEqual(out, t[1])
+    
+    def test_arc_to_dict(self):
+        tests = [
+            [
+                [
+                    "A 0.3,0.3 0 0 1 1.2,0.6", # Command
+                    [0, 0], # Current Point
+                    "path1", # Path Id
+                    0, # Shape Count
+                    False, # relative
+                ], # Input
+                [
+                    [1.2, 0.6], # Current Point
+                    [
+                        sp.circular_arc("path1", 0, [0, 0], [1.2, 0.6],
+                                        0.3, False, True),
+                    ], # Arcs
+                    [0, 0], # Subpath Initial Point
+                    1, # Shape Count
+                ], # Output
+                [
+                    "A 0.4,0.3 0 0 1 1.2,0.6", # Command
+                    [0, 0], # Current Point
+                    "path1", # Path Id
+                    0, # Shape Count
+                    False, # relative
+                ], # Input
+                [
+                    [1.2, 0.6], # Current Point
+                    [
+                        sp.elliptical_arc("path1", 0, [0, 0], [1.2, 0.6],
+                                          0.4, 0.3, 0, False, True),
+                    ], # Arcs
+                    [0, 0], # Subpath Initial Point
+                    1, # Shape Count
+                ], # Output
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = sp.arc_to_dict(i[0], i[1], i[2], i[3], i[4])
+                self.assertCountEqual(out, t[1])
+    
+    def test_lineto_to_dict(self):
         pass
 
 if __name__ == "__main__":

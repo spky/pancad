@@ -4,6 +4,7 @@ other formats
 
 import re
 import trigonometry as trig
+import svg_validators as sv
 
 def parse_coordinate_string(coordinate: str) -> list:
     """Uses re to figure out what string of coordinates are in path 
@@ -86,23 +87,22 @@ def path_data_to_dicts(path_data: str, path_id: str = "") -> list[dict]:
                 out.extend(arcs)
             case "closepath":
                 if subpath_initial_point is not None:
-                    out.append({
-                        "id": path_id + "_" + str(shape_count),
-                        "start": current_point,
-                        "end": subpath_initial_point,
-                        "geometry_type": "line",
-                    })
+                    out.append(
+                        line(path_id, shape_count,
+                             current_point, subpath_initial_point)
+                    )
                     current_point = subpath_initial_point
-            case "absolute_lineto":
-                pass
-            case "relative_lineto":
-                pass
-            case "absolute_horizontal":
-                pass
-            case "relative_horizontal":
-                pass
-            case "absolute_vertical":
-                pass
+                    subpath_initial_point = None
+            case (
+                     "absolute_lineto" | "relative_lineto"
+                     | "absolute_horizontal" | "relative_horizontal"
+                     | "absolute_vertical" | "relative_vertical"
+                 ):
+                (
+                    current_point, lines,
+                    subpath_initial_point, shape_count
+                ) = lineto_to_dict(cmd, current_point, path_id, shape_count)
+                out.extend(lines)
     return out
 
 def path_cmd_type(path_data_cmd: str) -> str:
@@ -151,6 +151,20 @@ def clean_command(command:str) -> str:
     command = command.replace(", ",",")
     command = command.replace(" ",",")
     return command
+
+def length_unit(setting: str | float) -> None | str:
+    """Returns the unit of the given length setting as a string. Will 
+    return an empty string if no unit is in the string or if the setting 
+    is a number
+    
+    :param setting: length setting for an svg tag
+    :returns: the unit of the length
+    """
+    if isinstance(setting, int) or isinstance(setting, float):
+        return ""
+    else:
+        number = sv.length_value(setting) # Also checks the validity of the setting
+        return setting.replace(str(number), "")
 
 def csv_to_float(csv:str) -> list:
     """Returns a list of numbers from a string full of comma separated 
@@ -205,6 +219,8 @@ def absolute_moveto_to_dict(command: str, path_id: str,
     :param command: An absolute moveto command
     :param path_id: The id of the moveto command's path element
     :param shape_count: How many shapes have already been read in the path
+    :returns: tuple of (current point, a list of line dictionaries, sub-path initial 
+              point, and incremented shape count).
     """
     coordinates = parse_moveto(command)
     point_count = len(coordinates)
@@ -216,11 +232,8 @@ def absolute_moveto_to_dict(command: str, path_id: str,
         subpath_initial_point = coordinates[0]
         for i in range(1, point_count):
             current_point = coordinates[i]
-            lines.append({
-                "id": path_id + "_" + str(shape_count),
-                "start": coordinates[i-1], "end": current_point,
-                "geometry_type": "line",
-            })
+            lines.append(line(path_id, shape_count,
+                              coordinates[i-1], current_point))
             shape_count += 1
     else:
         raise ValueError("A moveto cannot have 0 points")
@@ -237,6 +250,8 @@ def relative_moveto_to_dict(command: str, current_point: list,
     :param command_no: How many commands have been read in the path
     :param path_id: The id of the moveto command's path element
     :param shape_count: How many shapes have already been read in the path
+    :returns: tuple of (current point, lines dictionary, sub-path initial 
+              point, and incremented shape count)
     """
     coordinates = parse_moveto(command)
     point_count = len(coordinates)
@@ -255,12 +270,8 @@ def relative_moveto_to_dict(command: str, current_point: list,
         for i in range(1, point_count):
             next_point = [current_point[0] + coordinates[i][0],
                           current_point[1] + coordinates[i][1]]
-            lines.append({
-                "id": path_id + "_" + str(shape_count),
-                "start": current_point,
-                "end": next_point,
-                "geometry_type": "line",
-            })
+            lines.append(line(path_id, shape_count,
+                              current_point, next_point))
             current_point = next_point
             shape_count += 1
     else:
@@ -287,10 +298,11 @@ def arc_to_dict(command: str, current_point: list, path_id: str,
     arc command. Intended for use in the path_data_to_dicts function. Will 
     identify the arc as circular if rx = ry
     
-    :param command: An absolute elliptical arc command
+    :param command: An elliptical arc command
     :param current_point: The current svg point, where the arc will start
     :param path_id: the id of the arc command's path element
     :param shape_count: How many shapes have already been read in the path
+    :param relative: Absolute coordinates if false, relative if true
     """
     arc_cmds = parse_arc(command)
     arcs = []
@@ -302,21 +314,20 @@ def arc_to_dict(command: str, current_point: list, path_id: str,
         else:
             next_point = [arc[5], arc[6]]
         rx, ry = arc[0], arc[1]
+        large_arc = True if arc[3] else False
+        sweep = True if arc[4] else False
         if rx == ry:
-            geometry_type = "circular_arc"
+            arcs.append(
+                circular_arc(path_id, shape_count,
+                             current_point, next_point,
+                             rx, large_arc, sweep)
+            )
         else:
-            geometry_type = "elliptical_arc"
-        arcs.append({
-            "id": path_id + "_" + str(shape_count),
-            "point_1": current_point,
-            "point_2": next_point,
-            "x_radius": rx,
-            "y_radius": ry,
-            "x_axis_rotation": arc[2],
-            "large_arc_flag": arc[3],
-            "sweep_flag": arc[4],
-            "geometry_type": geometry_type,
-        })
+            arcs.append(
+                elliptical_arc(path_id, shape_count,
+                               current_point, next_point,
+                               rx, ry, arc[2], large_arc, sweep)
+            )
         current_point = next_point
         shape_count += 1
     return current_point, arcs, subpath_initial_point, shape_count
@@ -335,6 +346,61 @@ def parse_lineto(command:str) -> list:
     numbers = csv_to_float(command)
     coordinates = create_sublists(numbers, 2)
     return coordinates
+
+def lineto_to_dict(command: str, current_point: list, path_id: str,
+                   shape_count: int) -> tuple:
+    """Returns a tuple of geometry info represented by svg lineto, 
+    horizontal and vertical commands. Intended for use in the 
+    path_data_to_dicts function.
+    
+    :param command: A lineto, horizontal, or vertical command
+    :param current_point: The current svg point
+    :param path_id: the id of the command's path element
+    :param shape_count: How many shapes have already been read in the path
+    :param relative: Absolute coordinates if false, relative if true
+    """
+    cmd_type = path_cmd_type(command)
+    relative = True if cmd_type.startswith("relative") else False
+    line_pts = [current_point]
+    lines = []
+    if cmd_type.endswith("lineto"):
+        coordinates = parse_lineto(command)
+        subpath_initial_point = current_point
+        if relative:
+            for c in coordinates:
+                line_pts.append([current_point[0] + c[0],
+                                current_point[1] + c[1]])
+        else:
+            line_pts.extend(coordinates)
+        current_point = line_pts[-1]
+    elif cmd_type.endswith("horizontal"):
+        subpath_initial_point = None
+        x_values = parse_horizontal(command)
+        for x in x_values:
+            if relative:
+                next_point = [current_point[0] + x, current_point[1]]
+            else:
+                next_point = [x, current_point[1]]
+            line_pts.append(next_point)
+            current_point = next_point
+    elif cmd_type.endswith("vertical"):
+        subpath_initial_point = None
+        y_values = parse_vertical(command)
+        for y in y_values:
+            if relative:
+                next_point = [current_point[0], current_point[1] + y]
+            else:
+                next_point = [current_point[0], y]
+            line_pts.append(next_point)
+            current_point = next_point
+    else:
+        raise ValueError(str(command) + " is not v/V/h/H/l/L!")
+    point_count = len(line_pts)
+    for i in range(1, point_count):
+        current_point = line_pts[i]
+        lines.append(line(path_id, shape_count, line_pts[i-1], line_pts[i]))
+        shape_count += 1
+    return current_point, lines, subpath_initial_point, shape_count
 
 def parse_horizontal(command:str) -> list:
     """Returns a list of the lengths given in an absolute or relative 
@@ -363,3 +429,89 @@ def parse_vertical(command:str) -> list:
     command = clean_command(command)
     numbers = csv_to_float(command)
     return numbers
+
+def line(
+        path_id: str, shape_count: int,
+        start: list[float, float], end: list[float, float]) -> dict:
+    """Returns a dictionary defining a svg line
+    
+    :param path_id: id of the svg path the line is in
+    :param shape_count: the shape number of the line in the svg path
+    :param start: the start point of the line, [x, y]
+    :param end: the end point of the line, [x, y]
+    :returns: A dictionary with keys for id, start, end, and 
+              geometry_type. geometry_type is set to line.
+    """
+    return {
+        "id": path_id + "_" + str(shape_count),
+        "start": start, "end": end, "geometry_type": "line"
+    }
+
+def circular_arc(
+        path_id: str, shape_count: int,
+        start: list[float, float], end: list[float, float],
+        radius: float, large_arc_flag: bool, sweep_flag: bool
+    ) -> dict:
+    """Returns a dictionary of defining a svg circular arc
+    
+    :param path_id: id of the svg path the arc is in
+    :param shape_count: the shape number of the line in the svg path
+    :param start: the start point of the arc, [x, y]
+    :param end: the end point of the arc, [x, y]
+    :param radius: the radius of the associated circle
+    :param large_arc_flag: svg large arc flag
+    :param sweep_flag: svg sweep flag
+    :returns: A dictionary with keys for id, start, end, radius,
+              large_arc_flag, sweep_flag and geometry_type. geometry_type
+              is set to circular arc.
+    """
+    return {
+        "id": path_id + "_" + str(shape_count),
+        "start": start, "end": end, "radius": radius,
+        "large_arc_flag": large_arc_flag, "sweep_flag": sweep_flag,
+        "geometry_type": "circular_arc"
+    }
+
+def elliptical_arc(
+        path_id: str, shape_count: int,
+        start: list[float, float], end: list[float, float],
+        x_radius: float, y_radius: float,
+        x_axis_rotation: float, large_arc_flag: bool, sweep_flag: bool
+    ) -> dict:
+    """Returns a dictionary of defining an svg elliptical arc
+    
+    :param path_id: id of the svg path the arc is in
+    :param shape_count: the shape number of the line in the svg path
+    :param start: the start point of the arc, [x, y]
+    :param end: the end point of the arc, [x, y]
+    :param x_radius: the major axis radius of the associated ellipse
+    :param y_radius: the minor axis radius of the associated ellipse
+    :param x_axis_rotation: the major axis angle of the associated ellipse
+    :param large_arc_flag: svg large arc flag
+    :param sweep_flag: svg sweep flag
+    :returns: A dictionary with keys for id, start, end, x_radius, 
+              y_radius, x_axis_rotation, large_arc_flag, sweep_flag, and 
+              geometry_type. geometry_type is set to elliptical_arc.
+    """
+    return {
+        "id": path_id + "_" + str(shape_count),
+        "start": start, "end": end,
+        "x_radius": x_radius, "y_radius": y_radius,
+        "x_axis_rotation": x_axis_rotation,
+        "large_arc_flag": large_arc_flag, "sweep_flag": sweep_flag,
+        "geometry_type": "elliptical_arc"
+    }
+
+def circle(id_: str, radius: float, center: list[float, float]):
+    """Returns a dictionary defining an circle
+    
+    :param id_: id of the svg circle
+    :param radius: radius of the circle
+    :param center: center point of the circle, [x, y]
+    :returns: A dictionary with keys for id, radius, center, and 
+              geometry_type. geometry_type is set to circle.
+    """
+    return {
+        "id": id_, "radius": radius,
+        "center": center, "geometry_type": "circle"
+    }

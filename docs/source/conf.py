@@ -17,13 +17,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path('..','..', 'src').resolve()))
 import svg_parsers
-import inkscape_interface
-import svg_interface
 import svg_generators
 import svg_writers
 import svg_file
 import free_cad_object_wrappers
 import freecad_sketch_readers
+import trigonometry
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

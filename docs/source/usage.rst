@@ -47,3 +47,11 @@ FreeCAD Function Explanations
 Reading design information from FreeCAD sketches
 ################################################
 
+Geometry Function Explanations
+------------------------------
+
+Trigonometry
+############
+
+.. automodule:: trigonometry
+    :members:

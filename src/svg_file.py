@@ -5,16 +5,20 @@ elements to be written to files.
 import svg_writers as sw
 import svg_generators as sg
 import svg_parsers as sp
+import svg_validators as sv
+import trigonometry as trig
 
 class SVGFile:
     
-    def __init__(self, name: str, line_style: dict = None) -> None:
+    def __init__(self, name: str, line_style: dict = None,
+                 unit = "") -> None:
         if name.endswith(".svg"):
             self.name = name
         else:
             self.name = name + ".svg"
         self.active_svg = None
         self.active_g = None
+        self.unit = unit
         # Multiple svg tags is supported, but browsers do not like it
         self.svgs = {}
         self.declaration = sw.xml_declaration()
@@ -28,6 +32,19 @@ class SVGFile:
                 "stroke-opacity": 1,
             }
         self.default_line_style = sg.make_style(line_style)
+    
+    def set_viewbox(self, width: str, height: str,
+                    min_x: str | float = 0, min_y: str | float = 0):
+        """Sets the viewBox attribute of the active svg"""
+        svg = self.svgs[self.active_svg]
+        svg.set("width", width)
+        svg.set("height", height)
+        svg.set(
+            "viewBox",
+            " ".join([str(min_x), str(min_y),
+                      str(sv.length_value(width)),
+                      str(sv.length_value(height))])
+        )
     
     def activate_svg(self, id_: str) -> None:
         """Activates the svg with the given id, if it exists"""
@@ -53,12 +70,11 @@ class SVGFile:
                              + "' does not appear as a g element in the active svg")
     
     def add_svg(
-            self, id_: str = None, width: str = "0in", height: str = "0in",
-            property_dicts: list = None) -> None:
+            self, id_: str = None, property_dicts: list = None) -> None:
         """Adds a new svg element and sets it as the active svg"""
         if id_ is None:
             id_ = "svg" + str(len(self.svgs) + 1)
-        svg = sw.make_svg_element(id_, width, height, property_dicts)
+        svg = sw.make_svg_element(id_, property_dicts)
         self.svgs[id_] = svg
         self.activate_svg(id_)
     
@@ -90,10 +106,23 @@ class SVGFile:
         find_term = "./g[@id='" + self.active_g + "']"
         self.svgs[self.active_svg].find(find_term).append(circle)
     
-    def auto_size_view(self):
+    @staticmethod
+    def read_circle_to_dict(circle_element) -> dict:
+        """Reads a circle element's properties into a dictionary"""
+        return sp.circle(
+            circle_element.get("id"),
+            sv.length_value(circle_element.get("r")),
+            [
+                sv.length_value(circle_element.get("cx")),
+                sv.length_value(circle_element.get("cy"))
+            ]
+        )
+    
+    def auto_size_view(self, margin = 0):
         """Sizes the svg viewbox based on the active g element's 
         subelements
         """
+        
         if self.active_g is None:
             raise ValueError("No g element is active, "
                              + "svg cannot be auto-sized")
@@ -101,11 +130,23 @@ class SVGFile:
         g = self.svgs[self.active_svg].find(find_term)
         paths = g.findall("./path")
         circles = g.findall("./circle")
+        geometry = []
         for p in paths:
-            d = p.get("d")
-            split_d = sp.split_path_data(d)
-            print(split_d)
-        
+            geometry.extend(
+                sp.path_data_to_dicts(p.get("d"), p.get("id"))
+            )
+        for c in circles:
+            geometry.append(self.read_circle_to_dict(c))
+        if geometry is not None:
+            corners = trig.multi_fit_box(geometry)
+            min_x, min_y = corners[0][0] - margin, corners[0][1] - margin
+            max_x, max_y = corners[1][0] + margin, corners[1][1] + margin
+            width = str(max_x - min_x)
+            height = str(max_y - min_y)
+            self.set_viewbox(width + self.unit, height + self.unit,
+                             min_x, min_y)
+        else:
+            raise ValueError("g element has no geometry to be auto-sized")
     
     def write_single_svg(
             self, svg_id: str, folder: str, indent: str = "  ") -> None:

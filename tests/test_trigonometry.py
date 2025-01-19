@@ -8,8 +8,19 @@ import numpy as np
 sys.path.append('src')
 
 import trigonometry as trig
+import svg_parsers as sp
 
 class TestTrigonometry(unittest.TestCase):
+    
+    def test_pt2list(self):
+        tests = [
+            [trig.point_2d([0, 0]), [0, 0]],
+            [[0, 0], [0, 0]],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                out = trig.pt2list(t[0])
+                self.assertCountEqual(out, t[1])
     
     def test_point_distance(self):
         tests = [
@@ -198,12 +209,60 @@ class TestTrigonometry(unittest.TestCase):
         # Test input order: [[pt1, pt2, laf, sf, major r, minor r, major angle], center pt, theta 1, delta theta]
         # [-2.3039, 2.4273]
         # [3.8039, -.9273]
+        #sp.circular_arc("path1", 0, [0, 0], [1.2, 0.6],
+        #                    0.3, False, True),
         dec = 4
         tests = [
-            [[trig.point_2d([.5, .5]), trig.point_2d([1, 1]), False, False, 4, 3, math.radians(10)], [3.8039, -.9273], round(math.radians(146.636), dec), round(math.radians(-11.1386), dec)],
-            [[trig.point_2d([.5, .5]), trig.point_2d([1, 1]), False, True, 4, 3, math.radians(10)], [-2.3039, 2.4273], round(math.radians(-44.5023), dec), round(math.radians(11.1386), dec)],
-            [[trig.point_2d([.5, .5]), trig.point_2d([1, 1]), True, False, 4, 3, math.radians(10)], [-2.3039, 2.4273], round(math.radians(-44.5023), dec), round(math.radians(-348.8614), dec)],
-            [[trig.point_2d([.5, .5]), trig.point_2d([1, 1]), True, True, 4, 3, math.radians(10)], [3.8039, -.9273], round(math.radians(146.636), dec), round(math.radians(348.8614), dec)],
+            [
+                [
+                    trig.point_2d([.5, .5]), trig.point_2d([1, 1]), # start, end
+                    False, False, 4, 3, # large arc, sweep, major r, minor r
+                    math.radians(10) # major axis angle
+                ],
+                [3.8039, -.9273], # center point
+                round(math.radians(146.636), dec), # start angle
+                round(math.radians(-11.1386), dec) # sweep angle
+            ],
+            [
+                [
+                    trig.point_2d([.5, .5]), trig.point_2d([1, 1]),
+                    False, True, 4, 3,
+                    math.radians(10)
+                ],
+                [-2.3039, 2.4273],
+                round(math.radians(-44.5023), dec),
+                round(math.radians(11.1386), dec)
+            ],
+            [
+                [
+                    trig.point_2d([.5, .5]), trig.point_2d([1, 1]),
+                    True, False, 4, 3,
+                    math.radians(10)
+                ],
+                [-2.3039, 2.4273],
+                round(math.radians(-44.5023), dec),
+                round(math.radians(-348.8614), dec)
+            ],
+            [
+                [
+                    trig.point_2d([.5, .5]), trig.point_2d([1, 1]),
+                    True, True, 4, 3,
+                    math.radians(10)
+                ],
+                [3.8039, -.9273],
+                round(math.radians(146.636), dec),
+                round(math.radians(348.8614), dec)
+            ],
+            [
+                [
+                    trig.point_2d([0, 0]), trig.point_2d([1.2, 0.6]),
+                    False, True, 3, 3,
+                    math.radians(0)
+                ],
+                [-0.7077, 2.9153],
+                round(math.radians(-76.355915), dec), # start angle
+                round(math.radians(25.841933), dec), # start angle
+            ],
         ]
         
         for t in tests:
@@ -368,6 +427,27 @@ class TestTrigonometry(unittest.TestCase):
             out_list = [[round(out_list[0][0],6), round(out_list[0][1],6)],
                         [round(out_list[1][0],6), round(out_list[1][1],6)]]
             self.assertCountEqual(out_list, t[1])
+    
+    def test_multi_fit_box(self):
+        tests = [
+            [ # Test 1 - line, circular arc, elliptical arc, circle
+                [ # Input geometry
+                    sp.line("path1", 0, [1.0, 1.0], [3.0, 3.0]),
+                    sp.circular_arc("path1", 0, [0, 0], [1.2, 0.6],
+                                    3, False, True),
+                    sp.elliptical_arc("path1", 0, [0, 0], [4, 3],
+                                      4, 3, 0, False, True),
+                    sp.circle("circle1", 1.5, [0,0]),
+                ],
+                [[-1.5, -1.5], [4.0, 3.0]],
+            ],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                i = t[0]
+                out = trig.multi_fit_box(i)
+                check = [trig.pt2list(out[0]), trig.pt2list(out[1])]
+                self.assertCountEqual(check, t[1])
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

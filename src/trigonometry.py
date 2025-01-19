@@ -7,12 +7,49 @@ from numpy.linalg import norm
 
 def point_2d(point: list[float | int]) -> np.ndarray:
     """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
-    Can also be used to make 2x1 vectors
+    Can also be used to make 2x1 vectors. Will not do anything if it is 
+    passed a numpy array that is already 2 elements
     
     :param point: coordinate list of format [x, y]
     :returns: a 2x1 numpy representation
     """
-    return np.array([[point[0]],[point[1]]])
+    if isinstance(point, list):
+        if len(point) == 2:
+            return np.array([[point[0]],[point[1]]])
+        else:
+            raise ValueError("Point list must be 2 elements, given: "
+                             + str(len(point)))
+    elif isinstance(point, np.ndarray):
+        if point.size == 2:
+            return point
+        else:
+            raise ValueError("Point numpy array must be 2 elements, given: "
+                             + str(point.size))
+    else:
+        raise ValueError("Unrecognized instance type given")
+
+def pt2list(point: np.ndarray) -> list:
+    """Returns a 2 element list from a 2x1 numpy array made of xy 
+    coordinates. Will not do anything if passed a list that is already 
+    just 2 elements.
+    
+    :param point: A 2x1 numpy array
+    :returns: A 2 element list
+    """
+    if isinstance(point, list):
+        if len(point) == 2:
+            return point
+        else:
+            raise ValueError("Point list must be 2 elements, given: "
+                             + str(len(point)))
+    elif isinstance(point, np.ndarray):
+        if point.size == 2:
+            return [float(point[0][0]), float(point[1][0])]
+        else:
+            raise ValueError("Point numpy array must be 2 elements, given: "
+                             + str(point.size))
+    else:
+        raise ValueError("Unrecognized instance type given")
 
 def point_line_angle(point_a: np.ndarray, point_b: np.ndarray,
                      decimals: int = 6, radians: bool = True):
@@ -50,7 +87,7 @@ def three_point_angle(point_1: np.ndarray, point_2: np.ndarray,
 def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
                              decimals: int = 6, radians: bool = True) -> float:
     """Returns the angle between two 2d vectors represented as numpy 
-    arrays. WARNING: degrees hardcoded to 2 decimals
+    arrays. WARNING: degrees rounding hardcoded to 2 decimals
     
     :param u: 1-D 2x1 vector u
     :param v: 1-D 2x1 vector v
@@ -188,7 +225,7 @@ def circle_point(center_point: np.ndarray, radius: float, angle: float,
     return ellipse_point(center_point, radius, radius, 0, angle, decimals)
 
 def elliptical_arc_endpoint_to_center(
-        point_1: np.ndarray, point_2: np.ndarray,
+        start: np.ndarray, end: np.ndarray,
         large_arc_flag: bool, sweep_flag: bool,
         major_radius: float, minor_radius: float, major_axis_angle: float,
         decimals: int = 6) -> list[np.ndarray, float, float]:
@@ -198,8 +235,8 @@ def elliptical_arc_endpoint_to_center(
     'upside down' since the origin is in the top left with positive y 
     down and angles are positive in the clockwise direction!
     
-    :param point_1: The first arc point coordinate [x1, y1]
-    :param point_2: The second arc point coordinate [x2, y2]
+    :param start: The first arc point coordinate [x1, y1]
+    :param end: The second arc point coordinate [x2, y2]
     :param large_arc_flag: If true the arc sweep greater than or 
                            equal to 180 degrees is chosen
     :param sweep_flag: If true than the positive angle direction arc 
@@ -210,17 +247,16 @@ def elliptical_arc_endpoint_to_center(
                              in radians
     :param decimals:  the number of decimals the output is rounded to
     :returns: The arc's center point [cx, cy], the first point's 
-              angle, and the arc's extent angle
+              angle, and the arc's sweep angle
     """
     fa = large_arc_flag
     fs = sweep_flag 
     rx = major_radius
     ry = minor_radius
     theta = major_axis_angle
-    
     rotation = rotation_2d(-theta)
-    midpoint = midpoint_2d(point_1, point_2)
-    pt1_p = rotation @ (point_1 - midpoint)
+    midpoint = midpoint_2d(start, end)
+    pt1_p = rotation @ (start - midpoint)
     x1p, y1p = pt1_p[0, 0], pt1_p[1, 0]
     step_2_term_1_numerator = (rx**2 * ry**2
                                - rx**2 * y1p**2
@@ -242,7 +278,6 @@ def elliptical_arc_endpoint_to_center(
         np.array([[1],[0]]), 
         pt1_p - center_pt_p
     )
-    
     delta_theta = angle_between_vectors_2d(
         pt1_p - center_pt_p,
         -pt1_p - center_pt_p
@@ -335,14 +370,14 @@ def circle_arc_center_to_endpoint(
                                              decimals)
 
 def line_fit_box(start: np.ndarray,
-              end: np.ndarray) -> list[np.ndarray, np.ndarray]:
+                 end: np.ndarray) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the line would 
     fit into. Used for sizing graphics.
     
     :param start: The start point of the line
     :param end: The end point of the line
     :returns: a list of the minimum corner and the maximum corner 
-    points of the smallest box that would fit the line
+              points of the smallest box that would fit the line
     """
     min_x = min(start[0][0], end[0][0])
     min_y = min(start[1][0], end[1][0])
@@ -357,7 +392,7 @@ def circle_fit_box(center_point: np.ndarray, radius: float):
     :param center_point: The center point of the circle
     :param radius: The radius of the circle
     :returns: a list of the minimum corner and the maximum corner 
-    points of the smallest box that would fit the circle
+              points of the smallest box that would fit the circle
     """
     v = [(center_point + point_2d([0, radius])).reshape(2),
          (center_point + point_2d([0, -radius])).reshape(2),
@@ -380,7 +415,7 @@ def ellipse_fit_box(center_point: np.ndarray, major_radius: float,
     :param major_axis_angle: The angle between the coordinate system's 
                              x axis and the ellipse's major_axis
     :returns: a list of the minimum corner and the maximum corner 
-    points of the smallest box that would fit the circle
+              points of the smallest box that would fit the circle
     """
     left_right_offset = math.sqrt(
         major_radius**2 * math.cos(major_axis_angle)**2
@@ -432,11 +467,12 @@ def elliptical_arc_fit_box(center_point: np.ndarray, major_radius: float,
     :param major_axis_angle: The angle between the coordinate system's 
                              x axis and the ellipse's major_axis
     :param point_1_angle: The angle from the major axis of the ellipse to 
-    the arc's first point, in radians
+                          the arc's first point, in radians
     :param sweep_angle: The angle from the first point to the second 
-    point, in radians
-    :returns: a list of the minimum corner and the maximum corner 
-    points of the smallest box that would fit the elliptical arc
+                        point, in radians
+    :returns: corner points of the smallest box that would fit the 
+              elliptical arc, formatted [2x1 min point numpy.ndarray, 2x1
+              max point numpy.ndarray]
     """
     start_angle = positive_angle(point_1_angle)
     end_angle = positive_angle(start_angle + angle_mod(sweep_angle))
@@ -489,7 +525,7 @@ def elliptical_arc_fit_box(center_point: np.ndarray, major_radius: float,
             point_2d([max(x_extremes), max(y_extremes)])]
 
 def circle_arc_fit_box(center_point: np.ndarray, radius: float,
-        point_1_angle: float, sweep_angle: float):
+        point_1_angle: float, sweep_angle: float) -> list:
     """Returns the corners of the smallest box that the circular arc 
     would fit into. Used for sizing graphics. Uses the 
     elliptical_arc_fit_box function with its inputs set up for a circle
@@ -497,11 +533,74 @@ def circle_arc_fit_box(center_point: np.ndarray, radius: float,
     :param center_point: The center point of the circle
     :param radius: The major axis radius of the ellipse
     :param point_1_angle: The angle from the x-axis to the arc's first 
-    point, in radians
+                          point, in radians
     :param sweep_angle: The angle from the first point to the second 
-    point, in radians
+                        point, in radians
     :returns: a list of the minimum corner and the maximum corner 
-    points of the smallest box that would fit the circle
+              points of the smallest box that would fit the circle
     """
     return elliptical_arc_fit_box(center_point, radius, radius, 0,
                                   point_1_angle, sweep_angle)
+
+def multi_fit_box(geometry: list[dict]) -> list[list , list]:
+    """Returns the corners of the smallest box that fits all the geometry 
+    in the given list. Used for sizing graphics. Does not return numpy 
+    arrays, unlike the rest of trigonometry since this is intended to 
+    be used outside of this module
+    
+    :param geometry: A list of geometry dictionaries. Used for sizing 
+                     graphics.
+    :returns: a list of the minimum corner and the maximum corner 
+              points of the smallest box that would fit all the shapes.
+              [[min x, min y], [max x, max y]].
+    """
+    x_values, y_values = [], []
+    for g in geometry:
+        match g["geometry_type"]:
+            case "line":
+                points = line_fit_box(
+                    point_2d(g["start"]), point_2d(g["end"])
+                )
+            case "circular_arc":
+                if "large_arc_flag" in g:
+                    # svg-like arc definition
+                    arc_definition = circle_arc_endpoint_to_center(
+                        point_2d(g["start"]), point_2d(g["end"]),
+                        g["large_arc_flag"], g["sweep_flag"],
+                        g["radius"]
+                    )
+                    points = circle_arc_fit_box(
+                        arc_definition[0], g["radius"],
+                        arc_definition[1], arc_definition[2],
+                    )
+                else:
+                    raise ValueError("Arc definition type not supported")
+            case "elliptical_arc":
+                if "large_arc_flag" in g:
+                    arc_definition = elliptical_arc_endpoint_to_center(
+                        point_2d(g["start"]), point_2d(g["end"]),
+                        g["large_arc_flag"], g["sweep_flag"],
+                        g["x_radius"], g["y_radius"],
+                        g["x_axis_rotation"]
+                    )
+                    points = elliptical_arc_fit_box(
+                        arc_definition[0],
+                        g["x_radius"], g["y_radius"],
+                        g["x_axis_rotation"],
+                        arc_definition[1], arc_definition[2],
+                    )
+                else:
+                    raise ValueError("Arc definition type not supported")
+            case "circle":
+                points = circle_fit_box(
+                    point_2d(g["center"]), g["radius"]
+                )
+            case "ellipse":
+                raise ValueError("Ellipses are not yet supported")
+        min_point = pt2list(points[0])
+        max_point = pt2list(points[1])
+        x_values.extend([min_point[0], max_point[0]])
+        y_values.extend([min_point[1], max_point[1]])
+    return [[min(x_values), min(y_values)],
+            [max(x_values), max(y_values)]]
+

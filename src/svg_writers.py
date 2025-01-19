@@ -117,8 +117,7 @@ def make_element(tag:str, property_dicts: list = None) -> ET.Element:
     return element
 
 def make_svg_element(
-        id_: str, width: str, height: str, 
-        property_dicts: list = None) -> ET.Element:
+        id_: str, property_dicts: list = None) -> ET.Element:
     """Returns an element with svg as its tag. Assigns the properties 
     in the given dictionaries to the element. 
     
@@ -129,14 +128,6 @@ def make_svg_element(
     properties = [{
             "xmlns": "http://www.w3.org/2000/svg",
             "xmlns:svg": "http://www.w3.org/2000/svg",
-            "width": sv.length(width),
-            "height": sv.length(height),
-            "viewBox": " ".join([
-                               "0",
-                               "0",
-                               str(sv.length_value(width)),
-                               str(sv.length_value(height)),
-                           ]),
             "id": id_,
     }]
     if property_dicts is not None:

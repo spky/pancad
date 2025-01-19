@@ -69,9 +69,9 @@ class TestGenerators(unittest.TestCase):
         self.assertDictEqual(test,ans)
     
     def test_make_svg_element(self):
-        test = make_svg_element("svg1", "1.0in", "2.1in")
+        test = make_svg_element("svg1")
         test_text = ET.tostring(test, encoding="UTF-8")
-        ans = b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="1.0in" height="2.1in" viewBox="0 0 1.0 2.1" id="svg1" />'
+        ans = b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" id="svg1" />'
         self.assertEqual(test_text, ans)
     
     def test_make_g_element(self):
