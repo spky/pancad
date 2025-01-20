@@ -1,15 +1,9 @@
-# Text-to-FreeCAD
+# PanCAD
 
-Text-to-FreeCAD is intended to translate FreeCAD (and any other 
-geometry program!) to plain text and back
+PanCAD is a CAD (Computer-Aided Design) file translator. It is intended to 
+enable the sharing of geometry and design information **independent of 
+software application**. [PanCAD][1]'s name is inspired Pandoc, which is an 
+unrelated but similar software application that can convert documents 
+from one file type to another.
 
-# Development Notes
---------------------------------------------------------------------------------
-
-## Reference Info
-
-- [Packaging Python Projects Reference][DN1]
-- [sampleproject github][DN2]
-
-[DN1]: https://packaging.python.org/en/latest/tutorials/packaging-projects/
-[DN2]: https://github.com/pypa/sampleproject/tree/main
+[1]: https://pandoc.org/
