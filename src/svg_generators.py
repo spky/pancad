@@ -94,16 +94,118 @@ def make_vertical(lengths: list, relative: bool = False) -> str:
         cmd += " " + str(length)
     return cmd
 
-def make_style(style_dict: dict) -> str:
-    """Returns a path style using each key of the given style 
-    dictionary as a different property.
+class SVGStyle:
+    """A class to store, generate, and validate SVG styles"""
+    def __init__(self):
+        self._properties = {
+            "color-interpolation": None,
+            "color-interpolation-filters": None,
+            "color-profile": None,
+            "color-rendering": None,
+            "fill": None,
+            "fill-opacity": None,
+            "fill-rule": None,
+            "image-rendering": None,
+            "marker": None,
+            "marker-end": None,
+            "marker-mid": None,
+            "marker-start": None,
+            "shape-rendering": None,
+            "stroke": None,
+            "stroke-dasharray": None,
+            "stroke-dashoffset": None,
+            "stroke-linecap": None,
+            "stroke-linejoin": None,
+            "stroke-miterlimit": None,
+            "stroke-opacity": None,
+            "stroke-width": None,
+            "text-rendering": None,
+        }
     
-    :param style_dict: A dictionary full of key value pairs of the 
-                       format 'property_name':'property_value'
-    :returns: a style string ready to be assigned to a path's style 
-              property
-    """
-    properties = []
-    for key in style_dict:
-        properties.append(sv.path_style_property(key, style_dict[key]))
-    return ";".join(properties)
+    @property
+    def string(self):
+        settings = []
+        for prop in self._properties:
+            if self._properties[prop] is not None:
+                settings.append(prop + ":" + self._properties[prop])
+        return ";".join(settings)
+    
+    def set_property(self, name: str, value: str | int | float):
+        match name:
+            case "color-interpolation":
+                if value in ["auto", "sRGB", "linearRGB", "inherit"]:
+                    set_value = value
+            case "color-interpolation-filters":
+                if value in ["auto", "sRGB", "linearRGB", "inherit"]:
+                    set_value = value
+            case "color-profile":
+                if value in ["auto", "sRGB", "inherit"]:
+                    # Custom color profile names not supported
+                    set_value = value
+            case "color-rendering":
+                if value in ["auto", "optimizeSpeed",
+                             "optimizeQuality", "inherit"]:
+                    set_value = value
+            case "fill":
+                set_value = sv.paint(value)
+            case "fill-opacity":
+                if value in ["inherit"]:
+                    set_value = value
+                elif isinstance(value, float) or isinstance(value, int):
+                    # Clamps value to be 0 or 1 if outside that range
+                    set_value = str(sorted((0, value, 1))[1])
+            case "fill-rule":
+                if value in ["nonzero", "evenodd", "inherit"]:
+                    set_value = value
+            case "image-rendering":
+                if value in ["auto", "optimizeSpeed",
+                             "optimizeQuality", "inherit"]:
+                    set_value = value
+            case "marker":
+                raise ValueError("marker is not yet supported")
+            case "marker-end":
+                raise ValueError("marker is not yet supported")
+            case "marker-mid":
+                raise ValueError("marker is not yet supported")
+            case "marker-start":
+                raise ValueError("marker is not yet supported")
+            case "shape-rendering":
+                if value in ["auto", "optimizeSpeed", "crispEdges",
+                             "geometricPrecision", "inherit"]:
+                    set_value = value
+            case "stroke":
+                set_value = sv.paint(value)
+            case "stroke-dasharray":
+                raise ValueError("stroke-dasharray is not yet supported")
+            case "stroke-dashoffset":
+                raise ValueError("stroke-dashoffset is not yet supported")
+            case "stroke-linecap":
+                if value in ["butt", "round", "square", "inherit"]:
+                    set_value = value
+            case "stroke-linejoin":
+                if value in ["miter", "round", "bevel", "inherit"]:
+                    set_value = value
+            case "stroke-miterlimit":
+                if value in ["inherit"]:
+                    set_value = value
+                else:
+                    value = sv.number(value)
+                    if float(value) >= 1:
+                        set_value = value
+            case "stroke-opacity":
+                if value in ["inherit"]:
+                    set_value = value
+                elif isinstance(value, float) or isinstance(value, int):
+                    # Clamps value to be 0 or 1 if outside that range
+                    set_value = str(sorted((0, value, 1))[1])
+            case "stroke-width":
+                value = sv.length(value)
+                if sv.length_value(value) >= 0:
+                    set_value = value
+            case "text-rendering":
+                if value in ["auto", "optimizeSpeed", "optimizeLegibility",
+                             "geometricPrecision", "inherit"]:
+                    set_value = value
+            case _:
+                raise ValueError(name + " is not a supported style property")
+        self._properties[name] = set_value

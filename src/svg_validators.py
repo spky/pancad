@@ -4,15 +4,45 @@ appear until the user tries to open it with inkscape or a browser
 
 import re
 import trigonometry as trig
+from enum_svg_color_keywords import ColorKey
+
+float_re = "[+-]?[0-9]*\.[0-9]+"
+integer_re = "[+-]?[0-9]+"
+number_re = "(" + float_re + "|" + integer_re + ")"
+style_length_units_re = "(em|ex|px|in|cm|mm|pt|pc)"
+presentation_length_units_re = "(em|ex|px|in|mm|pt|pc|%)"
+
+def float_str(setting: str | float) -> str:
+    """Returns the setting after checking whether it is a float"""
+    setting = str(setting)
+    if re.match("^" + float_re + "$", setting):
+        return setting
+    else:
+        raise ValueError(setting + " does not match float format")
+
+def int_str(setting: str | int) -> str:
+    """Returns the setting after checking whether it is a integer"""
+    setting = str(setting)
+    if re.match("^" + integer_re + "$", setting):
+        return setting
+    else:
+        raise ValueError(setting + " does not match integer format")
+
+def number(setting: str | int | float) -> str:
+    """Returns the setting after checking whether it is a number"""
+    setting = str(setting)
+    if re.match("^" + number_re + "$", setting):
+        return setting
+    else:
+        raise ValueError(setting + " does not match svg number format")
 
 def stroke_linecap(setting: str) -> str:
-    """Returns the setting with 'stroke-linecap:' prepended to it after 
-    checking that it meets the rules for a stroke-linecap svg setting. If 
-    the setting is not butt, round, square, or inherit, it will raise a 
-    ValueError
+    """Returns the setting after checking that it meets the rules for 
+    a stroke-linecap svg setting. If the setting is not butt, round, 
+    square, or inherit, it will raise a ValueError
     
     :param setting: the setting to set an svg stroke-linecap setting.
-    :returns: the setting with stroke-linecap: prepended to it
+    :returns: echos back the setting
     """
     allowable_values = [ "butt", "round", "square", "inherit"]
     if setting not in allowable_values:
@@ -21,16 +51,15 @@ def stroke_linecap(setting: str) -> str:
                          + "' is not in the list of allowed values: "
                          + str(allowable_values))
     else:
-        return "stroke-linecap:" + setting
+        return setting
 
 def stroke_linejoin(setting: str) -> str:
-    """Returns the setting with 'stroke-linejoin:' prepended to it after 
-    checking that it meets the rules for a stroke-linejoin svg setting. If 
-    the setting is not miter, round, bevel, or inherit, it will raise a 
-    ValueError
+    """Returns the setting after checking that it meets the rules for 
+    a stroke-linejoin svg setting. If the setting is not miter, 
+    round, bevel, or inherit, it will raise a ValueError
     
     :param setting: the setting to set an svg stroke-linejoin setting.
-    :returns: the setting with stroke-linejoin: prepended to it
+    :returns: echos back the setting
     """
     allowable_values = [ "miter", "round", "bevel", "inherit"]
     if setting not in allowable_values:
@@ -39,16 +68,15 @@ def stroke_linejoin(setting: str) -> str:
                          + "' is not in the list of allowed values: "
                          + str(allowable_values))
     else:
-        return "stroke-linejoin:" + setting
+        return setting
 
 def stroke_opacity(setting: float) -> str:
-    """Returns the setting with 'stroke-opacity:' prepended to it after 
-    checking that it meets the rules for a stroke-opacity svg setting. If 
-    the setting is not between 0 and 1 or is not a float/int, it will 
-    raise a ValueError
+    """Returns the setting after checking that it meets the rules for 
+    a stroke-opacity svg setting. If the setting is not between 0 and 
+    1 or is not a float/int, it will raise a ValueError
     
     :param setting: the setting to set an svg stroke-linejoin setting.
-    :returns: the setting with stroke-opacity: prepended to it
+    :returns: echos back the setting
     """
     if not isinstance(setting, float) and not isinstance(setting, int):
         raise ValueError("Provided value of '" 
@@ -59,7 +87,7 @@ def stroke_opacity(setting: float) -> str:
                          + str(setting)
                          + "' is not between 0 and 1")
     else:
-        return "stroke-opacity:" + str(setting)
+        return str(setting)
 
 def color(setting: str) -> str:
     """Returns the setting as is after checking that it meets the rules 
@@ -96,41 +124,76 @@ def color(setting: str) -> str:
                                  + str(setting)
                                  + "' has rgb percentages >100%")
         return setting
+    elif setting in ColorKey.__members__:
+        return setting
     else:
         raise ValueError("Provided value of '"
                          + str(setting)
                          + "' does not match any supported color input format")
 
+def paint(setting: str) -> str:
+    """Returns a paint setting as is after checking that it meets svg 
+    paint rules. If it does not meet the rules for svg paint 
+    input, it will raise a ValueError.
+    
+    :param setting: the paint setting
+    :returns: echos back the setting
+    """
+    if setting == "none" or setting == "currentColor":
+        return setting
+    else:
+        return color(setting)
+
+def percentage(setting: str) -> str:
+    """Returns a percentage setting as is after checking that it meets svg 
+    percentage rules. If it does not meet the rules for svg percentage 
+    input, it will raise a ValueError.
+    
+    :param setting: the percentage setting
+    :returns: echos back the setting
+    """
+    setting = str(setting)
+    if re.match("^" + number_re + "%$", setting):
+        return setting
+    else:
+        raise ValueError("Provided value '"
+                         + setting
+                         + "' does not match the format of an svg 1.1 <percentage>")
+
 def fill(setting:str) -> str:
-    """Returns the setting with 'fill:' prepended to it after 
-    checking that it meets the rules for a color svg setting
+    """Returns the setting after checking that it meets the rules for 
+    a color svg setting
     
     :param setting: the setting to set an svg fill setting.
-    :returns: the setting with 'fill:' prepended to it
+    :returns: echos back the setting
     """
     if setting == "none":
-        return "fill:" + setting
+        return setting
     else:
-        return  "fill:" + color(setting)
+        return color(setting)
 
 def stroke(setting:str) -> str:
-    """Returns the setting with 'stroke:' prepended to it after 
-    checking that it meets the rules for a color svg setting
+    """Returns the setting after checking that it meets the rules for 
+    a color svg setting
     
     :param setting: the setting to set an svg stroke setting.
-    :returns: the setting with 'stroke:' prepended to it
+    :returns: echos back the setting
     """
-    return "stroke:" + color(setting)
+    return color(setting)
 
 def stroke_width(setting: str | int | float) -> str:
-    """Returns the setting with 'stroke-width:' prepended to it after 
-    checking that the value is greater than 0 and that the unit is em, ex, 
-    px, in, cm, mm, pt, or pc
+    """Returns the setting after checking that the value is greater 
+    than 0 and that the unit is em, ex, px, in, cm, mm, pt, or pc
     
     :param setting: the setting to set an svg stroke-width setting.
-    :returns: the setting with 'stroke-width:' prepended to it
+    :returns: echos back the setting
     """
-    return "stroke-width:" + length(setting)
+    if length_value(setting) < 0:
+        raise ValueError("Provided length value '" 
+                         + setting
+                         + "' must be greater than 0")
+    else:
+        return length(setting)
 
 def length(setting: str) -> str:
     """Returns the setting as is or after turning it to a string after 
@@ -150,30 +213,11 @@ def length(setting: str) -> str:
       unit available if setting is a int or float
     
     :param setting: the setting to set an svg length setting.
-    :returns: the setting after being validated
+    :returns: echos back the setting
     """
-    allowable_units = ["em", "ex", "px", "in", "cm", "mm", "pt", "pc"]
     setting = str(setting)
-    if re.match(r"^[0-9]+(\.[0-9]+)?$", setting):
-        if float(setting) < 0:
-            raise ValueError("Provided length value '" 
-                             + setting
-                             + "' must be greater than 0")
-        else:
-            return setting
-    elif re.match(r"[0-9]+(\.[0-9]+)?[A-Za-z]+", setting):
-        setting_value = float(setting[:-2])
-        setting_unit = setting[-2:]
-        if float(setting_value) < 0:
-            raise ValueError("Provided length value '" 
-                             + setting
-                             + "' must be greater than 0")
-        elif setting_unit not in allowable_units:
-            raise ValueError("Provided unit '" 
-                             + str(unit)
-                             + " is not supported by svg 1.1")
-        else:
-            return setting
+    if re.match("^" + number_re + style_length_units_re + "?$", setting):
+        return setting
     else:
         raise ValueError("Provided value '"
                          + setting
@@ -197,27 +241,3 @@ def length_value(setting:str) -> float | int:
         raise ValueError("Provided value of '"
                          + setting
                          + "'pass length(), but is not recognized")
-
-def path_style_property(property_name: str, value: str | int | float) -> str:
-    """Returns the path style setting with the appropriate prepended 
-    property name after checking that it meets the svg format
-    
-    :param property_name: the name of the svg path property. Can be 
-                          stroke-linecap, stroke-linejoin, fill, stroke, 
-                          stroke-opacity, or stroke-width.
-    :param value: the value that the path property is going to be set to
-    :returns: the setting with its prepended property name
-    """
-    match property_name:
-        case "stroke-linecap":
-            return stroke_linecap(value)
-        case "stroke-linejoin":
-            return stroke_linejoin(value)
-        case "fill":
-            return fill(value)
-        case "stroke":
-            return stroke(value)
-        case "stroke-opacity":
-            return stroke_opacity(value)
-        case "stroke-width":
-            return stroke_width(value)

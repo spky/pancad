@@ -22,32 +22,41 @@ def xml_properties(properties: dict, delimiter: str = " ") -> str:
         props.append(prop + '="' + properties[prop] + '"')
     return delimiter.join(props)
 
-def xml_declaration(properties: dict = {"version": "1.0", 
-                                        "encoding": "UTF-8", 
-                                        "standalone": "yes"},
-                    delimiter: str = " ",
-                    tail: str = "\n"
-                    ) -> ET.Element:
-    """Returns an processing instruction element to usually be placed 
-    at the top of an xml file. The declaration will have a newline 
+def xml_PI(properties: dict, tail: str = "\n") -> ET.Element:
+    """Returns an processing instruction element to be placed in an xml
+    file. The declaration will have a newline 
     appended to the end of it unless it an alternative is provided
     
     :param properties: A dictionary full of key value pairs of the 
                        format 'property_name':'property_value'
+    :param tail: A string of what should be placed at the end of the PI
     :returns: A Processing Instruction Element with the given 
               properties as its text.
     """
     text = xml_properties(properties)
-    element = ET.ProcessingInstruction("xml",text)
+    element = ET.ProcessingInstruction("xml", text)
     element.tail = tail
     return element
 
-def svg_top(svg_elements: list, indent: str = "  ",
-            declaration: ET.Element = None) -> ET.Element:
+def xml_declaration(instructions: dict = None) -> ET.Element:
+    """Sets the xml declaration processing instruction at the top of 
+    the svg file. Will default to version 1, UTF-8 encoding, and 
+    standalone if None is given.
+    
+    :param instructions: A dictionary of instructions to write to the 
+                         processing instruction element
+    :returns: A xml processing instruction element
+    """
+    if instructions is None:
+        instructions = {"version": "1.0",
+                        "encoding": "UTF-8",
+                        "standalone": "yes"}
+    return xml_PI(instructions)
+
+def svg_top(svg_elements: list,
+        declaration: ET.Element, indent: str = "  ") -> ET.Element:
     """Returns a ET.Element that has the xml declaration at the top 
-    and the svg right below it. Will create its own default 
-    declaration if none are given, and will indent the svg 
-    subelements by default.
+    and the svg right below it. Will indent the svg subelements by default.
     
     :param svg_element: a list of svg xml elements
     :param indent: what to use as the indents between element levels
@@ -55,8 +64,6 @@ def svg_top(svg_elements: list, indent: str = "  ",
                         prepend to the file
     :returns: The top element of an svg file assuming it has one svg element
     """
-    if declaration is None:
-        declaration = xml_declaration()
     top = ET.Element(None)
     top.append(declaration)
     for svg_element in svg_elements:
@@ -80,7 +87,6 @@ def svg_property_defaults(id_: str, width: str, height: str) -> dict:
         "height": sv.length(height),
         "xmlns": "http://www.w3.org/2000/svg",
         "xmlns:svg": "http://www.w3.org/2000/svg",
-        #"viewBox": "0 0 " + sv.length(width) + " " + sv.length(height),
     }
     return defaults
 

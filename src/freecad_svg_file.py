@@ -8,18 +8,15 @@ import svg_file
 import freecad_sketch_readers as fsr
 import freecad_sketcher_to_svg_translators as fsst
 
-class FreeCADSVGFile(svg_file.SVGFile):
+class FreeCADSVGFile(svg_file.svg):
     
-    def __init__(self, freecad_file_path: str, svg_name: str = None,
-                 unit = "mm", point_radius = "0.1") -> None:
+    def __init__(self, freecad_file_path: str, unit = "mm",
+                 point_radius = "0.1") -> None:
         self.freecad_file_name = os.path.basename(freecad_file_path)
-        if svg_name is None:
-            # Default to naming the svg the same name as the FreeCAD file
-            svg_name = Path(freecad_file_path).stem + ".svg"
         self.sketches = fsr.read_all_sketches_from_file(freecad_file_path)
         self.point_radius = point_radius
-        super().__init__(svg_name, unit=unit)
-        super().add_svg(Path(freecad_file_path).stem)
+        super().__init__(unit=unit)
+        self.id_ = Path(freecad_file_path).stem
     
     def add_sketch_by_label(self, label: str) -> None:
         sketch = None
