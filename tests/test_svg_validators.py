@@ -204,6 +204,29 @@ class TestSVGValidators(unittest.TestCase):
         for test in tests:
             with self.subTest(test=test):
                 self.assertEqual(sv.length_value(test[0]), test[1])
+    
+    def test_length_unit(self):
+        tests = [
+            ["1in", "in"],
+            ["1.0in", "in"],
+            ["2223.0in", "in"],
+            ["2223in", "in"],
+            ["1.0em", "em"],
+            ["1.0ex", "ex"],
+            ["1.0px", "px"],
+            ["1.0cm", "cm"],
+            ["1.0mm", "mm"],
+            ["1.0pt", "pt"],
+            ["1.0pc", "pc"],
+            ["1.0%", "%"],
+            ["1.0%", "%"],
+            ["1", ""],
+            [1, ""],
+            [1.0, ""],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                self.assertEqual(sv.length_unit(t[0]), t[1])
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

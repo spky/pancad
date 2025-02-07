@@ -10,7 +10,7 @@ float_re = "[+-]?[0-9]*\.[0-9]+"
 integer_re = "[+-]?[0-9]+"
 number_re = "(" + float_re + "|" + integer_re + ")"
 style_length_units_re = "(em|ex|px|in|cm|mm|pt|pc)"
-presentation_length_units_re = "(em|ex|px|in|mm|pt|pc|%)"
+presentation_length_units_re = "(em|ex|px|in|cm|mm|pt|pc|%)"
 
 def float_str(setting: str | float) -> str:
     """Returns the setting after checking whether it is a float"""
@@ -103,7 +103,8 @@ def color(setting: str) -> str:
         return setting
     elif re.match(r"^#[0-9A-Fa-f]{3}$", setting):
         return setting
-    elif re.match(r"^[rR][gG][bB]\([0-9]{1,3},[0-9]{1,3},[0-9]{1,3}\)$", setting):
+    elif re.match(r"^[rR][gG][bB]\([0-9]{1,3},[0-9]{1,3},[0-9]{1,3}\)$",
+                  setting):
         # Have to also check that the values are less than 255
         rgb_vals = setting[4:-1]
         rgb_vals = rgb_vals.split(",")
@@ -113,7 +114,8 @@ def color(setting: str) -> str:
                                  + str(setting)
                                  + "' has rgb values >255")
         return setting
-    elif re.match(r"^[rR][gG][bB]\([0-9]{1,3}%,[0-9]{1,3}%,[0-9]{1,3}%\)$", setting):
+    elif re.match(r"^[rR][gG][bB]\([0-9]{1,3}%,[0-9]{1,3}%,[0-9]{1,3}%\)$",
+                  setting):
         # Have to also check that the percentages are less than 100%
         rgb_vals = setting[4:-1]
         rgb_vals = rgb_vals.replace("%","")
@@ -129,7 +131,8 @@ def color(setting: str) -> str:
     else:
         raise ValueError("Provided value of '"
                          + str(setting)
-                         + "' does not match any supported color input format")
+                         + "' does not match any supported color"
+                         + "input format")
 
 def paint(setting: str) -> str:
     """Returns a paint setting as is after checking that it meets svg 
@@ -158,9 +161,10 @@ def percentage(setting: str) -> str:
     else:
         raise ValueError("Provided value '"
                          + setting
-                         + "' does not match the format of an svg 1.1 <percentage>")
+                         + "' does not match the format of an svg 1.1"
+                         + "<percentage>")
 
-def fill(setting:str) -> str:
+def fill(setting: str) -> str:
     """Returns the setting after checking that it meets the rules for 
     a color svg setting
     
@@ -172,7 +176,7 @@ def fill(setting:str) -> str:
     else:
         return color(setting)
 
-def stroke(setting:str) -> str:
+def stroke(setting: str) -> str:
     """Returns the setting after checking that it meets the rules for 
     a color svg setting
     
@@ -216,14 +220,15 @@ def length(setting: str) -> str:
     :returns: echos back the setting
     """
     setting = str(setting)
-    if re.match("^" + number_re + style_length_units_re + "?$", setting):
+    if re.match("^" + number_re + presentation_length_units_re + "?$",
+                setting):
         return setting
     else:
         raise ValueError("Provided value '"
                          + setting
                          + "' does not match the format of an svg 1.1 <length>")
 
-def length_value(setting:str) -> float | int:
+def length_value(setting: str) -> float | int:
     """Returns just the number of the given length without the unit.
     
     :param setting: the setting to set an svg length setting.
@@ -241,3 +246,21 @@ def length_value(setting:str) -> float | int:
         raise ValueError("Provided value of '"
                          + setting
                          + "'pass length(), but is not recognized")
+
+def length_unit(setting: str | int | float) -> str:
+    """Returns just the unit of the given length without the value. 
+    If an int, float, or number represented as a string is given 
+    this returns "".
+    
+    :param setting: an svg 1.1 length setting
+    :returns: the unit of the setting
+    """
+    setting = length(setting)
+    if re.match("^" + number_re + "$", setting):
+        return ""
+    elif re.match("^" + number_re + presentation_length_units_re + "$",
+                  setting):
+        return re.search(presentation_length_units_re, setting)[0]
+    else:
+        raise ValueError(setting + " is an unrecognized format that"
+                         + " slipped past length's check")

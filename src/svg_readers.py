@@ -9,6 +9,7 @@ import re
 
 import svg_validators as sv
 import svg_parsers as sp
+import svg_file as sf
 
 xml_NameStartChar = ":A-Za-z_"
 xml_NameChar = xml_NameStartChar + "\.0-9-"
@@ -44,13 +45,22 @@ def get_declaration(file: TextIO) -> dict:
     file.seek(position) # Reset file to what it was before the function
     return settings
 
-def upgrade_tree(tree: ET.ElementTree) -> ET.ElementTree:
-    """Iterates through the given element tree to subclass each element 
-    into more specialized elements
+def read_subelements(element: ET.Element) -> list[dict]:
+    """Recursively (sorry) iterates through the given element tree to 
+    and places each subelement in a dictionary with their associated 
+    subelements
     :param tree: the tree to be upgraded
-    :returns: an element tree with the same structure, but with 
+    :returns: an list of dictionaries with keys for "element" and 
+              "subelements"
     """
-    pass
+    subelements = []
+    for sub in list(element):
+        sub_dict = {
+            "element": sub,
+            "subelements": read_subelements(sub),
+        }
+        subelements.append(sub_dict)
+    return subelements
 
 def read_element(element: ET.Element, tree: ET.ElementTree) -> dict:
     """Returns a dictionary containing the id, tag, parent, and properties 
@@ -83,15 +93,3 @@ def parent(element: ET.Element, tree: ET.ElementTree) -> ET.Element:
     """
     xpath = './/*[@id="' + element.get("id") + '"]/..'
     return tree.find(xpath)
-"""
-def read_circle_to_dict(circle_element) -> dict:
-    \"""Reads a circle element's properties into a dictionary\"""
-    return sp.circle(
-        circle_element.get("id"),
-        sv.length_value(circle_element.get("r")),
-        [
-            sv.length_value(circle_element.get("cx")),
-            sv.length_value(circle_element.get("cy"))
-        ]
-    )
-"""

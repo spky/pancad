@@ -7,6 +7,7 @@ SVG1.1 Specification: https://www.w3.org/TR/2011/REC-SVG11-20110816/
 
 import xml.etree.ElementTree as ET
 import svg_validators as sv
+import svg_file as sf
 
 def xml_properties(properties: dict, delimiter: str = " ") -> str:
     """Returns the a string that is ready to be assigned to an xml 

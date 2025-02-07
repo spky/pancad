@@ -5,10 +5,11 @@ import os
 from pathlib import Path
 
 import svg_file
+import svg_elements as se
 import freecad_sketch_readers as fsr
 import freecad_sketcher_to_svg_translators as fsst
 
-class FreeCADSVGFile(svg_file.svg):
+class FreeCADSVGFile(se.svg):
     
     def __init__(self, freecad_file_path: str, unit = "mm",
                  point_radius = "0.1") -> None:

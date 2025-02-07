@@ -6,20 +6,7 @@ import xml.etree.ElementTree as ET
 sys.path.append('src')
 
 import svg_writers as sw
-"""
-from svg_writers import (
-    xml_properties,
-    xml_declaration,
-    svg_top,
-    write_xml,
-    svg_property_defaults,
-    inkscape_svg_property_defaults,
-    make_svg_element,
-    make_g_element,
-    make_path_element,
-    make_circle_element,
-)
-"""
+
 class TestGenerators(unittest.TestCase):
     def setUp(self):
         self.svg = ET.Element("svg")

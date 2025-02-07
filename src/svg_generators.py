@@ -1,9 +1,9 @@
-"""A module to provide functions for creating svg paths.
+"""A module to provide functions for creating svg path strings and styles.
 """
 import svg_validators as sv
 import math
 
-def make_path_data(commands: list, delimiter: str = "\n"):
+def make_path_data(commands: list, delimiter: str = "\n") -> str:
     """Returns a string of svg commands joined together with a delimiter. 
     The delimiter is defaulted to be a newline, but can be configured.
     
@@ -28,7 +28,7 @@ def make_moveto(coordinates: list, relative: bool = False) -> str:
 def make_arc(
     rx: float, ry: float, x_axis_rotation: float,
     large_arc_flag: int, sweep_flag: int,
-    x: float, y: float, relative: bool = False):
+    x: float, y: float, relative: bool = False) -> str:
     """Returns a string arc command using the list of arc parameters and a 
     boolean stating whether the command is relative
     
