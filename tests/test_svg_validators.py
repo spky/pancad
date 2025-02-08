@@ -223,6 +223,8 @@ class TestSVGValidators(unittest.TestCase):
             ["1", ""],
             [1, ""],
             [1.0, ""],
+            ["", ""],
+            ["in", "in"],
         ]
         for t in tests:
             with self.subTest(t=t):

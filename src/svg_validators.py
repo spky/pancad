@@ -250,12 +250,21 @@ def length_value(setting: str) -> float | int:
 def length_unit(setting: str | int | float) -> str:
     """Returns just the unit of the given length without the value. 
     If an int, float, or number represented as a string is given 
-    this returns "".
+    this returns "". If the given value is just a unit string like 
+    "in", then it checks that the unit is a valid unit and echos 
+    it back
     
-    :param setting: an svg 1.1 length setting
+    :param setting: an svg 1.1 length setting or unit string
     :returns: the unit of the setting
     """
-    setting = length(setting)
+    setting = str(setting)
+    if setting == "":
+        return ""
+    elif re.match("^" + presentation_length_units_re + "$", setting):
+        return setting
+    else:
+        setting = length(setting)
+    
     if re.match("^" + number_re + "$", setting):
         return ""
     elif re.match("^" + number_re + presentation_length_units_re + "$",

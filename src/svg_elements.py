@@ -60,6 +60,14 @@ class SVGElement(ET.Element):
     def to_string(self) -> str:
         return ET.tostring(self)
     
+    def sub(self, id_: str) -> SVGElement:
+        """Returns a subelement by a given id. Returns None if the id 
+        does not exist"""
+        for sub in self.iter():
+            if sub.id_ == id_:
+                return sub
+        return None
+    
     @classmethod
     def from_element(cls, element: ET.Element):
         if cls.tags is None:
@@ -78,52 +86,62 @@ class svg(SVGElement):
     tags = ["svg", "svg:svg", "{http://www.w3.org/2000/svg}svg"]
     def __init__(self, id_: str = None) -> None:
         super().__init__("svg", id_)
-        self._unit = None
-        self._width_unit = None
-        self._height_unit = None
-    
-    @property
-    def width(self) -> str:
-        return self._width
+        self._unit = ""
+        self._width = None
+        self._height = None
+        self._width_value = None
+        self._height_value = None
     
     @property
     def height(self) -> str:
         return self._height
     
     @property
-    def viewBox(self):
-        return self._viewBox
+    def width(self) -> str:
+        return self._width
     
     @property
     def unit(self):
-        """Unit can only be set by another property like width or 
-        height, so this is read-only
-        """
         return self._unit
     
-    @width.setter
-    def width(self, width: str) -> None:
-        self._width = sv.length(width)
-        self._width_value = sv.length_value(self._width)
-        unit = sv.length_unit(self._width)
-        if self._width_unit is None:
-            self._width_unit = unit
-        elif self._width_unit is not None and unit != "":
-            self._width_unit = unit
-        super().set("width", self._width)
-        self._verify_unit()
+    @property
+    def viewBox(self):
+        return self._viewBox
     
     @height.setter
     def height(self, height: str) -> None:
         self._height = sv.length(height)
         self._height_value = sv.length_value(self._height)
-        unit = sv.length_unit(self._height)
-        if self._height_unit is None:
-            self._height_unit = unit
-        elif self._height_unit is not None and unit != "":
-            self._height_unit = unit
+        unit_in = sv.length_unit(self._height)
+        if unit_in != self.unit and self._width_value is not None:
+            self.width = str(self._width_value) + self.unit
+            self.unit = unit_in
         super().set("height", self._height)
-        self._verify_unit()
+    
+    @width.setter
+    def width(self, width: str) -> None:
+        self._width = sv.length(width)
+        self._width_value = sv.length_value(self._width)
+        unit_in = sv.length_unit(self._width)
+        if unit_in != self.unit and self._height_value is not None:
+            self.height = str(self._height_value) + self.unit
+            self.unit = unit_in
+        super().set("width", self._width)
+    
+    @unit.setter
+    def unit(self, unit: str) -> None:
+        """Sets the unit of the svg file. Only replaces the text, 
+        this does not convert all the values in the file. The unit is 
+        not an actual property on the svg element, it just 
+        appears in properties like width and height"""
+        if unit != sv.length_unit(unit):
+            raise ValueError("Provided unit: " + str(unit) + " can only "
+                             + "contain a unit string, not anything else")
+        self._unit = unit
+        if self._width_value is not None:
+            self.width = str(self._width_value) + self._unit
+        if self._height_value is not None:
+            self.height = str(self._height_value) + self._unit
     
     @viewBox.setter
     def viewBox(self, viewBox: str | list[float, float, float, float]):
@@ -146,28 +164,6 @@ class svg(SVGElement):
             )
         super().set("viewBox", self._viewBox)
     
-    def _verify_unit(self):
-        if self._width_unit is not None:
-            if (self._height_unit is not None
-                and self._width_unit != self._height_unit):
-                mismatch = True
-            else:
-                mismatch = False
-        elif self._height_unit is not None:
-            if (self._width_unit is not None
-                and self._width_unit != self._height_unit):
-                mismatch = True
-            else:
-                mismatch = False
-        else:
-            mismatch = False
-        if mismatch:
-            raise ValueError("Width unit: "
-                             + self._width_unit
-                             + " and Height unit: "
-                             + self._height_unit
-                             + " are not synced!")
-    
     def set(self, key: str, value: str) -> None:
         match key:
             case "width":
@@ -176,6 +172,8 @@ class svg(SVGElement):
                 self.height = value
             case "viewBox":
                 self.viewBox = value
+            case "unit":
+                self.unit = value
             case _:
                 super().set(key, value)
     
@@ -192,9 +190,10 @@ class svg(SVGElement):
             corners = trig.multi_fit_box(geometry)
             min_x, min_y = corners[0][0] - margin, corners[0][1] - margin
             max_x, max_y = corners[1][0] + margin, corners[1][1] + margin
-            width = max_x - min_x
-            height = max_y - min_y
-            self.viewBox = [min_x, min_y, width, height]
+            self.width = str(max_x - min_x) + self.unit
+            self.height = str(max_y - min_y) + self.unit
+            self.viewBox = [min_x, min_y,
+                            self._width_value, self._height_value]
         else:
             raise ValueError("element has no geometry to be auto-sized")
 
@@ -244,19 +243,19 @@ class circle(SVGElement):
     
     @property
     def cx(self) -> float:
-        return self._cx
+        return float(self._cx)
     
     @property
     def cy(self) -> float:
-        return self._cy
+        return float(self._cy)
     
     @property
     def r(self) -> float:
-        return self._r
+        return float(self._r)
     
     @property
-    def geometry(self) -> dict:
-        return sp.circle(self.id_, self.r, [self.cx, self.cy])
+    def geometry(self) -> list[dict]:
+        return [sp.circle(self.id_, self.r, [self.cx, self.cy])]
     
     @cx.setter
     def cx(self, center_x: float) -> None:

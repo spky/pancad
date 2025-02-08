@@ -31,6 +31,19 @@ class TestSVG(unittest.TestCase):
         check = [goal_width]*3 + [1]
         self.assertCountEqual(test, check)
     
+    def test_width_change(self):
+        tests = [
+            ["1", "1in", "1in"], # Start, Input, Result
+            ["1", "1mm", "1mm"],
+            ["1in", "1mm", "1mm"],
+            [1, "1mm", "1mm"],
+        ]
+        for t in tests:
+            with self.subTest(t=t):
+                self.svg.width = t[0]
+                self.svg.width = t[1]
+                self.assertEqual(self.svg.width, t[2])
+    
     def test_height(self):
         goal_height = "1in"
         self.svg.height = goal_height
@@ -53,13 +66,35 @@ class TestSVG(unittest.TestCase):
         check = ["-1 -2 3 4"]*3
         self.assertCountEqual(test, check)
     
+    def test_unit(self):
+        tests = [
+            ["in", ["in", "1in", "1in"]],
+            ["", ["", "1", "1"]],
+            ["mm", ["mm", "1mm", "1mm"]],
+        ]
+        self.svg.width = "1"
+        self.svg.height = "1"
+        for t in tests:
+            with self.subTest(t=t):
+                input_ = t[0]
+                check = t[1]
+                self.svg.unit = input_
+                answer = [self.svg.unit, self.svg.width, self.svg.height]
+                self.assertCountEqual(answer, check)
+    
     def test_auto_size(self):
         group = se.g("group1")
-        group.append(se.path("line1", "M -1 -1 1 1"))
+        group.append(se.path("path1", "M 0.1 0.1 0.9 0.9"))
+        group.append(se.path("path2", "M 0 1.5 A 1.5 1.5 0 0 0 1.5 0"))
+        group.append(se.circle("circle1", 0.5, 0.5, 0.25))
+        self.svg.unit = "in"
         self.svg.append(group)
-        self.svg.auto_size()
-        print(self.svg.viewBox)
-    
+        self.svg.auto_size(margin=0.25)
+        check = ["2.0in", "2.0in", "-0.25 -0.25 2.0 2.0"]
+        answer = [self.svg.width, 
+                  self.svg.height,
+                  self.svg.viewBox]
+        self.assertCountEqual(answer, check)
 
 class TestSVGElement(unittest.TestCase):
     
@@ -67,6 +102,11 @@ class TestSVGElement(unittest.TestCase):
         element = ET.Element("blah", {"id": "bleh"})
         test = se.SVGElement.from_element(element)
         self.assertEqual(ET.tostring(test), b'<blah id="bleh" />')
+    
+    def test_sub(self):
+        element = se.SVGElement("test", "test1")
+        element.append(se.SVGElement("test", "test2"))
+        self.assertEqual(element.sub("test2").id_, "test2")
 
 class TestSVGPath(unittest.TestCase):
     
