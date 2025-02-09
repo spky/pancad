@@ -27,6 +27,7 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	svg_readers.py \
 	svg_element_utils.py \
 	svg_elements.py \
+	svg_to_freecad_sketcher_translators.py \
 	)
 
 PYTHON_TEST_FILES = $(addprefix $(TESTS), \
@@ -43,6 +44,7 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_svg_readers.py \
 	test_svg_element_utils.py \
 	test_svg_elements.py \
+	test_svg_to_freecad_sketcher_translators.py \
 	)
 
 
@@ -75,6 +77,7 @@ test:
 	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketcher_to_svg_translators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_element_utils.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_elements.py)
+	$(PYTHON) $(call FixPath, $(TESTS)test_svg_to_freecad_sketcher_translators.py)
 
 #test: 
 #	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)

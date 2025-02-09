@@ -57,7 +57,9 @@ class SVGElement(ET.Element):
             case _:
                 super().set(key, value)
     
-    def to_string(self) -> str:
+    def to_string(self, indent: str = None) -> str:
+        if indent is not None:
+            ET.indent(self, indent)
         return ET.tostring(self)
     
     def sub(self, id_: str) -> SVGElement:
@@ -177,7 +179,7 @@ class svg(SVGElement):
             case _:
                 super().set(key, value)
     
-    def auto_size(self, scope: SVGElement = None, margin: float = 0) -> None:
+    def auto_size(self, margin: float = 0, scope: SVGElement = None) -> None:
         """Sizes the view of the svg based on all its subelements or 
         based on a given scope element's sub elements"""
         if scope is None:

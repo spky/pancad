@@ -30,6 +30,8 @@ class SVGFile(ET.ElementTree):
         self._svg = None
         self.filepath = filepath
         super().__init__(SVGElement(None))
+        if self.filepath is not None and mode == "r":
+            self.parse()
     
     @property
     def filepath(self) -> str:

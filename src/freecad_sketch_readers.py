@@ -28,6 +28,19 @@ def read_all_sketches_from_file(filepath: str) -> list[Sketcher.Sketch]:
                          + str(filepath)
                          + "' is not a FreeCAD file!")
 
+def read_sketch_by_label(filepath: str, label: str) -> Sketcher.Sketch:
+    """Returns a sketch object from the given FreeCAD file based on 
+    its label. If no sketch matches, it returns None
+    :param filepath: The FreeCAD filepath
+    :param label: the desired sketch's label
+    """
+    sketch = None
+    all_sketches = read_all_sketches_from_file(filepath)
+    for s in all_sketches:
+        if s.Label == label:
+            return s
+    return None
+
 def read_2d_vector(obj: App.Base.Vector, decimals: int = 6) -> list: 
     """Returns the [x, y] list of a FreeCAD vector after checking 
     that the z coordinate is 0
