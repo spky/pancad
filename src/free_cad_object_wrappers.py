@@ -7,6 +7,7 @@ FreeCADModel
 
 """
 import sys
+import os
 
 #Part.LineSegment(App.Vector(1.2, 1.8, 0), App.Vector(5.2, 5.3, 0))
 
@@ -17,6 +18,164 @@ import FreeCAD as App
 import Part
 import Sketcher
 
+class Sketch:
+    def __init__(self):
+        self.label = None
+        self.placement = None
+        self.geometry = []
+        self.construction = []
+    
+    def add_line(self, start: list, end: list,
+                 construction: bool = False) -> None:
+        """Adds a line to the sketch's geometry.
+        :param start: [x, y] or [x, y, z] of the line's start
+        :param end: [x, y] or [x, y, z] of the line's end
+        """
+        self._add_geometry(Sketch._line(start, end), construction)
+    
+    def add_circle(self, center: list, radius: float,
+                   construction: bool = False) -> None:
+        """Adds a circle to the sketch's geometry. 
+        :param center: [x, y] or [x, y, z] of the circle's center point
+        :param radius: The radius of the circle
+        """
+        self._add_geometry(Sketch._circle(center, radius), construction)
+    
+    def add_circular_arc(self, center: list, radius: float,
+                         start: float, end: float,
+                         construction: bool = False) -> None:
+        """Adds a circular arc to the sketch's geometry.
+        :param center: [x, y] or [x, y, z] of the arc's center point
+        :param radius: The radius of the arc
+        :param start: The start angle of the arc in radians
+        :param end: The end angle of the arc in radians
+        """
+        self._add_geometry(Sketch._circular_arc(center, radius,
+                                                start, end), construction)
+    
+    def _add_geometry(self, geometry, construction: bool):
+        if not construction:
+            self.geometry.append(geometry)
+        else:
+            self.construction.append(geometry)
+    
+    @staticmethod
+    def _circle(center: list, radius: float) -> Part.Circle:
+        """Creates a FreeCAD circle object. If a 2 element list is 
+        provided for center, a zero will be appended to it. The 
+        circle's axis vector is set to [0, 0, 1] internally.
+        
+        :param center: [x, y] of the circle's center point
+        :param radius: The radius of the circle
+        :returns: A Part.Circle FreeCAD object
+        """
+        if len(center) == 2:
+            center.append(0)
+        center_vector = App.Vector(center)
+        axis = App.Vector([0, 0, 1])
+        return Part.Circle(center_vector, axis, radius)
+    
+    @staticmethod
+    def _line(start: list, end: list) -> Part.LineSegment:
+        """Creates a FreeCAD LineSegment object. If a 2 element list is 
+        provided a zero will be appended to it.
+        
+        :param start: [x, y] or [x, y, z] of the line's start
+        :param end: [x, y] or [x, y, z] of the line's end
+        :returns: A Part.LineSegment FreeCAD object
+        """
+        if len(start) == 2:
+            start.append(0)
+        start_vector = App.Vector(start)
+        if len(end) == 2:
+            end.append(0)
+        end_vector = App.Vector(end)
+        return Part.LineSegment(start_vector, end_vector)
+    
+    @staticmethod
+    def _circular_arc(center: list, radius: float,
+                      start: float, end: float) -> None:
+        """Adds a FreeCAD ArcOfCircle object. If a 2 element list is 
+        provided for center, a zero will be appended to it. FreeCAD 
+        arcs are ALWAYS counter-clockwise, so the start angle has 
+        to be placed clockwise of the end point
+        :param center: [x, y] or [x, y, z] of the arc's center point
+        :param radius: The radius of the arc
+        :param start: The start angle of the arc in radians
+        :param end: The end angle of the arc in radians
+        """
+        circle = Sketch._circle(center, radius)
+        return Part.ArcOfCircle(circle, start, end)
+    
+    # def add_sketch(document):
+        # if label is not None:
+            # self.sketch = App.ActiveDocument.addObject("Sketcher::SketchObject", label)
+
+class File:
+    DOCUMENT_TYPE_ID = 'App::Document'
+    PART_TYPE_ID = 'App::Part'
+    BODY_TYPE_ID = 'PartDesign::Body'
+    SKETCH_TYPE_ID = 'Sketcher::SketchObject'
+    
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self._document = App.newDocument()
+        self._document.FileName = self.filepath
+    
+    @property
+    def filepath(self) -> str:
+        return self._filepath
+    
+    @filepath.setter
+    def filepath(self, filepath: str) -> None:
+        """Sets the filepath of the svg and checks whether it can be 
+        written to
+        :param filepath: a string of the name and location of the file
+        """
+        if filepath is None:
+            self._exists = False
+            self._filepath = None
+        elif os.path.isfile(filepath) and filepath.endswith(".FCStd"):
+            self._exists = True
+            self._filepath = os.path.realpath(filepath)
+        elif (os.path.isdir(os.path.dirname(filepath))
+              and os.path.basename(filepath) != ""):
+            self._exists = False
+            root, ext = os.path.splitext(filepath)
+            if ext == "":
+                filepath = filepath + ".FCStd"
+            self._filepath = os.path.realpath(filepath)
+        elif os.path.isdir(filepath):
+            raise ValueError(filepath + " is a folder, please provide a"
+                       + "filepath as the 1st argument")
+        else:
+            raise FileNotFoundError(filepath + " is not a valid filepath")
+    
+    def _add_object(self, parent, object_type, object_name):
+        object_ = self._document.addObject(object_type, object_name)
+        if parent.TypeId != self.DOCUMENT_TYPE_ID:
+            object_ = parent.addObject(object_)[0]
+        return object_
+    
+    def save(self):
+        self._document.recompute()
+        self._document.save()
+
+def make_placement(position: list, axis: list, angle: float) -> App.Placement:
+    """Returns a Base.Placement object set based on the position, axis, and angle given
+    
+    :param position: [x, y, z] position list
+    :param axis: [x, y, z] axis list
+    :param angle: rotation around axis
+    :returns: Base.Placement object
+    """
+    return App.Placement(App.Vector(position), App.Vector(axis), angle)
+"""
+position_vector = App.Vector(position)
+        axis_vector = App.Vector(axis)
+        placement = App.Placement(position_vector, axis_vector, angle)
+        return FreeCADPlane.document_plane(placement, self._document)
+"""
 class FreeCADObject:
     """ Parent class with the properties common to all freecad objects 
     more easily accessible than by default"""

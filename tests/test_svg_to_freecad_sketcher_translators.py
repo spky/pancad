@@ -54,7 +54,6 @@ class TestTranslators(unittest.TestCase):
         for t in tests:
             with self.subTest(t=t):
                 out = sfst.circle(t[0])
-                print(out)
                 self.assertDictEqual(out, t[1])
     
     def test_circular_arc(self):
