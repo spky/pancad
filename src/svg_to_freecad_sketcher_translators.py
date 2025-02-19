@@ -22,13 +22,10 @@ def line(svg_properties: dict) -> dict:
     :returns: FreeCAD line properties to be used to create an equivalent 
               line
     """
-    svg_dict = check_path_data(svg_properties["d"],
-                               svg_properties["id"],
-                               "line")
     return {
-        "id": svg_dict["id"],
-        "start": svg_dict["start"],
-        "end": svg_dict["end"],
+        "id": freecad_id_from_svg_id(svg_properties["id"], "line"),
+        "start": svg_properties["start"],
+        "end": svg_properties["end"],
         "geometry_type": "line",
     }
 
@@ -40,25 +37,35 @@ def circular_arc(svg_properties: dict) -> dict:
     :returns: FreeCAD arc properties to be used to create an equivalent 
               arc
     """
-    svg_dict = check_path_data(svg_properties["d"],
-                               svg_properties["id"],
-                               "circular_arc")
-    point_1 = trig.point_2d(svg_dict["start"])
-    point_2 = trig.point_2d(svg_dict["end"])
+    point_1 = trig.point_2d(svg_properties["start"])
+    point_2 = trig.point_2d(svg_properties["end"])
     
     arc_properties = trig.circle_arc_endpoint_to_center(
-        trig.point_2d(svg_dict["start"]),
-        trig.point_2d(svg_dict["end"]),
-        svg_dict["large_arc_flag"],
-        svg_dict["sweep_flag"],
-        svg_dict["radius"],
+        trig.point_2d(svg_properties["start"]),
+        trig.point_2d(svg_properties["end"]),
+        svg_properties["large_arc_flag"],
+        svg_properties["sweep_flag"],
+        svg_properties["radius"],
     )
+    center_point = trig.pt2list(arc_properties[0])
+    start_angle = arc_properties[1]
+    sweep_angle = arc_properties[2]
+    
+    if sweep_angle < 0:
+        # FreeCAD arcs are always drawn CCW, so the start and end switch
+        end_angle = start_angle
+        start_angle = trig.positive_angle(start_angle + sweep_angle)
+    elif sweep_angle == 0:
+        raise ValueError("Arc sweep angles cannot be zero")
+    else:
+        end_angle = start_angle + sweep_angle
+    
     return {
-        "id": svg_dict["id"],
-        "location": trig.pt2list(arc_properties[0]),
-        "radius": svg_dict["radius"],
-        "start": svg_dict["start"],
-        "end": svg_dict["end"],
+        "id": freecad_id_from_svg_id(svg_properties["id"], "circular_arc"),
+        "location": center_point,
+        "radius": svg_properties["radius"],
+        "start": start_angle,
+        "end": end_angle,
         "geometry_type": "circular_arc",
     }
 
@@ -74,7 +81,7 @@ def point(svg_properties: dict) -> dict:
     """
     return {
         #"id": svg_properties["id"],
-        "location": [svg_properties["cx"], svg_properties["cy"]],
+        "location": svg_properties["center"],
         "geometry_type": "point",
     }
 
@@ -86,12 +93,12 @@ def circle(svg_properties: dict) -> dict:
     recreate a point from a SVG in a FreeCAD sketch
     
     :param svg_properties: circle properties from an svg file
-    :returns: FreeCAD point properties to be used to create an equivae
+    :returns: FreeCAD circle properties to be used to create an equivalent
     """
     return {
         "id": freecad_id_from_svg_id(svg_properties["id"], "circle"),
-        "location": [svg_properties["cx"], svg_properties["cy"]],
-        "radius": svg_properties["r"],
+        "location": svg_properties["center"],
+        "radius": svg_properties["radius"],
         "geometry_type": "circle",
     }
 
@@ -101,7 +108,9 @@ def freecad_id_from_svg_id(svg_id: str, geometry_type: str) -> int:
     :geometry_type: the type of geometry that the id is associated with
     :returns: FreeCAD geometry id
     """
-    return int(svg_id.replace(geometry_type, ""))
+    svg_id = svg_id.replace(geometry_type, "")
+    svg_id = svg_id.replace("_0", "")
+    return int(svg_id)
 
 def check_path_data(path_data: str, id_: str, geometry_type:str) -> dict:
     """Raises a value error if the number of commands does not equal 
@@ -124,18 +133,19 @@ def translate_geometry(svg_geometry: list[dict]) -> list[dict]:
     """Returns a list of dictionaries that have been translated from 
     svg to freecad properties
     """
-    geometry = []
+    fc_geometry = []
     for g in svg_geometry:
-        match g["geometry_type"]:
+        geometry_type = g["geometry_type"]
+        match geometry_type:
             case "line":
-                geometry.append(line(g))
+                fc_geometry.append(line(g))
             case "point":
-                geometry.append(point(g))
+                fc_geometry.append(point(g))
             case "circle":
-                geometry.append(circle(g))
+                fc_geometry.append(circle(g))
             case "circular_arc":
-                geometry.append(circular_arc(g))
+                fc_geometry.append(circular_arc(g))
             case _:
-                raise ValueError(str(g["geometry_type"])
-                                 + "is not a supported geometry type")
-    return geometry
+                raise ValueError(f"'{geometry_type}' is not a"
+                                 + f" supported geometry type")
+    return fc_geometry

@@ -8,12 +8,13 @@ from pathlib import Path
 import svg_file as sf
 import svg_elements as se
 import freecad_sketch_readers as fsr
-import freecad_sketcher_to_svg_translators as fsst
+import freecad_sketcher_to_svg_translators as fc_to_svg
+import svg_to_freecad_sketcher_translators as svg_to_fc
 import Sketcher
 import svg_element_utils as seu
 
 
-class FreeCADSketchSVG(se.svg):
+class SketchSVG(se.svg):
     point_radius = "0.1"
     def __init__(self) -> None:
         super().__init__()
@@ -37,6 +38,28 @@ class FreeCADSketchSVG(se.svg):
                 raise ValueError(str(fc_geometry["geometry_type"])
                                  + "is not a supported geometry type")
     
+    @property
+    def geometry(self) -> list[dict]:
+        """Returns svg geometry from all the svg's subelements.
+        :returns: a list of svg geometry dictionaries
+        """
+        geo_list = []
+        for shape in list(self.geometry_g):
+            shape_list = []
+            for geo_dict in shape.geometry:
+                # points are represented as circles, so they need labeling
+                if geo_dict["id"].startswith("point"):
+                    geo_dict["geometry_type"] = "point"
+                shape_list.append(geo_dict)
+            geo_list.extend(shape_list)
+        return geo_list
+    
+    def get_freecad_dict(self) -> list[dict]:
+        """Returns FreeCAD geometry from all the svg's subelements.
+        :returns: a list of FreeCAD geometry dictionaries
+        """
+        return svg_to_fc.translate_geometry(self.geometry)
+    
     @classmethod
     def from_sketch(cls, sketch: Sketcher.Sketch,
                     unit: str) -> FreeCADSketchSVG:
@@ -49,7 +72,7 @@ class FreeCADSketchSVG(se.svg):
                                          + "_geometry")
         new_sketch_svg.append(new_sketch_svg.geometry_g)
         freecad_geometry = fsr.read_sketch_geometry(sketch)
-        svg_geometry = fsst.translate_geometry(freecad_geometry)
+        svg_geometry = fc_to_svg.translate_geometry(freecad_geometry)
         for geometry in svg_geometry:
             new_sketch_svg.add_geometry(geometry)
         new_sketch_svg.auto_size()

@@ -17,6 +17,8 @@ sys.path.append(FREECADPATH)
 import FreeCAD as App
 import Part
 import Sketcher
+import file_handlers as fh
+import svg_to_freecad_sketcher_translators as svg_to_fc
 
 class Sketch:
     def __init__(self):
@@ -49,15 +51,43 @@ class Sketch:
         :param radius: The radius of the arc
         :param start: The start angle of the arc in radians
         :param end: The end angle of the arc in radians
+        :param construction: Sets whether to add the geometry as 
+                             construction. Defaults to False.
         """
         self._add_geometry(Sketch._circular_arc(center, radius,
                                                 start, end), construction)
+    
+    def add_point(self, location: list, construction: bool = False) -> None:
+        """Adds a point to the sketch's geometry.
+        :param location: [x, y] or [x, y, z] of the point's location
+        """
+        self._add_geometry(Sketch._point(location), construction)
     
     def _add_geometry(self, geometry, construction: bool):
         if not construction:
             self.geometry.append(geometry)
         else:
             self.construction.append(geometry)
+    
+    def add_geometry_list(self, geometry: list[dict],
+                          construction: bool = False) -> None:
+        for g in geometry:
+            geometry_type = g["geometry_type"]
+            match geometry_type:
+                case "line":
+                    self.add_line(g["start"], g["end"], construction)
+                case "circle":
+                    self.add_circle(g["location"], g["radius"], construction)
+                case "circular_arc":
+                    
+                    # TODO: Need to convert the start and end points to radians!!!!
+                    self.add_circular_arc(g["location"], g["radius"],
+                                          g["start"], g["end"],
+                                          construction)
+                case "point":
+                    self.add_point(g["location"], construction)
+                case _:
+                    raise ValueError(f"'{geometry_type}' is not supported")
     
     @staticmethod
     def _circle(center: list, radius: float) -> Part.Circle:
@@ -94,8 +124,8 @@ class Sketch:
     
     @staticmethod
     def _circular_arc(center: list, radius: float,
-                      start: float, end: float) -> None:
-        """Adds a FreeCAD ArcOfCircle object. If a 2 element list is 
+                      start: float, end: float) -> Part.ArcOfCircle:
+        """Creates a FreeCAD ArcOfCircle object. If a 2 element list is 
         provided for center, a zero will be appended to it. FreeCAD 
         arcs are ALWAYS counter-clockwise, so the start angle has 
         to be placed clockwise of the end point
@@ -103,28 +133,51 @@ class Sketch:
         :param radius: The radius of the arc
         :param start: The start angle of the arc in radians
         :param end: The end angle of the arc in radians
+        :returns: A Part.ArcOfCircle FreeCAD object
         """
         circle = Sketch._circle(center, radius)
         return Part.ArcOfCircle(circle, start, end)
     
+    @staticmethod
+    def _point(location: list) -> Part.Point:
+        """Creates a FreeCAD Point object.If a 2 element list is 
+        provided for center, a zero will be appended to it.
+        :param location: [x, y] or [x, y, z] of the point's location
+        :returns: A Part.Point FreeCAD object
+        """
+        if len(location) == 2:
+            location.append(0)
+        position_vector = App.Vector(location)
+        return Part.Point(position_vector)
     # def add_sketch(document):
         # if label is not None:
             # self.sketch = App.ActiveDocument.addObject("Sketcher::SketchObject", label)
 
 class File:
-    DOCUMENT_TYPE_ID = 'App::Document'
-    PART_TYPE_ID = 'App::Part'
-    BODY_TYPE_ID = 'PartDesign::Body'
-    SKETCH_TYPE_ID = 'Sketcher::SketchObject'
+    EXTENSION = ".FCStd"
+    DOCUMENT_ID = 'App::Document'
+    PART_ID = 'App::Part'
+    BODY_ID = 'PartDesign::Body'
+    SKETCH_ID = 'Sketcher::SketchObject'
     
-    def __init__(self, filepath: str):
-        self.filepath = filepath
-        self._document = App.newDocument()
-        self._document.FileName = self.filepath
+    def __init__(self, filepath: str, mode: str = "r"):
+        self._mode = mode
+        self.filepath = fh.filepath(filepath)
+        if self._exists:
+            self._document = App.open(self.filepath)
+        else:
+            # TODO: Need to add write, overwrite, and read modes to this to make sure its predictable!!!!
+            # These lines currently just append to the document
+            self._document = App.newDocument()
+            self._document.FileName = self.filepath
     
     @property
     def filepath(self) -> str:
         return self._filepath
+    
+    @property
+    def mode(self) -> str:
+        return self._mode
     
     @filepath.setter
     def filepath(self, filepath: str) -> None:
@@ -133,36 +186,60 @@ class File:
         :param filepath: a string of the name and location of the file
         """
         if filepath is None:
+            # filepath is allowed to be None during initialization
             self._exists = False
             self._filepath = None
-        elif os.path.isfile(filepath) and filepath.endswith(".FCStd"):
-            self._exists = True
-            self._filepath = os.path.realpath(filepath)
-        elif (os.path.isdir(os.path.dirname(filepath))
-              and os.path.basename(filepath) != ""):
-            self._exists = False
-            root, ext = os.path.splitext(filepath)
-            if ext == "":
-                filepath = filepath + ".FCStd"
-            self._filepath = os.path.realpath(filepath)
-        elif os.path.isdir(filepath):
-            raise ValueError(filepath + " is a folder, please provide a"
-                       + "filepath as the 1st argument")
         else:
-            raise FileNotFoundError(filepath + " is not a valid filepath")
+            self._filepath = fh.filepath(filepath)
+            if not self._filepath.endswith(self.EXTENSION):
+                self._filepath = self._filepath + self.EXTENSION
+            self._exists = fh.exists(filepath)
+        self._validate_mode()
+    
+    @mode.setter
+    def mode(self, mode: str) -> None:
+        """Checks the access mode controlling this file session. Can be r 
+        (read-only), w (write-only), x (exclusive creation), and + 
+        (reading and writing)
+        :param mode: a string of one character describing the 
+                            access mode of the session
+        """
+        self._mode = mode
+        self._validate_mode()
     
     def _add_object(self, parent, object_type, object_name):
         object_ = self._document.addObject(object_type, object_name)
-        if parent.TypeId != self.DOCUMENT_TYPE_ID:
+        if parent.TypeId != self.DOCUMENT_ID:
             object_ = parent.addObject(object_)[0]
         return object_
     
+    def new_sketch(self, sketch: Sketch) -> None:
+        if sketch.label is None:
+            raise ValueError("Unnamed sketch input not supported yet")
+        new_sketch = self._document.addObject(self.SKETCH_ID, sketch.label)
+        for shape in sketch.geometry:
+            new_sketch.addGeometry(shape, False)
+        for shape in sketch.construction:
+            new_sketch.addGeometry(shape, True)
+    
+    def _validate_mode(self) -> None:
+        """Checks whether the file mode is being violated and will 
+        raise an error if it is
+        """
+        if self._filepath is not None:
+            # filepath is allowed to be None during initialization
+            fh.validate_mode(self.filepath, self.mode)
+        elif self._mode not in fh.ACCESS_MODE_OPTIONS:
+            raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")
+    
     def save(self):
+        fh.validate_operation(self.filepath, self.mode, "w")
         self._document.recompute()
         self._document.save()
 
 def make_placement(position: list, axis: list, angle: float) -> App.Placement:
-    """Returns a Base.Placement object set based on the position, axis, and angle given
+    """Returns a Base.Placement object set based on the position, 
+    axis, and angle given
     
     :param position: [x, y, z] position list
     :param axis: [x, y, z] axis list

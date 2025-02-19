@@ -8,9 +8,15 @@ import xml.etree.ElementTree as ET
 sys.path.append('src')
 
 import freecad_svg_file as fcsf
-import svg_file as sf
-import svg_generators as sg
+from freecad_svg_file import SketchSVG
+
+import file_handlers
+from free_cad_object_wrappers import File as FreeCADFile
+from free_cad_object_wrappers import Sketch
 import freecad_sketch_readers as fsr
+
+from svg_file import SVGFile
+import svg_generators as sg
 
 class TestFreeCADSVGFile(unittest.TestCase):
     
@@ -37,7 +43,7 @@ class TestFreeCADSVGFile(unittest.TestCase):
             self.FC_MODEL_PATH,
             "xz_rounded_rectangle_with_circle"
         )
-        obj = fcsf.FreeCADSketchSVG()
+        obj = SketchSVG()
         obj.unit = "mm"
     
     def test_write_freecad_sketch(self):
@@ -45,13 +51,13 @@ class TestFreeCADSVGFile(unittest.TestCase):
             self.FC_MODEL_PATH,
             "xz_rounded_rectangle_with_circle"
         )
-        sketch_svg = fcsf.FreeCADSketchSVG.from_sketch(sketch_obj, "mm")
+        sketch_svg = SketchSVG.from_sketch(sketch_obj, "mm")
         sketch_svg.unit = "mm"
         sketch_svg.geometry_g.set("style", self.default_style.string)
         
         svg_filepath = os.path.join(self.OUT_FOLDER,
                                     "test_write_freecad_sketch.svg")
-        file = sf.SVGFile(svg_filepath, "w")
+        file = SVGFile(svg_filepath, "w")
         file.svg = sketch_svg
         file.write(indent="  ")
     
@@ -60,20 +66,29 @@ class TestFreeCADSVGFile(unittest.TestCase):
             self.SAMPLE_SVG_FOLDER,
             'test_write_freecad_sketch_loop_back_input.svg'
         )
-        file = sf.SVGFile(filepath, "r")
-        #sketch_svg = fcsf.FreeCADSketchSVG(svg_filepath=filepath)
-        sketch_svg = fcsf.FreeCADSketchSVG.from_element(file.svg)
-        
+        file = SVGFile(filepath, "r")
+        sketch_svg = SketchSVG.from_element(file.svg)
     
-    """
     def test_loop_back_freecad_svg(self):
+        filepath = os.path.join(self.OUT_FOLDER,
+                                "test_loop_back_freecad_svg.FCStd")
+        if file_handlers.exists(filepath):
+            os.remove(filepath)
+        file = FreeCADFile(filepath, "w")
+        
         filepath = os.path.join(
             self.SAMPLE_SVG_FOLDER,
             'test_write_freecad_sketch_loop_back_input.svg'
         )
-        sketch_svg = fcsf.FreeCADSketchSVG(svg_filepath=filepath)
-        print(sketch_svg.to_string())
-    """
+        original_svg_file = SVGFile(filepath, "r")
+        freecad_svg = SketchSVG.from_element(original_svg_file.svg)
+        freecad_geometry = freecad_svg.get_freecad_dict()
+        freecad_sketch = Sketch()
+        freecad_sketch.add_geometry_list(freecad_geometry)
+        freecad_sketch.label = "loopback_test_sketch"
+        file.new_sketch(freecad_sketch)
+        file.save()
+    
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

@@ -10,6 +10,8 @@ import svg_file as sf
 import svg_generators as sg
 import svg_element_utils as seu
 
+from file_handlers import InvalidAccessModeError
+
 
 class TestSVGFileInternal(unittest.TestCase):
     
@@ -54,6 +56,12 @@ class TestSVGFileInternal(unittest.TestCase):
         filepath = os.path.join(self.SAMPLE_FOLDER, "input_sketch_test.svg")
         file = sf.SVGFile(filepath, "r")
         file.parse()
+    
+    def test_validate_mode_InvalidAccessModeError(self):
+        file = sf.SVGFile()
+        with self.assertRaises(InvalidAccessModeError):
+            file.mode = "bad"
+    
 
 class TestSVGFileWriting(unittest.TestCase):
     

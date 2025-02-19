@@ -8,6 +8,9 @@ import xml.etree.ElementTree as ET
 
 import svg_writers as sw
 import svg_element_utils as seu
+import file_handlers as fh
+
+from file_handlers import InvalidAccessModeError
 
 from svg_elements import (
     SVGElement,
@@ -23,7 +26,6 @@ class SVGFile(ET.ElementTree):
     contains multiple other elements. Is not intended to make xml 
     documents with multiple separate svg elements
     """
-    mode_options = ["r", "w", "x", "+"]
     def __init__(self, filepath: str = None, mode: str = "r") -> None:
         self._mode = mode
         self._declaration = None
@@ -72,21 +74,12 @@ class SVGFile(ET.ElementTree):
         if filepath is None:
             self._exists = False
             self._filepath = None
-        elif os.path.isfile(filepath):
-            self._exists = True
-            self._filepath = os.path.realpath(filepath)
-        elif (os.path.isdir(os.path.dirname(filepath))
-              and os.path.basename(filepath) != ""):
-            self._exists = False
-            root, ext = os.path.splitext(filepath)
-            if ext == "":
-                filepath = filepath + ".svg"
-            self._filepath = os.path.realpath(filepath)
-        elif os.path.isdir(filepath):
-            raise ValueError(filepath + " is a folder, please provide a"
-                       + "filepath as the 1st argument")
         else:
-            raise FileNotFoundError(filepath + " is not a valid filepath")
+            self._filepath = fh.filepath(filepath)
+            self._exists = fh.exists(filepath)
+            if not self._exists and not self._filepath.endswith(".svg"):
+                # if the file doesn't already exist, ensure .svg extension
+                self._filepath = self._filepath + ".svg"
         self._validate_mode()
     
     @mode.setter
@@ -94,7 +87,7 @@ class SVGFile(ET.ElementTree):
         """Checks the access mode controlling this file session. Can be r 
         (read-only), w (write-only), x (exclusive creation), and + 
         (reading and writing)
-        :param access_mode: a string of one character describing the 
+        :param mode: a string of one character describing the 
                             access mode of the session
         """
         self._mode = mode
@@ -122,40 +115,41 @@ class SVGFile(ET.ElementTree):
     def parse(self, filepath: str = None) -> None:
         """Extends the ElementTree parse method to upgrade the 
         elements into SVGElements
+        :param filepath: The name and location of the file to parse
         """
-        filepath = self.filepath if filepath is None else filepath
+        if filepath is None:
+            filepath = self.filepath 
+        else: 
+            filepath = fh.filepath(filepath)
+        fh.validate_operation(filepath, self.mode, "r")
         with open(filepath, self.mode) as file:
             raw_tree = ET.parse(file)
             self.svg = seu.upgrade_element(raw_tree.getroot())
     
     def write(self, filepath: str = None, indent: str = None):
         """Writes the svg file to either a given filepath or, if given 
-        None, to the initializing filepath
+        None, to the initializing filepath. Will not update the 
+        internal filepath so the file can be written to other locations.
+        :param filepath: The name and location of the file to parse
+        :param indent: The set of characters to place before xml levels
         """
         if filepath is None:
             filepath = self.filepath
+        else:
+            filepath = fh.filepath(filepath)
         if self._declaration is None:
             self.set_declaration()
         if indent is not None:
             ET.indent(self.svg, indent)
+        fh.validate_operation(filepath, self.mode, "w")
         super().write(filepath)
     
     def _validate_mode(self) -> None:
         """Checks whether the file mode is being violated and will 
         raise an error if it is
         """
-        if self._mode not in self.mode_options:
-            raise ValueError("Provided "
-                             + str(access_mode)
-                             + " is not valid, must be one of these: "
-                             + str(options))
-        if self._filepath is None:
-            self._mode = "w"
-        elif self._mode == "x" and self._exists:
-            raise FileExistsError("Exclusive creation (x) access chosen, "
-                                  + self.filepath
-                                  + " already exists!")
-        elif self._mode == "r" and not self._exists:
-            raise FileNotFoundError("Cannot read "
-                                    + str(self.filepath)
-                                    + ", file not found")
+        if self._filepath is not None:
+            # filepath is allowed to be None during initialization
+            fh.validate_mode(self.filepath, self.mode)
+        elif self._mode not in fh.ACCESS_MODE_OPTIONS:
+            raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")
