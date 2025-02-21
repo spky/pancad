@@ -4,7 +4,7 @@ import sys
 sys.path.append('../src')
 
 
-from text2freecad.free_cad_object_wrappers import  FreeCADModel
+from text2freecad.free_cad_object_wrappers import FreeCADModel
 
 
 def print_object_attributes(obj):

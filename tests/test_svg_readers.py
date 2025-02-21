@@ -4,8 +4,8 @@ import unittest
 
 sys.path.append('src')
 
-import svg_readers as sr
-import svg_file as sf
+import svg.svg_readers as sr
+import svg.svg_file as sf
 
 class TestSVGReaders(unittest.TestCase):
     

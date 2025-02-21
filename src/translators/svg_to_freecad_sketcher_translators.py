@@ -11,8 +11,8 @@ import sys
 import math
 
 import trigonometry as trig
-import svg_parsers as sp
-import svg_generators as sg
+import svg.svg_parsers as sp
+import svg.svg_generators as sg
 
 def line(svg_properties: dict) -> dict:
     """Returns a dictionary of equivalent FreeCAD properties to recreate 
@@ -104,6 +104,7 @@ def circle(svg_properties: dict) -> dict:
 
 def freecad_id_from_svg_id(svg_id: str, geometry_type: str) -> int:
     """Returns the freecad geometry id from the svg id
+    
     :param svg_id: id from an svg geometry element
     :geometry_type: the type of geometry that the id is associated with
     :returns: FreeCAD geometry id

@@ -7,16 +7,16 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-import freecad_svg_file as fcsf
-from freecad_svg_file import SketchSVG
+import translators.freecad_svg_file as fcsf
+from translators.freecad_svg_file import SketchSVG
 
 import file_handlers
-from free_cad_object_wrappers import File as FreeCADFile
-from free_cad_object_wrappers import Sketch
-import freecad_sketch_readers as fsr
+from freecad.free_cad_object_wrappers import File as FreeCADFile
+from freecad.free_cad_object_wrappers import Sketch
+import freecad.freecad_sketch_readers as fsr
 
-from svg_file import SVGFile
-import svg_generators as sg
+from svg.svg_file import SVGFile
+import svg.svg_generators as sg
 
 class TestFreeCADSVGFile(unittest.TestCase):
     

@@ -4,9 +4,9 @@ import unittest
 
 sys.path.append('src')
 
-from enum_svg_color_keywords import ColorKey
+from svg.enum_svg_color_keywords import ColorKey
 
-import svg_generators as sg
+import svg.svg_generators as sg
 
 class TestSVGgenerators(unittest.TestCase):
     

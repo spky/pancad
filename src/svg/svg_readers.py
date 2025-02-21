@@ -7,9 +7,9 @@ from typing import TextIO
 import xml.etree.ElementTree as ET
 import re
 
-import svg_validators as sv
-import svg_parsers as sp
-import svg_file as sf
+import svg.svg_validators as sv
+import svg.svg_parsers as sp
+import svg.svg_file as sf
 
 xml_NameStartChar = ":A-Za-z_"
 xml_NameChar = xml_NameStartChar + "\.0-9-"

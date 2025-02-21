@@ -4,7 +4,7 @@ other formats
 
 import re
 import trigonometry as trig
-import svg_validators as sv
+import svg.svg_validators as sv
 
 def parse_coordinate_string(coordinate: str) -> list:
     """Uses re to figure out what string of coordinates are in path 

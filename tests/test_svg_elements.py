@@ -6,7 +6,7 @@ import os
 
 sys.path.append('src')
 
-import svg_elements as se
+import svg.svg_elements as se
 
 class TestSVG(unittest.TestCase):
     

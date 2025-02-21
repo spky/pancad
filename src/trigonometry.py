@@ -1,4 +1,5 @@
-"""Provides trigonometric functions to help translate geometry between formats
+"""Provides trigonometric functions to help translate geometry 
+between formats
 """
 
 import math

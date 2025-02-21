@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-import svg_validators as sv
-import svg_parsers as sp
+import svg.svg_validators as sv
+import svg.svg_parsers as sp
 import trigonometry as trig
 
 

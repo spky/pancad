@@ -4,7 +4,7 @@ output SVGElement class elements or subclasses of that class.
 """
 
 import xml.etree.ElementTree as ET
-import svg_elements as se
+import svg.svg_elements as se
 
 def upgrade_element(element: ET.Element) -> se.SVGElement:
     """Subclasses the given element and all its subelements into 

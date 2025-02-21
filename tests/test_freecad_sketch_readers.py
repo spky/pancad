@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import freecad_sketch_readers as fsr
+import freecad.freecad_sketch_readers as fsr
 FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/bin' 
 sys.path.append(FREECADPATH) 
 

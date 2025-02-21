@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import svg_validators as sv
+import svg.svg_validators as sv
 
 class TestSVGValidators(unittest.TestCase):
     

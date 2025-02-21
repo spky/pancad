@@ -6,9 +6,9 @@ import os
 
 sys.path.append('src')
 
-import svg_file as sf
-import svg_generators as sg
-import svg_element_utils as seu
+import svg.svg_file as sf
+import svg.svg_generators as sg
+import svg.svg_element_utils as seu
 
 from file_handlers import InvalidAccessModeError
 

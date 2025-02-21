@@ -9,8 +9,6 @@ FreeCADModel
 import sys
 import os
 
-#Part.LineSegment(App.Vector(1.2, 1.8, 0), App.Vector(5.2, 5.3, 0))
-
 # Path to your FreeCAD.so or FreeCAD.pyd file
 FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/bin' 
 sys.path.append(FREECADPATH) 
@@ -18,7 +16,7 @@ import FreeCAD as App
 import Part
 import Sketcher
 import file_handlers as fh
-import svg_to_freecad_sketcher_translators as svg_to_fc
+import translators.svg_to_freecad_sketcher_translators as svg_to_fc
 
 class Sketch:
     def __init__(self):
@@ -64,6 +62,9 @@ class Sketch:
         self._add_geometry(Sketch._point(location), construction)
     
     def _add_geometry(self, geometry, construction: bool):
+        """Adds a FreeCAD geometry object to the constr
+        
+        """
         if not construction:
             self.geometry.append(geometry)
         else:
@@ -80,7 +81,6 @@ class Sketch:
                     self.add_circle(g["location"], g["radius"], construction)
                 case "circular_arc":
                     
-                    # TODO: Need to convert the start and end points to radians!!!!
                     self.add_circular_arc(g["location"], g["radius"],
                                           g["start"], g["end"],
                                           construction)
@@ -149,9 +149,6 @@ class Sketch:
             location.append(0)
         position_vector = App.Vector(location)
         return Part.Point(position_vector)
-    # def add_sketch(document):
-        # if label is not None:
-            # self.sketch = App.ActiveDocument.addObject("Sketcher::SketchObject", label)
 
 class File:
     EXTENSION = ".FCStd"
