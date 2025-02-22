@@ -1,7 +1,7 @@
-﻿svg\_writers
-============
+﻿svg.writers
+===========
 
-.. automodule:: svg_writers
+.. automodule:: svg.writers
 
    
    .. rubric:: Functions
@@ -17,6 +17,7 @@
       svg_property_defaults
       svg_top
       write_xml
+      xml_PI
       xml_declaration
       xml_properties
    

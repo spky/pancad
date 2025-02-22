@@ -1,7 +1,7 @@
-﻿svg\_parsers
-============
+﻿svg.parsers
+===========
 
-.. automodule:: svg_parsers
+.. automodule:: svg.parsers
 
    
    .. rubric:: Functions

@@ -69,6 +69,7 @@ class SVGFile(ET.ElementTree):
     def filepath(self, filepath: str) -> None:
         """Sets the filepath of the svg and checks whether it can be 
         written to
+        
         :param filepath: a string of the name and location of the file
         """
         if filepath is None:
@@ -87,6 +88,7 @@ class SVGFile(ET.ElementTree):
         """Checks the access mode controlling this file session. Can be r 
         (read-only), w (write-only), x (exclusive creation), and + 
         (reading and writing)
+        
         :param mode: a string of one character describing the 
                             access mode of the session
         """
@@ -98,6 +100,7 @@ class SVGFile(ET.ElementTree):
                         standalone: str = "no") -> None:
         """Sets the xml declaration for the file. Will remove the 
         previous declaration if there was one already set.
+        
         :param tail: the string to appear at the end of the 
                      declaration, defaults to a newline
         :param version: the xml version

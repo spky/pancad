@@ -1,7 +1,7 @@
-﻿svg\_generators
-===============
+﻿svg.generators
+==============
 
-.. automodule:: svg_generators
+.. automodule:: svg.generators
 
    
    .. rubric:: Functions
@@ -13,6 +13,11 @@
       make_lineto
       make_moveto
       make_path_data
-      make_style
       make_vertical
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      SVGStyle
    

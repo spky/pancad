@@ -6,23 +6,36 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'text2freecad'
+project = 'PanCAD'
 copyright = '2024, spky'
 author = 'spky'
 release = '0.0.0'
+print("running!")
 
 import sys
 from pathlib import Path
 
-
 sys.path.insert(0, str(Path('..','..', 'src').resolve()))
-import svg_parsers
-import svg_generators
-import svg_writers
-import svg_file
-import free_cad_object_wrappers
-import freecad_sketch_readers
+
+import svg.element_utils
+import svg.elements
+import svg.enum_color_keywords
+import svg.file
+import svg.generators
+import svg.parsers
+import svg.readers
+import svg.validators
+import svg.writers
+
+import freecad.object_wrappers
+import freecad.sketch_readers
+
+import translators.freecad_sketcher_to_svg
+import translators.freecad_svg_file
+import translators.svg_to_freecad_sketcher
+
 import trigonometry
+import file_handlers
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

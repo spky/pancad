@@ -1,37 +1,29 @@
 # Redefine OS dependent commands for Windows or Linux
 # WARNING: Linux commands haven't been tested
-VENV = $(call FixPath, ./venv/)
-VENV_ACTIVATE = $(call FixPath, $(VENV)Scripts/activate)
-PYTHON = $(call FixPath, $(VENV)Scripts/python)
-PIP = $(call FixPath, $(VENV)Scripts/pip)
-SRC = $(call FixPath, ./src/)
-PYCACHE = $(call FixPath, $(SRC)__pycache__)
-TESTS = $(call FixPath, ./tests/)
-TEST_LOGS = $(call FixPath, $(wildcard $(TESTS)logs/*.log))
-DOCS = $(call FixPath, ./docs/)
-DOCS_SOURCE = $(call FixPath, $(DOCS)/source)
-DOCS_BUILD = $(call FixPath, $(DOCS)/build)
-DOCS_INDEX_HTML = $(call FixPath, $(DOCS_BUILD)/html/index.html)
+VENV = ./venv
+SRC = ./src
+TESTS = ./tests
+DOCS = ./docs
 
-PYTHON_SRC_FILES = $(addprefix $(SRC), \
-	generators.py \
-	parsers.py \
-	writers.py \
-	object_wrappers.py \
-	validators.py \
-	file.py \
-	sketch_readers.py \
-	trigonometry.py \
-	freecad_sketcher_to_svg.py \
-	readers.py \
-	element_utils.py \
-	elements.py \
-	svg_to_freecad_sketcher.py \
-	file_handlers.py \
-)
+
+VENV_ACTIVATE = $(VENV)/Scripts/activate
+PYTHON = $(VENV)/Scripts/python
+PIP = $(VENV)/Scripts/pip
+
+INIT_PY = $(call rwildcard, $(SRC), *__init__.py)
+SRC_PYTHON = $(call rwildcard, $(SRC), *.py)
+PYTHON_CODE = $(filter-out $(INIT_PY), $(SRC_PYTHON))
+
+TEST_LOGS = $(call rwildcard, $(TESTS), *.log)
+
+DOCS_SOURCE = $(DOCS)/source
+DOCS_BUILD = $(DOCS)/build
+DOCS_INDEX_HTML = $(DOCS_BUILD)/html/index.html
+
+PYCACHES = $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
 
 ifdef OS
-	RMDIR = rd  /s /q
+	RMDIR = @rd  /s /q
 	RM = del /Q
 	FixPath = $(subst /,\,$1)
 else
@@ -42,6 +34,11 @@ else
 	endif
 endif
 
+rwildcard=$(foreach d, \
+	$(wildcard $(1:=/*)), \
+	$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d) \
+)
+
 all: docs
 
 test: 
@@ -49,8 +46,11 @@ test:
 
 docs: $(DOCS_INDEX_HTML)
 
-$(DOCS_INDEX_HTML): $(DOCS_SOURCE) $(PYTHON_SRC_FILES)
+$(DOCS_INDEX_HTML): $(DOCS_SOURCE) $(PYTHON_CODE)
 	make -f Makefile -C $(DOCS) html
+
+poot:
+	@echo $(PYCACHES)
 
 setup: $(VENV_ACTIVATE)
 	$(PIP) install -r requirements.txt
@@ -61,8 +61,9 @@ $(VENV_ACTIVATE): requirements.txt
 	$(PIP) install -r requirements.txt
 
 clean:
-	make -f Makefile -C $(DOCS) clean
-	$(RMDIR) $(PYCACHE)
+ifneq ($(strip $(PYCACHES)),)
+	$(RMDIR) $(call FixPath, $(PYCACHES))
+endif
 
 pristine: clean
-	$(RMDIR) $(VENV)
+	$(RMDIR) $(call FixPath, $(VENV))

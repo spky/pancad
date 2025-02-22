@@ -4,11 +4,11 @@ Usage
 Installation
 ------------
 
-To use text2freecad, first install it using pip:
+To use PanCAD, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install text2freecad
+   (.venv) $ pip install PanCAD
 
 SVG Function Explanations
 -------------------------
@@ -16,28 +16,28 @@ SVG Function Explanations
 Reading design information from SVG files
 #########################################
 
-.. automodule:: svg_parsers
+.. automodule:: svg.parsers
     :members:
 
 Generating SVG commands
 #######################
 
-.. automodule:: svg_generators
+.. automodule:: svg.generators
     :members:
 
 Validating SVG syntax
 #####################
 
-.. automodule:: svg_validators
+.. automodule:: svg.validators
     :members:
 
 Writing SVG elements and files
 ##############################
 
 
-.. automodule:: svg_writers
+.. automodule:: svg.writers
     :members:
-.. autoclass:: svg_file.SVGFile
+.. autoclass:: svg.file.SVGFile
     :members:
 
 
