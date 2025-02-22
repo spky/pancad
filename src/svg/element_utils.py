@@ -9,6 +9,7 @@ import svg.elements as se
 def upgrade_element(element: ET.Element) -> se.SVGElement:
     """Subclasses the given element and all its subelements into 
     SVGElement classes and returns a reference to the element.
+    
     :param element: A python ElementTree.Element
     :returns: The upgraded element, subclassed based on its tag
     """
@@ -30,6 +31,11 @@ def upgrade_element(element: ET.Element) -> se.SVGElement:
     return element
 
 def debug_print_all_elements(element: se.SVGElement) -> None:
+    """Prints all the elements under a given svg element to the 
+    screen with their tag, id, and class
+    
+    :param element: SVGElement to print the subelements of
+    """
     for sub in element.iter():
         print("Tag: " + str(sub.tag)
               + " | " + str(sub.get("id"))

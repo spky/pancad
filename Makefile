@@ -48,7 +48,6 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_file_handlers.py \
 )
 
-
 ifdef OS
 	RMDIR = rd  /s /q
 	RM = del /Q

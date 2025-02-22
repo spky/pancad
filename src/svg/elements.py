@@ -2,6 +2,7 @@
 representing the different elements in the SVG Element 1.1 
 specification https://www.w3.org/TR/2011/REC-SVG11-20110816/
 """
+
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
@@ -36,19 +37,38 @@ class SVGElement(ET.Element):
     def attrib(self, attribute_dictionary: dict) -> None:
         """Extends ElementTree.Element to ensure that public facing
         properties get set when attrib is set
+        
+        :param attribute_dictionary: dictionary of xml element attributes
         """
         for attribute in attribute_dictionary:
             self.set(attribute, attribute_dictionary[attribute])
     
     def append(self, subelement: SVGElement) -> None:
+        """Extends ElementTree.Element.append to add a reference to 
+        the element's owner to the subelement.
+        
+        :param subelement: the element to be added to this element
+        """
         subelement.ownerSVGElement = self
         super().append(subelement)
     
     def remove(self, subelement: SVGElement) -> None:
+        """Extends ElementTree.Element.remove to remove the reference 
+        to the element's owner that was added during append
+        
+        :param subelement: the element to be removed from this element
+        """
         subelement.ownerSVGElement = None
         super().remove(subelement)
     
     def set(self, key: str, value: str | ET.Element) -> None:
+        """Extends ElementTree.Element.set to allow for some key svg 
+        attributes to be available as properties while still 
+        maintaining base functionality
+        
+        :param key: the name of the attribute to be set
+        :param value: the value of the attribute to be set
+        """
         match key:
             case "id":
                 self.id_ = value
@@ -58,20 +78,35 @@ class SVGElement(ET.Element):
                 super().set(key, value)
     
     def to_string(self, indent: str = None) -> str:
+        """Returns the string representation of the element.
+        
+        :param indent: The indent of the subelements in the string. 
+                       Defaults to None
+        :returns: the element string representation with optional indent
+        """
         if indent is not None:
             ET.indent(self, indent)
         return ET.tostring(self)
     
     def sub(self, id_: str) -> SVGElement:
-        """Returns a subelement by a given id. Returns None if the id 
-        does not exist"""
+        """Returns a subelement by a given id.
+        
+        :param id_: the xml id of the desired element
+        :returns: The element if it exists, otherwise None
+        """
         for sub in self.iter():
             if sub.id_ == id_:
                 return sub
         return None
     
     @classmethod
-    def from_element(cls, element: ET.Element):
+    def from_element(cls, element: ET.Element) -> SVGElement:
+        """Creates a new SVGElement from an existing base 
+        ElementTree.Element object
+        
+        :param element: the ElementTree.Element to be upgraded
+        :return: the new SVGElement
+        """
         if cls.tags is None:
             new_element = cls(element.tag)
         elif element.tag in cls.tags:
@@ -96,18 +131,44 @@ class svg(SVGElement):
     
     @property
     def height(self) -> str:
+        """The height of the svg file.
+        
+        :getter: Returns the height string of the svg file
+        :setter: Sets the height and height_value of the file. Will 
+                 also set the unit if the unit is in the given string
+        """
         return self._height
     
     @property
     def width(self) -> str:
+        """The width of the svg file.
+        
+        :getter: Returns the width string of the svg file
+        :setter: Sets the width and width_value of the file. Will 
+                 also set the unit if the unit is in the given string
+        """
         return self._width
     
     @property
     def unit(self):
+        """The unit of the svg file. Only replaces the text, 
+        this does not convert all the values in the file. The unit is 
+        not an actual property on the svg element, it just 
+        appears in properties like width and height
+        
+        :getter: Returns the unit's name
+        :setter: Sets the unit and appends it to the width and height
+        """
         return self._unit
     
     @property
-    def viewBox(self):
+    def viewBox(self) -> str:
+        """The viewBox of the svg file.
+        
+        :getter: Returns the svg viewBox string
+        :setting: Takes either a 4 element float list or a viewBox 
+                  string and sets it to the viewBox attribute
+        """
         return self._viewBox
     
     @height.setter
@@ -132,10 +193,6 @@ class svg(SVGElement):
     
     @unit.setter
     def unit(self, unit: str) -> None:
-        """Sets the unit of the svg file. Only replaces the text, 
-        this does not convert all the values in the file. The unit is 
-        not an actual property on the svg element, it just 
-        appears in properties like width and height"""
         if unit != sv.length_unit(unit):
             raise ValueError("Provided unit: " + str(unit) + " can only "
                              + "contain a unit string, not anything else")
