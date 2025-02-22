@@ -11,7 +11,7 @@ import sys
 import math
 
 import trigonometry as trig
-import svg.svg_generators as sg
+import svg.generators as sg
 
 def line(freecad_properties: dict) -> dict:
     """Returns a dictionary of equivalent svg properties to recreate 

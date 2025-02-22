@@ -5,7 +5,7 @@ import unittest
 
 sys.path.append('src')
 
-import freecad.free_cad_object_wrappers as fcow
+import freecad.object_wrappers as fcow
 import FreeCAD as App
 import Part
 import file_handlers

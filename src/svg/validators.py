@@ -3,8 +3,9 @@ appear until the user tries to open it with inkscape or a browser
 """
 
 import re
+
 import trigonometry as trig
-from svg.enum_svg_color_keywords import ColorKey
+from svg.enum_color_keywords import ColorKey
 
 float_re = "[+-]?[0-9]*\.[0-9]+"
 integer_re = "[+-]?[0-9]+"

@@ -1,7 +1,8 @@
 """A module to provide functions for creating svg path strings and styles.
 """
-import svg.svg_validators as sv
 import math
+
+import svg.validators as sv
 
 def make_path_data(commands: list, delimiter: str = "\n") -> str:
     """Returns a string of svg commands joined together with a delimiter. 

@@ -4,8 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-#from svg_interface import SVGPath
-import svg.svg_parsers as sp
+import svg.parsers as sp
 
 class TestSVGPath(unittest.TestCase):
     

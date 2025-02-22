@@ -5,13 +5,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import svg.svg_file as sf
-import svg.svg_elements as se
-import freecad.freecad_sketch_readers as fsr
-import translators.freecad_sketcher_to_svg_translators as fc_to_svg
-import translators.svg_to_freecad_sketcher_translators as svg_to_fc
+import svg.file as sf
+import svg.elements as se
+import freecad.sketch_readers as fsr
+import translators.freecad_sketcher_to_svg as fc_to_svg
+import translators.svg_to_freecad_sketcher as svg_to_fc
 import Sketcher
-import svg.svg_element_utils as seu
+import svg.element_utils as seu
 
 
 class SketchSVG(se.svg):

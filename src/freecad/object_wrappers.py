@@ -16,7 +16,6 @@ import FreeCAD as App
 import Part
 import Sketcher
 import file_handlers as fh
-import translators.svg_to_freecad_sketcher_translators as svg_to_fc
 
 class Sketch:
     def __init__(self):

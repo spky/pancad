@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-import svg.svg_writers as sw
+import svg.writers as sw
 
 class TestGenerators(unittest.TestCase):
     def setUp(self):

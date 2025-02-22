@@ -6,13 +6,13 @@ from __future__ import annotations
 import os
 import xml.etree.ElementTree as ET
 
-import svg.svg_writers as sw
-import svg.svg_element_utils as seu
+import svg.writers as sw
+import svg.element_utils as seu
 import file_handlers as fh
 
 from file_handlers import InvalidAccessModeError
 
-from svg.svg_elements import (
+from svg.elements import (
     SVGElement,
     svg,
     g,

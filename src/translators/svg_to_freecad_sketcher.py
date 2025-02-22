@@ -1,8 +1,8 @@
 """A module that acts as a interface control between freecad sketcher 
 and an svg file. This module is not intended to generate the actual 
 elements or objects in either format, it only takes textual 
-information from FreeCAD are converts it into the equivalent 
-information in SVG. This module is intended to be the actual 'baton 
+information from svg files and converts it into the equivalent 
+information in FreeCAD. This module is intended to be the actual 'baton 
 pass' point, where all the work before this was dealing with FreeCAD 
 and everything after this is dealing with SVG.
 """
@@ -11,8 +11,8 @@ import sys
 import math
 
 import trigonometry as trig
-import svg.svg_parsers as sp
-import svg.svg_generators as sg
+import svg.parsers as sp
+import svg.generators as sg
 
 def line(svg_properties: dict) -> dict:
     """Returns a dictionary of equivalent FreeCAD properties to recreate 

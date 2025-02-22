@@ -14,25 +14,24 @@ DOCS_BUILD = $(call FixPath, $(DOCS)/build)
 DOCS_INDEX_HTML = $(call FixPath, $(DOCS_BUILD)/html/index.html)
 
 PYTHON_SRC_FILES = $(addprefix $(SRC), \
-	svg_generators.py \
-	svg_parsers.py \
-	svg_writers.py \
-	free_cad_object_wrappers.py \
-	svg_validators.py \
-	svg_file.py \
-	free_cad_object_wrappers.py \
-	freecad_sketch_readers.py \
+	generators.py \
+	parsers.py \
+	writers.py \
+	object_wrappers.py \
+	validators.py \
+	file.py \
+	sketch_readers.py \
 	trigonometry.py \
-	freecad_sketcher_to_svg_translators.py \
-	svg_readers.py \
-	svg_element_utils.py \
-	svg_elements.py \
-	svg_to_freecad_sketcher_translators.py \
+	freecad_sketcher_to_svg.py \
+	readers.py \
+	element_utils.py \
+	elements.py \
+	svg_to_freecad_sketcher.py \
 	file_handlers.py \
-	)
+)
 
 PYTHON_TEST_FILES = $(addprefix $(TESTS), \
-	svg_d_attribute_parsing_test.py \
+	test_svg_parsers.py \
 	test_svg_generators.py \
 	test_svg_writers.py \
 	test_svg_validators.py \
@@ -47,7 +46,7 @@ PYTHON_TEST_FILES = $(addprefix $(TESTS), \
 	test_svg_elements.py \
 	test_svg_to_freecad_sketcher_translators.py \
 	test_file_handlers.py \
-	)
+)
 
 
 ifdef OS
@@ -64,11 +63,10 @@ endif
 
 all: docs
 
-#$(TEST_LOGS)
 test: 
 	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_svg_file.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_readers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)svg_d_attribute_parsing_test.py)
+	$(PYTHON) $(call FixPath, $(TESTS)test_svg_parsers.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
@@ -82,15 +80,7 @@ test:
 	$(PYTHON) $(call FixPath, $(TESTS)test_svg_to_freecad_sketcher_translators.py)
 	$(PYTHON) $(call FixPath, $(TESTS)test_file_handlers.py)
 
-#test: 
-#	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_generators.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_writers.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_validators.py)
-
 $(TEST_LOGS): $(PYTHON_TEST_FILES) $(PYTHON_SRC_FILES) 
-#	echo $?
-#	echo $(PYTHON_TEST_FILES)
 
 $(PYTHON_TEST_FILES): 
 	echo $@

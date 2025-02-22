@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-import svg.svg_element_utils as seu
+import svg.element_utils as seu
 
 class TestSVGElementUtils(unittest.TestCase):
     
