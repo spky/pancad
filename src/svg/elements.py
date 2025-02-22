@@ -224,6 +224,12 @@ class svg(SVGElement):
         super().set("viewBox", self._viewBox)
     
     def set(self, key: str, value: str) -> None:
+        """Extends the SVGElement set function to include the svg 
+        element specific attributes as properties.
+        
+        :param key: the name of the attribute to be set
+        :param value: the value of the attribute to be set
+        """
         match key:
             case "width":
                 self.width = value
@@ -238,7 +244,13 @@ class svg(SVGElement):
     
     def auto_size(self, margin: float = 0, scope: SVGElement = None) -> None:
         """Sizes the view of the svg based on all its subelements or 
-        based on a given scope element's sub elements"""
+        based on a given scope element's sub elements
+        
+        :param margin: The margin around the minimum shape, has the 
+                       same units as the svg file, defaults to 0.
+        :param scope: Which element should be considered the scope of 
+                      the autosize, defaults to self.
+        """
         if scope is None:
             scope = self
         geometry = []
@@ -270,10 +282,19 @@ class path(SVGElement):
     
     @property
     def d(self) -> str:
+        """The svg path data for the path element.
+        
+        :getter: Returns the path data string.
+        :setter: Sets both the d property and the element's d attribute
+        """
         return self._d
     
     @property
     def geometry(self) -> list[dict]:
+        """The geometry held in the element's path data, read-only.
+        
+        :getter: Returns a list of dictionaries containing geometry info.
+        """
         return sp.path_data_to_dicts(self.d, self.id_)
     
     @d.setter
@@ -282,6 +303,13 @@ class path(SVGElement):
         super().set("d", self._d)
     
     def set(self, key: str, value: str) -> None:
+        """Extends the SVGElement set function to include the path 
+        element specific attributes as properties.
+        
+        :param key: the name of the attribute to be set
+        :param value: the value of the attribute to be set
+        """
+        
         match key:
             case "d":
                 self.d = value
@@ -302,40 +330,72 @@ class circle(SVGElement):
     
     @property
     def cx(self) -> float:
+        """The x coordinate of the circle center.
+        
+        :getter: returns the x coordinate of the circle center as a float
+        :setter: sets the x coordinate with either a float or string. 
+                 If a string is passed the unit is checked for 
+                 validity, but is ignored.
+        """
         return float(self._cx)
     
     @property
     def cy(self) -> float:
+        """The y coordinate of the circle center.
+        
+        :getter: returns the y coordinate of the circle center as a float
+        :setter: sets the y coordinate with either a float or string. 
+                 If a string is passed the unit is checked for 
+                 validity, but is ignored.
+        """
         return float(self._cy)
     
     @property
     def r(self) -> float:
+        """The radius of the circle.
+        
+        :getter: returns the radius of the circle center as a float
+        :setter: sets the radius with either a float or string after 
+        checking that it is greater than 0. If a string is passed 
+        the unit is checked for validity, but is ignored.
+        """
         return float(self._r)
     
     @property
     def geometry(self) -> list[dict]:
+        """The geometry held in the element, read-only.
+        
+        :getter: Returns a list of one dictionary containing geometry 
+                 info.
+        """
         return [sp.circle(self.id_, self.r, [self.cx, self.cy])]
     
     @cx.setter
-    def cx(self, center_x: float) -> None:
+    def cx(self, center_x: float | str) -> None:
         self._cx = str(sv.length_value(center_x))
         super().set("cx", self._cx)
     
     @cy.setter
-    def cy(self, center_y: float) -> None:
+    def cy(self, center_y: float | str) -> None:
         self._cy = str(sv.length_value(center_y))
         super().set("cy", self._cy)
     
     @r.setter
-    def r(self, radius: float) -> None:
+    def r(self, radius: float | str) -> None:
         r = sv.length_value(radius)
         if r >= 0:
             self._r = str(r)
         else:
-            raise ValueError("r must be greater than 0, given: " + str(r))
+            raise ValueError(f"r must be greater than 0, given: {r}")
         super().set("r", self._r)
     
     def set(self, key: str, value: str | float):
+        """Extends the SVGElement set function to include the circle 
+        element specific attributes as properties.
+        
+        :param key: the name of the attribute to be set
+        :param value: the value of the attribute to be set
+        """
         match key:
             case "cx":
                 self.cx = value

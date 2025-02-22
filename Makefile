@@ -30,24 +30,6 @@ PYTHON_SRC_FILES = $(addprefix $(SRC), \
 	file_handlers.py \
 )
 
-PYTHON_TEST_FILES = $(addprefix $(TESTS), \
-	test_svg_parsers.py \
-	test_svg_generators.py \
-	test_svg_writers.py \
-	test_svg_validators.py \
-	test_svg_file.py \
-	test_freecad_object_wrappers.py \
-	test_freecad_sketch_readers.py \
-	test_trigonometry.py \
-	test_freecad_sketcher_to_svg_translators.py \
-	test_freecad_svg_file.py \
-	test_svg_readers.py \
-	test_svg_element_utils.py \
-	test_svg_elements.py \
-	test_svg_to_freecad_sketcher_translators.py \
-	test_file_handlers.py \
-)
-
 ifdef OS
 	RMDIR = rd  /s /q
 	RM = del /Q
@@ -63,28 +45,7 @@ endif
 all: docs
 
 test: 
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_svg_file.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_readers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_parsers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_object_wrappers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketch_readers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_trigonometry.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketcher_to_svg_translators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_element_utils.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_elements.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_to_freecad_sketcher_translators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_file_handlers.py)
-
-$(TEST_LOGS): $(PYTHON_TEST_FILES) $(PYTHON_SRC_FILES) 
-
-$(PYTHON_TEST_FILES): 
-	echo $@
-	$(PYTHON) $@
-
+	$(PYTHON) -m unittest discover tests
 
 docs: $(DOCS_INDEX_HTML)
 
@@ -98,7 +59,6 @@ $(VENV_ACTIVATE): requirements.txt
 	python -m venv $(VENV)
 	$(PYTHON) -m pip install --upgrade pip
 	$(PIP) install -r requirements.txt
-
 
 clean:
 	make -f Makefile -C $(DOCS) clean
