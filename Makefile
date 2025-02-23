@@ -5,22 +5,11 @@ SRC = ./src
 TESTS = ./tests
 DOCS = ./docs
 
+rwildcard=$(strip $(foreach d, \
+	$(wildcard $(1:=/*)), \
+	$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d) \
+))
 
-VENV_ACTIVATE = $(VENV)/Scripts/activate
-PYTHON = $(VENV)/Scripts/python
-PIP = $(VENV)/Scripts/pip
-
-INIT_PY = $(call rwildcard, $(SRC), *__init__.py)
-SRC_PYTHON = $(call rwildcard, $(SRC), *.py)
-PYTHON_CODE = $(filter-out $(INIT_PY), $(SRC_PYTHON))
-
-TEST_LOGS = $(call rwildcard, $(TESTS), *.log)
-
-DOCS_SOURCE = $(DOCS)/source
-DOCS_BUILD = $(DOCS)/build
-DOCS_INDEX_HTML = $(DOCS_BUILD)/html/index.html
-
-PYCACHES = $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
 
 ifdef OS
 	RMDIR = @rd  /s /q
@@ -34,23 +23,37 @@ else
 	endif
 endif
 
-rwildcard=$(foreach d, \
-	$(wildcard $(1:=/*)), \
-	$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d) \
-)
+VENV_ACTIVATE = $(VENV)/Scripts/activate
+PYTHON = $(VENV)/Scripts/python
+PIP = $(VENV)/Scripts/pip
+
+INIT_PY := $(call rwildcard, $(SRC), *__init__.py)
+SRC_PYTHON := $(call rwildcard, $(SRC), *.py)
+PYTHON_CODE := $(filter-out $(INIT_PY), $(SRC_PYTHON))
+
+TEST_LOGS := $(call rwildcard, $(TESTS), *.log)
+
+DOCS_SOURCE := $(DOCS)/source
+DOCS_BUILD := $(DOCS)/build
+DOCS_DOCTREES := $(DOCS_BUILD)/doctrees
+DOCS_HTML := $(DOCS_BUILD)/html
+DOCS_INDEX_HTML := $(DOCS_BUILD)/html/index.html
+
+DOCS_RST := $(call rwildcard, $(DOCS_SOURCE), *.rst)
+DOCS_PY := $(call rwildcard, $(DOCS_SOURCE), *.py)
+DOCS_MAKE := $(DOCS)/Makefile
+
+PYCACHES := $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
 
 all: docs
 
-test: 
+test:
 	$(PYTHON) -m unittest discover tests
 
 docs: $(DOCS_INDEX_HTML)
 
-$(DOCS_INDEX_HTML): $(DOCS_SOURCE) $(PYTHON_CODE)
+$(DOCS_INDEX_HTML): $(PYTHON_CODE)
 	make -f Makefile -C $(DOCS) html
-
-poot:
-	@echo $(PYCACHES)
 
 setup: $(VENV_ACTIVATE)
 	$(PIP) install -r requirements.txt
@@ -64,6 +67,14 @@ clean:
 ifneq ($(strip $(PYCACHES)),)
 	$(RMDIR) $(call FixPath, $(PYCACHES))
 endif
+ifneq ($(strip $(wildcard $(DOCS_DOCTREES))),)
+	$(RMDIR) $(call FixPath, $(DOCS_DOCTREES))
+endif
+ifneq ($(strip $(wildcard $(DOCS_HTML))),)
+	$(RMDIR) $(call FixPath, $(DOCS_HTML))
+endif
 
 pristine: clean
+ifneq ($(strip $(wildcard $(VENV))),)
 	$(RMDIR) $(call FixPath, $(VENV))
+endif

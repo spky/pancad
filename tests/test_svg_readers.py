@@ -4,6 +4,7 @@ import unittest
 
 sys.path.append('src')
 
+import svg.elements as se
 import svg.readers as sr
 import svg.file as sf
 
@@ -13,12 +14,12 @@ class TestSVGReaders(unittest.TestCase):
         self.SAMPLE_FOLDER = "tests/sample_svgs/"
         self.OUTPUT_DUMP_FOLDER = "tests/test_output_dump/"
         self.file = sf.SVGFile()
-        root = sf.svg("svg1")
+        root = se.svg("svg1")
         
         for i in range(0, 3):
-            group = sf.g("group" + str(i))
+            group = se.g("group" + str(i))
             for j in range(0, 3):
-                path_element = sf.path("path" + str(i) + "_" + str(j))
+                path_element = se.path("path" + str(i) + "_" + str(j))
                 group.append(path_element)
             root.append(group)
         

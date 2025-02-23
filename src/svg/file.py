@@ -3,23 +3,13 @@ elements to be written to files.
 """
 from __future__ import annotations
 
-import os
 import xml.etree.ElementTree as ET
 
 import svg.writers as sw
 import svg.element_utils as seu
-import file_handlers as fh
-
+from svg.elements import SVGElement, svg
+import file_handlers
 from file_handlers import InvalidAccessModeError
-
-from svg.elements import (
-    SVGElement,
-    svg,
-    g,
-    path,
-    circle,
-    defs
-)
 
 class SVGFile(ET.ElementTree):
     """A class for svg files with a single svg element at the top that 
@@ -76,8 +66,8 @@ class SVGFile(ET.ElementTree):
             self._exists = False
             self._filepath = None
         else:
-            self._filepath = fh.filepath(filepath)
-            self._exists = fh.exists(filepath)
+            self._filepath = file_handlers.filepath(filepath)
+            self._exists = file_handlers.exists(filepath)
             if not self._exists and not self._filepath.endswith(".svg"):
                 # if the file doesn't already exist, ensure .svg extension
                 self._filepath = self._filepath + ".svg"
@@ -123,8 +113,8 @@ class SVGFile(ET.ElementTree):
         if filepath is None:
             filepath = self.filepath 
         else: 
-            filepath = fh.filepath(filepath)
-        fh.validate_operation(filepath, self.mode, "r")
+            filepath = file_handlers.filepath(filepath)
+        file_handlers.validate_operation(filepath, self.mode, "r")
         with open(filepath, self.mode) as file:
             raw_tree = ET.parse(file)
             self.svg = seu.upgrade_element(raw_tree.getroot())
@@ -139,12 +129,12 @@ class SVGFile(ET.ElementTree):
         if filepath is None:
             filepath = self.filepath
         else:
-            filepath = fh.filepath(filepath)
+            filepath = file_handlers.filepath(filepath)
         if self._declaration is None:
             self.set_declaration()
         if indent is not None:
             ET.indent(self.svg, indent)
-        fh.validate_operation(filepath, self.mode, "w")
+        file_handlers.validate_operation(filepath, self.mode, "w")
         super().write(filepath)
     
     def _validate_mode(self) -> None:
@@ -153,6 +143,6 @@ class SVGFile(ET.ElementTree):
         """
         if self._filepath is not None:
             # filepath is allowed to be None during initialization
-            fh.validate_mode(self.filepath, self.mode)
-        elif self._mode not in fh.ACCESS_MODE_OPTIONS:
+            file_handlers.validate_mode(self.filepath, self.mode)
+        elif self._mode not in file_handlers.ACCESS_MODE_OPTIONS:
             raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")

@@ -10,7 +10,6 @@ project = 'PanCAD'
 copyright = '2024, spky'
 author = 'spky'
 release = '0.0.0'
-print("running!")
 
 import sys
 from pathlib import Path

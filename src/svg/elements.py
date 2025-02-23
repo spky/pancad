@@ -13,8 +13,17 @@ import trigonometry as trig
 
 
 class SVGElement(ET.Element):
+    """A class representing the common properties and methods of all SVG 
+    1.1 elements. Elements in svg files will default to this class if a 
+    more specific subclass has not been made for that element type.
+    
+    :param tag: The name of the element's tag.
+    :param id_: The id of the element, defaults to None.
+    """
+    
     tags = None
     def __init__(self, tag: str, id_: str = None) -> None:
+        """Constructor method"""
         super().__init__(tag)
         self.ownerSVGElement = None
         if id_ is not None:
@@ -22,10 +31,21 @@ class SVGElement(ET.Element):
     
     @property
     def id_(self) -> str:
+        """The id attribute of the element.
+        
+        :getter: Returns the id as a string.
+        :setter: Sets the element attribute and more accessible id_ property
+        """
         return self._id
     
     @property
     def attrib(self):
+        """The element's attribute dictionary. Extends ElementTree.Element 
+        to ensure that public facing properties get synced when attrib is set.
+        
+        :getter: Returns a dictionary of the element's attributes
+        :setter: Sets the dictionary and properties of the element attributes
+        """
         return super().attrib
     
     @id_.setter
@@ -35,11 +55,7 @@ class SVGElement(ET.Element):
     
     @attrib.setter
     def attrib(self, attribute_dictionary: dict) -> None:
-        """Extends ElementTree.Element to ensure that public facing
-        properties get set when attrib is set
         
-        :param attribute_dictionary: dictionary of xml element attributes
-        """
         for attribute in attribute_dictionary:
             self.set(attribute, attribute_dictionary[attribute])
     
@@ -101,11 +117,10 @@ class SVGElement(ET.Element):
     
     @classmethod
     def from_element(cls, element: ET.Element) -> SVGElement:
-        """Creates a new SVGElement from an existing base 
-        ElementTree.Element object
+        """Creates a new SVGElement from an existing ElementTree.Element object.
         
         :param element: the ElementTree.Element to be upgraded
-        :return: the new SVGElement
+        :returns: the new SVGElement
         """
         if cls.tags is None:
             new_element = cls(element.tag)
@@ -120,8 +135,14 @@ class SVGElement(ET.Element):
         return new_element
 
 class svg(SVGElement):
+    """A class representing a SVG 1.1 svg tagged element.
+    
+    :param id_: The id of the element, defaults to None.
+    """
+    
     tags = ["svg", "svg:svg", "{http://www.w3.org/2000/svg}svg"]
     def __init__(self, id_: str = None) -> None:
+        """Constructor method"""
         super().__init__("svg", id_)
         self._unit = ""
         self._width = None
@@ -131,39 +152,40 @@ class svg(SVGElement):
     
     @property
     def height(self) -> str:
-        """The height of the svg file.
+        """The height of the svg element.
         
-        :getter: Returns the height string of the svg file
-        :setter: Sets the height and height_value of the file. Will 
-                 also set the unit if the unit is in the given string
+        :getter: Returns the height string of the svg element.
+        :setter: Sets the height and height_value of the element. Will 
+                 also set the unit if the unit is in the input string.
         """
         return self._height
     
     @property
     def width(self) -> str:
-        """The width of the svg file.
+        """The width of the svg element.
         
-        :getter: Returns the width string of the svg file
-        :setter: Sets the width and width_value of the file. Will 
-                 also set the unit if the unit is in the given string
+        :getter: Returns the width string of the svg file.
+        :setter: Sets the width and width_value of the element. Will 
+                 also set the unit if the unit is in the input string.
         """
         return self._width
     
     @property
     def unit(self):
-        """The unit of the svg file. Only replaces the text, 
-        this does not convert all the values in the file. The unit is 
-        not an actual property on the svg element, it just 
-        appears in properties like width and height
+        """The unit of the svg element. The unit is not an xml property on 
+        the svg element, it just appears in properties like width and 
+        height.
         
         :getter: Returns the unit's name
-        :setter: Sets the unit and appends it to the width and height
+        :setter: Sets the unit and appends it to the width and height. 
+                 Does not convert the values in the element, just replaces the 
+                 text
         """
         return self._unit
     
     @property
     def viewBox(self) -> str:
-        """The viewBox of the svg file.
+        """The viewBox of the svg element.
         
         :getter: Returns the svg viewBox string
         :setting: Takes either a 4 element float list or a viewBox 
@@ -194,8 +216,8 @@ class svg(SVGElement):
     @unit.setter
     def unit(self, unit: str) -> None:
         if unit != sv.length_unit(unit):
-            raise ValueError("Provided unit: " + str(unit) + " can only "
-                             + "contain a unit string, not anything else")
+            raise ValueError(f"Provided '{unit}' can only contain an "
+                             + f"svg unit string, nothing else")
         self._unit = unit
         if self._width_value is not None:
             self.width = str(self._width_value) + self._unit
@@ -208,24 +230,18 @@ class svg(SVGElement):
             self._viewBox = viewBox
         elif isinstance(viewBox, list):
             if len(viewBox) != 4:
-                raise ValueError(str(viewBox) + " must have 4 elements")
+                raise ValueError(f"{viewBox} must have 4 elements")
             elif viewBox[2] < 0 or viewBox[3] < 0:
-                raise ValueError(
-                    str(viewBox)
-                    + " must have positive numbers in positions 2 and 3"
-                )
+                raise ValueError(f"{viewBox} elements 2 and 3 must be >0")
             self._viewBox = " ".join([str(viewBox[0]), str(viewBox[1]),
                                       str(viewBox[2]), str(viewBox[3])])
         else:
-            raise ValueError(
-                str(viewBox)
-                + " needs to be a list or str to be set as a viewBox"
-            )
+            raise ValueError(f"{viewBox} viewBox must be a list or str")
         super().set("viewBox", self._viewBox)
     
     def set(self, key: str, value: str) -> None:
-        """Extends the SVGElement set function to include the svg 
-        element specific attributes as properties.
+        """Extends the SVGElement set function to sync svg element 
+        specific attributes as properties.
         
         :param key: the name of the attribute to be set
         :param value: the value of the attribute to be set
@@ -244,7 +260,7 @@ class svg(SVGElement):
     
     def auto_size(self, margin: float = 0, scope: SVGElement = None) -> None:
         """Sizes the view of the svg based on all its subelements or 
-        based on a given scope element's sub elements
+        based on a given scope element's sub elements.
         
         :param margin: The margin around the minimum shape, has the 
                        same units as the svg file, defaults to 0.
@@ -269,13 +285,26 @@ class svg(SVGElement):
             raise ValueError("element has no geometry to be auto-sized")
 
 class g(SVGElement):
+    """A class representing a SVG 1.1 g tagged element.
+    
+    :param id_: The id of the element, defaults to None.
+    """
+    
     tags = ["g", "svg:g", "{http://www.w3.org/2000/svg}g"]
     def __init__(self, id_: str = None):
+        """Constructor method"""
         super().__init__("g", id_)
 
 class path(SVGElement):
+    """A class representing a SVG 1.1 path tagged element.
+    
+    :param id_: The id of the element, defaults to None.
+    :param d: The path data string of the element, defaults to None
+    """
+    
     tags = ["path", "svg:path", "{http://www.w3.org/2000/svg}path"]
     def __init__(self, id_: str = None, d: str = None):
+        """Constructor method"""
         super().__init__("path", id_)
         if d is not None:
             self.d = d
@@ -291,7 +320,7 @@ class path(SVGElement):
     
     @property
     def geometry(self) -> list[dict]:
-        """The geometry held in the element's path data, read-only.
+        """The geometry held in the element's path data. Read-only.
         
         :getter: Returns a list of dictionaries containing geometry info.
         """
@@ -309,7 +338,6 @@ class path(SVGElement):
         :param key: the name of the attribute to be set
         :param value: the value of the attribute to be set
         """
-        
         match key:
             case "d":
                 self.d = value
@@ -317,9 +345,18 @@ class path(SVGElement):
                 super().set(key, value)
 
 class circle(SVGElement):
+    """A class representing a SVG 1.1 circle tagged element
+    
+    :param id_: The id of the element, defaults to None.
+    :param cx: The center x coordinate
+    :param cy: The center y coordinate
+    :param r: The circle radius
+    """
+    
     tags = ["circle", "svg:circle", "{http://www.w3.org/2000/svg}circle"]
     def __init__(self, id_: str = None,
                  cx: float = None, cy: float = None, r: float = None):
+        """Constructor method"""
         super().__init__("circle", id_)
         if cx is not None:
             self.cx = cx
@@ -407,6 +444,12 @@ class circle(SVGElement):
                 super().set(key, value)
 
 class defs(SVGElement):
+    """A class representing a SVG 1.1 defs tagged element
+    
+    :param id_: The id of the element, defaults to None.
+    """
+    
     tags = ["defs", "svg:defs", "{http://www.w3.org/2000/svg}defs"]
     def __init__(self, id_: str = None):
+        """Constructor method"""
         super().__init__("defs", id_)

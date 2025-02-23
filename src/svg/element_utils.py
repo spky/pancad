@@ -1,5 +1,5 @@
 """A module providing functions to change SVGElements. The functions in 
-this module should only take ElementTree.Element or SVG Elements and 
+this module should only take ElementTree.Element or SVGElements and 
 output SVGElement class elements or subclasses of that class.
 """
 

@@ -17,18 +17,21 @@ Reading design information from SVG files
 #########################################
 
 .. automodule:: svg.parsers
+    :no-index:
     :members:
 
 Generating SVG commands
 #######################
 
 .. automodule:: svg.generators
+    :no-index:
     :members:
 
 Validating SVG syntax
 #####################
 
 .. automodule:: svg.validators
+    :no-index:
     :members:
 
 Writing SVG elements and files
@@ -36,6 +39,7 @@ Writing SVG elements and files
 
 
 .. automodule:: svg.writers
+    :no-index:
     :members:
 .. autoclass:: svg.file.SVGFile
     :members:
@@ -54,4 +58,5 @@ Trigonometry
 ############
 
 .. automodule:: trigonometry
+    :no-index:
     :members:

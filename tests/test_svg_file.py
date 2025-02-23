@@ -6,9 +6,10 @@ import os
 
 sys.path.append('src')
 
+import svg.element_utils as seu
+import svg.elements as se
 import svg.file as sf
 import svg.generators as sg
-import svg.element_utils as seu
 
 from file_handlers import InvalidAccessModeError
 
@@ -40,14 +41,14 @@ class TestSVGFileInternal(unittest.TestCase):
     
     def test_setting_svg(self):
         file = sf.SVGFile()
-        svg = sf.svg("svg1")
+        svg = se.svg("svg1")
         file.svg = svg
     
     def test_resetting_svg(self):
         # Checks whether the default properties get removed from original
         file = sf.SVGFile()
-        svg1 = sf.svg("svg1")
-        svg2 = sf.svg("svg2")
+        svg1 = se.svg("svg1")
+        svg2 = se.svg("svg2")
         file.svg = svg1
         file.svg = svg2
         self.assertEqual(ET.tostring(svg1), b'<svg id="svg1" />')
@@ -73,16 +74,16 @@ class TestSVGFileWriting(unittest.TestCase):
         self.default_style.set_property("stroke-width", "0.010467px")
         self.default_style.set_property("stroke-linecap", "butt")
         self.default_style.set_property("stroke-linejoin", "miter")
-        self.svg = sf.svg("svg1")
+        self.svg = se.svg("svg1")
         self.svg.unit = "in"
     
     def test_write(self):
         filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write")
         file = sf.SVGFile(filepath, "w")
-        self.svg.append(sf.g("g1"))
+        self.svg.append(se.g("g1"))
         self.svg.sub("g1").set("style", self.default_style.string)
         
-        self.svg.sub("g1").append(sf.path("path1", "M 0 0 1 1"))
+        self.svg.sub("g1").append(se.path("path1", "M 0 0 1 1"))
         
         self.svg.auto_size()
         file.svg = self.svg
@@ -91,10 +92,10 @@ class TestSVGFileWriting(unittest.TestCase):
     def test_write_circle(self):
         filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write_circle")
         file = sf.SVGFile(filepath, "w")
-        self.svg.append(sf.g("g1"))
+        self.svg.append(se.g("g1"))
         self.svg.sub("g1").set("style", self.default_style.string)
         
-        self.svg.sub("g1").append(sf.circle("c1", 0.5, 0.5, 0.5))
+        self.svg.sub("g1").append(se.circle("c1", 0.5, 0.5, 0.5))
         
         self.svg.auto_size()
         file.svg = self.svg

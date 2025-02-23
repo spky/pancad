@@ -3,7 +3,8 @@ API
 
 .. autosummary::
    :toctree: generated
-
+   :recursive:
+    
    svg.element_utils
    svg.elements
    svg.enum_color_keywords
