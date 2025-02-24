@@ -32,20 +32,6 @@ class TestSVGPath(unittest.TestCase):
                 out = sp.clean_command(t[0])
                 self.assertEqual(out, t[1])
     
-    def test_length_unit(self):
-        tests = [
-            ["1.0in", "in"],
-            ["1mm", "mm"],
-            ["1", ""],
-            [1, ""],
-            [1.1, ""],
-        ]
-        for t in tests:
-            with self.subTest(t=t):
-                i = t[0]
-                out = sp.length_unit(i)
-                self.assertEqual(out, t[1])
-    
     def test_parse_moveto(self):
         cmd = "M 1.4429557,0.40800819 0.31844541,0.31844541"
         ans = [

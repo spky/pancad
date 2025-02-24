@@ -8,7 +8,6 @@
 
    .. autosummary::
    
-      print_object_attributes
       read_2d_vector
       read_all_sketches_from_file
       read_circle

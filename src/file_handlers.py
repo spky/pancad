@@ -45,7 +45,8 @@ def exists(path: str) -> bool:
         raise InvalidFilepathError(f"Filepath: '{path}'")
 
 def validate_mode(path:str, mode:str) -> None:
-    """Checks whether the file mode is valid on the given filepath
+    """Checks whether the file mode is valid on the given filepath.
+    
     :param path: a string of the name and location of the file
     :param mode: the single character string describing the file's 
                  mode. read (r), write (w), exclusive creation (x), and 
@@ -63,7 +64,8 @@ def validate_mode(path:str, mode:str) -> None:
 def validate_operation(path: str, mode: str, operation_type: str) -> None:
     """Checks whether the file mode is being violated by a specific 
     file operation and will raise an errors when settings are 
-    violated to prevent data loss
+    violated to prevent data loss.
+    
     :param path: a string of the name and location of the file
     :param mode: the single character string describing the file's 
                  mode. read (r), write (w), exclusive creation (x), and 
@@ -85,7 +87,7 @@ def validate_operation(path: str, mode: str, operation_type: str) -> None:
         raise FileNotFoundError(f"Filepath: '{path}'")
 
 class InvalidAccessModeError(ValueError):
-    """Raise when a file access mode is not ACCESS_MODE_OPTIONS"""
+    """Raise when a file access mode is not in ACCESS_MODE_OPTIONS"""
 
 class InvalidOperationModeError(ValueError):
     """Raise when a file modification operation mode is not in 

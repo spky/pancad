@@ -3,16 +3,12 @@ and an svg file. This module is not intended to generate the actual
 elements or objects in either format, it only takes textual 
 information from svg files and converts it into the equivalent 
 information in FreeCAD. This module is intended to be the actual 'baton 
-pass' point, where all the work before this was dealing with FreeCAD 
-and everything after this is dealing with SVG.
+pass' point, where all the work before this was dealing with SVG 
+and everything after this is dealing with FreeCAD.
 """
-
-import sys
-import math
 
 import trigonometry as trig
 import svg.parsers as sp
-import svg.generators as sg
 
 def line(svg_properties: dict) -> dict:
     """Returns a dictionary of equivalent FreeCAD properties to recreate 
@@ -80,12 +76,16 @@ def point(svg_properties: dict) -> dict:
     :returns: FreeCAD point properties to be used to create an equivae
     """
     return {
-        #"id": svg_properties["id"],
         "location": svg_properties["center"],
         "geometry_type": "point",
     }
 
 def ellipse(svg_properties: dict) -> dict:
+    """TODO: Placeholder for ellipse translator implementation"""
+    pass
+
+def elliptical_arc(freecad_properties: dict) -> dict:
+    """TODO: Placeholder for elliptical arc translator implementation"""
     pass
 
 def circle(svg_properties: dict) -> dict:
@@ -113,26 +113,13 @@ def freecad_id_from_svg_id(svg_id: str, geometry_type: str) -> int:
     svg_id = svg_id.replace("_0", "")
     return int(svg_id)
 
-def check_path_data(path_data: str, id_: str, geometry_type:str) -> dict:
-    """Raises a value error if the number of commands does not equal 
-    1 or if the geometry type does not match the given type"""
-    path_dict_list = sp.path_data_to_dicts(path_data)
-    if len(path_dict_list) != 1:
-        raise ValueError(str(path_data)
-                         + " has too many commands to map "
-                         + "into FreeCAD using this translator")
-    elif path_dict_list[0]["geometry_type"] != geometry_type:
-        raise ValueError(path_dict_list[0]["geometry_type"]
-                         + " is the wrong geometry type, expected: "
-                         + geometry_type)
-    else:
-        path_dict = path_dict_list[0]
-        path_dict["id"] = freecad_id_from_svg_id(id_, geometry_type)
-        return path_dict
-
 def translate_geometry(svg_geometry: list[dict]) -> list[dict]:
     """Returns a list of dictionaries that have been translated from 
     svg to freecad properties
+    
+    :param svg_properties: geometry properties from an svg file
+    :returns: a list of FreeCAD geometry dictionaries to create equivalent 
+              FreeCAD shapes
     """
     fc_geometry = []
     for g in svg_geometry:

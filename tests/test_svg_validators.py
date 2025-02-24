@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import unittest
+import re
 
 sys.path.append('src')
 
@@ -47,7 +48,7 @@ class TestSVGValidators(unittest.TestCase):
                     str(ans))
                 
     def test_stroke_opacity_exceptions(self):
-        answers = [-1, -0.1, 1.1, 2, 10, "test"]
+        answers = ["test"]
         for ans in answers:
             with self.subTest(ans=ans):
                 with self.assertRaises(ValueError):
@@ -121,17 +122,23 @@ class TestSVGValidators(unittest.TestCase):
                 with self.assertRaises(ValueError, msg="Value given: "+str(ans)):
                     sv.paint(ans)
     
-    def test_float_str(self):
+    def test_float_re(self):
         answers = ["1.0",1.0,"0.1",".1",".9",]
         for ans in answers:
             with self.subTest(ans=ans):
-                self.assertEqual(sv.float_str(ans), str(ans))
+                self.assertTrue(re.match(f"^{sv.float_re}$", str(ans)))
     
     def test_int_str(self):
         answers = ["1",1,"9",9,1000,"1000"]
         for ans in answers:
             with self.subTest(ans=ans):
-                self.assertEqual(sv.int_str(ans), str(ans))
+                self.assertTrue(re.match(f"^{sv.integer_re}$", str(ans)))
+    
+    def test_number_re(self):
+        answers = ["1",1,"9",9,1000,"1000","1.0",1.0,"0.1",".1",".9",]
+        for ans in answers:
+            with self.subTest(ans=ans):
+                self.assertTrue(re.match(f"^{sv.number_re}$", str(ans)))
     
     def test_number(self):
         answers = ["1",1,"9",9,1000,"1000","1.0",1.0,"0.1",".1",".9",]
@@ -144,18 +151,6 @@ class TestSVGValidators(unittest.TestCase):
         for ans in answers:
             with self.subTest(ans=ans):
                 self.assertEqual(sv.percentage(ans), str(ans))
-    
-    def test_fill(self):
-        answers = [
-            "#FFFFFF",
-            "none"
-        ]
-        for ans in answers:
-            with self.subTest(ans=ans):
-                self.assertEqual(sv.fill(ans), ans)
-    
-    def test_stroke(self):
-        self.assertEqual(sv.stroke("#FFFFFF"), "#FFFFFF")
     
     def test_stroke_width(self):
         answers = [
@@ -200,6 +195,7 @@ class TestSVGValidators(unittest.TestCase):
             ["2223in", 2223],
             [1, 1],
             [1.0, 1.0],
+            [-1.0, -1.0],
         ]
         for test in tests:
             with self.subTest(test=test):

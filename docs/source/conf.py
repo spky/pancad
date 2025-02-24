@@ -22,9 +22,7 @@ import svg.enum_color_keywords
 import svg.file
 import svg.generators
 import svg.parsers
-import svg.readers
 import svg.validators
-import svg.writers
 
 import freecad.object_wrappers
 import freecad.sketch_readers

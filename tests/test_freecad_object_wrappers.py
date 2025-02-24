@@ -10,17 +10,6 @@ import FreeCAD as App
 import Part
 import file_handlers
 
-class TestFreeCADObjectWrappers(unittest.TestCase):
-    
-    def setUp(self):
-        self.FOLDER = 'tests/sample_freecad/'
-        self.FILENAME = 'FreeCAD_Test_Model.FCStd'
-        self.path = self.FOLDER + self.FILENAME
-        self.fc = fcow.FreeCADModel(self.path)
-    
-    def test_init(self):
-        pass
-
 class TestSketch(unittest.TestCase):
     
     def setUp(self):

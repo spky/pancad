@@ -38,12 +38,9 @@ Writing SVG elements and files
 ##############################
 
 
-.. automodule:: svg.writers
+.. automodule:: svg.file
     :no-index:
     :members:
-.. autoclass:: svg.file.SVGFile
-    :members:
-
 
 FreeCAD Function Explanations
 -----------------------------

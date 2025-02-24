@@ -11,9 +11,7 @@ API
    svg.file
    svg.generators
    svg.parsers
-   svg.readers
    svg.validators
-   svg.writers
    freecad.object_wrappers
    freecad.sketch_readers
    translators.freecad_sketcher_to_svg

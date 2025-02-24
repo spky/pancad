@@ -1,46 +1,59 @@
-"""A module providing a class that will read FreeCAD files and 
-convert information in them into equvalent SVGs
+"""A module providing a class that will read FreeCAD files and convert 
+information in them into equvalent SVGs
 """
-from __future__ import annotations
-import os
-from pathlib import Path
 
-import svg.file as sf
+from __future__ import annotations
+
+import Sketcher
+
 import svg.elements as se
 import freecad.sketch_readers as fsr
 import translators.freecad_sketcher_to_svg as fc_to_svg
 import translators.svg_to_freecad_sketcher as svg_to_fc
-import Sketcher
 import svg.element_utils as seu
 
-
 class SketchSVG(se.svg):
+    """A class representing svg elements containing FreeCAD sketch information.
+    """
+    
     point_radius = "0.1"
+    
     def __init__(self) -> None:
+        """Constructor method"""
+        self.geometry_g = None
         super().__init__()
     
     def add_geometry(self, fc_geometry: dict) -> None:
-        match fc_geometry["geometry_type"]:
+        """Adds geometry from a FreeCAD geometry dictionary to the svg's 
+        geometry group.
+        
+        :param fc_geometry: A dictionary containing FreeCAD geometry info
+        """
+        geometry_type = fc_geometry["geometry_type"]
+        match geometry_type:
             case "line" | "circular_arc":
                 self.geometry_g.append(se.path(fc_geometry["id"],
-                                               fc_geometry["d"]))
+                                               fc_geometry["d"])
+                )
             case "point":
                 self.geometry_g.append(se.circle(fc_geometry["id"],
                                                  fc_geometry["cx"],
                                                  fc_geometry["cy"],
-                                                 self.point_radius))
+                                                 self.point_radius)
+                )
             case "circle":
                 self.geometry_g.append(se.circle(fc_geometry["id"],
                                                  fc_geometry["cx"],
                                                  fc_geometry["cy"],
-                                                 fc_geometry["r"]))
+                                                 fc_geometry["r"])
+                )
             case _:
-                raise ValueError(str(fc_geometry["geometry_type"])
-                                 + "is not a supported geometry type")
+                raise ValueError(f"'{geometry_type}' is not supported")
     
     @property
     def geometry(self) -> list[dict]:
-        """Returns svg geometry from all the svg's subelements.
+        """Returns svg geometry from all the svg's subelements. Read-only.
+        
         :returns: a list of svg geometry dictionaries
         """
         geo_list = []
@@ -56,6 +69,7 @@ class SketchSVG(se.svg):
     
     def get_freecad_dict(self) -> list[dict]:
         """Returns FreeCAD geometry from all the svg's subelements.
+        
         :returns: a list of FreeCAD geometry dictionaries
         """
         return svg_to_fc.translate_geometry(self.geometry)
@@ -63,7 +77,12 @@ class SketchSVG(se.svg):
     @classmethod
     def from_sketch(cls, sketch: Sketcher.Sketch,
                     unit: str) -> FreeCADSketchSVG:
-        """Returns a FreeCADSketchSVG made from a FreeCAD Sketch"""
+        """Returns a new SketchSVG made from a FreeCAD Sketch
+        
+        :param sketch: A FreeCAD Sketcher.Sketch object to convert to svg
+        :param unit: The length unit used by the sketch
+        :returns: A new FreeCAD SketchSVG object
+        """
         new_sketch_svg = cls()
         new_sketch_svg.unit = unit
         new_sketch_svg.Label = sketch.Label
@@ -80,7 +99,11 @@ class SketchSVG(se.svg):
     
     @classmethod
     def from_element(cls, svg_element: se.svg) -> FreeCADSketchSVG:
-        """Returns a FreeCADSketchSVG made from an svg file"""
+        """Returns a FreeCADSketchSVG made from an svg element
+        
+        :param svg_element: A svg element to make a FreeCAD sketch from
+        :returns: A new FreeCAD SketchSVG object
+        """
         new_sketch_svg = super().from_element(svg_element)
         for sub in list(svg_element):
             new_sketch_svg.append(seu.upgrade_element(sub))

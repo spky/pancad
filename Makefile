@@ -1,5 +1,3 @@
-# Redefine OS dependent commands for Windows or Linux
-# WARNING: Linux commands haven't been tested
 VENV = ./venv
 SRC = ./src
 TESTS = ./tests
@@ -10,7 +8,8 @@ rwildcard=$(strip $(foreach d, \
 	$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d) \
 ))
 
-
+# Redefine OS dependent commands for Windows or Linux
+# WARNING: Linux commands haven't been tested
 ifdef OS
 	RMDIR = @rd  /s /q
 	RM = del /Q

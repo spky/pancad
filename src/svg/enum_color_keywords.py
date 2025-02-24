@@ -1,10 +1,14 @@
 """A module that provides the color keywords that svg recognizes for 
-its color datatype in a ColorKey enum
+its color datatype in a Color enum
 """
 
 from enum import StrEnum
 
-class ColorKey(StrEnum):
+class Color(StrEnum):
+    """A StrEnum class for specifying svg colors. Color options are from the 
+    svg 1.1 specification at this link:  
+    https://www.w3.org/TR/2011/REC-SVG11-20110816/types.html#ColorKeywords
+    """
     aliceblue = "rgb(240, 248, 255)"
     antiquewhite = "rgb(250, 235, 215)"
     aqua = "rgb( 0, 255, 255)"

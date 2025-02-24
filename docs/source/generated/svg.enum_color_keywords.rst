@@ -8,5 +8,5 @@
 
    .. autosummary::
    
-      ColorKey
+      Color
    

@@ -8,10 +8,10 @@
 
    .. autosummary::
    
-      check_path_data
       circle
       circular_arc
       ellipse
+      elliptical_arc
       freecad_id_from_svg_id
       line
       point

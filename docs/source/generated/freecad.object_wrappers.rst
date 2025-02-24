@@ -15,11 +15,5 @@
    .. autosummary::
    
       File
-      FreeCADBody
-      FreeCADModel
-      FreeCADObject
-      FreeCADPart
-      FreeCADPlane
-      FreeCADSketch
       Sketch
    

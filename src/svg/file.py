@@ -1,22 +1,24 @@
 """A module providing a class to represent the svg file and collect xml 
 elements to be written to files.
 """
-from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-import svg.writers as sw
 import svg.element_utils as seu
-from svg.elements import SVGElement, svg
+from svg.elements import SVGElement
 import file_handlers
 from file_handlers import InvalidAccessModeError
 
 class SVGFile(ET.ElementTree):
     """A class for svg files with a single svg element at the top that 
     contains multiple other elements. Is not intended to make xml 
-    documents with multiple separate svg elements
+    documents with multiple separate svg elements.
+    
+    :param filepath: The filepath of the svg file, defaults to None
+    :param mode: The access mode of the svg file, defaults to r
     """
     def __init__(self, filepath: str = None, mode: str = "r") -> None:
+        """Constructor method"""
         self._mode = mode
         self._declaration = None
         self._svg = None
@@ -27,25 +29,39 @@ class SVGFile(ET.ElementTree):
     
     @property
     def filepath(self) -> str:
+        """The filepath of the svg file
+        
+        :getter: Returns the filepath
+        :setter: Sets the filepath after checking that it is a valid path and 
+                 that it does not violate the access mode setting
+        """
         return self._filepath
     
     @property
     def mode(self) -> str:
+        """The access mode of the svg file. Can be r (read-only), w 
+        (write-only), x (exclusive creation), and + (reading and writing)
+        
+        :getter: Returns the access mode
+        :setter: Sets the access mode and checks whether it is violated by 
+                 the filepath
+        """
         return self._mode
     
     @property
     def svg(self) -> ET.Element:
+        """The root svg node of the svg file.
+        
+        :getter: Returns the svg element of the file
+        :setter: Sets the root node of the svg file to the new svg. If there 
+                 was a previous svg, it will first remove the old one and 
+                 replace it with this new one. The new svg will also have the 
+                 svg namespace attached to it
+        """
         return self._svg
     
     @svg.setter
     def svg(self, element: svg) -> None:
-        """Sets the file's main svg element, while also adding the 
-        default properties like xmlns to it. If an existing root svg 
-        has already been set, it has its default properties removed and 
-        then is replaced in the element tree.
-        :param svg: an svg element, which is a child class of
-                    xml.etree.ElementTree.Element
-        """
         if self._svg is not None:
             del self._svg.attrib["xmlns"]
             del self._svg.attrib["xmlns:svg"]
@@ -57,11 +73,6 @@ class SVGFile(ET.ElementTree):
     
     @filepath.setter
     def filepath(self, filepath: str) -> None:
-        """Sets the filepath of the svg and checks whether it can be 
-        written to
-        
-        :param filepath: a string of the name and location of the file
-        """
         if filepath is None:
             self._exists = False
             self._filepath = None
@@ -75,13 +86,6 @@ class SVGFile(ET.ElementTree):
     
     @mode.setter
     def mode(self, mode: str) -> None:
-        """Checks the access mode controlling this file session. Can be r 
-        (read-only), w (write-only), x (exclusive creation), and + 
-        (reading and writing)
-        
-        :param mode: a string of one character describing the 
-                            access mode of the session
-        """
         self._mode = mode
         self._validate_mode()
     
@@ -102,13 +106,15 @@ class SVGFile(ET.ElementTree):
                         "standalone": standalone}
         if self._declaration is not None:
             self.getroot().remove(self._declaration)
-        self._declaration = sw.xml_PI(instructions, tail)
+        self._declaration = self.xml_PI(instructions, tail)
         self.getroot().insert(0, self._declaration)
     
     def parse(self, filepath: str = None) -> None:
         """Extends the ElementTree parse method to upgrade the 
-        elements into SVGElements
-        :param filepath: The name and location of the file to parse
+        elements into SVGElements.
+        
+        :param filepath: The filepath of the svg file to parse, defaults to 
+                         None which will cause it to read the internal filepath
         """
         if filepath is None:
             filepath = self.filepath 
@@ -123,8 +129,11 @@ class SVGFile(ET.ElementTree):
         """Writes the svg file to either a given filepath or, if given 
         None, to the initializing filepath. Will not update the 
         internal filepath so the file can be written to other locations.
-        :param filepath: The name and location of the file to parse
-        :param indent: The set of characters to place before xml levels
+        
+        :param filepath: The filepath to write to. Defaults to None, which 
+                         will cause it to write to the internal filepath
+        :param indent: The set of characters to place before xml levels. 
+                       Defaults to None
         """
         if filepath is None:
             filepath = self.filepath
@@ -139,10 +148,30 @@ class SVGFile(ET.ElementTree):
     
     def _validate_mode(self) -> None:
         """Checks whether the file mode is being violated and will 
-        raise an error if it is
+        raise an error if it is.
         """
         if self._filepath is not None:
             # filepath is allowed to be None during initialization
             file_handlers.validate_mode(self.filepath, self.mode)
         elif self._mode not in file_handlers.ACCESS_MODE_OPTIONS:
             raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")
+    
+    @staticmethod
+    def xml_PI(properties: dict, tail: str = "\n") -> ET.Element:
+        """Returns an processing instruction element to be placed in an xml
+        file. The declaration will have a newline 
+        appended to the end of it unless it an alternative is provided
+        
+        :param properties: A dictionary full of key value pairs of the 
+                           format 'property_name':'property_value'
+        :param tail: A string of what should be placed at the end of the PI
+        :returns: A Processing Instruction Element with the given 
+                  properties as its text.
+        """
+        props = []
+        for prop in properties:
+            props.append(prop + '="' + properties[prop] + '"')
+        text = " ".join(props)
+        element = ET.ProcessingInstruction("xml", text)
+        element.tail = tail
+        return element
