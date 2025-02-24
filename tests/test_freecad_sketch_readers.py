@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import freecad_sketch_readers as fsr
+import freecad.sketch_readers as fsr
 FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/bin' 
 sys.path.append(FREECADPATH) 
 
@@ -109,6 +109,10 @@ class TestFreeCADSketchObjectReaders(unittest.TestCase):
     def test_read_all_sketches_from_file(self):
         # Checks whether this errors out, mediocre test
         out = fsr.read_all_sketches_from_file(self.path)
+    
+    def test_read_sketch_by_label(self):
+        out = fsr.read_sketch_by_label(self.path, "xy_origin_circle")
+        self.assertEqual(out.Label, "xy_origin_circle")
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

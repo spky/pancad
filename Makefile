@@ -1,47 +1,17 @@
+VENV = ./venv
+SRC = ./src
+TESTS = ./tests
+DOCS = ./docs
+
+rwildcard=$(strip $(foreach d, \
+	$(wildcard $(1:=/*)), \
+	$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d) \
+))
+
 # Redefine OS dependent commands for Windows or Linux
 # WARNING: Linux commands haven't been tested
-VENV = $(call FixPath, ./venv/)
-VENV_ACTIVATE = $(call FixPath, $(VENV)Scripts/activate)
-PYTHON = $(call FixPath, $(VENV)Scripts/python)
-PIP = $(call FixPath, $(VENV)Scripts/pip)
-SRC = $(call FixPath, ./src/)
-PYCACHE = $(call FixPath, $(SRC)__pycache__)
-TESTS = $(call FixPath, ./tests/)
-TEST_LOGS = $(call FixPath, $(wildcard $(TESTS)logs/*.log))
-DOCS = $(call FixPath, ./docs/)
-DOCS_SOURCE = $(call FixPath, $(DOCS)/source)
-DOCS_BUILD = $(call FixPath, $(DOCS)/build)
-DOCS_INDEX_HTML = $(call FixPath, $(DOCS_BUILD)/html/index.html)
-
-PYTHON_SRC_FILES = $(addprefix $(SRC), \
-	svg_generators.py \
-	svg_parsers.py \
-	svg_writers.py \
-	free_cad_object_wrappers.py \
-	svg_validators.py \
-	svg_file.py \
-	free_cad_object_wrappers.py \
-	freecad_sketch_readers.py \
-	trigonometry.py \
-	freecad_sketcher_to_svg_translators.py \
-	)
-
-PYTHON_TEST_FILES = $(addprefix $(TESTS), \
-	svg_d_attribute_parsing_test.py \
-	test_svg_generators.py \
-	test_svg_writers.py \
-	test_svg_validators.py \
-	test_svg_file.py \
-	test_freecad_object_wrappers.py \
-	test_freecad_sketch_readers.py \
-	test_trigonometry.py \
-	test_freecad_sketcher_to_svg_translators.py \
-	test_freecad_svg_file.py \
-	)
-
-
 ifdef OS
-	RMDIR = rd  /s /q
+	RMDIR = @rd  /s /q
 	RM = del /Q
 	FixPath = $(subst /,\,$1)
 else
@@ -52,39 +22,36 @@ else
 	endif
 endif
 
+VENV_ACTIVATE = $(VENV)/Scripts/activate
+PYTHON = $(VENV)/Scripts/python
+PIP = $(VENV)/Scripts/pip
+
+INIT_PY := $(call rwildcard, $(SRC), *__init__.py)
+SRC_PYTHON := $(call rwildcard, $(SRC), *.py)
+PYTHON_CODE := $(filter-out $(INIT_PY), $(SRC_PYTHON))
+
+TEST_LOGS := $(call rwildcard, $(TESTS), *.log)
+
+DOCS_SOURCE := $(DOCS)/source
+DOCS_BUILD := $(DOCS)/build
+DOCS_DOCTREES := $(DOCS_BUILD)/doctrees
+DOCS_HTML := $(DOCS_BUILD)/html
+DOCS_INDEX_HTML := $(DOCS_BUILD)/html/index.html
+
+DOCS_RST := $(call rwildcard, $(DOCS_SOURCE), *.rst)
+DOCS_PY := $(call rwildcard, $(DOCS_SOURCE), *.py)
+DOCS_MAKE := $(DOCS)/Makefile
+
+PYCACHES := $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
+
 all: docs
 
-#$(TEST_LOGS)
-test: 
-	$(PYTHON) $(call FixPath, $(TESTS)svg_d_attribute_parsing_test.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_generators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_validators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_writers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_svg_file.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_object_wrappers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketch_readers.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_trigonometry.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_sketcher_to_svg_translators.py)
-	$(PYTHON) $(call FixPath, $(TESTS)test_freecad_svg_file.py)
-
-#test: 
-#	$(PYTHON) $(call FixPath, $(TESTS)/svg_d_attribute_parsing_test.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_generators.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_writers.py)
-#	$(PYTHON) $(call FixPath, $(TESTS)/test_svg_validators.py)
-
-$(TEST_LOGS): $(PYTHON_TEST_FILES) $(PYTHON_SRC_FILES) 
-#	echo $?
-#	echo $(PYTHON_TEST_FILES)
-
-$(PYTHON_TEST_FILES): 
-	echo $@
-	$(PYTHON) $@
-
+test:
+	$(PYTHON) -m unittest discover tests
 
 docs: $(DOCS_INDEX_HTML)
 
-$(DOCS_INDEX_HTML): $(DOCS_SOURCE) $(PYTHON_SRC_FILES)
+$(DOCS_INDEX_HTML): $(PYTHON_CODE)
 	make -f Makefile -C $(DOCS) html
 
 setup: $(VENV_ACTIVATE)
@@ -95,10 +62,18 @@ $(VENV_ACTIVATE): requirements.txt
 	$(PYTHON) -m pip install --upgrade pip
 	$(PIP) install -r requirements.txt
 
-
 clean:
-	make -f Makefile -C $(DOCS) clean
-	$(RMDIR) $(PYCACHE)
+ifneq ($(strip $(PYCACHES)),)
+	$(RMDIR) $(call FixPath, $(PYCACHES))
+endif
+ifneq ($(strip $(wildcard $(DOCS_DOCTREES))),)
+	$(RMDIR) $(call FixPath, $(DOCS_DOCTREES))
+endif
+ifneq ($(strip $(wildcard $(DOCS_HTML))),)
+	$(RMDIR) $(call FixPath, $(DOCS_HTML))
+endif
 
 pristine: clean
-	$(RMDIR) $(VENV)
+ifneq ($(strip $(wildcard $(VENV))),)
+	$(RMDIR) $(call FixPath, $(VENV))
+endif

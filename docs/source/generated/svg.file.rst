@@ -1,7 +1,7 @@
-﻿svg\_file
-=========
+﻿svg.file
+========
 
-.. automodule:: svg_file
+.. automodule:: svg.file
 
    
    .. rubric:: Classes

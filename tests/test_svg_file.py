@@ -2,109 +2,104 @@ import sys
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
-
+import os
 
 sys.path.append('src')
 
-import svg_file as sf
+import svg.element_utils as seu
+import svg.elements as se
+import svg.file as sf
+import svg.generators as sg
 
-class TestSVGFile(unittest.TestCase):
+from file_handlers import InvalidAccessModeError
+
+
+class TestSVGFileInternal(unittest.TestCase):
     
     def setUp(self):
-        file_name = "init_test.svg"
-        self.file = sf.SVGFile(file_name, unit="in")
-        self.folder = "tests/test_output_dump"
+        self.SAMPLE_FOLDER = "tests/sample_svgs"
+        self.DUMP_FOLDER = "tests/test_output_dump"
     
-    def test_add_svg(self):
-        self.file.add_svg()
-        self.file.set_viewbox("0in", "0in")
-        self.file.add_svg()
-        self.file.set_viewbox("0in", "0in")
-        texts = []
-        for s in self.file.svgs:
-            texts.append(ET.tostring(self.file.svgs[s], encoding="UTF-8"))
-        ans = [
-            b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" id="svg1" width="0in" height="0in" viewBox="0 0 0 0" />',
-            b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" id="svg2" width="0in" height="0in" viewBox="0 0 0 0" />',
+    def test_init(self):
+        tests = [
+            [os.path.join(self.SAMPLE_FOLDER,"input_sketch_test.svg"), "r"],
+            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "w"],
+            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "x"],
+            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "+"],
+            [None, "r"],
         ]
-        self.assertCountEqual(texts, ans)
+        for t in tests:
+            with self.subTest(t=t):
+                file = sf.SVGFile(t[0], t[1])
     
-    def test_activate_svg(self):
-        self.file.add_svg()
-        self.file.activate_svg("svg1")
-        self.assertEqual(self.file.active_svg, "svg1")
-        self.assertEqual(self.file.active_g, None)
-    
-    def test_activate_svg_exist_except(self):
-        self.file.add_svg()
-        ans = "should not exist"
-        with self.assertRaises(ValueError, msg="Value given: "+str(ans)):
-            self.file.activate_svg(ans)
-    
-    def test_add_g(self):
-        self.file.add_svg()
-        self.file.add_g("layer1")
-        svg = self.file.svgs[self.file.active_svg]
-        self.assertEqual(self.file.active_g, "layer1")
-    
-    def test_add_path(self):
-        self.file.add_svg()
-        self.file.set_viewbox("0in", "0in")
-        self.file.add_g("layer1")
-        self.file.add_path("path1", "M 1.1 2.2", "fill:none")
-        test = ET.tostring(self.file.svgs["svg1"])
-        ans = b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" id="svg1" width="0in" height="0in" viewBox="0 0 0 0"><g id="layer1"><path style="fill:none" d="M 1.1 2.2" id="path1" /></g></svg>'
+    def test_set_declaration(self):
+        file = sf.SVGFile()
+        file.set_declaration()
+        test = ET.tostring(file._declaration)
+        ans = b'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
         self.assertEqual(test, ans)
     
-    def test_write_single_svg(self):
-        svg_id = "svg1"
-        self.file.name = "test_write_single_svg.svg"
-        self.file.add_svg(id_=svg_id)
-        self.file.set_viewbox("1in", "1in")
-        self.file.add_g("layer1")
-        self.file.add_path("path1",
-                           "M 0.1 0.1 0.9 0.9 0.1 0.9")
-        folder = "tests/test_output_dump"
-        self.file.write_single_svg(svg_id, folder)
+    def test_setting_svg(self):
+        file = sf.SVGFile()
+        svg = se.svg("svg1")
+        file.svg = svg
+    
+    def test_resetting_svg(self):
+        # Checks whether the default properties get removed from original
+        file = sf.SVGFile()
+        svg1 = se.svg("svg1")
+        svg2 = se.svg("svg2")
+        file.svg = svg1
+        file.svg = svg2
+        self.assertEqual(ET.tostring(svg1), b'<svg id="svg1" />')
+    
+    def test_parse(self):
+        filepath = os.path.join(self.SAMPLE_FOLDER, "input_sketch_test.svg")
+        file = sf.SVGFile(filepath, "r")
+        file.parse()
+    
+    def test_validate_mode_InvalidAccessModeError(self):
+        file = sf.SVGFile()
+        with self.assertRaises(InvalidAccessModeError):
+            file.mode = "bad"
+    
+
+class TestSVGFileWriting(unittest.TestCase):
+    
+    def setUp(self):
+        self.DUMP_FOLDER = "tests/test_output_dump"
+        self.default_style = sg.SVGStyle()
+        self.default_style.set_property("fill", "none")
+        self.default_style.set_property("stroke", "black")
+        self.default_style.set_property("stroke-width", "0.010467px")
+        self.default_style.set_property("stroke-linecap", "butt")
+        self.default_style.set_property("stroke-linejoin", "miter")
+        self.svg = se.svg("svg1")
+        self.svg.unit = "in"
     
     def test_write(self):
-        self.file.name = "test_write_svg.svg"
-        self.file.add_svg(id_="svg1")
-        self.file.set_viewbox("1in", "1in")
-        self.file.add_g("layer1")
-        self.file.add_path("path1",
-                           "M 0.1 0.1 0.9 0.9 0.1 0.9")
-        self.file.add_svg(id_="svg2")
-        self.file.set_viewbox("1in", "1in")
-        self.file.add_g("layer1")
-        self.file.add_path("path1",
-                           "M 0.1 0.1 0.9 0.9 0.1 0.9 z")
-        self.file.write(self.folder)
-    
-    def test_auto_size_view(self):
-        self.file.name = "test_auto_size_view.svg"
-        self.file.add_svg(id_="svg1")
-        self.file.add_g("layer1")
-        self.file.add_path("path1",
-                           "M 0.1 0.1 0.9 0.9")
-        self.file.add_path("path2",
-                           "M 0 1.5 A 1.5 1.5 0 0 0 1.5 0")
-        self.file.add_circle("circle1", ["0.5in", "0.5in"], "0.25in")
-        self.file.auto_size_view(0.25)
-        out_svg = self.file.svgs[self.file.active_svg]
-        check = ["2.0in", "2.0in", "-0.25 -0.25 2.0 2.0"]
-        answer = [out_svg.get("width"), 
-                  out_svg.get("height"),
-                  out_svg.get("viewBox")]
-        self.assertCountEqual(answer, check)
+        filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write")
+        file = sf.SVGFile(filepath, "w")
+        self.svg.append(se.g("g1"))
+        self.svg.sub("g1").set("style", self.default_style.string)
+        
+        self.svg.sub("g1").append(se.path("path1", "M 0 0 1 1"))
+        
+        self.svg.auto_size()
+        file.svg = self.svg
+        file.write(indent="  ")
     
     def test_write_circle(self):
-        self.file.name = "test_write_circle_svg.svg"
-        self.file.add_svg(id_="svg1")
-        self.file.set_viewbox("1in", "1in")
-        self.file.add_g("layer1")
-        self.file.add_circle("circle1", ["0.5in", "0.5in"], "0.25in")
-        self.file.write(self.folder)
+        filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write_circle")
+        file = sf.SVGFile(filepath, "w")
+        self.svg.append(se.g("g1"))
+        self.svg.sub("g1").set("style", self.default_style.string)
+        
+        self.svg.sub("g1").append(se.circle("c1", 0.5, 0.5, 0.5))
+        
+        self.svg.auto_size()
+        file.svg = self.svg
+        file.write(indent="  ")
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

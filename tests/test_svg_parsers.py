@@ -4,8 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-#from svg_interface import SVGPath
-import svg_parsers as sp
+import svg.parsers as sp
 
 class TestSVGPath(unittest.TestCase):
     
@@ -31,20 +30,6 @@ class TestSVGPath(unittest.TestCase):
         for t in tests:
             with self.subTest(t=t):
                 out = sp.clean_command(t[0])
-                self.assertEqual(out, t[1])
-    
-    def test_length_unit(self):
-        tests = [
-            ["1.0in", "in"],
-            ["1mm", "mm"],
-            ["1", ""],
-            [1, ""],
-            [1.1, ""],
-        ]
-        for t in tests:
-            with self.subTest(t=t):
-                i = t[0]
-                out = sp.length_unit(i)
                 self.assertEqual(out, t[1])
     
     def test_parse_moveto(self):

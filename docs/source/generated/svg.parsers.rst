@@ -1,7 +1,7 @@
-﻿svg\_parsers
-============
+﻿svg.parsers
+===========
 
-.. automodule:: svg_parsers
+.. automodule:: svg.parsers
 
    
    .. rubric:: Functions
@@ -16,7 +16,6 @@
       create_sublists
       csv_to_float
       elliptical_arc
-      length_unit
       line
       lineto_to_dict
       parse_arc

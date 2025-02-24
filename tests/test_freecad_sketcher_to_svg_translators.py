@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import freecad_sketcher_to_svg_translators as fsst
+import translators.freecad_sketcher_to_svg as fc_to_svg
 
 class TestTranslators(unittest.TestCase):
     
@@ -21,7 +21,7 @@ class TestTranslators(unittest.TestCase):
         ]
         for t in tests:
             with self.subTest(t=t):
-                out = fsst.line(t[0])
+                out = fc_to_svg.line(t[0])
                 self.assertDictEqual(out, t[1])
     
     def test_point(self):
@@ -41,7 +41,7 @@ class TestTranslators(unittest.TestCase):
         ]
         for t in tests:
             with self.subTest(t=t):
-                out = fsst.point(t[0])
+                out = fc_to_svg.point(t[0])
                 self.assertDictEqual(out, t[1])
     
     def test_circle(self):
@@ -53,7 +53,7 @@ class TestTranslators(unittest.TestCase):
         ]
         for t in tests:
             with self.subTest(t=t):
-                out = fsst.circle(t[0])
+                out = fc_to_svg.circle(t[0])
                 self.assertDictEqual(out, t[1])
     
     def test_circular_arc(self):
@@ -65,7 +65,7 @@ class TestTranslators(unittest.TestCase):
         ]
         for t in tests:
             with self.subTest(t=t):
-                out = fsst.circular_arc(t[0])
+                out = fc_to_svg.circular_arc(t[0])
                 self.assertDictEqual(out, t[1])
     
     def test_translate_geometry(self):
@@ -83,7 +83,7 @@ class TestTranslators(unittest.TestCase):
             {'location': [63.499999999999986, 50.8], 'geometry_type': 'point'},
             {'id': 11, 'location': [38.1, 38.1], 'radius': 6.35, 'geometry_type': 'circle'},
         ]
-        out = fsst.translate_geometry(test)
+        out = fc_to_svg.translate_geometry(test)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

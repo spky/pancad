@@ -1,7 +1,7 @@
-﻿svg\_validators
-===============
+﻿svg.validators
+==============
 
-.. automodule:: svg_validators
+.. automodule:: svg.validators
 
    
    .. rubric:: Functions
@@ -9,11 +9,12 @@
    .. autosummary::
    
       color
-      fill
       length
+      length_unit
       length_value
-      path_style_property
-      stroke
+      number
+      paint
+      percentage
       stroke_linecap
       stroke_linejoin
       stroke_opacity

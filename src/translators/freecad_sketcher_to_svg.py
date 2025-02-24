@@ -1,21 +1,18 @@
-"""A module that acts as a interface control between freecad sketcher 
-and an svg file. This module is not intended to generate the actual 
-elements or objects in either format, it only takes textual 
-information from FreeCAD are converts it into the equivalent 
-information in SVG. This module is intended to be the actual 'baton 
-pass' point, where all the work before this was dealing with FreeCAD 
-and everything after this is dealing with SVG.
+"""A module that acts as a interface control between freecad sketcher and an 
+svg file. This module is not intended to generate the actual elements or 
+objects in either format, it only takes textual information from FreeCAD 
+are converts it into the equivalent information in SVG. This module is 
+intended to be the actual 'baton pass' point, where all the work before 
+this was dealing with FreeCAD and everything after this is dealing with 
+SVG.
 """
 
-import sys
-import math
-
 import trigonometry as trig
-import svg_generators as sg
+import svg.generators as sg
 
 def line(freecad_properties: dict) -> dict:
-    """Returns a dictionary of equivalent svg properties to recreate 
-    a FreeCAD line in an svg file as a path.
+    """Returns a dictionary of equivalent svg properties to recreate a 
+    FreeCAD line in an svg file as a path.
     
     :param freecad_properties: line segment properties from FreeCAD
     :returns: svg line properties to be used to create an equivalent 
@@ -34,10 +31,11 @@ def line(freecad_properties: dict) -> dict:
     return properties
 
 def point(freecad_properties: dict) -> dict:
-    """Returns a dictionary of equivalent svg properties to recreate 
-    a FreeCAD point in an svg file as a circle. SVGs do not have an 
-    actual point element type, so they have to be represented as 
-    something similar.
+    """Returns a dictionary of equivalent svg properties to recreate a 
+    FreeCAD point in an svg file as a circle. SVGs do not have an actual 
+    point element type, so they have to be represented as something 
+    similar.
+    
     WARNING: A consistent id for points in FreeCAD has not been easy 
     to find, so for the moment points will not have transferable IDs
     
@@ -74,17 +72,17 @@ def circle(freecad_properties: dict) -> dict:
     return properties
 
 def ellipse(freecad_properties: dict) -> dict:
+    """TODO: Placeholder for ellipse translator implementation"""
     pass
 
 def circular_arc(freecad_properties: dict) -> dict:
-    """Returns a dictionary of equivalent svg properties to recreate 
-    a FreeCAD circular arc in an svg file as an equivalent path 
-    element. Some trigonometry is required to translate the 
-    information from one format to another
+    """Returns a dictionary of equivalent svg properties to recreate a 
+    FreeCAD circular arc in an svg file as an equivalent path element. 
+    Some trigonometry is required to translate the information from one 
+    format to another
     
     :param freecad_properties: circular arc properties from FreeCAD
-    :returns: svg arc properties to be used to create an equivalent 
-              path element
+    :returns: svg arc properties to be used to create an equivalent arc element
     """
     start = freecad_properties["start"]
     end = freecad_properties["end"]
@@ -115,15 +113,20 @@ def circular_arc(freecad_properties: dict) -> dict:
     return properties
 
 def elliptical_arc(freecad_properties: dict) -> dict:
+    """TODO: Placeholder for elliptical arc translator implementation"""
     pass
 
 def translate_geometry(freecad_sketch_geometry: list[dict]) -> list[dict]:
     """Returns a list of dictionaries that have been translated from 
     freecad to svg properties
+    
+    :param freecad_properties: geometry properties for a shape from FreeCAD
+    :returns: svg properties to be used to create an equivalent svg element
     """
     geometry = []
     for g in freecad_sketch_geometry:
-        match g["geometry_type"]:
+        geometry_type = g["geometry_type"]
+        match geometry_type:
             case "line":
                 geometry.append(line(g))
             case "point":
@@ -133,6 +136,5 @@ def translate_geometry(freecad_sketch_geometry: list[dict]) -> list[dict]:
             case "circular_arc":
                 geometry.append(circular_arc(g))
             case _:
-                raise ValueError(str(g["geometry_type"])
-                                 + "is not a supported geometry type")
+                raise ValueError(f"'{geometry_type}' not supported")
     return geometry

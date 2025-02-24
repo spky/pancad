@@ -8,7 +8,7 @@ import numpy as np
 sys.path.append('src')
 
 import trigonometry as trig
-import svg_parsers as sp
+import svg.parsers as sp
 
 class TestTrigonometry(unittest.TestCase):
     
