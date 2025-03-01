@@ -8,14 +8,18 @@ ACCESS_MODE_OPTIONS = ["r", "w", "x", "+"]
 OPERATION_TYPES = ["r", "w"]
 
 def filepath(filepath: str) -> str:
-    """Returns the real filepath of the file and checks its validity.
+    """Returns the real filepath of the file. Does not check whether the file 
+    exists, just whether the path is valid.
     
     :param filepath: a string of the name and location of the file
     :returns: The real path of the file
     """
     if filepath is None:
         raise InvalidFilepathError("Filepath cannot be None")
+    
+    filepath = os.path.expandvars(filepath)
     directory = os.path.dirname(filepath)
+    
     if os.path.isfile(filepath):
         # Filepath is valid and file already exists
         return os.path.realpath(filepath)
@@ -26,6 +30,22 @@ def filepath(filepath: str) -> str:
         return os.path.realpath(filepath)
     else:
         raise InvalidFilepathError(f"Filepath given: '{filepath}'")
+
+def folderpath(path: str) -> str:
+    """Returns the real filepath of the folder and checks its validity.
+    
+    :param path: Location of the folder
+    :returns: The real path of the folder
+    """
+    if path is None:
+        raise InvalidFilepathError("Folder path cannot be None")
+    
+    path = os.path.expandvars(path)
+    
+    if os.path.isdir(path):
+        return os.path.realpath(path)
+    else:
+        raise FileNotFoundError(f"Path: {path}")
 
 def exists(path: str) -> bool:
     """Returns whether a file exists at the given filepath. If the 
