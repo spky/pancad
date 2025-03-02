@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import Sketcher
 
-import svg.elements as se
-import freecad.sketch_readers as fsr
-import translators.freecad_sketcher_to_svg as fc_to_svg
-import translators.svg_to_freecad_sketcher as svg_to_fc
-import svg.element_utils as seu
+import PanCAD.svg.elements as se
+import PanCAD.freecad.sketch_readers as fsr
+import PanCAD.translators.freecad_sketcher_to_svg as fc_to_svg
+import PanCAD.translators.svg_to_freecad_sketcher as svg_to_fc
+import PanCAD.svg.element_utils as seu
 
 class SketchSVG(se.svg):
     """A class representing svg elements containing FreeCAD sketch information.

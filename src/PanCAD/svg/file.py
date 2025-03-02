@@ -4,10 +4,10 @@ elements to be written to files.
 
 import xml.etree.ElementTree as ET
 
-import svg.element_utils as seu
-from svg.elements import SVGElement
-import file_handlers
-from file_handlers import InvalidAccessModeError
+import PanCAD.svg.element_utils as seu
+from PanCAD.svg.elements import SVGElement
+import PanCAD.file_handlers as file_handlers
+from PanCAD.file_handlers import InvalidAccessModeError
 
 class SVGFile(ET.ElementTree):
     """A class for svg files with a single svg element at the top that 

@@ -5,7 +5,7 @@ browser.
 
 import re
 
-import svg.enum_color_keywords
+import PanCAD.svg.enum_color_keywords
 
 float_re = "[+-]?[0-9]*\.[0-9]+"
 integer_re = "[+-]?[0-9]+"
@@ -100,7 +100,7 @@ def color(setting: str) -> str:
             if int(val) > 100:
                 raise ValueError(f"Provided value of '{setting}' has rgb >100%")
         return setting
-    elif setting in svg.enum_color_keywords.Color.__members__:
+    elif setting in PanCAD.svg.enum_color_keywords.Color.__members__:
         return setting
     else:
         raise ValueError(f"Color '{setting}' is not in a recognized format")

@@ -5,7 +5,7 @@ import unittest
 
 sys.path.append('src')
 
-import file_handlers as fh
+import PanCAD.file_handlers as fh
 
 class TestFileHandlers(unittest.TestCase):
     def setUp(self):

@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import translators.svg_to_freecad_sketcher as sfst
+import PanCAD.translators.svg_to_freecad_sketcher as sfst
 
 class TestTranslators(unittest.TestCase):
     

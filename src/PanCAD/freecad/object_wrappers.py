@@ -9,7 +9,7 @@ sys.path.append(FREECADPATH)
 import FreeCAD as App
 import Part
 
-import file_handlers as fh
+import PanCAD.file_handlers as fh
 
 class Sketch:
     """A class representing a FreeCAD sketch external to the FreeCAD 

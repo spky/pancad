@@ -5,7 +5,7 @@ output SVGElement class elements or subclasses of that class.
 
 import xml.etree.ElementTree as ET
 
-import svg.elements as se
+import PanCAD.svg.elements as se
 
 def upgrade_element(element: ET.Element) -> se.SVGElement:
     """Subclasses the given element and all its subelements into 

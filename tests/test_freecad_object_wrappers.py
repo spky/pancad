@@ -2,13 +2,13 @@ import sys
 import os
 from pathlib import Path
 import unittest
-
 sys.path.append('src')
 
-import freecad.object_wrappers as fcow
+import PanCAD.freecad.object_wrappers as fcow
+import PanCAD.file_handlers as file_handlers
+
 import FreeCAD as App
 import Part
-import file_handlers
 
 class TestSketch(unittest.TestCase):
     

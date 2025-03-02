@@ -5,7 +5,7 @@ in the same directory as the defaults.ini file.
 import os
 
 import configparser
-import file_handlers as fh
+import PanCAD.file_handlers as fh
 
 PANCAD_APPDATA = os.path.expandvars(
         os.path.join("%appdata%", "PanCAD")

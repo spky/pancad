@@ -6,12 +6,12 @@ import os
 
 sys.path.append('src')
 
-import svg.element_utils as seu
-import svg.elements as se
-import svg.file as sf
-import svg.generators as sg
+import PanCAD.svg.element_utils as seu
+import PanCAD.svg.elements as se
+import PanCAD.svg.file as sf
+import PanCAD.svg.generators as sg
 
-from file_handlers import InvalidAccessModeError
+from PanCAD.file_handlers import InvalidAccessModeError
 
 
 class TestSVGFileInternal(unittest.TestCase):

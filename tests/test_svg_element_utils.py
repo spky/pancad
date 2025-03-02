@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-import svg.element_utils as seu
+import PanCAD.svg.element_utils as seu
 
 class TestSVGElementUtils(unittest.TestCase):
     
