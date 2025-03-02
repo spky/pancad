@@ -28,6 +28,7 @@ class TestConfig(unittest.TestCase):
     
     def test_read_defaults(self):
         settings = config.Config(self.NOMINAL_0)
+        print(settings.WINDOWS_SEARCH_PATHS)
     
     def test_read_invalid_options(self):
         with self.assertRaises(config.InvalidOptionError):

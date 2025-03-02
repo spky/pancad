@@ -7,6 +7,16 @@ import os
 import configparser
 import file_handlers as fh
 
+PANCAD_APPDATA = os.path.expandvars(
+        os.path.join("%appdata%", "PanCAD")
+)
+
+def initialize_pancad():
+    if not os.path.exists(PANCAD_APPDATA):
+        os.mkdir(PANCAD_APPDATA)
+
+initialize_pancad()
+
 class Config:
     """A class representing the settings for PanCAD.
     
@@ -14,6 +24,12 @@ class Config:
     """
     
     DEFAULT_SETTINGS_FILE = "defaults.ini"
+    
+    WINDOWS_SEARCH_PATHS = (
+        os.getcwd(),
+        os.path.expandvars("%homepath%"),
+        PANCAD_APPDATA,
+    )
     REQUIRED_SETTINGS = {
         "pancad": {
             "pancad.default_save_path",
@@ -41,6 +57,7 @@ class Config:
     
     def __init__(self, filepath: str = None) -> None:
         self._read_defaults()
+        
         if filepath is not None:
             self.read_settings(filepath)
     

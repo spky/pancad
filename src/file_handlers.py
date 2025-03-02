@@ -32,7 +32,7 @@ def filepath(filepath: str) -> str:
         raise InvalidFilepathError(f"Filepath given: '{filepath}'")
 
 def folderpath(path: str) -> str:
-    """Returns the real filepath of the folder and checks its validity.
+    """Returns the real path of the folder, only if it exists.
     
     :param path: Location of the folder
     :returns: The real path of the folder
@@ -44,15 +44,16 @@ def folderpath(path: str) -> str:
     
     if os.path.isdir(path):
         return os.path.realpath(path)
+    elif os.path.isfile(path):
+        raise NotADirectoryError(f"Path: {path}")
     else:
-        raise FileNotFoundError(f"Path: {path}")
+        raise InvalidFilepathError(f"Path invalid or does not exist: {path}")
 
 def exists(path: str) -> bool:
-    """Returns whether a file exists at the given filepath. If the 
-    filepath is a directory or is a incorrectly formatted string it 
-    will raise errors.
+    """Returns whether a file exists at the given filepath. If the filepath 
+    is a directory or is a incorrectly formatted string it will raise errors.
     
-    :param filepath: a string of the name and location of the file
+    :param path: a string of the name and location of the file
     :returns: A boolean for whether the file exists
     """
     path = filepath(path)
@@ -63,6 +64,17 @@ def exists(path: str) -> bool:
         return False
     else:
         raise InvalidFilepathError(f"Filepath: '{path}'")
+
+def folder_exists(path: str) -> bool:
+    """Returns whether a directory exists at the given path. If the path is a 
+    file or is an incorrectly formatted string it will raise errors.
+    
+    :param path: The location of the folder
+    :returns: Whether the folder exists
+    """
+    pass
+    # path = folderpath(path)
+    # if os.path.isdir:
 
 def validate_mode(path:str, mode:str) -> None:
     """Checks whether the file mode is valid on the given filepath.

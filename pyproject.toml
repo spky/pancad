@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "PanCAD"
+version = "0.0.0"
+description = "A CAD (Computer-Aided Design) file translator"
+require-python = "3.11"
+authors = [
+    {name = "spky"},
+]
+maintainers = [
+    {name = "spky"},
+]
+license = "CC0-1.0"
+license-files = ["LICENSE"]
+readme = "README.md"
+
+[project.urls]
+Homepage = "https://github.com/spky/PanCAD"
+Issues = "https://github.com/spky/PanCAD/issues"

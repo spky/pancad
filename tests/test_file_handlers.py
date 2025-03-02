@@ -40,6 +40,17 @@ class TestFileHandlers(unittest.TestCase):
                              "file_that_does_not_exist.fake")
             ],
         ]
+        self.valid_folderpaths = [
+            [
+                os.path.join("tests", "sample_svgs"),
+                os.path.join(os.getcwd(), "tests", "sample_svgs")
+            ],
+            [
+                os.path.join("%homepath%", "AppData"),
+                os.path.join(os.path.realpath(os.path.expandvars("%homepath%")),
+                             "AppData")
+            ],
+        ]
         self.valid_path_existence = [True, True, False, False]
         self.folder_path = os.path.join("tests", "sample_svgs")
         self.invalid_path = "I am a bad string"
@@ -49,13 +60,19 @@ class TestFileHandlers(unittest.TestCase):
             with self.subTest(t=t):
                 self.assertEqual(fh.filepath(t[0]), t[1])
     
-    def test_filepath_FolderNotFileError(self):
+    def test_filepath_IsADirectoryError(self):
         with self.assertRaises(IsADirectoryError):
             test_path = fh.filepath(self.folder_path)
     
     def test_filepath_not_valid(self):
         with self.assertRaises(fh.InvalidFilepathError):
             test_path = fh.filepath(self.invalid_path)
+    
+    def test_folderpath(self):
+        for t in self.valid_folderpaths:
+            with self.subTest(t=t):
+                self.assertEqual(fh.folderpath(t[0]), t[1])
+    
     
     def test_filepath_not_valid_None(self):
         with self.assertRaises(fh.InvalidFilepathError):
