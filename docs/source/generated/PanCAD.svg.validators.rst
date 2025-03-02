@@ -1,7 +1,7 @@
-﻿svg.validators
-==============
+﻿PanCAD.svg.validators
+=====================
 
-.. automodule:: svg.validators
+.. automodule:: PanCAD.svg.validators
 
    
    .. rubric:: Functions

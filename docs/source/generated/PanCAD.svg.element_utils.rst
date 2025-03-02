@@ -1,7 +1,7 @@
-﻿svg.element\_utils
-==================
+﻿PanCAD.svg.element\_utils
+=========================
 
-.. automodule:: svg.element_utils
+.. automodule:: PanCAD.svg.element_utils
 
    
    .. rubric:: Functions

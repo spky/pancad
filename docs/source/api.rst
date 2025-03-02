@@ -5,17 +5,17 @@ API
    :toctree: generated
    :recursive:
     
-   svg.element_utils
-   svg.elements
-   svg.enum_color_keywords
-   svg.file
-   svg.generators
-   svg.parsers
-   svg.validators
-   freecad.object_wrappers
-   freecad.sketch_readers
-   translators.freecad_sketcher_to_svg
-   translators.freecad_svg_file
-   translators.svg_to_freecad_sketcher
-   trigonometry
-   file_handlers
+   PanCAD.svg.element_utils
+   PanCAD.svg.elements
+   PanCAD.svg.enum_color_keywords
+   PanCAD.svg.file
+   PanCAD.svg.generators
+   PanCAD.svg.parsers
+   PanCAD.svg.validators
+   PanCAD.freecad.object_wrappers
+   PanCAD.freecad.sketch_readers
+   PanCAD.translators.freecad_sketcher_to_svg
+   PanCAD.translators.freecad_svg_file
+   PanCAD.translators.svg_to_freecad_sketcher
+   PanCAD.trigonometry
+   PanCAD.file_handlers

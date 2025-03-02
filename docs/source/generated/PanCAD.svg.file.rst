@@ -1,7 +1,7 @@
-﻿svg.file
-========
+﻿PanCAD.svg.file
+===============
 
-.. automodule:: svg.file
+.. automodule:: PanCAD.svg.file
 
    
    .. rubric:: Classes

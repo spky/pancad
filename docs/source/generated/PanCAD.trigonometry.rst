@@ -1,7 +1,7 @@
-﻿trigonometry
-============
+﻿PanCAD.trigonometry
+===================
 
-.. automodule:: trigonometry
+.. automodule:: PanCAD.trigonometry
 
    
    .. rubric:: Functions

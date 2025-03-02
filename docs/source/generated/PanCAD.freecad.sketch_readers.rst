@@ -1,7 +1,7 @@
-﻿freecad.sketch\_readers
-=======================
+﻿PanCAD.freecad.sketch\_readers
+==============================
 
-.. automodule:: freecad.sketch_readers
+.. automodule:: PanCAD.freecad.sketch_readers
 
    
    .. rubric:: Functions

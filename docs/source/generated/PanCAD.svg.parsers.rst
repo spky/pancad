@@ -1,7 +1,7 @@
-﻿svg.parsers
-===========
+﻿PanCAD.svg.parsers
+==================
 
-.. automodule:: svg.parsers
+.. automodule:: PanCAD.svg.parsers
 
    
    .. rubric:: Functions

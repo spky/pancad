@@ -1,7 +1,7 @@
-﻿svg.elements
-============
+﻿PanCAD.svg.elements
+===================
 
-.. automodule:: svg.elements
+.. automodule:: PanCAD.svg.elements
 
    
    .. rubric:: Classes

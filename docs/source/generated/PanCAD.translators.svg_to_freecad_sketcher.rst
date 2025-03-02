@@ -1,7 +1,7 @@
-﻿translators.svg\_to\_freecad\_sketcher
-======================================
+﻿PanCAD.translators.svg\_to\_freecad\_sketcher
+=============================================
 
-.. automodule:: translators.svg_to_freecad_sketcher
+.. automodule:: PanCAD.translators.svg_to_freecad_sketcher
 
    
    .. rubric:: Functions
