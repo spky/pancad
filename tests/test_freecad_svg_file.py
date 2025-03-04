@@ -9,7 +9,7 @@ sys.path.append('src')
 
 from PanCAD.translators.freecad_svg_file import SketchSVG
 
-import PanCAD.file_handlers as file_handlers
+from PanCAD import file_handlers
 from PanCAD.freecad.object_wrappers import File as FreeCADFile
 from PanCAD.freecad.object_wrappers import Sketch
 import PanCAD.freecad.sketch_readers as fsr

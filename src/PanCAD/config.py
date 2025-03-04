@@ -3,19 +3,10 @@ in the same directory as the defaults.ini file.
 """
 
 import os
-
 import configparser
+
 import PanCAD.file_handlers as fh
-
-PANCAD_APPDATA = os.path.expandvars(
-        os.path.join("%appdata%", "PanCAD")
-)
-
-def initialize_pancad():
-    if not os.path.exists(PANCAD_APPDATA):
-        os.mkdir(PANCAD_APPDATA)
-
-initialize_pancad()
+from PanCAD.utils import initialize
 
 class Config:
     """A class representing the settings for PanCAD.
@@ -28,7 +19,7 @@ class Config:
     WINDOWS_SEARCH_PATHS = (
         os.getcwd(),
         os.path.expandvars("%homepath%"),
-        PANCAD_APPDATA,
+        initialize.APPDATA,
     )
     REQUIRED_SETTINGS = {
         "pancad": {

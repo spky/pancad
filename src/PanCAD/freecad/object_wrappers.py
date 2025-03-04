@@ -5,7 +5,7 @@ import sys
 
 # Path to your FreeCAD.so or FreeCAD.pyd file
 FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/bin' 
-sys.path.append(FREECADPATH) 
+sys.path.append(FREECADPATH)
 import FreeCAD as App
 import Part
 
