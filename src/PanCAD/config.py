@@ -5,13 +5,14 @@ in the same directory as the defaults.ini file.
 import os
 import configparser
 
-import PanCAD.file_handlers as fh
+from PanCAD import file_handlers as fh
 from PanCAD.utils import initialize
 
 class Config:
     """A class representing the settings for PanCAD.
     
-    :param filepath: The filepath to an .ini full of settings
+    :param filepath: The filepath to an .ini full of settings. Defaults to 
+                     None, which causes Config to read local user settings
     """
     
     DEFAULT_SETTINGS_FILE = "defaults.ini"
@@ -49,7 +50,9 @@ class Config:
     def __init__(self, filepath: str = None) -> None:
         self._read_defaults()
         
-        if filepath is not None:
+        if filepath is None:
+            self.read_settings(initialize.USER_SETTINGS)
+        else:
             self.read_settings(filepath)
     
     def read_settings(self, filepath: str) -> None:
@@ -64,6 +67,8 @@ class Config:
         if options > self.valid_options:
             invalid_options = options - self.valid_options
             raise InvalidOptionError(f"Unexpected options: {invalid_options}")
+        else:
+            return self.config
     
     def update_options(self, options: dict) -> None:
         """Updates the options in the options dictionary and config 
@@ -116,6 +121,11 @@ class Config:
         self._default_config = Config._parse_config(defaults_path)
         self.default_options = Config._config_to_dict(self._default_config)
         self.valid_options = Config._parse_options(self._default_config)
+    
+    def _read_user_settings(self) -> None:
+        """Reads the settings file in the user's appdata PanCAD folder.
+        """
+        pass
     
     @staticmethod
     def _get_defaults_path() -> str:
@@ -189,3 +199,6 @@ class Config:
 
 class InvalidOptionError(ValueError):
     """Raise when an unexpected option is found in a settings ini file."""
+
+class SettingsMissingError(ValueError):
+    """Raise when settings are missing from an .ini for a requested function"""

@@ -61,6 +61,9 @@ class TestConfig(unittest.TestCase):
         out_filepath = os.path.join(self.OUTPUT_DUMP, out_file_name)
         settings = config.Config(self.NOMINAL_0)
         settings.write(out_filepath)
+    
+    def test_init_none(self):
+        settings = config.Config()
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

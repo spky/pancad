@@ -3,13 +3,17 @@ user-friendly structures.
 """
 import sys
 
-# Path to your FreeCAD.so or FreeCAD.pyd file
-FREECADPATH = 'C:/Users/George/Documents/FreeCAD1/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/FreeCAD_1.0.0RC1-conda-Windows-x86_64-py311/bin' 
-sys.path.append(FREECADPATH)
+from PanCAD.config import Config, SettingsMissingError
+settings = Config()
+if settings.validate_options("freecad"):
+    sys.path.append(settings.options["freecad.bin_folder_path"])
+else:
+    raise SettingsMissingError("Settings file invalid for FreeCAD")
+
 import FreeCAD as App
 import Part
 
-import PanCAD.file_handlers as fh
+from PanCAD import file_handlers as fh
 
 class Sketch:
     """A class representing a FreeCAD sketch external to the FreeCAD 
