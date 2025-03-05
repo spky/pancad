@@ -7,15 +7,13 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-from PanCAD.translators.freecad_svg_file import SketchSVG
-
 from PanCAD import file_handlers
+from PanCAD.freecad import sketch_readers as fsr
 from PanCAD.freecad.object_wrappers import File as FreeCADFile
 from PanCAD.freecad.object_wrappers import Sketch
-import PanCAD.freecad.sketch_readers as fsr
-
+from PanCAD.svg import generators as sg
 from PanCAD.svg.file import SVGFile
-import PanCAD.svg.generators as sg
+from PanCAD.translators.freecad_svg_file import SketchSVG
 
 class TestFreeCADSVGFile(unittest.TestCase):
     

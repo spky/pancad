@@ -5,12 +5,11 @@ specification https://www.w3.org/TR/2011/REC-SVG11-20110816/
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree as ET
 
-import PanCAD.svg.validators as sv
-import PanCAD.svg.parsers as sp
-import PanCAD.trigonometry as trig
-
+from PanCAD.svg import validators as sv
+from PanCAD.svg import parsers as sp
+from PanCAD import trigonometry as trig
 
 class SVGElement(ET.Element):
     """A class representing the common properties and methods of all SVG 

@@ -4,9 +4,9 @@ elements to be written to files.
 
 import xml.etree.ElementTree as ET
 
-import PanCAD.svg.element_utils as seu
+from PanCAD.svg import element_utils as seu
 from PanCAD.svg.elements import SVGElement
-import PanCAD.file_handlers as file_handlers
+from PanCAD import file_handlers
 from PanCAD.file_handlers import InvalidAccessModeError
 
 class SVGFile(ET.ElementTree):

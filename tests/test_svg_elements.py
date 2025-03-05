@@ -1,12 +1,12 @@
 import sys
 from pathlib import Path
 import unittest
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree as ET
 import os
 
 sys.path.append('src')
 
-import PanCAD.svg.elements as se
+from PanCAD.svg import elements as se
 
 class TestSVG(unittest.TestCase):
     

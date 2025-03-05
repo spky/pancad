@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-import PanCAD.svg.parsers as sp
+from PanCAD.svg import parsers as sp
 
 class TestSVGPath(unittest.TestCase):
     

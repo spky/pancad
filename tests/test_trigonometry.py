@@ -7,8 +7,8 @@ import numpy as np
 
 sys.path.append('src')
 
-import PanCAD.trigonometry as trig
-import PanCAD.svg.parsers as sp
+from PanCAD import trigonometry as trig
+from PanCAD.svg import parsers as sp
 
 class TestTrigonometry(unittest.TestCase):
     

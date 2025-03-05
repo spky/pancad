@@ -2,7 +2,7 @@
 for svg styles.
 """
 
-import PanCAD.svg.validators as sv
+from PanCAD.svg import validators as sv
 
 def make_path_data(commands: list, delimiter: str = "\n") -> str:
     """Returns a string of svg commands joined together with a delimiter.
