@@ -92,6 +92,8 @@ def validate_mode(path:str, mode:str) -> None:
         raise ExclusiveCreationFileExistsError(f"Filepath: '{path}'")
     elif mode in "r" and not file_exists:
         raise FileNotFoundError(f"Filepath: '{path}'")
+    else:
+        return None
 
 def validate_operation(path: str, mode: str, operation_type: str) -> None:
     """Checks whether the file mode is being violated by a specific 
@@ -117,6 +119,8 @@ def validate_operation(path: str, mode: str, operation_type: str) -> None:
         raise ReadOnlyError("Cannot write while in read-only mode")
     elif mode == "+" and operation_type == "r" and not file_exists:
         raise FileNotFoundError(f"Filepath: '{path}'")
+    else:
+        return None
 
 class InvalidAccessModeError(ValueError):
     """Raise when a file access mode is not in ACCESS_MODE_OPTIONS"""

@@ -125,7 +125,7 @@ class SVGFile(ET.ElementTree):
             raw_tree = ET.parse(file)
             self.svg = seu.upgrade_element(raw_tree.getroot())
     
-    def write(self, filepath: str = None, indent: str = None):
+    def write(self, filepath: str = None, indent: str = "  "):
         """Writes the svg file to either a given filepath or, if given 
         None, to the initializing filepath. Will not update the 
         internal filepath so the file can be written to other locations.
@@ -133,7 +133,7 @@ class SVGFile(ET.ElementTree):
         :param filepath: The filepath to write to. Defaults to None, which 
                          will cause it to write to the internal filepath
         :param indent: The set of characters to place before xml levels. 
-                       Defaults to None
+                       Defaults to two spaces
         """
         if filepath is None:
             filepath = self.filepath
@@ -143,7 +143,11 @@ class SVGFile(ET.ElementTree):
             self.set_declaration()
         if indent is not None:
             ET.indent(self.svg, indent)
-        file_handlers.validate_operation(filepath, self.mode, "w")
+        
+        if filepath == self.filepath:
+            # The mode only needs to be validated if the user is trying to 
+            # modify the original file location
+            file_handlers.validate_operation(filepath, self.mode, "w")
         super().write(filepath)
     
     def _validate_mode(self) -> None:
@@ -175,3 +179,11 @@ class SVGFile(ET.ElementTree):
         element = ET.ProcessingInstruction("xml", text)
         element.tail = tail
         return element
+
+def read_svg(filepath: str, mode: str = "r") -> SVGFile:
+    """Returns a PanCAD SVGFile class instance after reading a svg file.
+    
+    :param filepath: The filepath of the svg file
+    :returns: An SVGFile instance describing the svg file at the filepath
+    """
+    return SVGFile(filepath, mode)

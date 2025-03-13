@@ -56,10 +56,9 @@ class Config:
             self.read_settings(filepath)
     
     def read_settings(self, filepath: str) -> None:
-        """Reads a settings.ini file and returns its contents as a dictionary.
+        """Reads a settings.ini file into class instance properties.
         
         :param filepath: Path to a .ini file
-        :returns: A settings dictionary with keys 'section.option'
         """
         self.config = Config._parse_config(filepath)
         self.options = Config._config_to_dict(self.config)
@@ -67,8 +66,6 @@ class Config:
         if options > self.valid_options:
             invalid_options = options - self.valid_options
             raise InvalidOptionError(f"Unexpected options: {invalid_options}")
-        else:
-            return self.config
     
     def update_options(self, options: dict) -> None:
         """Updates the options in the options dictionary and config 

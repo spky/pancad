@@ -5,7 +5,7 @@ import unittest
 
 sys.path.append('src')
 
-from PanCAD import config
+from PanCAD.utils import config
 
 class TestConfig(unittest.TestCase):
     def setUp(self):

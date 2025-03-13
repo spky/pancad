@@ -6,6 +6,7 @@ import os
 
 sys.path.append('src')
 
+import PanCAD
 from PanCAD.svg import element_utils as seu
 from PanCAD.svg import elements as se
 from PanCAD.svg import file as sf
@@ -100,6 +101,15 @@ class TestSVGFileWriting(unittest.TestCase):
         self.svg.auto_size()
         file.svg = self.svg
         file.write(indent="  ")
+
+class TestSVGPublicInterface(unittest.TestCase):
+    def setUp(self):
+        self.SAMPLE_FOLDER = "tests/sample_svgs"
+        self.DUMP_FOLDER = "tests/test_output_dump"
+    
+    def test_read_svg(self):
+        filepath = os.path.join(self.SAMPLE_FOLDER,"input_sketch_test.svg")
+        file_instance = PanCAD.read_svg(filepath)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

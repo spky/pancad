@@ -85,7 +85,7 @@ class TestFreeCADSVGFile(unittest.TestCase):
         freecad_sketch.label = "loopback_test_sketch"
         file.new_sketch(freecad_sketch)
         file.save()
-    
+
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

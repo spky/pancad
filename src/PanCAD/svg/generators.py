@@ -97,7 +97,7 @@ def make_vertical(lengths: list, relative: bool = False) -> str:
 class SVGStyle:
     """A class to store, generate, and validate SVG styles"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructor method"""
         self._properties = {
             "color-interpolation": None,
@@ -125,7 +125,7 @@ class SVGStyle:
         }
     
     @property
-    def string(self):
+    def string(self) -> str:
         """The string representation of the style. Read-only.
         
         :getter: Concatenates the populated style attributes together and 
@@ -137,7 +137,16 @@ class SVGStyle:
                 settings.append(prop + ":" + self._properties[prop])
         return ";".join(settings)
     
-    def set_property(self, name: str, value: str | int | float):
+    def set_from_dict(self, property_dictionary: dict) -> None:
+        """Sets the style properties based on a dictionary instead of one at 
+        a time.
+        
+        :property_dictionary: A dictionary with pairs like 'setting_name:value'
+        """
+        for setting in property_dictionary:
+            self.set_property(setting, property_dictionary[setting])
+    
+    def set_property(self, name: str, value: str | int | float) -> None:
         """Sets a valid svg style attribute based on its name and value. Will 
         raise a ValueError if trying to set a property that is not 
         supported. Will check individual property types for validity 

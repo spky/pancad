@@ -162,3 +162,7 @@ cython_debug/
 
 # FreeCAD
 *.FCBak
+
+# SourceCookifier
+
+tags.sqlite

@@ -3,7 +3,7 @@ user-friendly structures.
 """
 import sys
 
-from PanCAD.config import Config, SettingsMissingError
+from PanCAD.utils.config import Config, SettingsMissingError
 settings = Config()
 if settings.validate_options("freecad"):
     sys.path.append(settings.options["freecad.bin_folder_path"])
