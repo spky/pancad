@@ -4,11 +4,14 @@ information in them into equvalent SVGs
 
 from __future__ import annotations
 
+import PanCAD
 from PanCAD.svg import elements
 from PanCAD.svg import element_utils as seu
 from PanCAD.svg.file import SVGFile
 from PanCAD.svg.generators import SVGStyle
 from PanCAD.freecad import sketch_readers as fsr
+from PanCAD.freecad.object_wrappers import File as FreeCADFile
+from PanCAD.freecad.object_wrappers import Sketch as FreeCADSketch
 from PanCAD.utils.config import Config, SettingsMissingError
 # from PanCAD.freecad import object_wrappers as fcow
 from PanCAD.translators import freecad_sketcher_to_svg as fc_to_svg
@@ -93,6 +96,25 @@ class SketchSVG(elements.svg):
         """
         return svg_to_fc.translate_geometry(self.geometry)
     
+    def to_sketch(self, label: str = None) -> FreeCADSketch:
+        """Returns a FreeCAD sketch object that can be placed into FreeCAD.
+        
+        :param label: The label for the sketch, defaults to None which will 
+                      cause the svg id to be assigned as the sketch label.
+                      If the svg id is also None, a ValueError will be raised.
+        :returns: A PanCAD.freecad.object_wrappers.Sketch object
+        """
+        if label is not None:
+            sketch_label = label
+        elif self.id_ is not None:
+            sketch_label = self.id_
+        else:
+            raise ValueError("label and SketchSVG.id_ cannot both be None")
+        
+        new_freecad_sketch = FreeCADSketch()
+        new_freecad_sketch.add_geometry_list(self.get_freecad_dict())
+        new_freecad_sketch.label = sketch_label
+        return new_freecad_sketch
     
     def _set_style(self, style_config: config.Config) -> None:
         """Sets the style of the non-construction geometry in the svg using a 
@@ -152,20 +174,50 @@ class SketchSVG(elements.svg):
             raise ValueError("No geometry group found in svg")
         return new_sketch_svg
 
-def read_freecad_sketch(sketch_label: str, filepath: str,
-                        mode: str = "r") -> SketchSVG:
+def freecad_sketch_to_svg(sketch: str | Sketcher.Sketch, *,
+                          model_filepath: str = None,
+                          mode: str = "r") -> SVGFile:
     """Returns a svg file with sketch geometry from a FreeCAD .FCStd file.
     
-    :param sketch_label: The label of the sketch in FreeCAD
-    :param filepath: The filepath of the FreeCAD file
+    :param sketch: A FreeCAD sketch object or sketch label
+    :param model_filepath: The filepath of the FreeCAD file. Only required if a 
+                           sketch label used as the first argument
     :mode: The single character access mode for the FreeCAD file operation
     :returns: A SVGFile containing the geometry of the FreeCAD sketch
     """
-    fc_sketch = fsr.read_sketch_by_label(filepath, sketch_label)
-    fc_unit = "mm"
+    if isinstance(sketch, str):
+        fc_sketch = fsr.read_sketch_by_label(model_filepath, sketch)
+        fc_unit = "mm"
+    elif hasattr(sketch, "TypeId") and sketch.TypeId == FreeCADFile.SKETCH_ID:
+        fc_sketch = sketch
+        fc_unit = "mm"
+    else:
+        raise ValueError(f"{sketch} not sketch label or Sketcher.Sketch object")
     
     sketch_svg = SketchSVG.from_sketch(fc_sketch, fc_unit)
     sketch_svg.unit = fc_unit
     fc_svg_file = SVGFile(mode="w")
     fc_svg_file.svg = sketch_svg
     return fc_svg_file
+
+def svg_to_freecad_sketch(
+        svg: elements.svg | SVGFile, sketch_label: str = None
+    ) -> FreeCADSketch:
+    """Returns a FreeCAD file with a sketch containing the svg file's geometry.
+    
+    :param svg: An SVGFile object representing sketch geometry. The root 
+                     svg element must be a SketchSVG instance since the 
+                     geometry has to be marked as construction or 
+                     non-construction.
+    :returns: A PanCAD.freecad.object_wrappers.File instance
+    """
+    if isinstance(svg, elements.svg):
+        svg_element = svg
+    elif isinstance(svg, SVGFile):
+        svg_element = svg.svg
+    else:
+        raise ValueError(f"{svg} is not a svg element or svg file")
+    
+    freecad_svg = SketchSVG.from_element(svg_element)
+    return freecad_svg.to_sketch(sketch_label)
+    # TODO: Add/document a way to save a freecad file over to a new location

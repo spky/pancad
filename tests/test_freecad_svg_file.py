@@ -59,12 +59,19 @@ class TestFreeCADSVGFile(unittest.TestCase):
         file.write(indent="  ")
     
     def test_from_element(self):
-        filepath = os.path.join(
-            self.SAMPLE_SVG_FOLDER,
-            'test_write_freecad_sketch_loop_back_input.svg'
-        )
+        filepath = os.path.join(self.SAMPLE_SVG_FOLDER,
+                                'test_write_freecad_sketch_loop_back_input.svg')
         file = SVGFile(filepath, "r")
         sketch_svg = SketchSVG.from_element(file.svg)
+    
+    def test_to_sketch(self):
+        filepath = os.path.join(self.SAMPLE_SVG_FOLDER,
+                                "rounded_rect_with_center_circle.svg")
+        file = SVGFile(filepath, "r")
+        sketch_svg = SketchSVG.from_element(file.svg)
+        freecad_sketch = sketch_svg.to_sketch()
+        self.assertEqual(freecad_sketch.label,
+                         "xz_rounded_rectangle_with_circle")
     
     def test_loop_back_freecad_svg(self):
         filepath = os.path.join(self.OUT_FOLDER,

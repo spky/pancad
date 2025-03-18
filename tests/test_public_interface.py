@@ -27,9 +27,10 @@ class TestSVGInterface(unittest.TestCase):
     
     def test_read_write_svg(self):
         """Read an svg file and then write it to a folder."""
-        svg_file = PanCAD.read_svg(self.SVG_0)
         out_path = os.path.join(self.OUT_DIR, "test_read_write_svg.svg")
+        svg_file = PanCAD.read_svg(self.SVG_0)
         svg_file.write(out_path)
+        os.remove(out_path) # Clean up if no errors occurred
     
     def test_read_write_svg_defaulted_format(self):
         """Read an svg file and override its styles with the configuration file 
@@ -41,12 +42,22 @@ class TestSVGInterface(unittest.TestCase):
         sketch_label = "xz_rounded_rectangle_with_circle"
         out_path = os.path.join(self.OUT_DIR,
                                 "test_export_freecad_sketch_to_svg.svg")
-        sketch_svg_file = PanCAD.read_freecad_sketch(sketch_label, self.FC_0)
+        freecad_file = PanCAD.read_freecad(self.FC_0)
+        freecad_sketch = freecad_file.get_sketch(sketch_label)
+        sketch_svg_file = PanCAD.freecad_sketch_to_svg(freecad_sketch)
         sketch_svg_file.write(out_path)
+        os.remove(out_path) # Clean up if no errors occurred
     
-    def test_import_svg_to_freecad_sketch(self):
+    def test_import_svg_to_freecad_file(self):
         """Read a svg file and add it to a freecad model as a sketch."""
-        pass
+        out_path = os.path.join(self.OUT_DIR,
+                                "test_import_svg_to_freecad_file.FCStd")
+        import_svg_file = PanCAD.read_svg(self.SVG_0)
+        freecad_sketch = PanCAD.svg_to_freecad_sketch(import_svg_file)
+        freecad_file = PanCAD.read_freecad(out_path, "w")
+        freecad_file.new_sketch(freecad_sketch)
+        freecad_file.save()
+        os.remove(out_path) # Clean up if no errors occurred
     
     def test_sync_freecad_sketch_and_svg_file(self):
         """Read both a freecad sketch and svg file, compare them, and update the 

@@ -12,6 +12,7 @@ else:
 
 import FreeCAD as App
 import Part
+import Sketcher
 
 from PanCAD import file_handlers as fh
 
@@ -245,6 +246,17 @@ class File:
         for shape in sketch.construction:
             new_sketch.addGeometry(shape, True)
     
+    def get_sketch(self, label: str) -> Sketcher.Sketch:
+        """Returns the Sketch from the File with the given label if it exists.
+        
+        :param label: The label of the sketch in FreeCAD
+        :returns: The FreeCAD Sketcher.Sketch object for the sketch
+        """
+        for fc_object in self._document.Objects:
+            if fc_object.TypeId == self.SKETCH_ID and fc_object.Label == label:
+                return fc_object
+        raise ValueError(f"File '{self.filepath}' has no '{label}' sketch")
+    
     def _validate_mode(self) -> None:
         """Checks whether the current file mode is being violated and will 
         raise an InvalidAccessModeError if so.
@@ -271,3 +283,12 @@ def make_placement(position: list, axis: list, angle: float) -> App.Placement:
     :returns: Base.Placement object
     """
     return App.Placement(App.Vector(position), App.Vector(axis), angle)
+
+def read_freecad(filepath: str, mode: str = "r") -> File:
+    """Returns a FreeCAD File instance after reading a FreeCAD file
+    
+    :param filepath: The filepath of the FreeCAD file
+    :param mode: The access mode to the FreeCAD file
+    :returns: A PanCAD.freecad.object_wrappers.File instance for the filepath
+    """
+    return File(filepath, mode)
