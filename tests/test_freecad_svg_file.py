@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-from PanCAD import file_handlers
+from PanCAD.utils import file_handlers
 from PanCAD.freecad import sketch_readers as fsr
 from PanCAD.freecad.object_wrappers import File as FreeCADFile
 from PanCAD.freecad.object_wrappers import Sketch

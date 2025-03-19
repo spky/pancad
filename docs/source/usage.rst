@@ -54,6 +54,6 @@ Geometry Function Explanations
 Trigonometry
 ############
 
-.. automodule:: PanCAD.trigonometry
+.. automodule:: PanCAD.utils.trigonometry
     :no-index:
     :members:

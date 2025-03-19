@@ -5,7 +5,7 @@ in the same directory as the defaults.ini file.
 import os
 import configparser
 
-from PanCAD import file_handlers as fh
+from PanCAD.utils import file_handlers as fh
 from PanCAD.utils import initialize
 
 class Config:

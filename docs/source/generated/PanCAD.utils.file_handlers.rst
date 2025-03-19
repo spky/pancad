@@ -1,7 +1,7 @@
-﻿PanCAD.file\_handlers
-=====================
+﻿PanCAD.utils.file\_handlers
+===========================
 
-.. automodule:: PanCAD.file_handlers
+.. automodule:: PanCAD.utils.file_handlers
 
    
    .. rubric:: Functions
@@ -10,7 +10,6 @@
    
       exists
       filepath
-      folder_exists
       folderpath
       validate_mode
       validate_operation

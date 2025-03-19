@@ -19,5 +19,5 @@ API
    PanCAD.translators.svg_to_freecad_sketcher
    PanCAD.utils.config
    PanCAD.utils.initialize
-   PanCAD.trigonometry
-   PanCAD.file_handlers
+   PanCAD.utils.trigonometry
+   PanCAD.utils.file_handlers

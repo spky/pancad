@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 
 from PanCAD.svg import validators as sv
 from PanCAD.svg import parsers as sp
-from PanCAD import trigonometry as trig
+from PanCAD.utils import trigonometry as trig
 
 class SVGElement(ET.Element):
     """A class representing the common properties and methods of all SVG 

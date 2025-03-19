@@ -12,7 +12,7 @@ from PanCAD.svg import elements as se
 from PanCAD.svg import file as sf
 from PanCAD.svg import generators as sg
 
-from PanCAD.file_handlers import InvalidAccessModeError
+from PanCAD.utils.file_handlers import InvalidAccessModeError
 
 
 class TestSVGFileInternal(unittest.TestCase):

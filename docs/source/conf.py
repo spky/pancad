@@ -31,9 +31,8 @@ import PanCAD.translators.freecad_sketcher_to_svg
 import PanCAD.translators.freecad_svg_file
 import PanCAD.translators.svg_to_freecad_sketcher
 
-import PanCAD.trigonometry
-import PanCAD.file_handlers
-
+import PanCAD.utils.trigonometry
+import PanCAD.utils.file_handlers
 import PanCAD.utils.config
 import PanCAD.utils.initialize
 
