@@ -14,7 +14,7 @@ import FreeCAD as App
 import Part
 import Sketcher
 
-from PanCAD import file_handlers as fh
+from PanCAD.utils import file_handlers as fh
 
 class Sketch:
     """A class representing a FreeCAD sketch external to the FreeCAD 
