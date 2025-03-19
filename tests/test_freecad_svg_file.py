@@ -7,15 +7,13 @@ import xml.etree.ElementTree as ET
 
 sys.path.append('src')
 
-from translators.freecad_svg_file import SketchSVG
-
-import file_handlers
-from freecad.object_wrappers import File as FreeCADFile
-from freecad.object_wrappers import Sketch
-import freecad.sketch_readers as fsr
-
-from svg.file import SVGFile
-import svg.generators as sg
+from PanCAD import file_handlers
+from PanCAD.freecad import sketch_readers as fsr
+from PanCAD.freecad.object_wrappers import File as FreeCADFile
+from PanCAD.freecad.object_wrappers import Sketch
+from PanCAD.svg import generators as sg
+from PanCAD.svg.file import SVGFile
+from PanCAD.translators.freecad_svg_file import SketchSVG
 
 class TestFreeCADSVGFile(unittest.TestCase):
     
@@ -61,12 +59,19 @@ class TestFreeCADSVGFile(unittest.TestCase):
         file.write(indent="  ")
     
     def test_from_element(self):
-        filepath = os.path.join(
-            self.SAMPLE_SVG_FOLDER,
-            'test_write_freecad_sketch_loop_back_input.svg'
-        )
+        filepath = os.path.join(self.SAMPLE_SVG_FOLDER,
+                                'test_write_freecad_sketch_loop_back_input.svg')
         file = SVGFile(filepath, "r")
         sketch_svg = SketchSVG.from_element(file.svg)
+    
+    def test_to_sketch(self):
+        filepath = os.path.join(self.SAMPLE_SVG_FOLDER,
+                                "rounded_rect_with_center_circle.svg")
+        file = SVGFile(filepath, "r")
+        sketch_svg = SketchSVG.from_element(file.svg)
+        freecad_sketch = sketch_svg.to_sketch()
+        self.assertEqual(freecad_sketch.label,
+                         "xz_rounded_rectangle_with_circle")
     
     def test_loop_back_freecad_svg(self):
         filepath = os.path.join(self.OUT_FOLDER,
@@ -87,7 +92,7 @@ class TestFreeCADSVGFile(unittest.TestCase):
         freecad_sketch.label = "loopback_test_sketch"
         file.new_sketch(freecad_sketch)
         file.save()
-    
+
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

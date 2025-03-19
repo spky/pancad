@@ -16,21 +16,21 @@ SVG Function Explanations
 Reading design information from SVG files
 #########################################
 
-.. automodule:: svg.parsers
+.. automodule:: PanCAD.svg.parsers
     :no-index:
     :members:
 
 Generating SVG commands
 #######################
 
-.. automodule:: svg.generators
+.. automodule:: PanCAD.svg.generators
     :no-index:
     :members:
 
 Validating SVG syntax
 #####################
 
-.. automodule:: svg.validators
+.. automodule:: PanCAD.svg.validators
     :no-index:
     :members:
 
@@ -38,7 +38,7 @@ Writing SVG elements and files
 ##############################
 
 
-.. automodule:: svg.file
+.. automodule:: PanCAD.svg.file
     :no-index:
     :members:
 
@@ -54,6 +54,6 @@ Geometry Function Explanations
 Trigonometry
 ############
 
-.. automodule:: trigonometry
+.. automodule:: PanCAD.trigonometry
     :no-index:
     :members:

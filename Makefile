@@ -2,6 +2,7 @@ VENV = ./venv
 SRC = ./src
 TESTS = ./tests
 DOCS = ./docs
+DIST = ./dist
 
 rwildcard=$(strip $(foreach d, \
 	$(wildcard $(1:=/*)), \
@@ -62,6 +63,9 @@ $(VENV_ACTIVATE): requirements.txt
 	$(PYTHON) -m pip install --upgrade pip
 	$(PIP) install -r requirements.txt
 
+build:
+	$(PYTHON) -m build
+
 clean:
 ifneq ($(strip $(PYCACHES)),)
 	$(RMDIR) $(call FixPath, $(PYCACHES))
@@ -71,6 +75,9 @@ ifneq ($(strip $(wildcard $(DOCS_DOCTREES))),)
 endif
 ifneq ($(strip $(wildcard $(DOCS_HTML))),)
 	$(RMDIR) $(call FixPath, $(DOCS_HTML))
+endif
+ifneq ($(strip $(wildcard $(DIST))),)
+	$(RMDIR) $(call FixPath, $(DIST))
 endif
 
 pristine: clean

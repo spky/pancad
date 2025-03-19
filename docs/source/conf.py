@@ -16,23 +16,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path('..','..', 'src').resolve()))
 
-import svg.element_utils
-import svg.elements
-import svg.enum_color_keywords
-import svg.file
-import svg.generators
-import svg.parsers
-import svg.validators
+import PanCAD.svg.element_utils
+import PanCAD.svg.elements
+import PanCAD.svg.enum_color_keywords
+import PanCAD.svg.file
+import PanCAD.svg.generators
+import PanCAD.svg.parsers
+import PanCAD.svg.validators
 
-import freecad.object_wrappers
-import freecad.sketch_readers
+import PanCAD.freecad.object_wrappers
+import PanCAD.freecad.sketch_readers
 
-import translators.freecad_sketcher_to_svg
-import translators.freecad_svg_file
-import translators.svg_to_freecad_sketcher
+import PanCAD.translators.freecad_sketcher_to_svg
+import PanCAD.translators.freecad_svg_file
+import PanCAD.translators.svg_to_freecad_sketcher
 
-import trigonometry
-import file_handlers
+import PanCAD.trigonometry
+import PanCAD.file_handlers
+
+import PanCAD.utils.config
+import PanCAD.utils.initialize
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
