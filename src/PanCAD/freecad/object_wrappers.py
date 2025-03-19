@@ -267,7 +267,7 @@ class File:
         elif self._mode not in fh.ACCESS_MODE_OPTIONS:
             raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")
     
-    def save(self):
+    def save(self) -> None:
         """Saves the file if the current access mode allows it."""
         fh.validate_operation(self.filepath, self.mode, "w")
         self._document.recompute()

@@ -15,7 +15,7 @@ class Config:
                      None, which causes Config to read local user settings
     """
     
-    DEFAULT_SETTINGS_FILE = "defaults.ini"
+    DEFAULT_SETTINGS_FILE = initialize.DEFAULTS_FILENAME
     
     WINDOWS_SEARCH_PATHS = (
         os.getcwd(),

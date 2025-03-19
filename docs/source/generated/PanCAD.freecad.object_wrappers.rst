@@ -9,6 +9,7 @@
    .. autosummary::
    
       make_placement
+      read_freecad
    
    .. rubric:: Classes
 

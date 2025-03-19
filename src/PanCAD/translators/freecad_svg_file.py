@@ -13,7 +13,6 @@ from PanCAD.freecad import sketch_readers as fsr
 from PanCAD.freecad.object_wrappers import File as FreeCADFile
 from PanCAD.freecad.object_wrappers import Sketch as FreeCADSketch
 from PanCAD.utils.config import Config, SettingsMissingError
-# from PanCAD.freecad import object_wrappers as fcow
 from PanCAD.translators import freecad_sketcher_to_svg as fc_to_svg
 from PanCAD.translators import svg_to_freecad_sketcher as svg_to_fc
 
@@ -220,4 +219,3 @@ def svg_to_freecad_sketch(
     
     freecad_svg = SketchSVG.from_element(svg_element)
     return freecad_svg.to_sketch(sketch_label)
-    # TODO: Add/document a way to save a freecad file over to a new location

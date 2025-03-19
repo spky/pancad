@@ -34,6 +34,9 @@ import PanCAD.translators.svg_to_freecad_sketcher
 import PanCAD.trigonometry
 import PanCAD.file_handlers
 
+import PanCAD.utils.config
+import PanCAD.utils.initialize
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
