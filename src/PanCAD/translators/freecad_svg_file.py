@@ -5,13 +5,13 @@ information in them into equvalent SVGs
 from __future__ import annotations
 
 import PanCAD
-from PanCAD.svg import elements
-from PanCAD.svg import element_utils as seu
-from PanCAD.svg.file import SVGFile
-from PanCAD.svg.generators import SVGStyle
-from PanCAD.freecad import sketch_readers as fsr
-from PanCAD.freecad.object_wrappers import File as FreeCADFile
-from PanCAD.freecad.object_wrappers import Sketch as FreeCADSketch
+from PanCAD.graphics.svg import elements
+from PanCAD.graphics.svg import element_utils as seu
+from PanCAD.graphics.svg.file import SVGFile
+from PanCAD.graphics.svg.generators import SVGStyle
+from PanCAD.cad.freecad import sketch_readers as fsr
+from PanCAD.cad.freecad.object_wrappers import File as FreeCADFile
+from PanCAD.cad.freecad.object_wrappers import Sketch as FreeCADSketch
 from PanCAD.utils.config import Config, SettingsMissingError
 from PanCAD.translators import freecad_sketcher_to_svg as fc_to_svg
 from PanCAD.translators import svg_to_freecad_sketcher as svg_to_fc

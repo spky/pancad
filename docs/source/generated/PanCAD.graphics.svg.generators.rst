@@ -1,7 +1,7 @@
-﻿PanCAD.svg.generators
-=====================
+﻿PanCAD.graphics.svg.generators
+==============================
 
-.. automodule:: PanCAD.svg.generators
+.. automodule:: PanCAD.graphics.svg.generators
 
    
    .. rubric:: Functions

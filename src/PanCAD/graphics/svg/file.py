@@ -4,8 +4,8 @@ elements to be written to files.
 
 import xml.etree.ElementTree as ET
 
-from PanCAD.svg import element_utils as seu
-from PanCAD.svg.elements import SVGElement
+from PanCAD.graphics.svg import element_utils as seu
+from PanCAD.graphics.svg.elements import SVGElement
 from PanCAD.utils import file_handlers
 from PanCAD.utils.file_handlers import InvalidAccessModeError
 

@@ -4,7 +4,7 @@ import unittest
 
 sys.path.append('src')
 
-from PanCAD.freecad import sketch_readers as fsr
+from PanCAD.cad.freecad import sketch_readers as fsr
 
 import FreeCAD as App
 

@@ -7,10 +7,10 @@ import os
 sys.path.append('src')
 
 import PanCAD
-from PanCAD.svg import element_utils as seu
-from PanCAD.svg import elements as se
-from PanCAD.svg import file as sf
-from PanCAD.svg import generators as sg
+from PanCAD.graphics.svg import element_utils as seu
+from PanCAD.graphics.svg import elements as se
+from PanCAD.graphics.svg import file as sf
+from PanCAD.graphics.svg import generators as sg
 
 from PanCAD.utils.file_handlers import InvalidAccessModeError
 

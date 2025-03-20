@@ -1,7 +1,7 @@
-﻿PanCAD.svg.file
-===============
+﻿PanCAD.graphics.svg.file
+========================
 
-.. automodule:: PanCAD.svg.file
+.. automodule:: PanCAD.graphics.svg.file
 
    
    .. rubric:: Functions
