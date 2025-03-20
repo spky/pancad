@@ -16,16 +16,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path('..','..', 'src').resolve()))
 
-import PanCAD.svg.element_utils
-import PanCAD.svg.elements
-import PanCAD.svg.enum_color_keywords
-import PanCAD.svg.file
-import PanCAD.svg.generators
-import PanCAD.svg.parsers
-import PanCAD.svg.validators
+import PanCAD.graphics.svg.element_utils
+import PanCAD.graphics.svg.elements
+import PanCAD.graphics.svg.enum_color_keywords
+import PanCAD.graphics.svg.file
+import PanCAD.graphics.svg.generators
+import PanCAD.graphics.svg.parsers
+import PanCAD.graphics.svg.validators
 
-import PanCAD.freecad.object_wrappers
-import PanCAD.freecad.sketch_readers
+import PanCAD.cad.freecad.object_wrappers
+import PanCAD.cad.freecad.sketch_readers
 
 import PanCAD.translators.freecad_sketcher_to_svg
 import PanCAD.translators.freecad_svg_file

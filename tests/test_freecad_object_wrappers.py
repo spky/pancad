@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 sys.path.append('src')
 
-from PanCAD.freecad import object_wrappers as fcow
+from PanCAD.cad.freecad import object_wrappers as fcow
 from PanCAD.utils import file_handlers
 
 import FreeCAD as App

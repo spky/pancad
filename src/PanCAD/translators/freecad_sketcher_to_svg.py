@@ -8,7 +8,7 @@ SVG.
 """
 
 from PanCAD.utils import trigonometry as trig
-from PanCAD.svg import generators as sg
+from PanCAD.graphics.svg import generators as sg
 
 def line(freecad_properties: dict) -> dict:
     """Returns a dictionary of equivalent svg properties to recreate a 

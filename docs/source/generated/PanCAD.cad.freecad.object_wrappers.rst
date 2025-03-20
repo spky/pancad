@@ -1,7 +1,7 @@
-﻿PanCAD.freecad.object\_wrappers
-===============================
+﻿PanCAD.cad.freecad.object\_wrappers
+===================================
 
-.. automodule:: PanCAD.freecad.object_wrappers
+.. automodule:: PanCAD.cad.freecad.object_wrappers
 
    
    .. rubric:: Functions
