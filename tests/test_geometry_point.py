@@ -11,8 +11,21 @@ sys.path.append('src')
 
 from PanCAD.geometry.point import Point
 
+ROUNDING_PLACES = 10
+
+def assertTupleAlmostEqual(self_input, 
+                           tuple_a: tuple, tuple_b: tuple, places: int = 7):
+    for val1, val2 in zip(tuple_a, tuple_b):
+        if type(val1) is float or type(val2) is float:
+            if math.isnan(val1) and math.isnan(val2):
+                self_input.assertTrue(math.isnan(val1) and math.isnan(val2))
+            else:
+                self_input.assertAlmostEqual(val1, val2, places)
+        else:
+            self_input.assertEqual(val1, val2)
+
 class TestPointInit(unittest.TestCase):
-    
+    """Tests whether Point successfully initializes when expected to"""
     def setUp(self):
         self.coordinate1 = (1, 1, 1)
         self.coordinates = coordinates = [
@@ -28,13 +41,13 @@ class TestPointInit(unittest.TestCase):
         for coordinate in self.coordinates:
             with self.subTest(coordinate=coordinate):
                 pt = Point(coordinate)
-                self.assertCountEqual(coordinate, pt.position)
+                self.assertCountEqual(coordinate, pt.cartesian)
     
     def test_point_tuple_iter(self):
         for coordinate in self.coordinates:
             with self.subTest(coordinate=coordinate):
                 pt = Point(coordinate)
-                self.assertCountEqual(tuple(pt), pt.position)
+                self.assertCountEqual(tuple(pt), pt.cartesian)
     
     def test_point_numpy_array(self):
         pt = Point(self.coordinate1)
@@ -42,15 +55,20 @@ class TestPointInit(unittest.TestCase):
     
     def test_str_dunder(self):
         pt = Point(self.coordinate1)
-        self.assertEqual(str(pt), "PanCAD Point at position (1, 1, 1)")
+        self.assertEqual(str(pt), "PanCAD Point at cartesian (1, 1, 1)")
     
     def test_vector(self):
         pass
 
-class TestPointPropertiesFunctions(unittest.TestCase):
-    
+class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
+    """Tests the Point for whether it correctly converts cartesian coordinates to 
+    and from polar/spherical coordinates"""
     def setUp(self):
         self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # From Left to Right:
+        # Cartesian Coordinate, Equivalent r, Equivalent phi, Equivalent theta
         self.coordinates = [
             ((0, 0, 0), 0, math.nan, math.nan),
             ((1, 1, 0), math.sqrt(2), math.radians(45), math.radians(90)),
@@ -78,8 +96,8 @@ class TestPointPropertiesFunctions(unittest.TestCase):
         for coordinate in self.coordinates2d:
             self.coordinates_polar.append(
                 (
-                    (self.coordinates2d[1], self.coordinates2d[2]),
-                    self.coordinates2d[0]
+                    (coordinate[1], coordinate[2]),
+                    (coordinate[0])
                 )
             )
         self.coordinates_spherical = []
@@ -88,30 +106,31 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                 ((coordinate[1], coordinate[2], coordinate[3]), coordinate[0])
             )
         
-    def test_position_setter(self):
+        
+    def test_cartesian_setter(self):
         for coordinate, *_ in self.coordinates:
             with self.subTest(coordinate = coordinate):
-                self.pt.position = coordinate
-                self.assertCountEqual(self.pt.position, coordinate)
+                self.pt.cartesian = coordinate
+                self.assertCountEqual(self.pt.cartesian, coordinate)
     
-    def test_xy_getters(self):
+    def test_2D_cartesian_getters(self):
         for coordinate, *_ in self.coordinates2d:
             with self.subTest(coordinate = coordinate):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 xy = (self.pt.x, self.pt.y)
                 self.assertCountEqual(xy, coordinate)
     
-    def test_xyz_getters(self):
+    def test_3D_cartesian_getters(self):
         for coordinate, *_ in self.coordinates:
             with self.subTest(coordinate = coordinate):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 xyz = (self.pt.x, self.pt.y, self.pt.z)
                 self.assertCountEqual(xyz, coordinate)
     
     def test_r_getter(self):
         for coordinate, expected_r, *_ in self.coordinates:
             with self.subTest(test=[coordinate, expected_r]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 self.assertEqual(self.pt.r, expected_r)
     
     def test_phi_getter(self):
@@ -120,7 +139,7 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                     coordinate,
                     f"{math.degrees(expected_phi)}°, {expected_phi} radians"
                 ]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 if coordinate == (0, 0):
                     self.assertTrue(math.isnan(self.pt.phi))
                 else:
@@ -132,7 +151,7 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                     coordinate,
                     f"{math.degrees(expected_theta)}°, {expected_theta} radians"
                 ]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 if coordinate == (0, 0, 0):
                     self.assertTrue(math.isnan(self.pt.theta))
                 else:
@@ -145,7 +164,7 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                     expected_r,
                     f"{math.degrees(expected_phi)}°, {expected_phi} radians"
                 ]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 if coordinate == (0, 0):
                     self.assertTrue(math.isnan(self.pt.phi))
                     self.assertEqual(self.pt.r, expected_r)
@@ -161,7 +180,7 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                     f"{math.degrees(expected_phi)}°, {expected_phi} radians",
                     f"{math.degrees(expected_theta)}°, {expected_theta} radians"
                 ]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 if coordinate == (0, 0, 0):
                     self.assertTrue(math.isnan(self.pt.phi))
                     self.assertTrue(math.isnan(self.pt.theta))
@@ -178,19 +197,19 @@ class TestPointPropertiesFunctions(unittest.TestCase):
                         (expected_r, expected_phi, expected_theta)
                     )
     
-    def test_xy_setters(self):
+    def test_2D_cartesian_setters(self):
         new_coordinate = (1, 2)
-        self.pt.position = (0, 0)
+        self.pt.cartesian = (0, 0)
         self.pt.x, self.pt.y = new_coordinate[0], new_coordinate[1]
-        self.assertCountEqual(self.pt.position, new_coordinate)
+        self.assertCountEqual(self.pt.cartesian, new_coordinate)
     
-    def test_xyz_setters(self):
+    def test_3D_cartesian_setters(self):
         new_coordinate = (1, 2, 3)
-        self.pt.position = (0, 0)
+        self.pt.cartesian = (0, 0)
         self.pt.x = new_coordinate[0]
         self.pt.y = new_coordinate[1]
         self.pt.z = new_coordinate[2]
-        self.assertCountEqual(self.pt.position, new_coordinate)
+        self.assertCountEqual(self.pt.cartesian, new_coordinate)
     
     def test_vector(self):
         tests = []
@@ -209,15 +228,300 @@ class TestPointPropertiesFunctions(unittest.TestCase):
         
         for coordinate, orientation, expected in tests:
             with self.subTest(test = [coordinate, orientation, expected]):
-                self.pt.position = coordinate
+                self.pt.cartesian = coordinate
                 self.assertTrue(
                     self.pt.vector(orientation).shape == expected.shape
                 )
     
-    # def test_polar_setter(self):
-        # for polar_coordinate, xy_coordinate in self.coordinates_polar:
-            # with self.subTest(test=[polar_coordinate, xy_coordinate]):
-                # self.pt.polar
+    def test_polar_setter(self):
+        for polar_coordinate, xy_coordinate in self.coordinates_polar:
+            with self.subTest(test=[polar_coordinate, xy_coordinate]):
+                self.pt.polar = polar_coordinate
+                assertTupleAlmostEqual(
+                    self,
+                    self.pt.cartesian,
+                    xy_coordinate,
+                    self.default_places
+                )
+    
+    def test_spherical_setter(self):
+        for spherical_coordinate, xy_coordinate in self.coordinates_spherical:
+            with self.subTest(test=[spherical_coordinate, xy_coordinate]):
+                self.pt.spherical = spherical_coordinate
+                assertTupleAlmostEqual(
+                    self,
+                    self.pt.cartesian,
+                    xy_coordinate,
+                    self.default_places
+                )
+
+class TestRSetterSphericalEdgeCases(unittest.TestCase):
+    """Tests whether the r setter in Point correctly updates the point's position 
+    and identifies when it cannot with errors in spherical coordinates"""
+    def setUp(self):
+        self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # tests: initial spherical, new r, expected new spherical
+        self.change_tests = [ 
+            (
+                (0, math.nan, math.nan), 0,
+                (0, math.nan, math.nan)
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), 0,
+                (0, math.nan, math.nan)
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), 2,
+                (2, math.radians(45), math.radians(45)),
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), -1,
+                ValueError
+            ),
+            (
+                (0, math.nan, math.nan), 1,
+                ValueError
+            ),
+            (
+                (0, math.nan, math.nan), math.nan,
+                ValueError
+            ),
+        ]
+    
+    def test_nominal_r_setter(self):
+        for initial_spherical, r, expected_spherical in self.change_tests:
+            if isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, r=r,
+                                  expected_polar=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    self.pt.r = r
+                    assertTupleAlmostEqual(self, self.pt.spherical,
+                                           expected_spherical,
+                                           self.default_places)
+    
+    def test_exceptions_r_setter(self):
+        for initial_spherical, r, expected_spherical in self.change_tests:
+            if not isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, r=r,
+                                  expected_error_type=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    with self.assertRaises(expected_spherical):
+                        self.pt.r = r
+
+class TestRSetterPolarEdgeCases(unittest.TestCase):
+    """Tests whether the r setter in Point correctly updates the point's position 
+    and identifies when it cannot with errors in polar coordinates"""
+    def setUp(self):
+        self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # tests: initial spherical, new r, expected new spherical
+        self.change_tests = [ 
+            (
+                (0, math.nan), 0,
+                (0, math.nan)
+            ),
+            (
+                (1, math.radians(45)), 0,
+                (0, math.nan)
+            ),
+            (
+                (1, math.radians(45)), 2,
+                (2, math.radians(45)),
+            ),
+            (
+                (1, math.radians(45)), -1,
+                ValueError
+            ),
+            (
+                (0, math.nan), 1,
+                ValueError
+            ),
+            (
+                (0, math.nan), math.nan,
+                ValueError
+            ),
+        ]
+    
+    def test_nominal_r_setter(self):
+        for initial_polar, r, expected_polar in self.change_tests:
+            if isinstance(expected_polar, tuple):
+                with self.subTest(initial_polar=initial_polar, r=r,
+                                  expected_polar=expected_polar):
+                    self.pt.polar = initial_polar
+                    self.pt.r = r
+                    assertTupleAlmostEqual(self, self.pt.polar,
+                                           expected_polar,
+                                           self.default_places)
+    
+    def test_exceptions_r_setter(self):
+        for initial_polar, r, expected_polar in self.change_tests:
+            if not isinstance(expected_polar, tuple):
+                with self.subTest(initial_polar=initial_polar, r=r,
+                                  expected_error_type=expected_polar):
+                    self.pt.polar = initial_polar
+                    with self.assertRaises(expected_polar):
+                        self.pt.r = r
+
+class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
+    """Tests whether the phi setter in Point correctly updates the point's 
+    position and identifies when it cannot with errors in spherical coordinates"""
+    def setUp(self):
+        self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # tests: initial spherical, new r, expected new spherical
+        self.change_tests = [ 
+            (
+                (0, math.nan, math.nan), math.nan,
+                (0, math.nan, math.nan)
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), math.nan,
+                ValueError
+            ),
+            (
+                (1, math.radians(45), math.radians(135)), math.nan,
+                ValueError
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), math.radians(0),
+                (1, math.radians(0), math.radians(45)),
+            ),
+            (
+                (0, math.nan, math.nan), 1,
+                ValueError
+            ),
+        ]
+    
+    def test_nominal_phi_setter(self):
+        for initial_spherical, phi, expected_spherical in self.change_tests:
+            if isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, phi=phi,
+                                  expected_spherical=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    self.pt.phi = phi
+                    assertTupleAlmostEqual(self, self.pt.spherical,
+                                           expected_spherical,
+                                           self.default_places)
+    
+    def test_exceptions_phi_setter(self):
+        for initial_spherical, phi, expected_spherical in self.change_tests:
+            if not isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, phi=phi,
+                                  expected_error_type=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    with self.assertRaises(expected_spherical):
+                        self.pt.phi = phi
+
+class TestPhiSetterpolarEdgeCases(unittest.TestCase):
+    """Tests whether the phi setter in Point correctly updates the point's 
+    position and identifies when it cannot with errors in polar coordinates"""
+    def setUp(self):
+        self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # tests: initial polar, new r, expected new polar
+        self.change_tests = [ 
+            (
+                (0, math.nan), math.nan,
+                (0, math.nan)
+            ),
+            (
+                (1, math.radians(45)), math.nan,
+                ValueError
+            ),
+            (
+                (1, math.radians(45)), math.nan,
+                ValueError
+            ),
+            (
+                (1, math.radians(45)), math.radians(0),
+                (1, math.radians(0)),
+            ),
+            (
+                (0, math.nan), 1,
+                ValueError
+            ),
+        ]
+    
+    def test_nominal_phi_setter(self):
+        for initial_polar, phi, expected_polar in self.change_tests:
+            if isinstance(expected_polar, tuple):
+                with self.subTest(initial_polar=initial_polar, phi=phi,
+                                  expected_polar=expected_polar):
+                    self.pt.polar = initial_polar
+                    self.pt.phi = phi
+                    assertTupleAlmostEqual(self, self.pt.polar,
+                                           expected_polar,
+                                           self.default_places)
+    
+    def test_exceptions_phi_setter(self):
+        for initial_polar, phi, expected_polar in self.change_tests:
+            if not isinstance(expected_polar, tuple):
+                with self.subTest(initial_polar=initial_polar, phi=phi,
+                                  expected_error_type=expected_polar):
+                    self.pt.polar = initial_polar
+                    with self.assertRaises(expected_polar):
+                        self.pt.phi = phi
+
+class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
+    """Tests whether the theta setter in Point correctly updates the point's 
+    position and identifies when it cannot with errors in spherical coordinates"""
+    def setUp(self):
+        self.pt = Point()
+        self.default_places = ROUNDING_PLACES
+        
+        # tests: initial spherical, new r, expected new spherical
+        self.change_tests = [ 
+            (
+                (0, math.nan, math.nan), math.nan,
+                (0, math.nan, math.nan)
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), math.nan,
+                ValueError
+            ),
+            (
+                (1, math.nan, math.radians(0)), math.radians(0),
+                (1, math.nan, math.radians(0))
+            ),
+            (
+                (1, math.nan, math.pi), math.pi,
+                (1, math.nan, math.pi)
+            ),
+            (
+                (1, math.radians(45), math.radians(45)), math.radians(90),
+                (1, math.radians(45), math.radians(90)),
+            ),
+            (
+                (0, math.nan, math.nan), 1,
+                ValueError
+            ),
+        ]
+    
+    def test_nominal_theta_setter(self):
+        for initial_spherical, theta, expected_spherical in self.change_tests:
+            if isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, theta=theta,
+                                  expected_spherical=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    self.pt.theta = theta
+                    assertTupleAlmostEqual(self, self.pt.spherical,
+                                           expected_spherical,
+                                           self.default_places)
+    
+    def test_exceptions_theta_setter(self):
+        for initial_spherical, theta, expected_spherical in self.change_tests:
+            if not isinstance(expected_spherical, tuple):
+                with self.subTest(initial_spherical=initial_spherical, theta=theta,
+                                  expected_error_type=expected_spherical):
+                    self.pt.spherical = initial_spherical
+                    with self.assertRaises(expected_spherical):
+                        self.pt.theta = theta
+
 
 
 if __name__ == "__main__":

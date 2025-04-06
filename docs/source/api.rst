@@ -21,3 +21,4 @@ API
    PanCAD.utils.initialize
    PanCAD.utils.trigonometry
    PanCAD.utils.file_handlers
+   PanCAD.geometry.point

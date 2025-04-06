@@ -36,6 +36,8 @@ import PanCAD.utils.file_handlers
 import PanCAD.utils.config
 import PanCAD.utils.initialize
 
+import PanCAD.geometry.point
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
