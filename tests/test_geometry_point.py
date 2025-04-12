@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 import unittest
-from xml.etree import ElementTree as ET
-import os
 import math
 
 import numpy as np
@@ -33,6 +31,15 @@ class TestPointInit(unittest.TestCase):
             (1, 1, 1),
             (1, 1),
         ]
+        self.np_coordinates = [(np.array(c), c) for c in self.coordinates]
+        self.np_coordinates.extend(
+            [(np.array(c).reshape(-1,1), c) for c in self.coordinates]
+        )
+        for i, (numpy_coordinate, expected) in enumerate(self.np_coordinates):
+            # Convert expected coordinates to float
+            self.np_coordinates[i] = (
+                numpy_coordinate, tuple([float(c) for c in expected])
+            )
     
     def test_point_init_no_arg(self):
         pt = Point()
@@ -42,6 +49,14 @@ class TestPointInit(unittest.TestCase):
             with self.subTest(coordinate=coordinate):
                 pt = Point(coordinate)
                 self.assertCountEqual(coordinate, pt.cartesian)
+    
+    def test_point_init_numpy(self):
+        for np_coordinate, expected_cartesian in self.np_coordinates:
+            with self.subTest(numpy_coordinate=np_coordinate,
+                              expected_cartesian=expected_cartesian):
+                pt = Point(np_coordinate)
+                self.assertCountEqual(pt.cartesian, expected_cartesian)
+                self.assertEqual(str(pt.cartesian), str(expected_cartesian))
     
     def test_point_tuple_iter(self):
         for coordinate in self.coordinates:

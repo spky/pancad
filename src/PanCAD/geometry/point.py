@@ -6,6 +6,8 @@ import math
 
 import numpy as np
 
+from PanCAD.utils import trigonometry as trig
+
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
     translate its position between coordinate systems for easy position 
@@ -17,11 +19,25 @@ class Point:
     :param unit: The unit of the point's length values.
     """
     def __init__(self,
-                 cartesian: tuple[float, float, float] = (None, None, None),
+                 cartesian: tuple[float, float, float] | np.ndarray = (None, None, None),
                  *, uid: str = None, unit: str = None):
         """Constructor method"""
         self.uid = uid if uid else None
-        self.cartesian = cartesian if cartesian else (None, None, None)
+        
+        if isinstance(cartesian, tuple):
+            self.cartesian = cartesian
+        elif isinstance(cartesian, np.ndarray):
+            # Converts numpy array to a tuple of floats
+            if trig.is_geometry_vector(cartesian):
+                cartesian = [
+                    float(coordinate.squeeze()) for coordinate in cartesian
+                ]
+                self.cartesian = tuple(cartesian)
+            else:
+                raise ValueError("NumPy arrays must be 2 or 3 elements in a"
+                                 + " single dimension to initialize a point")
+        else:
+            self.cartesian = (None, None, None)
         self.unit = unit if unit else None
     
     # Getters #
@@ -363,7 +379,7 @@ class Point:
             raise StopIteration
     
     def __str__(self) -> str:
-        """String function to outputs the point's description and cartesian 
+        """String function to output the point's description and cartesian 
         position when the point is fed to the str() function"""
         return f"PanCAD Point at cartesian {self.cartesian}"
     

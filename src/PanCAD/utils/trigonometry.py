@@ -602,3 +602,73 @@ def multi_fit_box(
     return [[min(x_values), min(y_values)],
             [max(x_values), max(y_values)]]
 
+def is_geometry_vector(vector: np.ndarray) -> bool:
+    """Returns whether the NumPy vector is a valid 2D or 3D vector
+    
+    :param vector: A NumPy vector to be checked
+    :returns: True if the vector is a valid 2D or 3D vector
+    """
+    if vector.shape in [(2,), (3,), (2,1), (3,1)]:
+        return True
+    else:
+        return False
+
+def is_iterable(value) -> bool:
+    """Returns whether a value is iterable.
+    
+    :param value: Any value in Python
+    :returns: Whether the value is iterable.
+    """
+    return hasattr(value, "__iter__")
+
+def to_1D_tuple(value: list | tuple | np.ndarray) -> tuple:
+    """Returns a 1D tuple from a given value, if possible. Usually used to 
+    prepare vector-like data for further processing.
+    
+    :param value: A datatype that needs to be converted to a 1D tuple.
+    :returns: A 1D tuple of minimum length to represent the value
+    """
+    if isinstance(value, tuple) and not all(map(is_iterable, value)):
+        return value
+    elif isinstance(value, list) and not all(map(is_iterable, value)):
+        return tuple(value)
+    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
+        return tuple([float(coordinate.squeeze()) for coordinate in value])
+    else:
+        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
+                         + f"a 1D tuple")
+
+def to_1D_np(value: list | tuple | np.ndarray) -> tuple:
+    """Returns a 1D numpy array from a given value, if possible. Usually used to 
+    prepare vector-like data for further processing.
+    
+    :param value: A datatype that needs to be converted to a 1D numpy array.
+    :returns: A 1D numpy of minimum length to represent the value
+    """
+    if isinstance(value, tuple) and not all(map(is_iterable, value)):
+        return np.array(value)
+    elif isinstance(value, list) and not all(map(is_iterable, value)):
+        return np.array(value)
+    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
+        return value.squeeze()
+    else:
+        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
+                         + f"a 1D numpy.ndarray")
+
+def get_unit_vector(vector: np.ndarray) -> np.ndarray:
+    """Returns the unit vector of the given vector. If the vector is a zero 
+    vector, returns the zero vector.
+    
+    :param vector: A 1D vector as a numpy array
+    :returns: A 1D numpy array with a length of 1 in the same direction
+    """
+    length = np.linalg.norm(vector)
+    shape = vector.shape
+    if is_geometry_vector(vector):
+        if length == 0:
+            return vector
+        else:
+            return vector / length
+    else:
+        raise ValueError("Unit vectors will only be found for 2 and 3 element"
+                         f" vectors. Vector '{vector}' has shape {shape}")
