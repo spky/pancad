@@ -9,6 +9,9 @@ sys.path.append('src')
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry.point import Point
 from PanCAD.geometry.line import Line
+from PanCAD.utils import verification
+
+ROUNDING_PLACES = 10
 
 class TestLineInit(unittest.TestCase):
     
@@ -19,7 +22,7 @@ class TestLineInit(unittest.TestCase):
     def test_line_init_no_arg(self):
         l = Line()
     
-    def test_from_two_points(self):
+    def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
         expected = ("PanCAD Line with a point closest to the origin at"
                     + " (1.0, 0.0, 0.0) and in the direction (0.0, 1.0, 0.0)")
@@ -77,10 +80,23 @@ class TestLineClassMethods(unittest.TestCase):
     
     def setUp(self):
         # Point A, Point B, Expected Point Closest to Origin, Expected Direction
-        tests = [
-            ((0, 4), (4, 0), (2, 2), (-math.sqrt(2), math.sqrt(2))),
+        self.tests = [
+            ((0, 4), (4, 0), (2, 2), (-1/math.sqrt(2), 1/math.sqrt(2))),
         ]
-        
+    
+    def test_from_two_points_point_closest_to_origin(self):
+        for point_a, point_b, expected_point, expected_direction in self.tests:
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_point=expected_point,
+                              expected_direction=expected_direction):
+                pt_a, pt_b = Point(point_a), Point(point_b)
+                e_pt = Point(expected_point)
+                test_line = Line.from_two_points(pt_a, pt_b)
+                print(test_line)
+                verification.assertPointsAlmostEqual(
+                    self, test_line._point_closest_to_origin, e_pt,
+                    ROUNDING_PLACES
+                )
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem

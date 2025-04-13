@@ -365,7 +365,8 @@ class Point:
     # Python Dunders #
     def __eq__(self, other: Point) -> bool:
         """Rich comparison for point equality that allows for points to be 
-        directly compared with ==.
+        directly compared with ==. Note: A point at (0,0) and a point at (0,0,0) 
+        will not be found equal since the first's z coordinate is not defined.
         
         :param other: The point to compare self to.
         :returns: Whether the tuples of the points are equal.
