@@ -29,7 +29,8 @@ class Line:
     # Getters #
     @property
     def direction(self) -> tuple:
-        """The direction of the line.
+        """The unique direction of the line. Independent of line definition 
+        method.
         
         :getter: Returns the direction of the line as a tuple
         :setter: Takes a vector, finds its unique direction unit vector, and 
@@ -39,7 +40,8 @@ class Line:
     
     @property
     def uid(self) -> str:
-        """The unique id of the line.
+        """The unique id of the line. Can also be interpreted as the name of 
+        the line
         
         :getter: Returns the unique id as a string.
         :setter: Sets the unique id.
@@ -61,10 +63,25 @@ class Line:
     
     # Class Methods #
     @classmethod
-    def from_two_points(cls, a:Point, b:Point, uid: str = None) -> Line:
-        a_vector, b_vector = np.array(a), np.array(b)
-        ab_vector = b_vector - a_vector
-        return cls(a_vector, ab_vector, uid)
+    def from_two_points(cls, a:Point, b:Point, uid:str = None) -> Line:
+        """Returns a Line instance defined by points a and b. Point order 
+        does not matter since lines are infinite. If direction matters, use 
+        LineSegment.
+        
+        :param a: A PanCAD Point
+        :param b: A PanCAD Point that is not the same as point a
+        """
+        if not isinstance(a, Point) or not isinstance(b, Point):
+            raise ValueError(f"Points a and b must be PanCAD points."
+                             + f"Classes - a: {a.__class__}, b:{b.__class__}")
+        if a != b:
+            a_vector, b_vector = np.array(a), np.array(b)
+            ab_vector = b_vector - a_vector
+            return cls(a_vector, ab_vector, uid)
+        else:
+            raise ValueError(f"A line cannot be defined by 2 points at the same"
+                             f" location. Point a: {tuple(a)}, Point b:"
+                             f" {tuple(b)}")
     
     @classmethod
     def from_slope_and_intercept(cls, slope: float, intercept: float,
@@ -134,6 +151,21 @@ class Line:
         return trig.to_1D_tuple(unit_vector + 0)
     
     # Python Dunders #
+    def __eq__(self, other: Line) -> bool:
+        """Rich comparison for line equality that allows for lines to be 
+        directly compared with ==.
+        
+        :param other: The point to compare self to.
+        :returns: Whether the tuples of the points are equal.
+        """
+        self_origin_pt = self._point_closest_to_origin
+        other_origin_pt = other._point_closest_to_origin
+        if isinstance(other, Line):
+            return (tuple(self_origin_pt) == tuple(other_origin_pt)
+                    and self.direction == other.direction)
+        else:
+            return NotImplemented
+    
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
