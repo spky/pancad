@@ -20,8 +20,10 @@ class TestLineInit(unittest.TestCase):
         l = Line()
     
     def test_from_two_points(self):
-        l = Line.from_two_points(self.pt_a, self.pt_b)
-        print(l)
+        test = Line.from_two_points(self.pt_a, self.pt_b)
+        expected = ("PanCAD Line with a point closest to the origin at"
+                    + " (1.0, 0.0, 0.0) and in the direction (0.0, 1.0, 0.0)")
+        self.assertEqual(str(test), expected)
 
 class TestLineVectorMethods(unittest.TestCase):
     
@@ -70,6 +72,15 @@ class TestLineVectorMethods(unittest.TestCase):
             with self.subTest(vector=vector, unit_vector=unit_vector):
                 self.assertCountEqual(Line.unique_direction(vector),
                                       unit_vector)
+
+class TestLineClassMethods(unittest.TestCase):
+    
+    def setUp(self):
+        # Point A, Point B, Expected Point Closest to Origin, Expected Direction
+        tests = [
+            ((0, 4), (4, 0), (2, 2), (-math.sqrt(2), math.sqrt(2))),
+        ]
+        
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem

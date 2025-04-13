@@ -537,7 +537,24 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                     with self.assertRaises(expected_spherical):
                         self.pt.theta = theta
 
-
+class TestPointRichComparison(unittest.TestCase):
+    
+    def setUp(self):
+        # Point A, Point B, expected result
+        self.tests = [
+            ((0, 0), (0, 0), True),
+            ((1, 1), (0, 0), False),
+            ((0, 0, 0), (0, 0, 0), True),
+            ((1, 1, 1), (0, 0, 0), False),
+            ((0, 0, 0), (0, 0), False),
+        ]
+        
+    def test_point_equality(self):
+        for point_a, point_b, expected_result in self.tests:
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_result=expected_result):
+                pt_a, pt_b = Point(point_a), Point(point_b)
+                self.assertEqual(pt_a == pt_b, expected_result)
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem

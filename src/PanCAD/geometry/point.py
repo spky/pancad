@@ -1,6 +1,7 @@
 """A module providing a class to represent points in all CAD programs,  
 graphics, and other geometry use cases.
 """
+from __future__ import annotations
 
 import math
 
@@ -362,6 +363,18 @@ class Point:
             return array
     
     # Python Dunders #
+    def __eq__(self, other: Point) -> bool:
+        """Rich comparison for point equality that allows for points to be 
+        directly compared with ==.
+        
+        :param other: The point to compare self to.
+        :returns: Whether the tuples of the points are equal.
+        """
+        if isinstance(other, Point):
+            return tuple(self) == tuple(other)
+        else:
+            return NotImplemented
+    
     def __iter__(self):
         """Iterator function to allow the point's cartesian position to be 
         output when the point is fed to a list or tuple like function."""
