@@ -51,6 +51,14 @@ class Line:
         return self._direction
     
     @property
+    def direction_polar(self) -> tuple:
+        pass
+    
+    @property
+    def direction_spherical(self) -> tuple:
+        pass
+    
+    @property
     def reference_point(self) -> Point:
         """The closest point to the origin of the line.
         

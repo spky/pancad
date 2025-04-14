@@ -678,3 +678,48 @@ def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
                          f" vectors. Vector '{vector}' has shape {shape}")
     
     return unit_vector.reshape(shape)
+
+def cartesian_to_polar(vector: list | tuple | np.ndarray) -> tuple[float, float]:
+    """Returns the polar version of the given cartesian vector.
+    
+    :param vector: A 2D vector with cartesian components
+    :returns: A 2D vector (r = radius, phi = azimuth in radians)
+    """
+    pass
+
+def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
+    """Returns the r coordinate of a polar or spherical coordinate from a 
+    given cartesian vector.
+    
+    :param cartesian: A 2D or 3D vector with cartesian components (x, y, z)
+    :returns: The radius coordinate of the equivalent polar/spherical coordinate
+    """
+    if len(cartesian) == 2:
+        return math.hypot(cartesian[0], cartesian[1])
+    elif len(cartesian) == 3:
+        return math.hypot(cartesian[0], cartesian[1], cartesian[2])
+    else:
+        ValueError("Can only return r if the cartesian vector is 2 or 3"
+                   + f" elements long, given: {cartesian}")
+
+def phi_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
+    """Returns the polar/spherical azimuth coordinate of the equivalent 
+    polar/spherical in radians."""
+    if cartesian[0] == 0 and cartesian[1] == 0:
+        return math.nan
+    else:
+        return math.atan2(cartesian[1], cartesian[0])
+
+def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
+    """Returns the spherical inclination coordinate of the point in radians."""
+    if cartesian[2] == 0 and math.hypot(cartesian[0], cartesian[1]) != 0:
+        return math.pi/2
+    elif cartesian[0] == 0 and cartesian[1] == 0 and cartesian[2] == 0:
+        return math.nan
+    elif cartesian[2] > 0:
+        return math.atan(math.hypot(cartesian[0], cartesian[1])/cartesian[2])
+    elif cartesian[2] < 0:
+        return math.pi + math.atan(math.hypot(cartesian[0], cartesian[1])
+                                   /cartesian[2])
+    else:
+        raise ValueError(f"Unhandled exception, cartesian: {cartesian}")

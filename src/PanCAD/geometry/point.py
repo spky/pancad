@@ -167,10 +167,8 @@ class Point:
                  for polar or spherical coordinate validity and will error if it 
                  is violated.
         """
-        if len(self) == 2:
-            return math.hypot(self.x, self.y)
-        elif len(self) == 3:
-            return math.hypot(self.x, self.y, self.z)
+        if len(self) == 2 or len(self) == 3:
+            return trig.r_of_cartesian(self.cartesian)
         else:
             raise ValueError(f"Point cartesian {self.cartesian} is already"
                              + "invalid, must be 2D or 3D to function")
@@ -185,10 +183,7 @@ class Point:
                  for polar or spherical coordinate validity and will error if 
                  it is violated.
         """
-        if self.x == 0 and self.y == 0:
-            return math.nan
-        else:
-            return math.atan2(self.y, self.x)
+        return trig.phi_of_cartesian(self.cartesian)
     
     @property
     def theta(self) -> float:
@@ -200,16 +195,7 @@ class Point:
                  for polar or spherical coordinate validity and will error if 
                  it is violated.
         """
-        if self.z == 0 and math.hypot(self.x, self.y) != 0:
-            return math.pi/2
-        elif self.x == 0 and self.y == 0 and self.z == 0:
-            return math.nan
-        elif self.z > 0:
-            return math.atan(math.hypot(self.x, self.y)/self.z)
-        elif self.z < 0:
-            return math.pi + math.atan(math.hypot(self.x, self.y)/self.z)
-        else:
-            raise ValueError(f"Unhandled exception, cartesian: {self.cartesian}")
+        return trig.theta_of_cartesian(self.cartesian)
     
     # Setters #
     @cartesian.setter
