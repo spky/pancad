@@ -655,20 +655,26 @@ def to_1D_np(value: list | tuple | np.ndarray) -> tuple:
         raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
                          + f"a 1D numpy.ndarray")
 
-def get_unit_vector(vector: np.ndarray) -> np.ndarray:
+def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
     """Returns the unit vector of the given vector. If the vector is a zero 
     vector, returns the zero vector.
     
     :param vector: A 1D vector as a numpy array
     :returns: A 1D numpy array with a length of 1 in the same direction
     """
+    if isinstance(vector, np.ndarray):
+        shape = vector.shape
+    else:
+        shape = (len(vector),)
+    vector = to_1D_np(vector)
     length = np.linalg.norm(vector)
-    shape = vector.shape
     if is_geometry_vector(vector):
         if length == 0:
-            return vector
+            unit_vector = vector
         else:
-            return vector / length
+            unit_vector = vector / length
     else:
         raise ValueError("Unit vectors will only be found for 2 and 3 element"
                          f" vectors. Vector '{vector}' has shape {shape}")
+    
+    return unit_vector.reshape(shape)

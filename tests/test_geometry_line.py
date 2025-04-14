@@ -22,6 +22,18 @@ class TestLineInit(unittest.TestCase):
     def test_line_init_no_arg(self):
         l = Line()
     
+    def test_point_len_dunder(self):
+        tests = [
+            ((0, 0), (1, 1), 2),
+            ((0, 0, 0), (1, 1, 1), 3),
+        ]
+        for pt_a, pt_b, length in tests:
+            with self.subTest(point_a=pt_a, point_b=pt_b,
+                              expected_length=length):
+                point_1, point_2 = Point(pt_a), Point(pt_b)
+                test_line = Line.from_two_points(point_1, point_2)
+                self.assertEqual(len(test_line), length)
+    
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
         expected = ("PanCAD Line with a point closest to the origin at"
@@ -76,7 +88,7 @@ class TestLineVectorMethods(unittest.TestCase):
                 self.assertCountEqual(Line.unique_direction(vector),
                                       unit_vector)
 
-class TestLineClassMethods(unittest.TestCase):
+class TestLineTwoPointDefinition(unittest.TestCase):
     
     def setUp(self):
         # Point A, Point B, Expected Point Closest to Origin,
@@ -141,6 +153,50 @@ class TestLineClassMethods(unittest.TestCase):
         pt_b = Point((1, 1))
         with self.assertRaises(ValueError):
             test_line = Line.from_two_points(pt_a, pt_b)
+
+class TestEquationLineDefinitions(unittest.TestCase):
+    
+    def setUp(self):
+        # Slope (m), Y-Intercept (b), Expected Point, Expected Direction
+        self.tests = [
+            (0, 0, (0, 0), (1, 0)),
+            (1, 0, (0, 0), (1, 1)),
+            (-1, 0, (0, 0), (-1, 1)),
+            (-1, 4, (2, 2), (-1, 1)),
+        ]
+        for i, (m, b, pt, direction) in enumerate(self.tests):
+            self.tests[i] = (m, b, Point(pt), trig.get_unit_vector(direction))
+    
+    def test_from_slope_and_y_intercept_expected_point(self):
+        for m, b, pt, direction in self.tests:
+            with self.subTest(slope=m, intercept=b,
+                              expected_closest_to_origin_point=pt):
+                test_line = Line.from_slope_and_y_intercept(m, b)
+                verification.assertPointsAlmostEqual(
+                    self, test_line._point_closest_to_origin, pt,
+                    ROUNDING_PLACES
+                )
+    
+    def test_from_slope_and_y_intercept_expected_direction(self):
+        for m, b, pt, direction in self.tests:
+            with self.subTest(slope=m, intercept=b,
+                              expected_direction=direction):
+                test_line = Line.from_slope_and_y_intercept(m, b)
+                verification.assertTupleAlmostEqual(
+                    self, test_line.direction, direction, ROUNDING_PLACES
+                )
+    
+    def test_slope_getter_non_nan(self):
+        for m, b, pt, direction in self.tests:
+            with self.subTest(slope=m, intercept=b):
+                test_line = Line.from_slope_and_y_intercept(m, b)
+                self.assertEqual(test_line.slope, m)
+    
+    def test_y_intercept_getter_non_nan(self):
+        for m, b, pt, direction in self.tests:
+            with self.subTest(slope=m, intercept=b):
+                test_line = Line.from_slope_and_y_intercept(m, b)
+                self.assertEqual(test_line.y_intercept, b)
 
 class TestLineRichComparison(unittest.TestCase):
     

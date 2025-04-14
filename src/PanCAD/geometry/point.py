@@ -12,20 +12,48 @@ from PanCAD.utils import trigonometry as trig
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
     translate its position between coordinate systems for easy position 
-    translation.
+    translation. Point's __init__ function can only take cartesian coordinates, 
+    so either use one of its class functions or initialize it with no 
+    arguments and modify one of its coordinate system specific properties if 
+    another coordinate system is desired.
     
-    :param cartesian: The cartesian coordinate (x, y, z) of the point.
+    :param cartesian: The cartesian coordinate (x, y, z) of the point. If a
+                      float or int is given instead, y needs to also be 
+                      initialized.
+    :param y: The cartesian y coordinate of the point. Can only be given if 
+              cartesian is given as a float or int.
+    :param z: The cartesian z coordinate of the point. Can only be given if 
+              cartesian and y are given as floats or ints.
     :param uid: The unique ID of the point for interoperable CAD 
-                identitification.
+                identification.
     :param unit: The unit of the point's length values.
     """
-    def __init__(self,
-                 cartesian: tuple[float, float, float] | np.ndarray = (None, None, None),
+    def __init__(self, cartesian: (tuple[float, float, float]
+                                   | np.ndarray | float) = None,
+                 y: float = None, z: float = None,
                  *, uid: str = None, unit: str = None):
         """Constructor method"""
-        self.uid = uid if uid else None
+        self.uid = uid
         
-        if isinstance(cartesian, tuple):
+        if (
+               isinstance(cartesian, (int, float))
+               and isinstance(y, (int, float))
+               and isinstance(z, (int, float))
+            ):
+            self.cartesian = (cartesian, y, z)
+        elif (
+                 isinstance(cartesian, (int, float))
+                 and isinstance(y, (int, float))
+                 and z is None):
+            self.cartesian = (cartesian, y)
+        elif (
+                 isinstance(cartesian, (tuple, np.ndarray))
+                 and (y is not None or z is not None)
+              ):
+            raise ValueError(f"Cartesian {cartesian} can not be given as a"
+                             + f"non-float/int if y and z are not None."
+                             + f"y value: {y}, z value: {z}")
+        elif isinstance(cartesian, tuple):
             self.cartesian = cartesian
         elif isinstance(cartesian, np.ndarray):
             # Converts numpy array to a tuple of floats
@@ -102,9 +130,9 @@ class Point:
         :setter: Sets the polar coordinate (r, phi). Will error if the point 
                  is 3D.
         """
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             return (self.r, self.phi)
-        elif len(self.cartesian) == 3:
+        elif len(self) == 3:
             raise ValueError("Point must be 2D to return a polar coordinate, "
                              + "use spherical for 3D points")
         else:
@@ -121,9 +149,9 @@ class Point:
         :setter: Sets the spherical coordinate (r, phi, theta). Will error if 
                  the point is 2D.
         """
-        if len(self.cartesian) == 3:
+        if len(self) == 3:
             return (self.r, self.phi, self.theta)
-        elif len(self.cartesian) == 2:
+        elif len(self) == 2:
             raise ValueError("Point must be 3D to return a spherical coordinate,"
                              + " use polar for 2D points")
         else:
@@ -139,9 +167,9 @@ class Point:
                  for polar or spherical coordinate validity and will error if it 
                  is violated.
         """
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             return math.hypot(self.x, self.y)
-        elif len(self.cartesian) == 3:
+        elif len(self) == 3:
             return math.hypot(self.x, self.y, self.z)
         else:
             raise ValueError(f"Point cartesian {self.cartesian} is already"
@@ -197,14 +225,14 @@ class Point:
     
     @x.setter
     def x(self, value: float) -> None:
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             self.cartesian = (value, self.cartesian[1])
         else:
             self.cartesian = (value, self.cartesian[1], self.cartesian[2])
     
     @y.setter
     def y(self, value: float) -> None:
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             self.cartesian = (self.cartesian[0], value)
         else:
             self.cartesian = (self.cartesian[0], value, self.cartesian[2])
@@ -220,7 +248,7 @@ class Point:
         elif math.isnan(value):
             raise ValueError(f"r cannot be NaN")
         
-        if len(self.cartesian) == 2: # Polar
+        if len(self) == 2: # Polar
             if value == 0:
                 self.polar = (0, math.nan)
             elif not math.isnan(self.phi):
@@ -257,7 +285,7 @@ class Point:
     
     @phi.setter
     def phi(self, value: float) -> None:
-        if len(self.cartesian) == 2: # Polar
+        if len(self) == 2: # Polar
             if self.r != 0 and math.isnan(value):
                 raise ValueError("Cannot set phi to NaN if r is non-zero")
             elif self.r == 0 and not math.isnan(value):
@@ -375,6 +403,11 @@ class Point:
             return tuple(self) == tuple(other)
         else:
             return NotImplemented
+    
+    def __len__(self) -> int:
+        """Returns the length of the cartesian tuple, which is equivalent to the 
+        point's number of dimnesions."""
+        return len(self.cartesian)
     
     def __iter__(self):
         """Iterator function to allow the point's cartesian position to be 

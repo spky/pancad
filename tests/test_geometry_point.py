@@ -48,6 +48,17 @@ class TestPointInit(unittest.TestCase):
                 self.assertCountEqual(pt.cartesian, expected_cartesian)
                 self.assertEqual(str(pt.cartesian), str(expected_cartesian))
     
+    def test_point_init_xyz(self):
+        for coordinate in self.coordinates:
+            with self.subTest(coordinate=coordinate):
+                if len(coordinate) == 2:
+                    x, y = coordinate
+                    pt = Point(x, y)
+                else:
+                    x, y, z = coordinate
+                    pt = Point(x, y, z)
+                self.assertEqual(pt.cartesian, coordinate)
+    
     def test_point_tuple_iter(self):
         for coordinate in self.coordinates:
             with self.subTest(coordinate=coordinate):
@@ -58,9 +69,20 @@ class TestPointInit(unittest.TestCase):
         pt = Point(self.coordinate1)
         self.assertCountEqual(np.array(pt), np.array(self.coordinate1))
     
-    def test_str_dunder(self):
+    def test_point_str_dunder(self):
         pt = Point(self.coordinate1)
         self.assertEqual(str(pt), "PanCAD Point at cartesian (1, 1, 1)")
+    
+    def test_point_len_dunder(self):
+        tests = [
+            ((0, 0, 0), 3),
+            ((0, 0), 2),
+        ]
+        for coordinate, expected_length in tests:
+            with self.subTest(coordinate=coordinate,
+                              expected_length=expected_length):
+                pt = Point(coordinate)
+                self.assertEqual(len(pt), expected_length)
     
     def test_vector(self):
         pass

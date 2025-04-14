@@ -13,6 +13,18 @@ from PanCAD.geometry.point import Point
 from PanCAD.utils import trigonometry as trig
 
 class Line:
+    """A class representing infinite lines in 2D and 3D space. A Line 
+    instance can be uniquely identified and compared for equality/inequality 
+    with other lines by using its direction and reference_point. The 
+    direction is explained below. The reference_point is the point on the 
+    line closest to the origin.
+    
+    :param point: A point on the line.
+    :param direction: A vector in the direction of the line. Vector can be 
+                      positive or negative, it will not impact the result.
+    :param uid: The unique ID of the line for interoperable CAD 
+                identification.
+    """
     
     def __init__(self, point:Point = None, direction:tuple | np.ndarray = None,
                  uid:str = None):
@@ -29,14 +41,41 @@ class Line:
     # Getters #
     @property
     def direction(self) -> tuple:
-        """The unique direction of the line. Independent of line definition 
-        method.
+        """The unique direction of the line represented as a vector with 
+        cartesian components. Independent of line definition method.
         
         :getter: Returns the direction of the line as a tuple
         :setter: Takes a vector, finds its unique direction unit vector, and 
                  sets that as the direction of the line.
         """
         return self._direction
+    
+    @property
+    def reference_point(self) -> Point:
+        """The closest point to the origin of the line.
+        
+        :getter: Returns the Point instance representing the point.
+        :setter: Sets the closest point to the origin of the line while 
+                 keeping the direction the same.
+        """
+        return self._point_closest_to_origin
+    
+    @property
+    def slope(self) -> float:
+        """The slope of the line (m in y = mx + b), only available if the 
+        line is 2D.
+        
+        :getter: Returns the slope of the line.
+        :setter: Sets the slope of the line while keeping the y intercept (b 
+                 in y = mx + b) the same.
+        """
+        if len(self) == 2:
+            if self.direction[0] == 0:
+                return math.nan
+            else:
+                return self.direction[1]/self.direction[0]
+        else:
+            raise ValueError("slope is not defined for a 3D line")
     
     @property
     def uid(self) -> str:
@@ -47,6 +86,44 @@ class Line:
         :setter: Sets the unique id.
         """
         return self._uid
+    
+    @property
+    def x_intercept(self) -> float:
+        """The x-intercept of the line (x when y = 0 in y = mx + b), only 
+        available if the line is 2D.
+        
+        :getter: Returns the x-intercept of the line
+        :setter: Sets the x-intercept of the line while keeping the slope (m 
+                 in y = mx + b) the same.
+        """
+        if len(self) == 2:
+            if self.direction[0] == 1:
+                return math.nan
+            elif self.direction[0] == 0:
+                return self.reference_point.x
+            else:
+                return (self.slope*self.reference_point.x
+                        - self.reference_point.y)/self.slope
+        else:
+            raise ValueError("x-intercept is not defined for a 3D line")
+    
+    @property
+    def y_intercept(self) -> float:
+        """The y-intercept of the line (b in y = mx + b), only available if 
+        the line is 2D.
+        
+        :getter: Returns the y-intercept of the line
+        :setter: Sets the y-intercept of the line while keeping the slope (m 
+                 in y = mx + b) the same.
+        """
+        if len(self) == 2:
+            if self.direction[0] == 0:
+                return math.nan
+            else:
+                return (self.reference_point.y
+                        - self.slope*self.reference_point.x)
+        else:
+            raise ValueError("y-intercept is not defined for a 3D line")
     
     # Setters #
     @direction.setter
@@ -68,8 +145,8 @@ class Line:
         does not matter since lines are infinite. If direction matters, use 
         LineSegment.
         
-        :param a: A PanCAD Point
-        :param b: A PanCAD Point that is not the same as point a
+        :param a: A PanCAD Point on the line
+        :param b: A PanCAD Point on the line that is not the same as point a
         """
         if not isinstance(a, Point) or not isinstance(b, Point):
             raise ValueError(f"Points a and b must be PanCAD points."
@@ -84,9 +161,18 @@ class Line:
                              f" {tuple(b)}")
     
     @classmethod
-    def from_slope_and_intercept(cls, slope: float, intercept: float,
-                                 uid: str = None) -> Line:
-        pass
+    def from_slope_and_y_intercept(cls, slope: float, intercept: float,
+                                   uid: str = None) -> Line:
+        """Returns a 2D line described by y = mx + b, where m is the slope 
+        and b is the y intercept."""
+        if slope == 0: # Horizontal
+            point_a = Point((0, intercept))
+            point_b = Point((1, intercept))
+        else:
+            point_a = Point((0, intercept))
+            point_b = Point((1, slope + intercept))
+        
+        return Line.from_two_points(point_a, point_b)
     
     @classmethod
     def from_parametric(cls, x_intercept: float, x_slope: float,
@@ -165,6 +251,11 @@ class Line:
                     and self.direction == other.direction)
         else:
             return NotImplemented
+    
+    def __len__(self) -> int:
+        """Returns the length of the line's direction tuple, which is 
+        equivalent to the line's number of dimnesions."""
+        return len(self.direction)
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
