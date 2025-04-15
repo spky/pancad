@@ -130,14 +130,7 @@ class Point:
         :setter: Sets the polar coordinate (r, phi). Will error if the point 
                  is 3D.
         """
-        if len(self) == 2:
-            return (self.r, self.phi)
-        elif len(self) == 3:
-            raise ValueError("Point must be 2D to return a polar coordinate, "
-                             + "use spherical for 3D points")
-        else:
-            raise ValueError(f"Point cartesian {self.cartesian} is already"
-                             + "invalid, must be 2D or 3D to operate")
+        return trig.cartesian_to_polar(self.cartesian)
     
     @property
     def spherical(self) -> tuple[float, float, float]:
@@ -149,14 +142,7 @@ class Point:
         :setter: Sets the spherical coordinate (r, phi, theta). Will error if 
                  the point is 2D.
         """
-        if len(self) == 3:
-            return (self.r, self.phi, self.theta)
-        elif len(self) == 2:
-            raise ValueError("Point must be 3D to return a spherical coordinate,"
-                             + " use polar for 2D points")
-        else:
-            raise ValueError(f"Point cartesian {self.cartesian} is already"
-                             + "invalid, must be 2D or 3D to operate")
+        return trig.cartesian_to_spherical(self.cartesian)
     
     @property
     def r(self) -> float:

@@ -679,14 +679,6 @@ def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
     
     return unit_vector.reshape(shape)
 
-def cartesian_to_polar(vector: list | tuple | np.ndarray) -> tuple[float, float]:
-    """Returns the polar version of the given cartesian vector.
-    
-    :param vector: A 2D vector with cartesian components
-    :returns: A 2D vector (r = radius, phi = azimuth in radians)
-    """
-    pass
-
 def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
     """Returns the r coordinate of a polar or spherical coordinate from a 
     given cartesian vector.
@@ -723,3 +715,39 @@ def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
                                    /cartesian[2])
     else:
         raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
+
+def cartesian_to_polar(cartesian: list|tuple|np.ndarray) -> tuple[float, float]:
+    """Returns the polar version of the given cartesian vector.
+    
+    :param vector: A 2D vector with cartesian components
+    :returns: A 2D vector with polar components r = radius, phi = azimuth in 
+              radians
+    """
+    if len(cartesian) == 2:
+            return (r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
+    elif len(cartesian) == 3:
+        raise ValueError("The cartesian vector must be 2D to return a"
+                         + " polar coordinate, use cartesian_to_spherical"
+                         + " for 3D points")
+    else:
+        raise ValueError(f"Invalid cartesian vector, must be 2 long to return"
+                         + f" a polar coordinate, given: {cartesian}")
+
+def cartesian_to_spherical(cartesian: list|tuple|np.ndarray) -> tuple[float,float]:
+    """Returns the spherical version of the given cartesian vector.
+    
+    :param vector: A 3D vector with cartesian components x, y, z
+    :returns: A 3D vector with spherical components r = radius, phi = azimuth 
+              in radians, and theta = inclination in radians
+    """
+    if len(cartesian) == 3:
+            return (r_of_cartesian(cartesian),
+                    phi_of_cartesian(cartesian),
+                    theta_of_cartesian(cartesian))
+    elif len(cartesian) == 2:
+        raise ValueError("The cartesian vector must be 3D to return a"
+                         + " spherical coordinate, use cartesian_to_polar"
+                         + " for 2D points")
+    else:
+        raise ValueError(f"Invalid cartesian vector, must be 3 long to return"
+                         + f" a polar coordinate, given: {cartesian}")
