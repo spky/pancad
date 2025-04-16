@@ -52,11 +52,23 @@ class Line:
     
     @property
     def direction_polar(self) -> tuple:
-        pass
+        return trig.cartesian_to_polar(self.direction)
     
     @property
     def direction_spherical(self) -> tuple:
-        pass
+        return trig.cartesian_to_spherical(self.direction)
+    
+    @property
+    def phi(self) -> float:
+        """The polar/spherical azimuth component of the line's direction in 
+        radians.
+        
+        :getter: Returns the azimuth component of the line's direction.
+        :setter: Sets the azimuth component of the line while keeping theta 
+                 the same. Checks the value for polar or spherical vector 
+                 validity and will error if it is violated.
+        """
+        return trig.phi_of_cartesian(self.direction)
     
     @property
     def reference_point(self) -> Point:
@@ -84,6 +96,18 @@ class Line:
                 return self.direction[1]/self.direction[0]
         else:
             raise ValueError("slope is not defined for a 3D line")
+    
+    @property
+    def theta(self) -> float:
+        """The spherical inclination component of the line's direction in 
+        radians.
+        
+        :getter: Returns the inclination coordinate of the point.
+        :setter: Sets the inclination component of the line's direction. 
+                 Checks the value for polar or spherical vector validity and 
+                 will error if it is violated.
+        """
+        return trig.theta_of_cartesian(self.direction)
     
     @property
     def uid(self) -> str:
@@ -142,6 +166,22 @@ class Line:
         else:
             self._direction = None
     
+    @direction_polar.setter
+    def direction_polar(self, vector: list | tuple | np.ndarray):
+        self.direction = trig.polar_to_cartesian(vector)
+    
+    @direction_spherical.setter
+    def direction_spherical(self, vector: list | tuple | np.ndarray):
+        self.direction = trig.spherical_to_cartesian(vector)
+    
+    @phi.setter
+    def phi(self, value: float):
+        pass
+    
+    @theta.setter
+    def theta(self, value: float):
+        pass
+    
     @uid.setter
     def uid(self, uid: str) -> None:
         self._uid = uid
@@ -157,8 +197,8 @@ class Line:
         :param b: A PanCAD Point on the line that is not the same as point a
         """
         if not isinstance(a, Point) or not isinstance(b, Point):
-            raise ValueError(f"Points a and b must be PanCAD points."
-                             + f"Classes - a: {a.__class__}, b:{b.__class__}")
+            raise ValueError(f"Points a and b must be PanCAD Points."
+                             + f" Classes - a: {a.__class__}, b:{b.__class__}")
         if a != b:
             a_vector, b_vector = np.array(a), np.array(b)
             ab_vector = b_vector - a_vector

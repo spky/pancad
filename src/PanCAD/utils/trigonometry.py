@@ -680,11 +680,11 @@ def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
     return unit_vector.reshape(shape)
 
 def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
-    """Returns the r coordinate of a polar or spherical coordinate from a 
+    """Returns the r component of a polar or spherical vector from a 
     given cartesian vector.
     
     :param cartesian: A 2D or 3D vector with cartesian components (x, y, z)
-    :returns: The radius coordinate of the equivalent polar/spherical coordinate
+    :returns: The radius component of the equivalent polar/spherical vector
     """
     if len(cartesian) == 2:
         return math.hypot(cartesian[0], cartesian[1])
@@ -695,15 +695,25 @@ def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
                    + f" elements long, given: {cartesian}")
 
 def phi_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
-    """Returns the polar/spherical azimuth coordinate of the equivalent 
-    polar/spherical in radians."""
+    """Returns the polar/spherical azimuth component of the equivalent 
+    polar/spherical vector in radians.
+    
+    :param cartesian: A 3D vector with cartesian components x, y, z
+    :returns: The azimuth component of the equivalent polar/spherical vector
+    """
     if cartesian[0] == 0 and cartesian[1] == 0:
         return math.nan
     else:
         return math.atan2(cartesian[1], cartesian[0])
 
 def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
-    """Returns the spherical inclination coordinate of the point in radians."""
+    """Returns the spherical inclination component of the equivalent spherical 
+    vector in radians.
+    
+    :param cartesian: A 3D vector with cartesian components x, y, z
+    :returns: The inclination coordinate of the equivalent polar/spherical 
+              coordinate
+    """
     if cartesian[2] == 0 and math.hypot(cartesian[0], cartesian[1]) != 0:
         return math.pi/2
     elif cartesian[0] == 0 and cartesian[1] == 0 and cartesian[2] == 0:
@@ -719,9 +729,9 @@ def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
 def cartesian_to_polar(cartesian: list|tuple|np.ndarray) -> tuple[float, float]:
     """Returns the polar version of the given cartesian vector.
     
-    :param vector: A 2D vector with cartesian components
-    :returns: A 2D vector with polar components r = radius, phi = azimuth in 
-              radians
+    :param cartesian: A 2D vector with cartesian components x and y
+    :returns: An equivalent 2D vector with polar components r (radial distance) 
+              and phi (azimuth) in radians
     """
     if len(cartesian) == 2:
             return (r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
@@ -733,12 +743,77 @@ def cartesian_to_polar(cartesian: list|tuple|np.ndarray) -> tuple[float, float]:
         raise ValueError(f"Invalid cartesian vector, must be 2 long to return"
                          + f" a polar coordinate, given: {cartesian}")
 
-def cartesian_to_spherical(cartesian: list|tuple|np.ndarray) -> tuple[float,float]:
+def polar_to_cartesian(polar: list|tuple|np.ndarray) -> tuple[float, float]:
+    """Returns the cartesian version of the given polar vector.
+    
+    :param polar: A 2D vector with polar components r (radial distance) and phi 
+                  (azimuth) in radians
+    :returns: An equivalent 2D vector with cartesian components x and y
+    """
+    if len(polar) == 2:
+        r, phi = polar
+        if r == 0 and math.isnan(phi):
+            return (0, 0)
+        elif r < 0:
+            raise ValueError(f"r cannot be less than zero: {r}")
+        elif math.isnan(phi):
+            raise ValueError("phi cannot be NaN if r is non-zero")
+        else:
+            return (r * math.cos(phi), r * math.sin(phi))
+    else:
+        raise ValueError("Vector must be 2D to return a polar coordinate, "
+                         + "use spherical_to_cartesian for 3D points")
+
+def spherical_to_cartesian(
+            spherical: list|tuple|np.ndarray
+        ) -> tuple[float, float, float]:
+    """Returns the cartesian version of the given spherical vector.
+    
+    :param spherical: A 3D vector with spherical components r (radial distance), 
+                      phi (azimuth angle in radians), and theta (inclination 
+                      angle in radians)
+    :returns: An equivalent 3D vector with cartesian components x, y, and z
+    """
+    if len(spherical) == 3:
+        r, phi, theta = spherical
+        if r == 0 and math.isnan(phi) and math.isnan(theta):
+            return (0, 0, 0)
+        elif r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
+            return (
+                r * math.sin(theta) * math.cos(phi),
+                r * math.sin(theta) * math.sin(phi),
+                r * math.cos(theta)
+            )
+        elif r > 0 and math.isnan(phi) and theta == 0:
+            return (0, 0, r)
+        elif r > 0 and math.isnan(phi) and theta == math.pi:
+            return (0, 0, -r)
+        elif r < 0:
+            raise ValueError(f"r cannot be less than zero: {r}")
+        elif not math.isnan(theta) and (not 0 <= theta <= math.pi):
+            raise ValueError(f"theta must be between 0 and pi, value: {theta}")
+        elif math.isnan(phi) and math.isnan(theta):
+            raise ValueError(f"r value {r} cannot be non-zero if phi and "
+                             + "theta are NaN.")
+        elif math.isnan(theta):
+            raise ValueError("Theta cannot be NaN if r is non-zero")
+        elif math.isnan(phi) and (theta != 0 or theta != math.pi):
+            raise ValueError("If phi is NaN, theta must be pi/2")
+    elif len(spherical) == 2:
+        raise ValueError("Vector must be 3D to set a spherical coordinate, "
+                         + "use polar_to_cartesian for 2D points")
+    else:
+        raise ValueError(f"Invalid tuple length {len(spherical)}, must be 3 to"
+                         + "return a spherical vector")
+
+def cartesian_to_spherical(
+            cartesian: list|tuple|np.ndarray
+        ) -> tuple[float, float, float]:
     """Returns the spherical version of the given cartesian vector.
     
-    :param vector: A 3D vector with cartesian components x, y, z
-    :returns: A 3D vector with spherical components r = radius, phi = azimuth 
-              in radians, and theta = inclination in radians
+    :param cartesian: A 3D vector with cartesian components x, y, z
+    :returns: A 3D vector with spherical components r (radial distance), phi 
+              (azimuth angle in radians), and theta (inclination angle in radians)
     """
     if len(cartesian) == 3:
             return (r_of_cartesian(cartesian),

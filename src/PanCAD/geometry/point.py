@@ -51,8 +51,8 @@ class Point:
                  and (y is not None or z is not None)
               ):
             raise ValueError(f"Cartesian {cartesian} can not be given as a"
-                             + f"non-float/int if y and z are not None."
-                             + f"y value: {y}, z value: {z}")
+                             + f" non-float/int if y and z are not None."
+                             + f" y value: {y}, z value: {z}")
         elif isinstance(cartesian, tuple):
             self.cartesian = cartesian
         elif isinstance(cartesian, np.ndarray):
@@ -241,19 +241,7 @@ class Point:
     
     @polar.setter
     def polar(self, value: tuple[float, float]) -> None:
-        if len(value) == 2:
-            r, phi = value
-            if r == 0 and math.isnan(phi):
-                self.cartesian = (0, 0)
-            elif r < 0:
-                raise ValueError(f"r cannot be less than zero: {r}")
-            elif math.isnan(phi):
-                raise ValueError("phi cannot be NaN if r is non-zero")
-            else:
-                self.cartesian = (r * math.cos(phi), r * math.sin(phi))
-        else:
-            raise ValueError("Point must be 2D to set a polar coordinate, "
-                             + "use Point.spherical for 3D points")
+        self.cartesian = trig.polar_to_cartesian(value)
     
     @phi.setter
     def phi(self, value: float) -> None:
@@ -274,38 +262,7 @@ class Point:
     
     @spherical.setter
     def spherical(self, value: tuple[float, float, float]) -> None:
-        if len(value) == 3:
-            r, phi, theta = value
-            if r == 0 and math.isnan(phi) and math.isnan(theta):
-                self.cartesian = (0, 0, 0)
-            elif r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
-                self.cartesian = (
-                    r * math.sin(theta) * math.cos(phi),
-                    r * math.sin(theta) * math.sin(phi),
-                    r * math.cos(theta)
-                )
-            elif r > 0 and math.isnan(phi) and theta == 0:
-                self.cartesian = (0, 0, r)
-            elif r > 0 and math.isnan(phi) and theta == math.pi:
-                self.cartesian = (0, 0, -r)
-            elif r < 0:
-                raise ValueError(f"r cannot be less than zero: {r}")
-            elif not math.isnan(theta) and (not 0 <= theta <= math.pi):
-                raise ValueError(f"theta must be between 0 and pi, value: {theta}")
-            elif math.isnan(phi) and math.isnan(theta):
-                raise ValueError(f"r value {r} cannot be non-zero if phi and "
-                                 + "theta are NaN.")
-            elif math.isnan(theta):
-                raise ValueError("Theta cannot be NaN if r is non-zero")
-            elif math.isnan(phi) and (theta != 0 or theta != math.pi):
-                raise ValueError("If phi is NaN, theta must be pi/2")
-                
-        elif len(value) == 2:
-            raise ValueError("Point must be 3D to set a spherical coordinate, "
-                             + "use Point.polar for 2D points")
-        else:
-            raise ValueError(f"Invalid tuple length {len(value)}, must be 3 to"
-                             + "set as a spherical coordinate")
+        self.cartesian = trig.spherical_to_cartesian(value)
     
     @theta.setter
     def theta(self, value: float) -> None:

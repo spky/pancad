@@ -198,6 +198,90 @@ class TestEquationLineDefinitions(unittest.TestCase):
                 test_line = Line.from_slope_and_y_intercept(m, b)
                 self.assertEqual(test_line.y_intercept, b)
 
+class TestLineCoordinateSystemConversion(unittest.TestCase):
+    
+    def setUp(self):
+        """
+        Test Order:
+            Point A, Point B, Phi (Azimuth) Angle, Theta (Inclination) Angle
+        Angles get converted to radians prior to test
+        r separately defined for legibility since for line direction unit 
+        vectors it will always be 1. 
+        """
+        tests = [
+            ((0, 0, 0), (1, 0, 0), (1, 0, 90)),
+            ((0, 0, 0), (0, 1, 0), (1, 90, 90)),
+            ((0, 0, 0), (0, 0, 1), (1, math.nan, 0)),
+        ]
+        self.tests_2d, self.tests_3d = [], []
+        for pt_a, pt_b, (r, phi, theta) in tests:
+            self.tests_3d.append(
+                (
+                    Point(pt_a), Point(pt_b),
+                    (r, math.radians(phi), math.radians(theta)),
+                )
+            )
+            if pt_a[:2] != pt_b[:2]: # To deal with when x = y = 0 and z != 0
+                self.tests_2d.append(
+                    (Point(pt_a[:2]), Point(pt_b[:2]), (r, math.radians(phi)))
+                )
+    
+    def test_direction_polar(self):
+        for pt_a, pt_b, (r, phi) in self.tests_2d:
+            with self.subTest(
+                        point_a=tuple(pt_a), point_b=tuple(pt_b),
+                        expected_phi=(f"Radians: {phi},"
+                                     + f" Degrees: {math.degrees(phi)}")
+                    ):
+                test_line = Line.from_two_points(pt_a, pt_b)
+                verification.assertTupleAlmostEqual(
+                    self, test_line.direction_polar, (r, phi),
+                    ROUNDING_PLACES
+                )
+    
+    def test_direction_spherical(self):
+        for pt_a, pt_b, (r, phi, theta) in self.tests_3d:
+            with self.subTest(
+                    point_a=tuple(pt_a), point_b=tuple(pt_b),
+                    expected_phi=(f"Radians: {phi},"
+                                 + f" Degrees: {math.degrees(phi)}"),
+                    expected_theta=(f"Radians: {theta},"
+                                    + f" Degrees: {math.degrees(theta)}")
+                    ):
+                test_line = Line.from_two_points(pt_a, pt_b)
+                verification.assertTupleAlmostEqual(
+                    self, test_line.direction_spherical, (r, phi, theta),
+                    ROUNDING_PLACES
+                )
+    
+    def test_direction_polar_setter(self):
+        for pt_a, pt_b, polar_vector in self.tests_2d:
+            with self.subTest(
+                        point_a=tuple(pt_a), point_b=tuple(pt_b),
+                        polar_vector=polar_vector
+                    ):
+                test_line = Line.from_two_points(pt_a, pt_b)
+                before_direction = test_line.direction
+                test_line.direction_polar = polar_vector
+                verification.assertTupleAlmostEqual(
+                    self, before_direction, test_line.direction,
+                    ROUNDING_PLACES
+                )
+    
+    def test_direction_spherical_setter(self):
+        for pt_a, pt_b, spherical_vector in self.tests_3d:
+            with self.subTest(
+                        point_a=tuple(pt_a), point_b=tuple(pt_b),
+                        spherical_vector=spherical_vector
+                    ):
+                test_line = Line.from_two_points(pt_a, pt_b)
+                before_direction = test_line.direction
+                test_line.direction_spherical = spherical_vector
+                verification.assertTupleAlmostEqual(
+                    self, before_direction, test_line.direction,
+                    ROUNDING_PLACES
+                )
+
 class TestLineRichComparison(unittest.TestCase):
     
     def setUp(self):
