@@ -26,6 +26,9 @@ class Line:
                 identification.
     """
     
+    relative_tolerance = 1e-9
+    absolute_tolerance = 1e-9
+    
     def __init__(self, point:Point = None, direction:tuple | np.ndarray = None,
                  uid:str = None):
         self.uid = uid
@@ -186,6 +189,53 @@ class Line:
     def uid(self, uid: str) -> None:
         self._uid = uid
     
+    # Public Methods #
+    def is_collinear(self, other_line: Line) -> bool:
+        """Returns whether the line is collinear to another line"""
+        return self == other_line
+    
+    def is_coincident(self, point: Point) -> bool:
+        """Returns whether the given point is on the line.
+        
+        :param point: A Point to check the location of
+        :returns: Whether the point exists on the line
+        """
+        if self.reference_point == point:
+            # Cover the edge cases where point is the zero vector or if the 
+            # point is the reference_point
+            return True
+        
+        point_vector = np.array(point)
+        reference_vector = np.array(self.reference_point)
+        direction_vector = np.array(self.direction)
+        
+        ref_pt_to_pt = (np.dot(point_vector, direction_vector)
+                        * direction_vector)
+        
+        check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
+        
+        if trig.isclose_tuple(check_point_tuple, tuple(point)):
+            return True
+        else:
+            return False
+    
+    def is_parallel(self, other_line: Line) -> bool:
+        """Returns whether the line is parallel to the other line"""
+        return trig.isclose_tuple(self.direction, other_line.direction)
+    
+    def move_to_point(self, point: Point) -> Line:
+        """Moves the line's reference_point while keeping the direction constant 
+        to make the line go through a new point.
+        
+        :param point: A point the user wants to be on the line
+        :returns: The line with an updated reference_point that goes through the 
+                  point
+        """
+        self._point_closest_to_origin = self.closest_to_origin(
+            point, self.direction
+        )
+        return self
+    
     # Class Methods #
     @classmethod
     def from_two_points(cls, a:Point, b:Point, uid:str = None) -> Line:
@@ -285,6 +335,12 @@ class Line:
         return trig.to_1D_tuple(unit_vector + 0)
     
     # Python Dunders #
+    def __copy__(self) -> Line:
+        """Returns a copy of the line that has the same closest to origin 
+        point and direction, but no assigned uid. Can be used with the python 
+        copy module"""
+        return Line(self.reference_point, self.direction)
+    
     def __eq__(self, other: Line) -> bool:
         """Rich comparison for line equality that allows for lines to be 
         directly compared with ==.
@@ -295,8 +351,10 @@ class Line:
         self_origin_pt = self._point_closest_to_origin
         other_origin_pt = other._point_closest_to_origin
         if isinstance(other, Line):
-            return (tuple(self_origin_pt) == tuple(other_origin_pt)
-                    and self.direction == other.direction)
+            return (
+                trig.isclose_tuple(tuple(self_origin_pt), tuple(other_origin_pt))
+                and trig.isclose_tuple(self.direction, other.direction)
+            )
         else:
             return NotImplemented
     

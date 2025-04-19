@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import unittest
 import math
+import copy
 
 import numpy as np
 
@@ -313,6 +314,88 @@ class TestLineRichComparison(unittest.TestCase):
                 line1 = Line.from_two_points(pt1a, pt1b)
                 line2 = Line.from_two_points(pt2a, pt2b)
                 self.assertEqual(line1 != line2, not expected_equality)
+
+class TestLineCoincidence(unittest.TestCase):
+    
+    def setUp(self):
+        coincidence_tests = [
+            ((0, 0), (1, 1), (2, 2), True),
+            ((0, 0), (1, 1), (0, 0), True),
+            ((0, 0), (1, 1), (-2, -2), True),
+            ((0, 0), (1, 1), (0, 1), False),
+            ((-4, 0), (0, 4), (-2, 2), True),
+            ((-4, 0), (0, 4), (-4, 0), True),
+            ((-4, 0), (0, 4), (0, 4), True),
+            ((-4, 0), (0, 4), (0, 0), False),
+            ((0, -4), (4, 0), (0, 0), False),
+            ((0, -4), (4, 0), (2, -2), True),
+        ]
+        
+        self.tests_2d = []
+        for pt_a, pt_b, check_pt, result in coincidence_tests:
+            self.tests_2d.append(
+                (Point(pt_a), Point(pt_b), Point(check_pt), result),
+            )
+    
+    def test_is_coincident_2d(self):
+        for pt_a, pt_b, check_pt, result in self.tests_2d:
+            with self.subTest(point_a=tuple(pt_a), point_b=tuple(pt_b),
+                              check_pt=tuple(check_pt), expected_result=result):
+                test_line = Line.from_two_points(pt_a, pt_b)
+                self.assertEqual(test_line.is_coincident(check_pt), result)
+
+class TestLineParallel(unittest.TestCase):
+    
+    def setUp(self):
+        tests = [
+            ((0, 0), (1, 1), (0, 1), (1, 2), True),
+            ((0, 1), (0, 2), (1, 1), (1, 2), True),
+            ((0, 0), (1, 0), (0, 1), (1, 1), True),
+            ((0, 0), (1, 0), (1, 0), (1, 2), False),
+        ]
+        
+        self.tests = []
+        for pt_1a, pt_1b, pt_2a, pt_2b, parallel in tests:
+            self.tests.append(
+                (
+                    Line.from_two_points(Point(pt_1a), Point(pt_1b)),
+                    Line.from_two_points(Point(pt_2a), Point(pt_2b)),
+                    parallel
+                )
+            )
+    
+    def test_is_parallel(self):
+        for line1, line2, parallel in self.tests:
+            with self.subTest(line1=str(line1), line2=str(line2),
+                              expected_result=parallel):
+                self.assertEqual(line1.is_parallel(line2), parallel)
+
+class TestLinePointMovers(unittest.TestCase):
+    
+    def setUp(self):
+        tests = [
+            ((0, 1), (1, 1), (0, 2)),
+            ((0, 1), (1, 1), (3, 3)),
+            ((-4, 0), (0, 4), (3, 3)),
+        ]
+        self.tests_2d = []
+        for pt_a, pt_b, new_pt in tests:
+            self.tests_2d.append(
+                (Point(pt_a), Point(pt_b), Point(new_pt))
+            )
+    
+    def test_move_to_point_2d(self):
+        for pt_a, pt_b, new_pt in self.tests_2d:
+            with self.subTest(point_a=tuple(pt_a), point_b=tuple(pt_b),
+                              new_point=tuple(new_pt)):
+                original_line = Line.from_two_points(pt_a, pt_b)
+                test_line = copy.copy(original_line)
+                test_line.move_to_point(new_pt)
+                results = [
+                    test_line.is_coincident(new_pt),
+                    test_line.is_parallel(original_line)
+                ]
+                self.assertTrue(all(results))
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem

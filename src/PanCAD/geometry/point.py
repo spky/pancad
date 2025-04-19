@@ -28,6 +28,11 @@ class Point:
                 identification.
     :param unit: The unit of the point's length values.
     """
+    
+    relative_tolerance = 1e-9
+    absolute_tolerance = 1e-9
+    
+    
     def __init__(self, cartesian: (tuple[float, float, float]
                                    | np.ndarray | float) = None,
                  y: float = None, z: float = None,
@@ -320,6 +325,11 @@ class Point:
             return array
     
     # Python Dunders #
+    def __copy__(self) -> Point:
+        """Returns a copy of the point that has the same coordinates, but no 
+        assigned uid. Can be used with the python copy module"""
+        return Point(self.cartesian)
+    
     def __eq__(self, other: Point) -> bool:
         """Rich comparison for point equality that allows for points to be 
         directly compared with ==. Note: A point at (0,0) and a point at (0,0,0) 
@@ -329,7 +339,9 @@ class Point:
         :returns: Whether the tuples of the points are equal.
         """
         if isinstance(other, Point):
-            return tuple(self) == tuple(other)
+            return trig.isclose_tuple(tuple(self), tuple(other),
+                                      self.relative_tolerance,
+                                      self.absolute_tolerance)
         else:
             return NotImplemented
     

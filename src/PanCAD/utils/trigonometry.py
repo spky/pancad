@@ -3,6 +3,8 @@ between formats.
 """
 
 import math
+import json
+
 import numpy as np
 
 def point_2d(point: list[float | int]) -> np.ndarray:
@@ -620,6 +622,28 @@ def is_iterable(value) -> bool:
     :returns: Whether the value is iterable.
     """
     return hasattr(value, "__iter__")
+
+def isclose_tuple(tuple_a: tuple, tuple_b: tuple,
+                  rel_tol: float = 1e-9, abs_tol: float = 1e-9) -> bool:
+    """Returns whether the two tuples are the same length and equal within the 
+    given relative and absolute tolerances.
+    
+    :param value_a: A 1D tuple to check for closeness
+    :param value_b: Another 1D tuple to check for closeness
+    :param rel_tol: The relative tolerance. The maximum allowed difference 
+                    between a value in tuple_a and the corresponding value in 
+                    tuple_b. See math.isclose()
+    :param abs_tol: The minimum absolute tolerance. It is used to compare values 
+                    near 0. The value must be at least 0. See math.isclose()
+    :returns: True if all the tuple values are close, otherwise False
+    """
+    if len(tuple_a) != len(tuple_b):
+        return False
+    
+    for value_1, value_2 in zip(tuple_a, tuple_b):
+        if not math.isclose(value_1, value_2, rel_tol=rel_tol, abs_tol=abs_tol):
+            return False
+    return True
 
 def to_1D_tuple(value: list | tuple | np.ndarray) -> tuple:
     """Returns a 1D tuple from a given value, if possible. Usually used to 
