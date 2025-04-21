@@ -330,6 +330,11 @@ class Point:
         assigned uid. Can be used with the python copy module"""
         return Point(self.cartesian)
     
+    def __getitem__(self, item: int):
+        """Returns the cartesian coordinates when subscripted. 0 returns x, 1 
+        returns y, 2 returns z"""
+        return self.cartesian[item]
+    
     def __eq__(self, other: Point) -> bool:
         """Rich comparison for point equality that allows for points to be 
         directly compared with ==. Note: A point at (0,0) and a point at (0,0,0) 

@@ -370,6 +370,47 @@ class TestLineParallel(unittest.TestCase):
                               expected_result=parallel):
                 self.assertEqual(line1.is_parallel(line2), parallel)
 
+class TestLineIntersection(unittest.TestCase):
+    
+    def setUp(self):
+        tests = [
+            # 2D
+            ((0, 0), (1, 1), (0, 4), (4, 0), (2, 2)),
+            ((0, 0), (1, 1), (0, 0), (-1, 1), (0, 0)),
+            ((0, 0), (1, 1), (0, 1), (1, 2), None), # Parallel
+            # 3D
+            ((0, 0, 0), (1, 1, 0), (0, 4, 0), (4, 0, 0), (2, 2, 0)),
+            ((0, 0, 0), (1, 1, 0), (0, 4, 1), (4, 0, 1), None), # Skew
+            ((0, 0, 0), (1, 1, 0), (0, 0, 0), (-1, 1, 0), (0, 0, 0)),
+            ((0, 0, 0), (1, 1, 0), (0, 0, 1), (-1, 1, 1), None),
+        ]
+        self.tests = []
+        for pt_1a, pt_1b, pt_2a, pt_2b, intersection_pt in tests:
+            test = [Line.from_two_points(Point(pt_1a), Point(pt_1b)),
+                    Line.from_two_points(Point(pt_2a), Point(pt_2b))]
+            
+            if intersection_pt is None:
+                test.append(None)
+            else:
+                test.append(Point(intersection_pt))
+            self.tests.append(test)
+    
+    def test_get_intersection(self):
+        for line1, line2, intersection in self.tests:
+            if intersection is None:
+                expected = "No Intersection"
+            else:
+                expected = tuple(intersection)
+            with self.subTest(line1=str(line1), line2=str(line2),
+                              intersection=expected):
+                result_pt = line1.get_intersection(line2)
+                if intersection is None:
+                    self.assertEqual(result_pt, intersection)
+                else:
+                    verification.assertPointsAlmostEqual(self, result_pt,
+                                                         intersection)
+                
+
 class TestLinePointMovers(unittest.TestCase):
     
     def setUp(self):

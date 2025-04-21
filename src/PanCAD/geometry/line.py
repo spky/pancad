@@ -190,6 +190,57 @@ class Line:
         self._uid = uid
     
     # Public Methods #
+    def get_intersection(self, other_line: Line) -> Point:
+        if self.is_parallel(other_line) or self.is_skew(other_line):
+            return None
+        
+        pt1_to_pt2 = (self.reference_point.vector() 
+                      - other_line.reference_point.vector())
+        matrix_a = np.column_stack(
+            (np.array(other_line.direction), -np.array(self.direction))
+        )
+        
+        non_zero_rows = []
+        for c1, c2 in zip(self.direction, other_line.direction):
+            non_zero_rows.append(not (self._isclose(c1, 0)
+                                      and self._isclose(c2, 0)))
+        
+        if len(self) == 2:
+            pass
+        elif non_zero_rows[0] and non_zero_rows[1] and not non_zero_rows[2]:
+            matrix_a = np.delete(matrix_a, (2), axis=0)
+            pt1_to_pt2 = np.delete(pt1_to_pt2, (2), axis=0)
+        elif non_zero_rows[0] and not non_zero_rows[1] and non_zero_rows[2]:
+            matrix_a = np.delete(matrix_a, (1), axis=0)
+            pt1_to_pt2 = np.delete(pt1_to_pt2, (1), axis=0)
+        elif all(non_zero_rows):
+            matrix_a_yz = np.delete(matrix_a, (0), axis=0)
+            if self._isclose(np.det(matrix_a_yz), 0):
+                return None
+            matrix_a = np.delete(matrix_a, (2), axis=0)
+        else:
+            matrix_a = np.delete(matrix_a, (0), axis=0)
+            pt1_to_pt2 = np.delete(pt1_to_pt2, (0), axis=0)
+        
+        if self._isclose(np.linalg.det(matrix_a), 0):
+            return None
+        else:
+            t = np.linalg.inv(matrix_a) @ pt1_to_pt2
+            return self.get_parametric_point(t[1])
+    
+    def get_parametric_point(self, t: float) -> Point:
+        """Returns the point at parameter t where a, b, and c are defined by 
+        the unique unit vector direction of the line and initialized at the 
+        point closest to the origin.
+        
+        :param t: The value of the line parameter
+        """
+        return Point(
+            np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
+        )
+    
+    
+    
     def is_collinear(self, other_line: Line) -> bool:
         """Returns whether the line is collinear to another line"""
         return self == other_line
@@ -214,14 +265,33 @@ class Line:
         
         check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
         
-        if trig.isclose_tuple(check_point_tuple, tuple(point)):
+        if self._isclose_tuple(check_point_tuple, tuple(point)):
             return True
         else:
             return False
     
+    def is_skew(self, other_line: Line) -> bool:
+        """Returns whether the line is skew to another line"""
+        if self.is_parallel(other_line):
+            return False
+        elif len(self) != len(other_line):
+            raise ValueError("Both lines must have the same number of dimensions")
+        elif len(self) == 2:
+            return False
+        
+        pt1_to_pt2 = (np.array(self.reference_point)
+                      - np.array(other_line.reference_point))
+        cross_product = np.cross(self.direction, other_line.direction)
+        
+        if self._isclose(np.dot(pt1_to_pt2, cross_product), 0):
+            return False
+        else:
+            return True
+        
+    
     def is_parallel(self, other_line: Line) -> bool:
-        """Returns whether the line is parallel to the other line"""
-        return trig.isclose_tuple(self.direction, other_line.direction)
+        """Returns whether the line is parallel to another line"""
+        return self._isclose_tuple(self.direction, other_line.direction)
     
     def move_to_point(self, point: Point) -> Line:
         """Moves the line's reference_point while keeping the direction constant 
@@ -235,6 +305,18 @@ class Line:
             point, self.direction
         )
         return self
+    
+    # Private Methods
+    
+    def _isclose(self, value_a: float, value_b: float) -> bool:
+        return math.isclose(value_a, value_b,
+                            rel_tol=self.relative_tolerance,
+                            abs_tol=self.absolute_tolerance)
+    
+    def _isclose_tuple(self, value_a: tuple, value_b: tuple) -> bool:
+        return trig.isclose_tuple(value_a, value_b,
+                                  rel_tol=self.relative_tolerance,
+                                  abs_tol=self.absolute_tolerance)
     
     # Class Methods #
     @classmethod
@@ -352,8 +434,8 @@ class Line:
         other_origin_pt = other._point_closest_to_origin
         if isinstance(other, Line):
             return (
-                trig.isclose_tuple(tuple(self_origin_pt), tuple(other_origin_pt))
-                and trig.isclose_tuple(self.direction, other.direction)
+                self._isclose_tuple(tuple(self_origin_pt), tuple(other_origin_pt))
+                and self._isclose_tuple(self.direction, other.direction)
             )
         else:
             return NotImplemented
