@@ -190,7 +190,14 @@ class Line:
         self._uid = uid
     
     # Public Methods #
-    def get_intersection(self, other_line: Line) -> Point:
+    def get_intersection(self, other_line: Line) -> Point | None:
+        """Returns the intersection of this line with another line as a Point 
+        if it exists.
+        
+        :param other_line: Another line to compare to this line and find the 
+                           intersection point, if it exists.
+        :returns: The intersection point if it exists, otherwise None
+        """
         if self.is_parallel(other_line) or self.is_skew(other_line):
             return None
         
@@ -239,17 +246,19 @@ class Line:
             np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
         )
     
-    
-    
     def is_collinear(self, other_line: Line) -> bool:
-        """Returns whether the line is collinear to another line"""
+        """Returns whether the line is collinear to another line
+        
+        :param other_line: A line that can be checked for collinearity
+        :returns: True if collinear, False otherwise
+        """
         return self == other_line
     
     def is_coincident(self, point: Point) -> bool:
         """Returns whether the given point is on the line.
         
         :param point: A Point to check the location of
-        :returns: Whether the point exists on the line
+        :returns: True if the point is on the line, false otherwise
         """
         if self.reference_point == point:
             # Cover the edge cases where point is the zero vector or if the 
@@ -309,11 +318,27 @@ class Line:
     # Private Methods
     
     def _isclose(self, value_a: float, value_b: float) -> bool:
+        """Returns whether value_a is close to value_b using the Line's class 
+        variables.
+        
+        :param value_a: A value to compare
+        :param value_b: Another value to compare
+        :returns: True if value_a == value_b within the relative and absolute 
+                  tolerance class variables
+        """
         return math.isclose(value_a, value_b,
                             rel_tol=self.relative_tolerance,
                             abs_tol=self.absolute_tolerance)
     
     def _isclose_tuple(self, value_a: tuple, value_b: tuple) -> bool:
+        """Returns whether the components of value_a are close to the 
+        corresponding components of value_b using the Line's class variables.
+        
+        :param value_a: A tuple to compare
+        :param value_b: Another tuple to compare
+        :returns: True if value_a's components == value_b's components within 
+                  the Line's relative and absolute tolerance class variables
+        """
         return trig.isclose_tuple(value_a, value_b,
                                   rel_tol=self.relative_tolerance,
                                   abs_tol=self.absolute_tolerance)
