@@ -371,6 +371,9 @@ class Point:
         else:
             raise StopIteration
     
+    def __repr__(self) -> str:
+        return f"PanCAD_Point{self.cartesian}"
+    
     def __str__(self) -> str:
         """String function to output the point's description and cartesian 
         position when the point is fed to the str() function"""

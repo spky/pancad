@@ -353,9 +353,13 @@ class Line:
         :param a: A PanCAD Point on the line
         :param b: A PanCAD Point on the line that is not the same as point a
         """
+        if isinstance(a, tuple) and len(a) in (2, 3): a = Point(a)
+        if isinstance(b, tuple) and len(b) in (2, 3): b = Point(b)
+        
         if not isinstance(a, Point) or not isinstance(b, Point):
-            raise ValueError(f"Points a and b must be PanCAD Points."
+            raise ValueError(f"Points a and b must be tuples or PanCAD Points."
                              + f" Classes - a: {a.__class__}, b:{b.__class__}")
+        
         if a != b:
             a_vector, b_vector = np.array(a), np.array(b)
             ab_vector = b_vector - a_vector
