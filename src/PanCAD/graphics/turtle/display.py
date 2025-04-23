@@ -68,7 +68,7 @@ class TurtleWindow:
                 norms.append(math.inf)
             else:
                 intersections.append(pt)
-                norms.append(np.linalg.norm(np.array(pt)))
+                norms.append(pt.r)
         
         pt_1 = intersections[norms.index(min(norms))]
         norms.pop(norms.index(min(norms)))

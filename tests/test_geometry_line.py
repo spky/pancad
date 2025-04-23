@@ -106,6 +106,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
             ((0, 0), (0, 2), (0, 0), (0, 1)),
             # Set 3: Horizontal +, -, and 0
             ((0, 2), (2, 2), (0, 2), (1, 0)),
+            ((0, 1), (1, 1), (0, 1), (1, 0)),
             ((0, -2), (2, -2), (0, -2), (1, 0)),
             ((0, 0), (2, 0), (0, 0), (1, 0)),
             # Set 4: Diagonal On-Origin Per Quadrant
@@ -138,12 +139,33 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                     ROUNDING_PLACES
                 )
     
+    def test_from_two_points_point_closest_to_origin_tuple(self):
+        for point_a, point_b, expected_point, _ in self.tests:
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_point=expected_point):
+                e_pt = Point(expected_point)
+                test_line = Line.from_two_points(point_a, point_b)
+                verification.assertPointsAlmostEqual(
+                    self, test_line._point_closest_to_origin, e_pt,
+                    ROUNDING_PLACES
+                )
+    
     def test_from_two_points_direction(self):
         for point_a, point_b, _, expected_direction in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
                               expected_direction=expected_direction):
                 pt_a, pt_b = Point(point_a), Point(point_b)
                 test_line = Line.from_two_points(pt_a, pt_b)
+                verification.assertTupleAlmostEqual(
+                    self, test_line.direction, expected_direction,
+                    ROUNDING_PLACES
+                )
+    
+    def test_from_two_points_direction_tuple(self):
+        for point_a, point_b, _, expected_direction in self.tests:
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_direction=expected_direction):
+                test_line = Line.from_two_points(point_a, point_b)
                 verification.assertTupleAlmostEqual(
                     self, test_line.direction, expected_direction,
                     ROUNDING_PLACES
@@ -409,8 +431,56 @@ class TestLineIntersection(unittest.TestCase):
                 else:
                     verification.assertPointsAlmostEqual(self, result_pt,
                                                          intersection)
-                
 
+class TestLineAngle(unittest.TestCase):
+    
+    def setUp(self):
+        tests = [
+            ((0, 0), (0, 1), (0, 0), (1, 0), 90),
+            ((0, 0), (1, 0), (0, 0), (-1, 1), 135),
+            ((0, 0), (1, 0), (0, 1), (1, 1), 0),
+            ((0, 0), (1, 0), (0, 0), (1, 1), 45),
+            # ((0, 0), (1, 1), (0, 0), (1, 0), -45),
+        ]
+        self.tests = []
+        for pt1a, pt1b, pt2a, pt2b, angle in tests:
+            test = (Line.from_two_points(pt1a, pt1b),
+                    Line.from_two_points(pt2a, pt2b),
+                    math.radians(angle))
+            self.tests.append(test)
+    
+    def test_get_angle_between(self):
+        
+        for line1, line2, angle in self.tests:
+            with self.subTest(
+                        line1=line1, line2=line2,
+                        angle=(f"Radians: {angle}, "
+                               + f"Degrees: {math.degrees(angle)}")
+                    ):
+                self.assertAlmostEqual(line1.get_angle_between(line2),
+                                       angle,
+                                       ROUNDING_PLACES)
+
+class TestPerpendicular(unittest.TestCase):
+    def setUp(self):
+        tests = [
+            ((0, 0), (0, 1), (0, 0), (1, 0), True),
+            ((0, 0), (0, 1), (0, 0), (1, 1), False),
+        ]
+        self.tests = []
+        for pt1a, pt1b, pt2a, pt2b, perpendicular in tests:
+            test = (Line.from_two_points(pt1a, pt1b),
+                    Line.from_two_points(pt2a, pt2b),
+                    perpendicular)
+            self.tests.append(test)
+    
+    def test_is_perpendicular(self):
+        for line1, line2, perpendicular in self.tests:
+            with self.subTest(
+                        line1=line1, line2=line2, perpendicular=perpendicular
+                    ):
+                self.assertEqual(line1.is_perpendicular(line2), perpendicular)
+        
 class TestLinePointMovers(unittest.TestCase):
     
     def setUp(self):

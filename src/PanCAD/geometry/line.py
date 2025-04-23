@@ -34,10 +34,13 @@ class Line:
         self.uid = uid
         self.direction = direction
         
-        if point is not None:
+        if isinstance(point, Point):
             self._point_closest_to_origin = Line.closest_to_origin(
                 point, self.direction
             )
+        elif isinstance(point, tuple):
+            raise ValueError("point cannot be a tuple for Line's init function."
+                             "Use Line.from_two_points instead")
         else:
             self._point_closest_to_origin = None
     
@@ -190,6 +193,19 @@ class Line:
         self._uid = uid
     
     # Public Methods #
+    def get_angle_between(self, other_line: Line) -> float:
+        """Returns the absolute value of the angle between this line and the 
+        other line. Returning a signed angle requires a normal direction 
+        definition.
+        
+        :param other_line: A line to find the angle of relative to this line
+        :returns: The absolute value of the angle between the lines in radians
+        """
+        if self.is_parallel(other_line):
+            return 0
+        else:
+            return math.acos(np.dot(self.direction, other_line.direction))
+    
     def get_intersection(self, other_line: Line) -> Point | None:
         """Returns the intersection of this line with another line as a Point 
         if it exists.
@@ -279,6 +295,33 @@ class Line:
         else:
             return False
     
+    def is_coplanar(self, other_line: Line) -> bool:
+        """Returns whether the other line can lie on the same plane as this 
+        line. Effectively whether the line is intersecting or parallel.
+        
+        :param other_line: A line to check for coplanarity with this line
+        :returns: True if the other line is coplanar, otherwise False
+        """
+        return self.is_parallel(other_line) or not self.is_skew(other_line)
+    
+    def is_parallel(self, other_line: Line) -> bool:
+        """Returns whether the line is parallel to another line"""
+        return self._isclose_tuple(self.direction, other_line.direction)
+    
+    def is_perpendicular(self, other_line: Line) -> bool:
+        """Returns whether the line is intersects and is oriented 90 degrees 
+        to the other line.
+        
+        :param other_line: A line to check for perpendicularity with this line
+        :returns: True if the other line is perpendicular to this line, 
+                  otherwise False
+        """
+        if self.is_skew(other_line):
+            return False
+        else:
+            dot_product = np.dot(self.direction, other_line.direction)
+            return self._isclose(dot_product, 0)
+    
     def is_skew(self, other_line: Line) -> bool:
         """Returns whether the line is skew to another line"""
         if self.is_parallel(other_line):
@@ -296,11 +339,6 @@ class Line:
             return False
         else:
             return True
-        
-    
-    def is_parallel(self, other_line: Line) -> bool:
-        """Returns whether the line is parallel to another line"""
-        return self._isclose_tuple(self.direction, other_line.direction)
     
     def move_to_point(self, point: Point) -> Line:
         """Moves the line's reference_point while keeping the direction constant 
@@ -363,7 +401,7 @@ class Line:
         if a != b:
             a_vector, b_vector = np.array(a), np.array(b)
             ab_vector = b_vector - a_vector
-            return cls(a_vector, ab_vector, uid)
+            return cls(Point(a_vector), ab_vector, uid)
         else:
             raise ValueError(f"A line cannot be defined by 2 points at the same"
                              f" location. Point a: {tuple(a)}, Point b:"
@@ -473,6 +511,10 @@ class Line:
         """Returns the length of the line's direction tuple, which is 
         equivalent to the line's number of dimnesions."""
         return len(self.direction)
+    
+    def __repr__(self) -> str:
+        """Returns the short string representation of the line"""
+        return f"PanCAD_Line{tuple(self._point_closest_to_origin)},{self.direction}"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 

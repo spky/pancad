@@ -372,6 +372,7 @@ class Point:
             raise StopIteration
     
     def __repr__(self) -> str:
+        """Returns the short string representation of the point"""
         return f"PanCAD_Point{self.cartesian}"
     
     def __str__(self) -> str:
