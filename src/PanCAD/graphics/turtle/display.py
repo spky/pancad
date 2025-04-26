@@ -10,14 +10,15 @@ from PanCAD.geometry.line import Line
 class TurtleWindow:
     
     def __init__(self, screen_title: str=None, *,
-                 screen_size: tuple[int, int]=None):
+                 screen_size: tuple[int, int]=None, speed: int=0):
         self.turtle = turtle.Turtle()
+        turtle.colormode(255)
         if screen_title is not None: self.screen_title = screen_title
-        
         if screen_size is not None:
             self.screen_size = screen_size
         else:
             self.screen_size = self.turtle.screen.screensize()
+        self.turtle.speed(speed)
         self.turtle.hideturtle()
     
     # Getters #
@@ -82,3 +83,41 @@ class TurtleWindow:
         self.turtle.setposition(tuple(pt_2))
         self.turtle.penup()
         self.turtle.setposition(initial_position)
+    
+    def coordinate_system(self, horizontal_division: int, vertical_division: int,
+                          *,
+                          major_line_rgb: tuple=(0, 0, 0),
+                          major_line_thickness: float=0.5,
+                          minor_line_rgb: tuple=(220, 220, 220),
+                          minor_line_thickness: float=0.25):
+        
+        # Minor Lines
+        self.turtle.pensize(minor_line_thickness)
+        self.turtle.color(minor_line_rgb)
+        width, height = self.screen_size
+        
+        print(width, height)
+        no_horizontal_lines = math.floor(height / 2 / vertical_division)
+        no_vertical_lines = math.floor(width / 2 / horizontal_division)
+        print(no_horizontal_lines, no_vertical_lines)
+        
+        # if width % x_division == 0: no_horizontal_lines -= 1
+        # if height % y_division == 0: no_vertical_lines -= 1
+        
+        # # Minor Horizontal Lines
+        for i in range(1, no_horizontal_lines):
+            y_value = i*vertical_division
+            self.draw_line(Line.from_two_points((0, y_value), (1, y_value)))
+            self.draw_line(Line.from_two_points((0, -y_value), (1, -y_value)))
+        
+        # Minor Horizontal Lines
+        for i in range(1, no_vertical_lines):
+            x_value = i*horizontal_division
+            self.draw_line(Line.from_two_points((x_value, 0), (x_value, 1)))
+            self.draw_line(Line.from_two_points((-x_value, 0), (-x_value, 1)))
+        
+        # Major Lines
+        self.turtle.pensize(major_line_thickness)
+        self.turtle.color(major_line_rgb)
+        self.draw_line(Line.from_two_points((0, 0), (1, 0)))
+        self.draw_line(Line.from_two_points((0, 0), (0, 1)))

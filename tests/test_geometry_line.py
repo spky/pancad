@@ -1,12 +1,11 @@
-import sys
-from pathlib import Path
-import unittest
-import math
 import copy
+import math
+from pathlib import Path
+import sys
+import unittest
 
 import numpy as np
 
-sys.path.append('src')
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry.point import Point
 from PanCAD.geometry.line import Line

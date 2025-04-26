@@ -3,6 +3,8 @@ correctly."""
 import math
 
 from PanCAD.geometry.point import Point
+from PanCAD.geometry.line import Line
+from PanCAD.geometry.line_segment import LineSegment
 
 def assertTupleAlmostEqual(self_input, 
                            tuple_a: tuple, tuple_b: tuple, places: int = 7):
@@ -18,3 +20,20 @@ def assertTupleAlmostEqual(self_input,
 def assertPointsAlmostEqual(self_input,
                             point_a: Point, point_b: Point, places: int = 7):
     assertTupleAlmostEqual(self_input, tuple(point_a), tuple(point_b), places)
+
+def assertLinesAlmostEqual(self_input,
+                            line_a: Point, line_b: Point, places: int = 7):
+    line_a_tuple = tuple(line_a.reference_point) + line_a.direction
+    line_b_tuple = tuple(line_b.reference_point) + line_b.direction
+    assertTupleAlmostEqual(self_input, line_a_tuple, line_b_tuple, places)
+
+def assertPanCADAlmostEqual(self_input, object_a, object_b, places):
+    if isinstance(object_a, Point) and isinstance(object_b, Point):
+        assertPointsAlmostEqual(self_input, object_a, object_b, places)
+    elif isinstance(object_a, Line) and isinstance(object_b, Line):
+        assertLinesAlmostEqual(self_input, object_a, object_b)
+    elif isinstance(object_a, tuple) and isinstance(object_b, tuple):
+        assertTupleAlmostEqual(self_input, object_a, object_b, places)
+    else:
+        raise ValueError(f"""Provided object Classes not supported. A:
+                         {object_a.__class__}, B: {object_b.__class__}""")

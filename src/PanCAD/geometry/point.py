@@ -278,6 +278,9 @@ class Point:
             self.spherical = (self.r, self.phi, value)
     
     # Public Methods #
+    def copy(self) -> Point:
+        return self.__copy__()
+    
     def phi_degrees(self) -> float:
         """Returns the polar/spherical azimuth coordinate of the point in 
         degrees.

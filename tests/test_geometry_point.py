@@ -5,8 +5,6 @@ import math
 
 import numpy as np
 
-sys.path.append('src')
-
 from PanCAD.geometry.point import Point
 from PanCAD.utils import verification
 

@@ -193,6 +193,9 @@ class Line:
         self._uid = uid
     
     # Public Methods #
+    def copy(self) -> Line:
+        return self.__copy__()
+    
     def get_angle_between(self, other_line: Line) -> float:
         """Returns the absolute value of the angle between this line and the 
         other line. Returning a signed angle requires a normal direction 
@@ -425,7 +428,7 @@ class Line:
     def from_parametric(cls, x_intercept: float, x_slope: float,
                         y_intercept: float, y_slope: float,
                         z_intercept: float = None, z_slope: float = None) -> Line:
-        pass
+        raise NotImplementedError
     
     # Static Methods #
     @staticmethod
@@ -494,8 +497,9 @@ class Line:
         """Rich comparison for line equality that allows for lines to be 
         directly compared with ==.
         
-        :param other: The point to compare self to.
-        :returns: Whether the tuples of the points are equal.
+        :param other: The line to compare self to.
+        :returns: Whether the tuples of the lines' reference_points and 
+                  directions are equal
         """
         self_origin_pt = self._point_closest_to_origin
         other_origin_pt = other._point_closest_to_origin
@@ -508,8 +512,8 @@ class Line:
             return NotImplemented
     
     def __len__(self) -> int:
-        """Returns the length of the line's direction tuple, which is 
-        equivalent to the line's number of dimnesions."""
+        """Returns the number of elements in the line's direction tuple, 
+        which is equivalent to the line's number of dimnesions."""
         return len(self.direction)
     
     def __repr__(self) -> str:
