@@ -172,7 +172,6 @@ class LineSegment:
         else:
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
-        
     
     # Private Static Methods #
     def _get_comparison_line(other: Line | LineSegment) -> Line:
