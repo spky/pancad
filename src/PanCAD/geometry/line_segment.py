@@ -3,6 +3,8 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
@@ -45,8 +47,7 @@ class LineSegment:
     
     @property
     def length(self) -> float:
-        vector_ab = np.array(self.point_b) - np.array(self.point_a)
-        return float(np.linalg.norm(vector_ab))
+        return float(np.linalg.norm(self.get_vector_ab()))
     
     @property
     def point_a(self) -> Point:
@@ -81,14 +82,15 @@ class LineSegment:
     def get_z_length(self) -> float:
         return abs(self.point_a.z - self.point_b.z)
     
-    def set_length_from_a(self, value: float):
-        pass
-    
-    def set_length_from_b(self, value: float):
-        pass
-    
     def get_line(self) -> Line:
-        return self._line
+        return Line.from_two_points(self.point_a, self.point_b)
+    
+    def get_vector_ab(self, numpy_vector: bool=True) -> tuple | np.ndarray:
+        np_vector_ab = np.array(self.point_b) - np.array(self.point_a)
+        if numpy_vector:
+            return np_vector_ab
+        else:
+            return trig.to_1D_tuple(np_vector_ab)
     
     def is_collinear(self, other: LineSegment | Line) -> bool:
         other_line = LineSegment._get_comparison_line(other)
@@ -113,19 +115,66 @@ class LineSegment:
         other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_skew(other)
     
+    def set_length_from_a(self, value: float):
+        if value != 0:
+            new_vector_ab = np.array(self.direction) * value
+            self.point_b.cartesian = (np.array(self.point_a.cartesian)
+                                      + new_vector_ab)
+        else:
+            raise ValueError("Line Length cannot be set to 0")
+    
+    def set_length_from_b(self, value: float):
+        new_vector_ab = np.array(self.direction) * value
+        self.point_a.cartesian = np.array(self.point_b.cartesian) - new_vector_ab
+    
+    def set_x_length_from_a(self, value: float):
+        self._update_axis_length(value, 0, True)
+    
+    def set_x_length_from_b(self, value: float):
+        self._update_axis_length(value, 0, False)
+    
+    def set_y_length_from_a(self, value: float):
+        self._update_axis_length(value, 1, True)
+    
+    def set_y_length_from_b(self, value: float):
+        self._update_axis_length(value, 1, False)
+    
+    def set_z_length_from_a(self, value: float):
+        self._update_axis_length(value, 2, True)
+    
+    def set_z_length_from_b(self, value: float):
+        self._update_axis_length(value, 2, False)
+    
     def update_points(self, point_a: Point, point_b: Point):
         if point_a == point_b:
             raise ValueError("""Line Segments cannot be defined with 2 of the 
                              same point""")
         elif len(point_a) == len(point_b):
-            self._point_a = point_a
-            self._point_b = point_b
-            self._line = Line.from_two_points(self.point_a, self.point_b)
+            if hasattr(self, "_point_a"):
+                # Update existing points
+                self._point_a.cartesian = point_a.cartesian
+                self._point_b.cartesian = point_b.cartesian
+            else:
+                # Initialize Points
+                self._point_a = point_a
+                self._point_b = point_b
         else:
             raise ValueError("""point_a and point_b must have the same number of
                               dimensions to initialize a line segment""")
     
-    # Static Methods #
+    # Private Methods
+    def _update_axis_length(self, value: float, axis: int, from_point_a: bool):
+        new_vector_ab = self.get_vector_ab()
+        new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])
+        if from_point_a:
+            self.point_b.cartesian = (np.array(self.point_a.cartesian)
+                                      + new_vector_ab)
+        else:
+            self.point_a.cartesian = (np.array(self.point_b.cartesian)
+                                      - new_vector_ab)
+        
+    
+    # Private Static Methods #
     def _get_comparison_line(other: Line | LineSegment) -> Line:
         if isinstance(other, Line):
             return other

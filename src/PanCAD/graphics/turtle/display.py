@@ -22,15 +22,22 @@ class TurtleWindow:
     :param speed: The speed of turtle updates, defaults to 0 (fastest execution)
     :param pensize: The size of the turtle's pen
     :param pencolor: The pencolor and fill color of the turtle
+    :param undo_buffer_size: The number of entries allowed in the undo buffer
+    :param dot_size: The diameter of dots drawn by the dot function
     """
+    
     def __init__(self, screen_title: str=None, *,
                  screen_size: tuple[int, int]=None, speed: int=0,
-                 pensize: int=None, pencolor: tuple[int, int, int]=(0, 0, 0)):
+                 pensize: int=None, pencolor: tuple[int, int, int]=(0, 0, 0),
+                 undo_buffer_size: int=1000, dot_size: int = 5):
         self.turtle = turtle.Turtle()
         turtle.colormode(255)
         self.pencolor = pencolor
+        self.undo_buffer_size = undo_buffer_size
+        self.dot_size = dot_size
         
         if screen_title is not None: self.screen_title = screen_title
+        
         if screen_size is not None:
             self.screen_size = screen_size
         else:
@@ -82,6 +89,15 @@ class TurtleWindow:
         """
         return self._screen_title
     
+    @property
+    def undo_buffer_size(self) -> int | None:
+        """The number of actions allowed in the undo buffer.
+        
+        :getter: Returns the number of actions allowed in the undo buffer
+        :setter: Sets the number of actions allowed in the undo buffer
+        """
+        return self._undo_buffer_size
+    
     # Setters #
     @pencolor.setter
     def pencolor(self, value: tuple[int, int, int]):
@@ -119,6 +135,11 @@ class TurtleWindow:
     def screen_title(self, value: str):
         self._screen_title = value
         self.turtle.screen.title(value)
+    
+    @undo_buffer_size.setter
+    def undo_buffer_size(self, value: int | None):
+        self._undo_buffer_size = value
+        self.turtle.setundobuffer(value)
     
     # Public Methods #
     def coordinate_system(self,
@@ -173,6 +194,7 @@ class TurtleWindow:
         self.update()
         self.pensize = initial_pensize
         self.pencolor = initial_color
+        self.reset_undo_buffer()
     
     def draw_line(self, line: Line) -> None:
         """Draws an infinite line using a PanCAD Line object.
@@ -204,7 +226,7 @@ class TurtleWindow:
         self.turtle.setposition(initial_position)
     
     def draw_line_segment(self, line_segment: LineSegment) -> None:
-        """Draws an line segment using a PanCAD LineSegment object.
+        """Draws a line segment using a PanCAD LineSegment object.
         
         :param line_segment: An finite line represented by a PanCAD Line
         """
@@ -216,9 +238,53 @@ class TurtleWindow:
         self.turtle.penup()
         self.turtle.setposition(initial_position)
     
+    def draw_pancad(self, geometry: Line | LineSegment) -> None:
+        """Draws the given PanCAD object on turtle's screen.
+        
+        :param geometry: A PanCAD geometry object
+        """
+        if isinstance(geometry, Line):
+            self.draw_line(geometry)
+        elif isinstance(geometry, LineSegment):
+            self.draw_line_segment(geometry)
+        elif isinstance(geometry, Point):
+            self.draw_point(geometry)
+        else:
+            raise ValueError(f"{geometry.__class__} is not supported")
+    
+    def draw_point(self, point: Point) -> None:
+        """Draws a point using a PanCAD Point object.
+        
+        :param point: A point represented by a PanCAD Point
+        """
+        initial_position = self.turtle.pos()
+        self.turtle.penup()
+        self.turtle.setposition(tuple(point))
+        self.turtle.dot(self.dot_size, self.pencolor)
+        self.turtle.setposition(initial_position)
+    
+    def get_undo_buffer_entries(self) -> int:
+        """Returns the current number of entires in the undo buffer"""
+        return self.turtle.undobufferentries()
+    
     def hide_updates(self) -> None:
         """Hides updates drawn to the window to speed up execution time"""
         turtle.tracer(0, 0)
+    
+    def reset_undo_buffer(self) -> None:
+        """Clear the undo buffer to prevent unintentional undos."""
+        initial_buffer_size = self.undo_buffer_size
+        self.undo_buffer_size = None
+        self.undo_buffer_size = initial_buffer_size
+    
+    def undo(self) -> None:
+        """Undos the last entry"""
+        self.turtle.undo()
+    
+    def undo_all(self) -> None:
+        """Undos all entires in the undo buffer"""
+        for i in range(self.get_undo_buffer_entries()):
+            self.undo()
     
     def update(self):
         """Forces the window to update, even if updates have been hidden"""
