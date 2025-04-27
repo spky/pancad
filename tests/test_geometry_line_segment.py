@@ -229,11 +229,11 @@ class TestLineSegmentSpecificComparisons(unittest.TestCase):
     
     def setUp(self):
         lines = [
-            (((0, 0), (0, 1)), ((0, 0), (0, 1)))
-            (((0, 0), (0, 1)), ((1, 0), (1, 1)))
-            (((0, 0), (0, 1)), ((0, 0), (0, 2)))
+            (((0, 0), (0, 1)), ((0, 0), (0, 1))),
+            (((0, 0), (0, 1)), ((1, 0), (1, 1))),
+            (((0, 0), (0, 1)), ((0, 0), (0, 2))),
         ]
-        self.lines = [(LineSegment(*l1), LineSegment(l2) for l1, l2 in lines]
+        self.lines = [(LineSegment(*l1), LineSegment(*l2)) for l1, l2 in lines]
     
     def test_is_equal_length(self):
         truths = [
@@ -241,7 +241,9 @@ class TestLineSegmentSpecificComparisons(unittest.TestCase):
             True,
             False,
         ]
-        print(self.lines)
+        for (line1, line2), truth in zip(self.lines, truths):
+            with self.subTest(line1=line1, line2=line2, equal=truth):
+                self.assertEqual(line1.is_equal_length(line2), truth)
 
 
 if __name__ == "__main__":

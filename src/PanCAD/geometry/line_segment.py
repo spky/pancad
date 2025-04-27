@@ -14,6 +14,7 @@ from PanCAD.geometry.line import Line
 class LineSegment:
     """A class representing a finite line in 2D and 3D space.
     """
+    
     relative_tolerance = 1e-9
     absolute_tolerance = 1e-9
     
@@ -25,7 +26,7 @@ class LineSegment:
         if isinstance(point_b, tuple): point_b = Point(point_b)
         
         self.update_points(point_a, point_b)
-        
+    
     # Getters #
     @property
     def direction(self) -> tuple:
