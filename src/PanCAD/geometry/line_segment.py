@@ -103,6 +103,9 @@ class LineSegment:
         other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_coplanar(other_line)
     
+    def is_equal_length(self, other: LineSegment) -> bool:
+        return self._isclose(self.length, other.length)
+    
     def is_parallel(self, other: LineSegment | Line) -> bool:
         other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_parallel(other_line)
@@ -163,6 +166,19 @@ class LineSegment:
                               dimensions to initialize a line segment""")
     
     # Private Methods
+    def _isclose(self, value_a: float, value_b: float) -> bool:
+        """Returns whether value_a is close to value_b using the LineSegment's
+        class variables.
+        
+        :param value_a: A value to compare
+        :param value_b: Another value to compare
+        :returns: True if value_a == value_b within the relative and absolute 
+                  tolerance class variables
+        """
+        return math.isclose(value_a, value_b,
+                            rel_tol=self.relative_tolerance,
+                            abs_tol=self.absolute_tolerance)
+    
     def _update_axis_length(self, value: float, axis: int, from_point_a: bool):
         new_vector_ab = self.get_vector_ab()
         new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])

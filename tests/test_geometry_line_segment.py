@@ -225,6 +225,25 @@ class TestLineSegmentLineComparisons(unittest.TestCase):
             with self.subTest(line1=line1, line2=line2, skew=truth):
                 self.assertEqual(line1.is_skew(line2), truth)
 
+class TestLineSegmentSpecificComparisons(unittest.TestCase):
+    
+    def setUp(self):
+        lines = [
+            (((0, 0), (0, 1)), ((0, 0), (0, 1)))
+            (((0, 0), (0, 1)), ((1, 0), (1, 1)))
+            (((0, 0), (0, 1)), ((0, 0), (0, 2)))
+        ]
+        self.lines = [(LineSegment(*l1), LineSegment(l2) for l1, l2 in lines]
+    
+    def test_is_equal_length(self):
+        truths = [
+            True,
+            True,
+            False,
+        ]
+        print(self.lines)
+
+
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
               +".log", "w") as f:
