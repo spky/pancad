@@ -15,7 +15,8 @@ class LineSegment:
     relative_tolerance = 1e-9
     absolute_tolerance = 1e-9
     
-    def __init__(self, point_a: Point, point_b: Point, uid: str = None):
+    def __init__(self, point_a: Point | tuple, point_b: Point | tuple,
+                 uid: str = None):
         self.uid = uid
         
         if isinstance(point_a, tuple): point_a = Point(point_a)
@@ -90,26 +91,26 @@ class LineSegment:
         return self._line
     
     def is_collinear(self, other: LineSegment | Line) -> bool:
-        other_line = self._get_comparison_line(other)
+        other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_collinear(other_line)
     
     def is_coincident(self, other: Point) -> bool:
         return self.get_line().is_coincident(other)
     
     def is_coplanar(self, other: LineSegment | Line) -> bool:
-        other_line = self._get_comparison_line(other)
+        other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_coplanar(other_line)
     
     def is_parallel(self, other: LineSegment | Line) -> bool:
-        other_line = self._get_comparison_line(other)
-        return self.get_line().is_coplanar(other_line)
+        other_line = LineSegment._get_comparison_line(other)
+        return self.get_line().is_parallel(other_line)
     
     def is_perpendicular(self, other: LineSegment | Line) -> bool:
-        other_line = self._get_comparison_line(other)
+        other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_perpendicular(other)
     
     def is_skew(self, other: LineSegment | Line) -> bool:
-        other_line = self._get_comparison_line(other)
+        other_line = LineSegment._get_comparison_line(other)
         return self.get_line().is_skew(other)
     
     def update_points(self, point_a: Point, point_b: Point):
@@ -127,9 +128,9 @@ class LineSegment:
     # Static Methods #
     def _get_comparison_line(other: Line | LineSegment) -> Line:
         if isinstance(other, Line):
-            other_line = other
+            return other
         elif isinstance(other, LineSegment):
-            other_line = other.get_line()
+            return other.get_line()
         else:
             raise ValueError("other must be a Line or LineSegment")
     

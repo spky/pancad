@@ -153,21 +153,21 @@ class TurtleWindow:
         
         # # Minor Horizontal Lines
         for i in range(1, no_horizontal_lines):
-            y_value = i*vertical_division
-            self.draw_line(Line.from_two_points((0, y_value), (1, y_value)))
-            self.draw_line(Line.from_two_points((0, -y_value), (1, -y_value)))
+            y_value = i * vertical_division
+            self.draw_line(Line.from_y_intercept(y_value))
+            self.draw_line(Line.from_y_intercept(-y_value))
         
         # Minor Horizontal Lines
         for i in range(1, no_vertical_lines):
-            x_value = i*horizontal_division
-            self.draw_line(Line.from_two_points((x_value, 0), (x_value, 1)))
-            self.draw_line(Line.from_two_points((-x_value, 0), (-x_value, 1)))
+            x_value = i * horizontal_division
+            self.draw_line(Line.from_x_intercept(x_value))
+            self.draw_line(Line.from_x_intercept(-x_value))
         
         # Major Lines
         self.pensize = major_line_thickness
         self.turtle.color(major_line_rgb)
-        self.draw_line(Line.from_two_points((0, 0), (1, 0)))
-        self.draw_line(Line.from_two_points((0, 0), (0, 1)))
+        self.draw_line(Line.from_x_intercept(0))
+        self.draw_line(Line.from_y_intercept(0))
         
         # Clean Up
         self.update()

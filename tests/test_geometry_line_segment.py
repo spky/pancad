@@ -1,3 +1,4 @@
+import itertools
 import math
 import sys
 from pathlib import Path
@@ -12,68 +13,51 @@ from PanCAD.utils import verification
 
 ROUNDING_PLACES = 10
 
-class TestLineSegmentInit(unittest.TestCase):
+class TestLineSegmentInit2d(unittest.TestCase):
+    def setUp(self):
+        self.pt_a, self.pt_b = (0, 0), (1, 1)
+        self.check_features = (Point(self.pt_a), Point(self.pt_b),
+                               Line.from_two_points(self.pt_a, self.pt_b))
     
-    def test_init_two_points_2d(self):
-        pt_a, pt_b = (Point(0, 0), Point(1, 1))
-        check_line = Line.from_two_points(pt_a, pt_b)
-        
-        check_features = (pt_a.copy(), pt_b.copy(), check_line.copy())
-        
-        test_line_segment = LineSegment(pt_a, pt_b)
-        test_features = (test_line_segment.point_a,
-                         test_line_segment.point_b,
-                         test_line_segment.get_line())
-        for check, test in zip(check_features, test_features):
+    def test_init_two_points(self):
+        line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b))
+        test_features = (line_seg.point_a, line_seg.point_b,
+                         line_seg.get_line())
+        for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
                 verification.assertPanCADAlmostEqual(self, test, check,
                                                      ROUNDING_PLACES)
     
-    def test_init_two_tuples_2d(self):
-        pt_a, pt_b = ((0, 0), (1, 1))
-        check_line = Line.from_two_points(pt_a, pt_b)
-        
-        check_features = (Point(pt_a).copy(),
-                          Point(pt_b).copy(),
-                          check_line.copy())
-        test_line_segment = LineSegment(pt_a, pt_b)
-        test_features = (test_line_segment.point_a,
-                         test_line_segment.point_b,
-                         test_line_segment.get_line())
-        for check, test in zip(check_features, test_features):
+    def test_init_two_tuples(self):
+        line_seg = LineSegment(self.pt_a, self.pt_b)
+        test_features = (line_seg.point_a, line_seg.point_b,
+                         line_seg.get_line())
+        for check, test in zip(self.check_features, test_features):
+            with self.subTest(test=test, check=check):
+                verification.assertPanCADAlmostEqual(self, test, check,
+                                                     ROUNDING_PLACES)
+
+class TestLineSegmentInit3d(unittest.TestCase):
+    def setUp(self):
+        self.pt_a, self.pt_b = (0, 0, 0), (1, 1, 1)
+        self.check_features = (Point(self.pt_a), Point(self.pt_b),
+                               Line.from_two_points(self.pt_a, self.pt_b))
+    
+    def test_init_two_points(self):
+        line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b))
+        test_features = (line_seg.point_a, line_seg.point_b,
+                         line_seg.get_line())
+        for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
                 verification.assertPanCADAlmostEqual(self, test, check,
                                                      ROUNDING_PLACES)
     
-    def test_init_two_points_3d(self):
-        pt_a, pt_b = (Point(0, 0, 0), Point(1, 1, 1))
-        check_line = Line.from_two_points(pt_a, pt_b)
-        
-        check_features = (pt_a,
-                          pt_b,
-                          check_line.copy())
-        test_line_segment = LineSegment(pt_a, pt_b)
-        test_features = (test_line_segment.point_a,
-                         test_line_segment.point_b,
-                         test_line_segment.get_line())
-        for check, test in zip(check_features, test_features):
+    def test_init_two_tuples(self):
+        line_seg = LineSegment(self.pt_a, self.pt_b)
+        test_features = (line_seg.point_a, line_seg.point_b,
+                         line_seg.get_line())
+        for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                verification.assertPanCADAlmostEqual(self, test, check,
-                                                     ROUNDING_PLACES)
-    
-    def test_init_two_tuples_3d(self):
-        pt_a, pt_b = ((0, 0, 0), (1, 1, 1))
-        check_line = Line.from_two_points(pt_a, pt_b)
-        
-        check_features = (Point(pt_a),
-                          Point(pt_b),
-                          check_line.copy())
-        test_line_segment = LineSegment(pt_a, pt_b)
-        test_features = (test_line_segment.point_a,
-                         test_line_segment.point_b,
-                         test_line_segment.get_line())
-        for check, test in zip(check_features, test_features):
-            with self.subTest(test=test_line_segment, check=check_features):
                 verification.assertPanCADAlmostEqual(self, test, check,
                                                      ROUNDING_PLACES)
 
@@ -120,12 +104,126 @@ class TestLineSegmentGetters(unittest.TestCase):
             with self.subTest(line_segment=line_segment, length=length):
                 self.assertAlmostEqual(line_segment.length, length)
     
-    def test_get_x_length(self):
-        for line_segment, (x_length, _, _) in self.axis_length_tests:
-            with self.subTest(line_segment=line_segment, x_length=x_length):
-                result = line_segment.get_x_length()
-                self.assertAlmostEqual(result, x_length)
+    def test_get_xyz_length(self):
+        for line_segment, lengths in self.axis_length_tests:
+            axis_length_funcs = [line_segment.get_x_length,
+                                 line_segment.get_y_length,
+                                 line_segment.get_z_length]
+            for func, length in zip(axis_length_funcs, lengths):
+                if length is None: continue
+                with self.subTest(line_segment=line_segment,
+                                  func=func.__name__, length=length):
+                    self.assertAlmostEqual(func(), length)
 
+class TestLineSegmentLineComparisons(unittest.TestCase):
+    
+    def setUp(self):
+        # The order of these lines correspond to the truths in each test
+        self.lines = [
+            (((0, 0), (1, 1)), ((0, 1), (1, 2))),
+            (((0, 0), (-1, -1)), ((0, 1), (1, 2))),
+            (((0, 0), (1, 1)), ((0, 0), (-1, -1))),
+            (((0, 0), (0, 1)), ((0, 1), (1, 2))),
+            (((0, 0), (1, 0)), ((0, 1), (1, 1))),
+            (((0, 0), (1, 0)), ((0, 0), (0, 1))),
+            (((0, 0), (1, 1)), ((0, 0), (1, 1))),
+            (((0, 0, 0), (1, 1, 1)), ((0, 0, 1), (1, 0, 1))),
+        ]
+        # product creates every unordered combination of line functions possible, 
+        # checking for incompatibilities between any combo of Line and LineSegment
+        line_funcs = [LineSegment, Line.from_two_points]
+        self.line_func_perms = list(itertools.product(line_funcs, repeat=2))
+    
+    def zip_truths(self, truths):
+        """Applies every permutation of line function to the line points and zips 
+        the truth value for the test to the resulting tuple"""
+        tests = []
+        for (line1pts, line2pts), truth in zip(self.lines, truths):
+            for func_1, func_2 in self.line_func_perms:
+                tests.append(
+                    (func_1(*line1pts), func_2(*line2pts), truth)
+                )
+        return tests
+    
+    def test_is_parallel(self):
+        truths = [
+            True,
+            True,
+            True,
+            False,
+            True,
+            False,
+            True,
+            False,
+        ]
+        tests = self.zip_truths(truths)
+        for line1, line2, truth in tests:
+            with self.subTest(line1=line1, line2=line2, parallel=truth):
+                self.assertEqual(line1.is_parallel(line2), truth)
+    
+    def test_is_perpendicular(self):
+        truths = [
+            False,
+            False,
+            False,
+            False,
+            False,
+            True,
+            False,
+            False,
+        ]
+        tests = self.zip_truths(truths)
+        for line1, line2, truth in tests:
+            with self.subTest(line1=line1, line2=line2, perpendicular=truth):
+                self.assertEqual(line1.is_perpendicular(line2), truth)
+    
+    def test_is_coplanar(self):
+        truths = [
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+            False,
+        ]
+        tests = self.zip_truths(truths)
+        for line1, line2, truth in tests:
+            with self.subTest(line1=line1, line2=line2, coplanar=truth):
+                self.assertEqual(line1.is_coplanar(line2), truth)
+    
+    def test_is_collinear(self):
+        truths = [
+            False,
+            False,
+            True,
+            False,
+            False,
+            False,
+            True,
+            False,
+        ]
+        tests = self.zip_truths(truths)
+        for line1, line2, truth in tests:
+            with self.subTest(line1=line1, line2=line2, collinear=truth):
+                self.assertEqual(line1.is_collinear(line2), truth)
+    
+    def test_is_skew(self):
+        truths = [
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            True,
+        ]
+        tests = self.zip_truths(truths)
+        for line1, line2, truth in tests:
+            with self.subTest(line1=line1, line2=line2, skew=truth):
+                self.assertEqual(line1.is_skew(line2), truth)
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
