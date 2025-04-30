@@ -434,31 +434,62 @@ class TestLineIntersection(unittest.TestCase):
 class TestLineAngle(unittest.TestCase):
     
     def setUp(self):
-        tests = [
-            ((0, 0), (0, 1), (0, 0), (1, 0), 90),
-            ((0, 0), (1, 0), (0, 0), (-1, 1), 135),
-            ((0, 0), (1, 0), (0, 1), (1, 1), 0),
-            ((0, 0), (1, 0), (0, 0), (1, 1), 45),
-            # ((0, 0), (1, 1), (0, 0), (1, 0), -45),
+        line_pairs = [
+            ((0, 0), (0, 1), (0, 0), (1, 0)),
+            ((0, 0), (1, 0), (0, 0), (0, 1)),
+            ((0, 0), (1, 0), (0, 0), (-1, 1)),
+            ((0, 0), (1, 0), (0, 1), (1, 1)),
+            ((0, 0), (1, 0), (0, 0), (1, 1)),
+            ((0, 0), (1, 1), (0, 0), (1, 0)),
         ]
-        self.tests = []
-        for pt1a, pt1b, pt2a, pt2b, angle in tests:
-            test = (Line.from_two_points(pt1a, pt1b),
-                    Line.from_two_points(pt2a, pt2b),
-                    math.radians(angle))
-            self.tests.append(test)
+        self.lines = []
+        for pt1a, pt1b, pt2a, pt2b in line_pairs:
+            self.lines.append([Line.from_two_points(pt1a, pt1b),
+                               Line.from_two_points(pt2a, pt2b)])
+        # signed_angles for each line:
+        # First angle is the signed arc cosine of the dot product,
+        # Second angle is the signed supplement of the first angle
+        signed_angles = [
+            (-90, 90),
+            (90, -90),
+            (135, -45),
+            (0, 180),
+            (45, -135),
+            (-45, 135),
+        ]
+        self.signed_angles = [list(map(math.radians, p)) for p in signed_angles]
     
-    def test_get_angle_between(self):
-        
-        for line1, line2, angle in self.tests:
+    def compare_angles(self, truth_angles: list[float],
+                       supplement: bool, signed: bool):
+        for (line1, line2), (angle1, angle2) in zip(self.lines, truth_angles):
+            angle = angle2 if supplement else angle1
             with self.subTest(
                         line1=line1, line2=line2,
+                        supplement_flag=supplement, signed_flag=signed,
                         angle=(f"Radians: {angle}, "
                                + f"Degrees: {math.degrees(angle)}")
                     ):
-                self.assertAlmostEqual(line1.get_angle_between(line2),
+                result_angle = line1.get_angle_between(line2,
+                                                       supplement, signed)
+                self.assertAlmostEqual(result_angle,
                                        angle,
                                        ROUNDING_PLACES)
+    
+    def test_get_angle_between_default(self):
+        truth_angles = [list(map(abs, p)) for p in self.signed_angles]
+        self.compare_angles(truth_angles, supplement=False, signed=False)
+    
+    def test_get_angle_between_supplement_unsigned(self):
+        truth_angles = [list(map(abs, p)) for p in self.signed_angles]
+        self.compare_angles(truth_angles, supplement=True, signed=False)
+    
+    def test_get_angle_between_signed(self):
+        truth_angles = self.signed_angles
+        self.compare_angles(truth_angles, supplement=False, signed=True)
+    
+    def test_get_angle_between_supplement_signed(self):
+        truth_angles = self.signed_angles
+        self.compare_angles(truth_angles, supplement=True, signed=True)
 
 class TestPerpendicular(unittest.TestCase):
     def setUp(self):
