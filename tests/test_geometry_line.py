@@ -1,4 +1,5 @@
 import copy
+import itertools
 import math
 from pathlib import Path
 import sys
@@ -7,8 +8,7 @@ import unittest
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry.point import Point
-from PanCAD.geometry.line import Line
+from PanCAD.geometry import Point, Line
 from PanCAD.utils import verification
 
 ROUNDING_PLACES = 10
@@ -85,7 +85,7 @@ class TestLineVectorMethods(unittest.TestCase):
         
         for vector, unit_vector in tests_np:
             with self.subTest(vector=vector, unit_vector=unit_vector):
-                self.assertCountEqual(Line.unique_direction(vector),
+                self.assertCountEqual(Line._unique_direction(vector),
                                       unit_vector)
 
 class TestLineTwoPointDefinition(unittest.TestCase):
@@ -510,33 +510,74 @@ class TestPerpendicular(unittest.TestCase):
                         line1=line1, line2=line2, perpendicular=perpendicular
                     ):
                 self.assertEqual(line1.is_perpendicular(line2), perpendicular)
-        
-class TestLinePointMovers(unittest.TestCase):
+
+class TestLinePointMovers2D(unittest.TestCase):
     
     def setUp(self):
-        tests = [
-            ((0, 1), (1, 1), (0, 2)),
-            ((0, 1), (1, 1), (3, 3)),
-            ((-4, 0), (0, 4), (3, 3)),
+        lines = [
+            ((0, 1), (1, 1)),
+            ((0, 1), (1, 1)),
+            ((-4, 0), (0, 4)),
         ]
-        self.tests_2d = []
-        for pt_a, pt_b, new_pt in tests:
-            self.tests_2d.append(
-                (Point(pt_a), Point(pt_b), Point(new_pt))
-            )
+        self.lines = [Line.from_two_points(p1, p2) for p1, p2 in lines]
+        new_points = [
+            (0, 2),
+            (3, 3),
+        ]
+        self.new_points = list(map(Point, new_points))
+        self.line_to_pts = []
+        for line in self.lines:
+            line_cases = zip(itertools.repeat(line, len(self.new_points)),
+                             self.new_points)
+            self.line_to_pts.extend(list(line_cases))
+        
+        phis = [
+            0,
+            45,
+            90,
+            135,
+            -90,
+            -135,
+            180,
+            -180,
+        ]
+        self.phis = list(map(math.radians, phis))
+        self.line_pts_to_phi = []
+        for line in self.line_to_pts:
+            cases = zip(itertools.repeat(line, len(self.phis)),
+                        self.phis)
+            self.line_pts_to_phi.extend(list(cases))
     
-    def test_move_to_point_2d(self):
-        for pt_a, pt_b, new_pt in self.tests_2d:
-            with self.subTest(point_a=tuple(pt_a), point_b=tuple(pt_b),
-                              new_point=tuple(new_pt)):
-                original_line = Line.from_two_points(pt_a, pt_b)
-                test_line = copy.copy(original_line)
+    def test_move_to_point(self):
+        for line, new_pt in self.line_to_pts:
+            with self.subTest(line=line, point=new_pt):
+                test_line = line.copy()
                 test_line.move_to_point(new_pt)
                 results = [
                     test_line.is_coincident(new_pt),
-                    test_line.is_parallel(original_line)
+                    test_line.is_parallel(line)
                 ]
                 self.assertTrue(all(results))
+    
+    def test_move_to_point_phi(self):
+        for (line, new_pt), new_phi in self.line_pts_to_phi:
+            with self.subTest(line=line, point=new_pt,
+                              phi=(f"Radians: {new_phi}, "
+                                   + f"Degrees: {math.degrees(new_phi)}")):
+                expected_direction = trig.polar_to_cartesian((1, new_phi))
+                expected_line = Line(new_pt, expected_direction)
+                line.move_to_point(new_pt, new_phi)
+                self.assertEqual(expected_line, line)
+    
+    def test_from_point_and_angle(self):
+        for (_, pt), phi in self.line_pts_to_phi:
+            with self.subTest(point=pt,
+                              phi=(f"Radians: {phi}, "
+                              + f"Degrees: {math.degrees(phi)}")):
+                expected_direction = trig.polar_to_cartesian((1, phi))
+                expected_line = Line(pt, expected_direction)
+                line = Line.from_point_and_angle(pt, phi)
+                self.assertEqual(expected_line, line)
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem

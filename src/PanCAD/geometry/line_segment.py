@@ -8,8 +8,7 @@ import math
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry.point import Point
-from PanCAD.geometry.line import Line
+from PanCAD.geometry import Point, Line
 
 class LineSegment:
     """A class representing a finite line in 2D and 3D space.

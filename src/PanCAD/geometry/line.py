@@ -9,7 +9,7 @@ import math
 
 import numpy as np
 
-from PanCAD.geometry.point import Point
+from PanCAD.geometry import Point
 from PanCAD.utils import trigonometry as trig
 
 class Line:
@@ -168,7 +168,7 @@ class Line:
     def direction(self, vector: list | tuple | np.ndarray):
         if vector is not None:
             vector = trig.to_1D_np(vector)
-            self._direction = Line.unique_direction(vector)
+            self._direction = Line._unique_direction(vector)
         else:
             self._direction = None
     
@@ -243,7 +243,7 @@ class Line:
                 return angle_magnitude
         else:
             return angle_magnitude
-        
+    
     
     def get_intersection(self, other_line: Line) -> Point | None:
         """Returns the intersection of this line with another line as a Point 
@@ -327,7 +327,6 @@ class Line:
         
         ref_pt_to_pt = (np.dot(point_vector, direction_vector)
                         * direction_vector)
-        
         check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
         
         if self._isclose_tuple(check_point_tuple, tuple(point)):
@@ -384,14 +383,31 @@ class Line:
         else:
             return True
     
-    def move_to_point(self, point: Point) -> Line:
-        """Moves the line's reference_point while keeping the direction constant 
-        to make the line go through a new point.
+    def move_to_point(self, point: Point,
+                      phi: float=None, theta: float=None) -> Line:
+        """Moves the line to go through a point and changes the line's 
+        direction's phi (polar azimuth angle) and/or theta (polar elevation 
+        angle) around that point. If phi or theta are set to None then they 
+        stay constant unless 
         
         :param point: A point the user wants to be on the line
+        :param phi: The line's new phi around the point in radians
+        :param theta: The line's new theta around the point in radians
         :returns: The line with an updated reference_point that goes through the 
                   point
         """
+        if phi is not None or theta is not None:
+            direction_end_pt = Point(self.direction)
+            if phi is not None and theta is not None and len(self) == 3:
+                direction_end_pt.spherical = (1, phi, theta)
+            elif theta is not None and len(self) == 2:
+                raise ValueError("Theta can only be set on 3D Lines")
+            elif phi is not None and theta is None:
+                direction_end_pt.phi = phi
+            elif phi is None and theta is not None:
+                direction_end_pt.theta = theta
+            self.direction = tuple(direction_end_pt)
+        
         self._point_closest_to_origin = self.closest_to_origin(
             point, self.direction
         )
@@ -426,7 +442,8 @@ class Line:
     
     # Class Methods #
     @classmethod
-    def from_two_points(cls, a:Point, b:Point, uid:str = None) -> Line:
+    def from_two_points(cls, a:Point | tuple, b:Point | tuple,
+                        uid:str = None) -> Line:
         """Returns a Line instance defined by points a and b. Point order 
         does not matter since lines are infinite. If direction matters, use 
         LineSegment.
@@ -471,12 +488,37 @@ class Line:
         raise NotImplementedError
     
     @classmethod
-    def from_x_intercept(cls, x_intercept: float, uid:str = None) -> Line:
+    def from_point_and_angle(cls, point: Point, phi: float,
+                             theta: float = None, uid: str = None) -> Line:
+        """Return a line from a given point and phi or phi and theta.
+        
+        :param point: A point on the line
+        :param phi: The phi angle of the line around the point
+        :param theta: The theta angle of the line around the point, if 3D
+        :returns: A Line object that runs through the point in a direction 
+            with the provided angles
+        """
+        if len(point) == 2 and theta is None:
+            direction_end_pt = Point(1, 0)
+            direction_end_pt.phi = phi
+        elif len(point) == 3 and theta is not None:
+            direction_end_pt = Point(1, 0, 0)
+            direction_end_pt.spherical = (1, phi, theta)
+        elif len(point) == 3 and theta is None:
+            raise ValueError("If a 3D point is given, theta must also be given")
+        elif len(point) == 2 and theta is not None:
+            raise ValueError("Theta can only be specified for 3D points")
+        
+        direction = tuple(direction_end_pt)
+        return cls(point, direction, uid)
+    
+    @classmethod
+    def from_x_intercept(cls, x_intercept: float, uid: str = None) -> Line:
         """Returns a 2D vertical line the passes through the x intercept"""
         return cls(Point(x_intercept, 0), (0, 1), uid)
     
     @classmethod
-    def from_y_intercept(cls, y_intercept: float, uid:str = None) -> Line:
+    def from_y_intercept(cls, y_intercept: float, uid: str = None) -> Line:
         """Returns a 2D horizontal line the passes through the y intercept"""
         return cls(Point(0, y_intercept), (1, 0), uid)
     
@@ -488,6 +530,8 @@ class Line:
         
         :param point: a Point on the line
         :param vector: a vector in the direction of the line
+        :returns: The point on the line created by the given point and vector 
+            closest to the origin
         """
         point_vector = np.array(point)
         vector = trig.to_1D_np(vector)
@@ -497,7 +541,10 @@ class Line:
         if dot_product == 0:
             point_closest_to_origin = Point(point_vector)
         elif abs(dot_product) == np.linalg.norm(point_vector):
-            point_closest_to_origin = Point((0,0,0))
+            if len(point) == 2:
+                point_closest_to_origin = Point((0,0))
+            else:
+                point_closest_to_origin = Point((0,0,0))
         elif (np.linalg.norm(point_vector + unit_vector)
               < np.linalg.norm(point_vector + unit_vector)):
             point_closest_to_origin = Point(
@@ -527,7 +574,7 @@ class Line:
             return other.get_line()
     
     @staticmethod
-    def unique_direction(vector:np.ndarray) -> np.ndarray:
+    def _unique_direction(vector:np.ndarray) -> np.ndarray:
         """Returns a unit vector that can uniquely identify the direction of 
         the given vector. Does so flipping the unit vector if necessary to 
         ensure there can only ever be one vector for every direction.
