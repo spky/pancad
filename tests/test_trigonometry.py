@@ -449,7 +449,120 @@ class TestTrigonometry(unittest.TestCase):
                 check = [trig.pt2list(out[0]), trig.pt2list(out[1])]
                 self.assertCountEqual(check, t[1])
 
+class TestVectors(unittest.TestCase):
+    
+    def test_get_unit_vector(self):
+        tests = [
+            (np.array((0, 0, 0)), np.array((0, 0, 0))),
+            (np.array((1, 0, 0)), np.array((1, 0, 0))),
+            (np.array((0, 1, 0)), np.array((0, 1, 0))),
+            (np.array((0, 0, 1)), np.array((0, 0, 1))),
+            (np.array((0, 0)), np.array((0, 0))),
+            (np.array((1, 0)), np.array((1, 0))),
+            (np.array((0, 1)), np.array((0, 1))),
+            (np.array((0, 0, 0)).reshape(3,1), np.array((0, 0, 0)).reshape(3,1)),
+            (np.array((1, 0, 0)).reshape(3,1), np.array((1, 0, 0)).reshape(3,1)),
+            (np.array((0, 1, 0)).reshape(3,1), np.array((0, 1, 0)).reshape(3,1)),
+            (np.array((0, 0, 1)).reshape(3,1), np.array((0, 0, 1)).reshape(3,1)),
+            (np.array((0, 0)).reshape(2,1), np.array((0, 0)).reshape(2,1)),
+            (np.array((1, 0)).reshape(2,1), np.array((1, 0)).reshape(2,1)),
+            (np.array((0, 1)).reshape(2,1), np.array((0, 1)).reshape(2,1)),
+        ]
+        for vector, unit_vector in tests:
+            with self.subTest(vector=vector, unit_vector=unit_vector):
+                result = trig.get_unit_vector(vector)
+                self.assertCountEqual(result, unit_vector)
+                self.assertCountEqual(result.shape, unit_vector.shape)
+    
+    def test_get_unit_vector_exceptions(self):
+        tests = [
+            np.array([[1,1],[1,1]]),
+        ]
+        for vector in tests:
+            with self.subTest(vector=vector):
+                with self.assertRaises(ValueError):
+                    result = trig.get_unit_vector(vector)
+
+class TestVectorUtilities(unittest.TestCase):
+    
+    def test_is_iterable(self):
+        tests = [
+            ([0, 1], True),
+            ((0, 1), True),
+            (1, False),
+            (1.0, False),
+            (True, False),
+            (ValueError, False),
+            ("fake", True),
+            (np.array([0, 1]), True),
+        ]
+        for value, expected_bool in tests:
+            with self.subTest(value=value, expected_bool=expected_bool):
+                self.assertEqual(trig.is_iterable(value), expected_bool)
+    
+    def test_to_1D_tuple(self):
+        tests = [
+            # 2D Tests #
+            ([0, 1], (0, 1)),
+            ((0, 1), (0, 1)),
+            (np.array([0, 1]), (0.0, 1.0)),
+            (np.array([0, 1]).reshape(2,1), (0.0, 1.0)),
+            # 3D Tests #
+            ([0, 1, 2], (0, 1, 2)),
+            ((0, 1, 2), (0, 1, 2)),
+            (np.array([0, 1, 2]), (0.0, 1.0, 2.0)),
+            (np.array([0, 1, 2]).reshape(3,1), (0.0, 1.0, 2.0)),
+        ]
+        for value, expected_tuple in tests:
+            with self.subTest(value=value, expected_tuple=expected_tuple):
+                self.assertCountEqual(trig.to_1D_tuple(value), expected_tuple)
+                self.assertEqual(str(trig.to_1D_tuple(value)), str(expected_tuple))
+    
+    def test_to_1D_numpy(self):
+        tests = [
+            # 2D Tests #
+            ([0, 1], np.array((0, 1))),
+            ((0, 1), np.array((0, 1))),
+            (np.array([0, 1]), np.array((0, 1))),
+            (np.array([0, 1]).reshape(2,1), np.array((0, 1))),
+            # 3D Tests #
+            ([0, 1, 2], np.array((0, 1, 2))),
+            ((0, 1, 2), np.array((0, 1, 2))),
+            (np.array([0, 1, 2]), np.array((0, 1, 2))),
+            (np.array([0, 1, 2]).reshape(3,1), np.array((0, 1, 2))),
+        ]
+        for value, expected_tuple in tests:
+            with self.subTest(value=value, expected_tuple=expected_tuple):
+                self.assertCountEqual(trig.to_1D_np(value), expected_tuple)
+                self.assertEqual(str(trig.to_1D_np(value)), str(expected_tuple))
+
+class TestPrecisionComparison(unittest.TestCase):
+    
+    def setUp(self):
+        self.tests = [
+            ((0, 0, 0), (0, 0, 0), 1e-9, 1e-9, True),
+            ((0, 0, 0), (1e-9, 1e-9, 1e-9), 1e-9, 1e-9, True),
+            ((0, 0, 0), (-1e-9, -1e-9, -1e-9), 1e-9, 1e-9, True),
+            ((0, 0, 0), (2e-9, 2e-9, 2e-9), 1e-9, 1e-9, False),
+            ((0, 0, 0), (-2e-9, -2e-9, -2e-9), 1e-9, 1e-9, False),
+            ((1 + 1e-10, 0, 0), (1, 0, 0), 1e-9, 1e-9, True),
+            ((0, 0, 0), (0, 0), 1e-9, 1e-9, False),
+        ]
+    
+    def test_isclose_tuple(self):
+        for tuple_a, tuple_b, rel_tol, abs_tol, expected_result in self.tests:
+            
+            with self.subTest(tuple_a=tuple_a, tuple_b=tuple_b,
+                              rel_tol=rel_tol, abs_tol=abs_tol,
+                              expected_result=expected_result):
+                self.assertEqual(
+                    trig.isclose_tuple(tuple_a, tuple_b, rel_tol, abs_tol),
+                    expected_result
+                )
+
 if __name__ == "__main__":
-    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
+    with open("tests/logs/"
+              + Path(sys.modules[__name__].__file__).stem
+              +".log", "w") as f:
         f.write("finished")
     unittest.main()

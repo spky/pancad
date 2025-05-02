@@ -22,3 +22,5 @@ API
    PanCAD.utils.trigonometry
    PanCAD.utils.file_handlers
    PanCAD.geometry.point
+   PanCAD.geometry.line
+   PanCAD.geometry.line_segment

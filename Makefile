@@ -40,7 +40,7 @@ DOCS_HTML := $(DOCS_BUILD)/html
 DOCS_INDEX_HTML := $(DOCS_BUILD)/html/index.html
 
 DOCS_RST := $(call rwildcard, $(DOCS_SOURCE), *.rst)
-DOCS_PY := $(call rwildcard, $(DOCS_SOURCE), *.py)
+DOCS_PY := $(DOCS_SOURCE)/conf.py
 DOCS_MAKE := $(DOCS)/Makefile
 
 PYCACHES := $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
@@ -52,7 +52,7 @@ test:
 
 docs: $(DOCS_INDEX_HTML)
 
-$(DOCS_INDEX_HTML): $(PYTHON_CODE)
+$(DOCS_INDEX_HTML): $(PYTHON_CODE) $(DOCS_PY)
 	make -f Makefile -C $(DOCS) html
 
 setup: $(VENV_ACTIVATE)

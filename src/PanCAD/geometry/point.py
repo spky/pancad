@@ -1,27 +1,77 @@
 """A module providing a class to represent points in all CAD programs,  
 graphics, and other geometry use cases.
 """
+from __future__ import annotations
 
 import math
 
 import numpy as np
 
+from PanCAD.utils import trigonometry as trig
+
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
     translate its position between coordinate systems for easy position 
-    translation.
+    translation. Point's __init__ function can only take cartesian coordinates, 
+    so either use one of its class functions or initialize it with no 
+    arguments and modify one of its coordinate system specific properties if 
+    another coordinate system is desired.
     
-    :param cartesian: The cartesian coordinate (x, y, z) of the point.
+    :param cartesian: The cartesian coordinate (x, y, z) of the point. If a
+                      float or int is given instead, y needs to also be 
+                      initialized.
+    :param y: The cartesian y coordinate of the point. Can only be given if 
+              cartesian is given as a float or int.
+    :param z: The cartesian z coordinate of the point. Can only be given if 
+              cartesian and y are given as floats or ints.
     :param uid: The unique ID of the point for interoperable CAD 
-                identitification.
+                identification.
     :param unit: The unit of the point's length values.
     """
-    def __init__(self,
-                 cartesian: tuple[float, float, float] = (None, None, None),
+    
+    relative_tolerance = 1e-9
+    absolute_tolerance = 1e-9
+    
+    
+    def __init__(self, cartesian: (tuple[float, float, float]
+                                   | np.ndarray | float) = None,
+                 y: float = None, z: float = None,
                  *, uid: str = None, unit: str = None):
         """Constructor method"""
-        self.uid = uid if uid else None
-        self.cartesian = cartesian if cartesian else (None, None, None)
+        self.uid = uid
+        
+        if (
+               isinstance(cartesian, (int, float))
+               and isinstance(y, (int, float))
+               and isinstance(z, (int, float))
+            ):
+            self.cartesian = (cartesian, y, z)
+        elif (
+                 isinstance(cartesian, (int, float))
+                 and isinstance(y, (int, float))
+                 and z is None):
+            self.cartesian = (cartesian, y)
+        elif (
+                 isinstance(cartesian, (tuple, np.ndarray))
+                 and (y is not None or z is not None)
+              ):
+            raise ValueError(f"Cartesian {cartesian} can not be given as a"
+                             + f" non-float/int if y and z are not None."
+                             + f" y value: {y}, z value: {z}")
+        elif isinstance(cartesian, tuple):
+            self.cartesian = cartesian
+        elif isinstance(cartesian, np.ndarray):
+            # Converts numpy array to a tuple of floats
+            if trig.is_geometry_vector(cartesian):
+                cartesian = [
+                    float(coordinate.squeeze()) for coordinate in cartesian
+                ]
+                self.cartesian = tuple(cartesian)
+            else:
+                raise ValueError("NumPy arrays must be 2 or 3 elements in a"
+                                 + " single dimension to initialize a point")
+        else:
+            self.cartesian = (None, None, None)
         self.unit = unit if unit else None
     
     # Getters #
@@ -85,14 +135,7 @@ class Point:
         :setter: Sets the polar coordinate (r, phi). Will error if the point 
                  is 3D.
         """
-        if len(self.cartesian) == 2:
-            return (self.r, self.phi)
-        elif len(self.cartesian) == 3:
-            raise ValueError("Point must be 2D to return a polar coordinate, "
-                             + "use spherical for 3D points")
-        else:
-            raise ValueError(f"Point cartesian {self.cartesian} is already"
-                             + "invalid, must be 2D or 3D to operate")
+        return trig.cartesian_to_polar(self.cartesian)
     
     @property
     def spherical(self) -> tuple[float, float, float]:
@@ -104,14 +147,7 @@ class Point:
         :setter: Sets the spherical coordinate (r, phi, theta). Will error if 
                  the point is 2D.
         """
-        if len(self.cartesian) == 3:
-            return (self.r, self.phi, self.theta)
-        elif len(self.cartesian) == 2:
-            raise ValueError("Point must be 3D to return a spherical coordinate,"
-                             + " use polar for 2D points")
-        else:
-            raise ValueError(f"Point cartesian {self.cartesian} is already"
-                             + "invalid, must be 2D or 3D to operate")
+        return trig.cartesian_to_spherical(self.cartesian)
     
     @property
     def r(self) -> float:
@@ -122,10 +158,8 @@ class Point:
                  for polar or spherical coordinate validity and will error if it 
                  is violated.
         """
-        if len(self.cartesian) == 2:
-            return math.hypot(self.x, self.y)
-        elif len(self.cartesian) == 3:
-            return math.hypot(self.x, self.y, self.z)
+        if len(self) == 2 or len(self) == 3:
+            return trig.r_of_cartesian(self.cartesian)
         else:
             raise ValueError(f"Point cartesian {self.cartesian} is already"
                              + "invalid, must be 2D or 3D to function")
@@ -140,10 +174,7 @@ class Point:
                  for polar or spherical coordinate validity and will error if 
                  it is violated.
         """
-        if self.x == 0 and self.y == 0:
-            return math.nan
-        else:
-            return math.atan2(self.y, self.x)
+        return trig.phi_of_cartesian(self.cartesian)
     
     @property
     def theta(self) -> float:
@@ -155,16 +186,7 @@ class Point:
                  for polar or spherical coordinate validity and will error if 
                  it is violated.
         """
-        if self.z == 0 and math.hypot(self.x, self.y) != 0:
-            return math.pi/2
-        elif self.x == 0 and self.y == 0 and self.z == 0:
-            return math.nan
-        elif self.z > 0:
-            return math.atan(math.hypot(self.x, self.y)/self.z)
-        elif self.z < 0:
-            return math.pi + math.atan(math.hypot(self.x, self.y)/self.z)
-        else:
-            raise ValueError(f"Unhandled exception, cartesian: {self.cartesian}")
+        return trig.theta_of_cartesian(self.cartesian)
     
     # Setters #
     @cartesian.setter
@@ -180,14 +202,14 @@ class Point:
     
     @x.setter
     def x(self, value: float) -> None:
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             self.cartesian = (value, self.cartesian[1])
         else:
             self.cartesian = (value, self.cartesian[1], self.cartesian[2])
     
     @y.setter
     def y(self, value: float) -> None:
-        if len(self.cartesian) == 2:
+        if len(self) == 2:
             self.cartesian = (self.cartesian[0], value)
         else:
             self.cartesian = (self.cartesian[0], value, self.cartesian[2])
@@ -203,7 +225,7 @@ class Point:
         elif math.isnan(value):
             raise ValueError(f"r cannot be NaN")
         
-        if len(self.cartesian) == 2: # Polar
+        if len(self) == 2: # Polar
             if value == 0:
                 self.polar = (0, math.nan)
             elif not math.isnan(self.phi):
@@ -224,23 +246,11 @@ class Point:
     
     @polar.setter
     def polar(self, value: tuple[float, float]) -> None:
-        if len(value) == 2:
-            r, phi = value
-            if r == 0 and math.isnan(phi):
-                self.cartesian = (0, 0)
-            elif r < 0:
-                raise ValueError(f"r cannot be less than zero: {r}")
-            elif math.isnan(phi):
-                raise ValueError("phi cannot be NaN if r is non-zero")
-            else:
-                self.cartesian = (r * math.cos(phi), r * math.sin(phi))
-        else:
-            raise ValueError("Point must be 2D to set a polar coordinate, "
-                             + "use Point.spherical for 3D points")
+        self.cartesian = trig.polar_to_cartesian(value)
     
     @phi.setter
     def phi(self, value: float) -> None:
-        if len(self.cartesian) == 2: # Polar
+        if len(self) == 2: # Polar
             if self.r != 0 and math.isnan(value):
                 raise ValueError("Cannot set phi to NaN if r is non-zero")
             elif self.r == 0 and not math.isnan(value):
@@ -257,38 +267,7 @@ class Point:
     
     @spherical.setter
     def spherical(self, value: tuple[float, float, float]) -> None:
-        if len(value) == 3:
-            r, phi, theta = value
-            if r == 0 and math.isnan(phi) and math.isnan(theta):
-                self.cartesian = (0, 0, 0)
-            elif r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
-                self.cartesian = (
-                    r * math.sin(theta) * math.cos(phi),
-                    r * math.sin(theta) * math.sin(phi),
-                    r * math.cos(theta)
-                )
-            elif r > 0 and math.isnan(phi) and theta == 0:
-                self.cartesian = (0, 0, r)
-            elif r > 0 and math.isnan(phi) and theta == math.pi:
-                self.cartesian = (0, 0, -r)
-            elif r < 0:
-                raise ValueError(f"r cannot be less than zero: {r}")
-            elif not math.isnan(theta) and (not 0 <= theta <= math.pi):
-                raise ValueError(f"theta must be between 0 and pi, value: {theta}")
-            elif math.isnan(phi) and math.isnan(theta):
-                raise ValueError(f"r value {r} cannot be non-zero if phi and "
-                                 + "theta are NaN.")
-            elif math.isnan(theta):
-                raise ValueError("Theta cannot be NaN if r is non-zero")
-            elif math.isnan(phi) and (theta != 0 or theta != math.pi):
-                raise ValueError("If phi is NaN, theta must be pi/2")
-                
-        elif len(value) == 2:
-            raise ValueError("Point must be 3D to set a spherical coordinate, "
-                             + "use Point.polar for 2D points")
-        else:
-            raise ValueError(f"Invalid tuple length {len(value)}, must be 3 to"
-                             + "set as a spherical coordinate")
+        self.cartesian = trig.spherical_to_cartesian(value)
     
     @theta.setter
     def theta(self, value: float) -> None:
@@ -299,6 +278,9 @@ class Point:
             self.spherical = (self.r, self.phi, value)
     
     # Public Methods #
+    def copy(self) -> Point:
+        return self.__copy__()
+    
     def phi_degrees(self) -> float:
         """Returns the polar/spherical azimuth coordinate of the point in 
         degrees.
@@ -346,6 +328,36 @@ class Point:
             return array
     
     # Python Dunders #
+    def __copy__(self) -> Point:
+        """Returns a copy of the point that has the same coordinates, but no 
+        assigned uid. Can be used with the python copy module"""
+        return Point(self.cartesian)
+    
+    def __getitem__(self, item: int):
+        """Returns the cartesian coordinates when subscripted. 0 returns x, 1 
+        returns y, 2 returns z"""
+        return self.cartesian[item]
+    
+    def __eq__(self, other: Point) -> bool:
+        """Rich comparison for point equality that allows for points to be 
+        directly compared with ==. Note: A point at (0,0) and a point at (0,0,0) 
+        will not be found equal since the first's z coordinate is not defined.
+        
+        :param other: The point to compare self to.
+        :returns: Whether the tuples of the points are equal.
+        """
+        if isinstance(other, Point):
+            return trig.isclose_tuple(tuple(self), tuple(other),
+                                      self.relative_tolerance,
+                                      self.absolute_tolerance)
+        else:
+            return NotImplemented
+    
+    def __len__(self) -> int:
+        """Returns the length of the cartesian tuple, which is equivalent to the 
+        point's number of dimnesions."""
+        return len(self.cartesian)
+    
     def __iter__(self):
         """Iterator function to allow the point's cartesian position to be 
         output when the point is fed to a list or tuple like function."""
@@ -362,8 +374,12 @@ class Point:
         else:
             raise StopIteration
     
+    def __repr__(self) -> str:
+        """Returns the short string representation of the point"""
+        return f"PanCAD_Point{self.cartesian}"
+    
     def __str__(self) -> str:
-        """String function to outputs the point's description and cartesian 
+        """String function to output the point's description and cartesian 
         position when the point is fed to the str() function"""
         return f"PanCAD Point at cartesian {self.cartesian}"
     

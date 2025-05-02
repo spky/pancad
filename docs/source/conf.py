@@ -11,11 +11,6 @@ copyright = '2024, spky'
 author = 'spky'
 release = '0.0.0'
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path('..','..', 'src').resolve()))
-
 import PanCAD.graphics.svg.element_utils
 import PanCAD.graphics.svg.elements
 import PanCAD.graphics.svg.enum_color_keywords
@@ -37,6 +32,8 @@ import PanCAD.utils.config
 import PanCAD.utils.initialize
 
 import PanCAD.geometry.point
+import PanCAD.geometry.line
+import PanCAD.geometry.line_segment
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

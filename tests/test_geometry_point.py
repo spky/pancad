@@ -1,28 +1,14 @@
 import sys
 from pathlib import Path
 import unittest
-from xml.etree import ElementTree as ET
-import os
 import math
 
 import numpy as np
 
-sys.path.append('src')
-
-from PanCAD.geometry.point import Point
+from PanCAD.geometry import Point
+from PanCAD.utils import verification
 
 ROUNDING_PLACES = 10
-
-def assertTupleAlmostEqual(self_input, 
-                           tuple_a: tuple, tuple_b: tuple, places: int = 7):
-    for val1, val2 in zip(tuple_a, tuple_b):
-        if type(val1) is float or type(val2) is float:
-            if math.isnan(val1) and math.isnan(val2):
-                self_input.assertTrue(math.isnan(val1) and math.isnan(val2))
-            else:
-                self_input.assertAlmostEqual(val1, val2, places)
-        else:
-            self_input.assertEqual(val1, val2)
 
 class TestPointInit(unittest.TestCase):
     """Tests whether Point successfully initializes when expected to"""
@@ -33,6 +19,15 @@ class TestPointInit(unittest.TestCase):
             (1, 1, 1),
             (1, 1),
         ]
+        self.np_coordinates = [(np.array(c), c) for c in self.coordinates]
+        self.np_coordinates.extend(
+            [(np.array(c).reshape(-1,1), c) for c in self.coordinates]
+        )
+        for i, (numpy_coordinate, expected) in enumerate(self.np_coordinates):
+            # Convert expected coordinates to float
+            self.np_coordinates[i] = (
+                numpy_coordinate, tuple([float(c) for c in expected])
+            )
     
     def test_point_init_no_arg(self):
         pt = Point()
@@ -42,6 +37,25 @@ class TestPointInit(unittest.TestCase):
             with self.subTest(coordinate=coordinate):
                 pt = Point(coordinate)
                 self.assertCountEqual(coordinate, pt.cartesian)
+    
+    def test_point_init_numpy(self):
+        for np_coordinate, expected_cartesian in self.np_coordinates:
+            with self.subTest(numpy_coordinate=np_coordinate,
+                              expected_cartesian=expected_cartesian):
+                pt = Point(np_coordinate)
+                self.assertCountEqual(pt.cartesian, expected_cartesian)
+                self.assertEqual(str(pt.cartesian), str(expected_cartesian))
+    
+    def test_point_init_xyz(self):
+        for coordinate in self.coordinates:
+            with self.subTest(coordinate=coordinate):
+                if len(coordinate) == 2:
+                    x, y = coordinate
+                    pt = Point(x, y)
+                else:
+                    x, y, z = coordinate
+                    pt = Point(x, y, z)
+                self.assertEqual(pt.cartesian, coordinate)
     
     def test_point_tuple_iter(self):
         for coordinate in self.coordinates:
@@ -53,9 +67,20 @@ class TestPointInit(unittest.TestCase):
         pt = Point(self.coordinate1)
         self.assertCountEqual(np.array(pt), np.array(self.coordinate1))
     
-    def test_str_dunder(self):
+    def test_point_str_dunder(self):
         pt = Point(self.coordinate1)
         self.assertEqual(str(pt), "PanCAD Point at cartesian (1, 1, 1)")
+    
+    def test_point_len_dunder(self):
+        tests = [
+            ((0, 0, 0), 3),
+            ((0, 0), 2),
+        ]
+        for coordinate, expected_length in tests:
+            with self.subTest(coordinate=coordinate,
+                              expected_length=expected_length):
+                pt = Point(coordinate)
+                self.assertEqual(len(pt), expected_length)
     
     def test_vector(self):
         pass
@@ -237,7 +262,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
         for polar_coordinate, xy_coordinate in self.coordinates_polar:
             with self.subTest(test=[polar_coordinate, xy_coordinate]):
                 self.pt.polar = polar_coordinate
-                assertTupleAlmostEqual(
+                verification.assertTupleAlmostEqual(
                     self,
                     self.pt.cartesian,
                     xy_coordinate,
@@ -248,7 +273,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
         for spherical_coordinate, xy_coordinate in self.coordinates_spherical:
             with self.subTest(test=[spherical_coordinate, xy_coordinate]):
                 self.pt.spherical = spherical_coordinate
-                assertTupleAlmostEqual(
+                verification.assertTupleAlmostEqual(
                     self,
                     self.pt.cartesian,
                     xy_coordinate,
@@ -297,9 +322,9 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_polar=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.r = r
-                    assertTupleAlmostEqual(self, self.pt.spherical,
-                                           expected_spherical,
-                                           self.default_places)
+                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
+                                                        expected_spherical,
+                                                        self.default_places)
     
     def test_exceptions_r_setter(self):
         for initial_spherical, r, expected_spherical in self.change_tests:
@@ -352,9 +377,9 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
                                   expected_polar=expected_polar):
                     self.pt.polar = initial_polar
                     self.pt.r = r
-                    assertTupleAlmostEqual(self, self.pt.polar,
-                                           expected_polar,
-                                           self.default_places)
+                    verification.assertTupleAlmostEqual(self, self.pt.polar,
+                                                        expected_polar,
+                                                        self.default_places)
     
     def test_exceptions_r_setter(self):
         for initial_polar, r, expected_polar in self.change_tests:
@@ -403,9 +428,9 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_spherical=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.phi = phi
-                    assertTupleAlmostEqual(self, self.pt.spherical,
-                                           expected_spherical,
-                                           self.default_places)
+                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
+                                                        expected_spherical,
+                                                        self.default_places)
     
     def test_exceptions_phi_setter(self):
         for initial_spherical, phi, expected_spherical in self.change_tests:
@@ -454,9 +479,9 @@ class TestPhiSetterpolarEdgeCases(unittest.TestCase):
                                   expected_polar=expected_polar):
                     self.pt.polar = initial_polar
                     self.pt.phi = phi
-                    assertTupleAlmostEqual(self, self.pt.polar,
-                                           expected_polar,
-                                           self.default_places)
+                    verification.assertTupleAlmostEqual(self, self.pt.polar,
+                                                        expected_polar,
+                                                        self.default_places)
     
     def test_exceptions_phi_setter(self):
         for initial_polar, phi, expected_polar in self.change_tests:
@@ -509,9 +534,9 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_spherical=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.theta = theta
-                    assertTupleAlmostEqual(self, self.pt.spherical,
-                                           expected_spherical,
-                                           self.default_places)
+                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
+                                                        expected_spherical,
+                                                        self.default_places)
     
     def test_exceptions_theta_setter(self):
         for initial_spherical, theta, expected_spherical in self.change_tests:
@@ -522,7 +547,32 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                     with self.assertRaises(expected_spherical):
                         self.pt.theta = theta
 
-
+class TestPointRichComparison(unittest.TestCase):
+    
+    def setUp(self):
+        # Point A, Point B, expected equality result
+        self.tests = [
+            ((0, 0), (0, 0), True),
+            ((1, 1), (0, 0), False),
+            ((0, 0, 0), (0, 0, 0), True),
+            ((1, 1, 1), (0, 0, 0), False),
+            ((0, 0, 0), (0, 0), False),
+        ]
+    
+    def test_point_equality(self):
+        for point_a, point_b, expected_result in self.tests:
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_result=expected_result):
+                pt_a, pt_b = Point(point_a), Point(point_b)
+                self.assertEqual(pt_a == pt_b, expected_result)
+    
+    def test_point_inequality(self):
+        for point_a, point_b, expected_equality in self.tests:
+            expected_result = not expected_equality
+            with self.subTest(point_a=point_a, point_b=point_b,
+                              expected_result=expected_result):
+                pt_a, pt_b = Point(point_a), Point(point_b)
+                self.assertEqual(pt_a != pt_b, expected_result)
 
 if __name__ == "__main__":
     with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
