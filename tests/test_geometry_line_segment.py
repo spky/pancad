@@ -5,9 +5,7 @@ from pathlib import Path
 import unittest
 
 import numpy as np
-from PanCAD.geometry.point import Point
-from PanCAD.geometry.line import Line
-from PanCAD.geometry.line_segment import LineSegment
+from PanCAD.geometry import Point, Line, LineSegment
 from PanCAD.utils import trigonometry as trig
 from PanCAD.utils import verification
 
