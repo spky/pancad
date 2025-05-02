@@ -11,9 +11,6 @@ copyright = '2024, spky'
 author = 'spky'
 release = '0.0.0'
 
-import sys
-from pathlib import Path
-
 import PanCAD.graphics.svg.element_utils
 import PanCAD.graphics.svg.elements
 import PanCAD.graphics.svg.enum_color_keywords
