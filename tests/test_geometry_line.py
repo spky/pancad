@@ -22,7 +22,7 @@ class TestLineInit(unittest.TestCase):
     def test_line_init_no_arg(self):
         l = Line()
     
-    def test_point_len_dunder(self):
+    def test_line_len_dunder(self):
         tests = [
             ((0, 0), (1, 1), 2),
             ((0, 0, 0), (1, 1, 1), 3),

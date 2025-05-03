@@ -80,9 +80,9 @@ class Line:
     def reference_point(self) -> Point:
         """The closest point to the origin of the line.
         
-        :getter: Returns the Point instance representing the point.
-        :setter: Sets the closest point to the origin of the line while 
-                 keeping the direction the same.
+        :getter: Returns the Point instance representing the point closest to 
+                 the origin on the line.
+        :setter: There is no setter, reference_point is read-only
         """
         return self._point_closest_to_origin
     
@@ -524,7 +524,7 @@ class Line:
     
     # Static Methods #
     @staticmethod
-    def closest_to_origin(point:Point, vector: list | tuple | np.ndarray):
+    def closest_to_origin(point: Point, vector: list | tuple | np.ndarray) -> Point:
         """Returns the point on the line created by the point and vector 
         closest to the origin.
         

@@ -683,8 +683,9 @@ def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
     """Returns the unit vector of the given vector. If the vector is a zero 
     vector, returns the zero vector.
     
-    :param vector: A 1D vector as a numpy array
-    :returns: A 1D numpy array with a length of 1 in the same direction
+    :param vector: A 1D vector
+    :returns: A 1D numpy array with a length of 1 in the same direction as 
+        vector
     """
     if isinstance(vector, np.ndarray):
         shape = vector.shape

@@ -37,3 +37,15 @@ def assertPanCADAlmostEqual(self_input, object_a, object_b, places):
     else:
         raise ValueError(f"""Provided object Classes not supported. A:
                          {object_a.__class__}, B: {object_b.__class__}""")
+
+def isTupleAlmostEqual(tuple_a: tuple, tuple_b: tuple, places: int = 7):
+    for val1, val2 in zip(tuple_a, tuple_b):
+        if type(val1) is float or type(val2) is float:
+            if math.isnan(val1) and math.isnan(val2):
+                return math.isnan(val1) and math.isnan(val2)
+            else:
+                return math.isclose(val1, val2,
+                                    rel_tol=1/(10**places),
+                                    abs_tol=1/(10**places))
+        else:
+            return val1 == val2
