@@ -1,8 +1,6 @@
 import copy
 import itertools
 import math
-from pathlib import Path
-import sys
 import unittest
 
 import numpy as np
@@ -580,7 +578,4 @@ class TestLinePointMovers2D(unittest.TestCase):
                 self.assertEqual(expected_line, line)
 
 if __name__ == "__main__":
-    with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
-              +".log", "w") as f:
-        f.write("finished")
     unittest.main()

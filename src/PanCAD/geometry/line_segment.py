@@ -233,6 +233,6 @@ class LineSegment:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
-        return (f"""PanCAD LineSegment with point_a {tuple(self.point_a)},
-                point_b {tuple(self.point_b)} and a line in direction
-                {self.get_line().direction}""")
+        return (f"PanCAD LineSegment with point_a {tuple(self.point_a)},"
+                f" point_b {tuple(self.point_b)} and a line in direction"
+                f" {self.get_line().direction}")

@@ -1,13 +1,11 @@
 import math
-from pathlib import Path
-import sys
 import unittest
 
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry import Point, Line, LineSegment, Plane
 from PanCAD.utils import verification
+from PanCAD.geometry import Point, Line, LineSegment, Plane
 
 ROUNDING_PLACES = 10
 
@@ -48,7 +46,4 @@ class TestPlaneInit(unittest.TestCase):
         self.assertTrue(all(results))
 
 if __name__ == "__main__":
-    with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
-              +".log", "w") as f:
-        f.write("finished")
     unittest.main()

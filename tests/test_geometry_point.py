@@ -1,5 +1,3 @@
-import sys
-from pathlib import Path
 import unittest
 import math
 
@@ -575,7 +573,4 @@ class TestPointRichComparison(unittest.TestCase):
                 self.assertEqual(pt_a != pt_b, expected_result)
 
 if __name__ == "__main__":
-    with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
-              +".log", "w") as f:
-        f.write("finished")
     unittest.main()
