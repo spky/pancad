@@ -196,53 +196,53 @@ class Line:
     def copy(self) -> Line:
         return self.__copy__()
     
-    def get_angle_between(self, other_line: Line,
-                          supplement: bool=False, signed: bool=False) -> float:
-        """Returns the value of the angle between this line and the 
-        other line.
+    # def get_angle_between(self, other_line: Line,
+                          # supplement: bool=False, signed: bool=False) -> float:
+        # """Returns the value of the angle between this line and the 
+        # other line.
         
-        :param other_line: A line to find the angle of relative to this line
-        :param supplement: If False, the angle's magnitude is the angle 
-            clockwise of this line and counterclockwise of the other line 
-            (which is equal to the angle counterclockwise of this line and 
-            clockwise of the other line). If True, the angle's magnitude will 
-            be the supplement of the False angle which is the angle of 
-            the other two quadrants. Note: If the lines are parallel, this 
-            will cause the function to return pi
-        :param signed: If False, the absolute value of the angle will be 
-            returned. If True and the line is 2D, angle will be negative the 
-            angle between this line's direction and the other line's 
-            direction is clockwise
-        :returns: The value of the angle between the lines in radians. If the 
-            lines are skew, returns None.
-        """
-        if self.is_parallel(other_line):
-            if supplement:
-                return math.pi
-            else:
-                return 0
-        elif self.is_skew(other_line):
-            return None
+        # :param other_line: A line to find the angle of relative to this line
+        # :param supplement: If False, the angle's magnitude is the angle 
+            # clockwise of this line and counterclockwise of the other line 
+            # (which is equal to the angle counterclockwise of this line and 
+            # clockwise of the other line). If True, the angle's magnitude will 
+            # be the supplement of the False angle which is the angle of 
+            # the other two quadrants. Note: If the lines are parallel, this 
+            # will cause the function to return pi
+        # :param signed: If False, the absolute value of the angle will be 
+            # returned. If True and the line is 2D, angle will be negative the 
+            # angle between this line's direction and the other line's 
+            # direction is clockwise
+        # :returns: The value of the angle between the lines in radians. If the 
+            # lines are skew, returns None.
+        # # """
+        # if self.is_parallel(other_line):
+            # if supplement:
+                # return math.pi
+            # else:
+                # return 0
+        # elif self.is_skew(other_line):
+            # return None
         
-        dot_angle = math.acos(np.dot(self.direction, other_line.direction))
-        if supplement:
-            angle_magnitude = math.pi - dot_angle
-        else:
-            angle_magnitude = dot_angle
+        # dot_angle = math.acos(np.dot(self.direction, other_line.direction))
+        # if supplement:
+            # angle_magnitude = math.pi - dot_angle
+        # else:
+            # angle_magnitude = dot_angle
         
-        if len(self) == 3 and signed:
-            raise NotImplementedError("""Signed angles between 3D lines will
-                                      require a not yet made implementation 
-                                      of planes""")
-        elif len(self) == 2 and signed:
-            direction_90_ccw = (-self.direction[1], self.direction[0])
-            is_clockwise = np.dot(direction_90_ccw, other_line.direction) < 0
-            if is_clockwise ^ supplement:
-                return -angle_magnitude
-            else:
-                return angle_magnitude
-        else:
-            return angle_magnitude
+        # if len(self) == 3 and signed:
+            # raise NotImplementedError("""Signed angles between 3D lines will
+                                      # require a not yet made implementation 
+                                      # of planes""")
+        # elif len(self) == 2 and signed:
+            # direction_90_ccw = (-self.direction[1], self.direction[0])
+            # is_clockwise = np.dot(direction_90_ccw, other_line.direction) < 0
+            # if is_clockwise ^ supplement:
+                # return -angle_magnitude
+            # else:
+                # return angle_magnitude
+        # else:
+            # return angle_magnitude
     
     
     def get_intersection(self, other_line: Line) -> Point | None:
@@ -309,30 +309,6 @@ class Line:
         """
         other_line = Line._get_comparison_line(other_line)
         return self == other_line
-    
-    def is_coincident(self, point: Point) -> bool:
-        """Returns whether the given point is on the line.
-        
-        :param point: A Point to check the location of
-        :returns: True if the point is on the line, false otherwise
-        """
-        if self.reference_point == point:
-            # Cover the edge cases where point is the zero vector or if the 
-            # point is the reference_point
-            return True
-        
-        point_vector = np.array(point)
-        reference_vector = np.array(self.reference_point)
-        direction_vector = np.array(self.direction)
-        
-        ref_pt_to_pt = (np.dot(point_vector, direction_vector)
-                        * direction_vector)
-        check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
-        
-        if self._isclose_tuple(check_point_tuple, tuple(point)):
-            return True
-        else:
-            return False
     
     def is_coplanar(self, other_line: Line) -> bool:
         """Returns whether the other line can lie on the same plane as this 

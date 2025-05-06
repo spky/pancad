@@ -109,5 +109,107 @@ class TestParallelLines2D(unittest.TestCase):
                 self.assertEqual(spatial_relations.parallel(line1, line2),
                                  is_parallel)
 
+class TestSkewLines(unittest.TestCase):
+    def setUp(self):
+        line1s = [
+            ((0, 0, 0), (1, 1, 0)),
+            ((0, 1, 0), (0, 2, 0)),
+            ((0, 0, 0), (1, 0, 0)),
+            ((0, 0, 0), (1, 0, 0)),
+            ((0, 0, 0), (1, 1, 1)),
+        ]
+        line2s = [
+            ((0, 1, 0), (1, 2, 0)),
+            ((1, 1, 0), (1, 2, 0)),
+            ((0, 1, 0), (1, 1, 0)),
+            ((1, 0, 0), (1, 2, 0)),
+            ((0, 1, 0), (1, 1, 0)),
+        ]
+        is_skews = [
+            False,
+            False,
+            False,
+            False,
+            True,
+        ]
+        geometry_constructors = [Line.from_two_points, LineSegment]
+        self.tests = []
+        for gf1, gf2 in itertools.product(geometry_constructors, repeat=2):
+            self.tests.extend(
+                zip(itertools.starmap(gf1, line1s),
+                    itertools.starmap(gf2, line2s),
+                    is_skews)
+            )
+    
+    def test_skew(self):
+        for line1, line2, is_skew in self.tests:
+            with self.subTest(line1=line1, line2=line2, skew=is_skew):
+                self.assertEqual(spatial_relations.skew(line1, line2),
+                                 is_skew)
+
+class TestGetAngleBetweenLines(unittest.TestCase):
+    
+    def setUp(self):
+        line1s = [
+            ((0, 0), (0, 1)),
+            ((0, 0), (1, 0)),
+            ((0, 0), (1, 0)),
+            ((0, 0), (1, 0)),
+            ((0, 0), (1, 0)),
+            ((0, 0), (1, 1)),
+        ]
+        line2s = [
+            ((0, 0), (1, 0)),
+            ((0, 0), (0, 1)),
+            ((0, 0), (-1, 1)),
+            ((0, 1), (1, 1)),
+            ((0, 0), (1, 1)),
+            ((0, 0), (1, 0)),
+        ]
+        signed_angles = [
+            (-90, 90),
+            (90, -90),
+            (135, -45),
+            (0, 180),
+            (45, -135),
+            (-45, 135),
+        ]
+        angles = [math.radians(a[0]) for a in signed_angles]
+        supplements = [math.radians(a[1]) for a in signed_angles]
+        line_constructors = [Line.from_two_points, LineSegment] #, LineSegment]
+        
+        line_input_iters = [
+            (map(abs, iter(angles)),
+             itertools.repeat(False), itertools.repeat(False)),
+            (map(abs, iter(supplements)),
+             itertools.repeat(True), itertools.repeat(False)),
+            (iter(angles), itertools.repeat(False), itertools.repeat(True)),
+            (iter(supplements), itertools.repeat(True), itertools.repeat(True)),
+        ]
+        
+        self.tests = []
+        for lc1, lc2 in itertools.product(line_constructors, repeat=2):
+            for angle_iter, supplement, signed in line_input_iters:
+                self.tests.extend(
+                    zip(itertools.starmap(lc1, line1s),
+                        itertools.starmap(lc2, line2s),
+                        map(abs, iter(angles)),
+                        itertools.repeat(False), itertools.repeat(False)
+                    )
+                )
+    
+    def test_get_angle_between_line(self):
+        for line1, line2, angle, supplement, signed in self.tests:
+            with self.subTest(line1=line1, line2=line2,
+                              angle=(f"Radians: {angle}, "
+                                     f"Degrees: {math.degrees(angle)}"),
+                              supplement=supplement,
+                              signed=signed):
+                self.assertAlmostEqual(
+                    spatial_relations.get_angle_between(line1, line2,
+                                                        supplement, signed),
+                    angle
+                )
+
 if __name__ == "__main__":
     unittest.main()

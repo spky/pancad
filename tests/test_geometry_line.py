@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry import Point, Line
+from PanCAD.geometry import Point, Line, spatial_relations
 from PanCAD.utils import verification
 
 ROUNDING_PLACES = 10
@@ -334,35 +334,6 @@ class TestLineRichComparison(unittest.TestCase):
                 line2 = Line.from_two_points(pt2a, pt2b)
                 self.assertEqual(line1 != line2, not expected_equality)
 
-class TestLineCoincidence(unittest.TestCase):
-    
-    def setUp(self):
-        coincidence_tests = [
-            ((0, 0), (1, 1), (2, 2), True),
-            ((0, 0), (1, 1), (0, 0), True),
-            ((0, 0), (1, 1), (-2, -2), True),
-            ((0, 0), (1, 1), (0, 1), False),
-            ((-4, 0), (0, 4), (-2, 2), True),
-            ((-4, 0), (0, 4), (-4, 0), True),
-            ((-4, 0), (0, 4), (0, 4), True),
-            ((-4, 0), (0, 4), (0, 0), False),
-            ((0, -4), (4, 0), (0, 0), False),
-            ((0, -4), (4, 0), (2, -2), True),
-        ]
-        
-        self.tests_2d = []
-        for pt_a, pt_b, check_pt, result in coincidence_tests:
-            self.tests_2d.append(
-                (Point(pt_a), Point(pt_b), Point(check_pt), result),
-            )
-    
-    def test_is_coincident_2d(self):
-        for pt_a, pt_b, check_pt, result in self.tests_2d:
-            with self.subTest(point_a=tuple(pt_a), point_b=tuple(pt_b),
-                              check_pt=tuple(check_pt), expected_result=result):
-                test_line = Line.from_two_points(pt_a, pt_b)
-                self.assertEqual(test_line.is_coincident(check_pt), result)
-
 class TestLineParallel(unittest.TestCase):
     
     def setUp(self):
@@ -429,65 +400,65 @@ class TestLineIntersection(unittest.TestCase):
                     verification.assertPointsAlmostEqual(self, result_pt,
                                                          intersection)
 
-class TestLineAngle(unittest.TestCase):
+# class TestLineAngle(unittest.TestCase):
     
-    def setUp(self):
-        line_pairs = [
-            ((0, 0), (0, 1), (0, 0), (1, 0)),
-            ((0, 0), (1, 0), (0, 0), (0, 1)),
-            ((0, 0), (1, 0), (0, 0), (-1, 1)),
-            ((0, 0), (1, 0), (0, 1), (1, 1)),
-            ((0, 0), (1, 0), (0, 0), (1, 1)),
-            ((0, 0), (1, 1), (0, 0), (1, 0)),
-        ]
-        self.lines = []
-        for pt1a, pt1b, pt2a, pt2b in line_pairs:
-            self.lines.append([Line.from_two_points(pt1a, pt1b),
-                               Line.from_two_points(pt2a, pt2b)])
-        # signed_angles for each line:
-        # First angle is the signed arc cosine of the dot product,
-        # Second angle is the signed supplement of the first angle
-        signed_angles = [
-            (-90, 90),
-            (90, -90),
-            (135, -45),
-            (0, 180),
-            (45, -135),
-            (-45, 135),
-        ]
-        self.signed_angles = [list(map(math.radians, p)) for p in signed_angles]
+    # def setUp(self):
+        # line_pairs = [
+            # ((0, 0), (0, 1), (0, 0), (1, 0)),
+            # ((0, 0), (1, 0), (0, 0), (0, 1)),
+            # ((0, 0), (1, 0), (0, 0), (-1, 1)),
+            # ((0, 0), (1, 0), (0, 1), (1, 1)),
+            # ((0, 0), (1, 0), (0, 0), (1, 1)),
+            # ((0, 0), (1, 1), (0, 0), (1, 0)),
+        # ]
+        # self.lines = []
+        # for pt1a, pt1b, pt2a, pt2b in line_pairs:
+            # self.lines.append([Line.from_two_points(pt1a, pt1b),
+                               # Line.from_two_points(pt2a, pt2b)])
+        # # signed_angles for each line:
+        # # First angle is the signed arc cosine of the dot product,
+        # # Second angle is the signed supplement of the first angle
+        # signed_angles = [
+            # (-90, 90),
+            # (90, -90),
+            # (135, -45),
+            # (0, 180),
+            # (45, -135),
+            # (-45, 135),
+        # ]
+        # self.signed_angles = [list(map(math.radians, p)) for p in signed_angles]
     
-    def compare_angles(self, truth_angles: list[float],
-                       supplement: bool, signed: bool):
-        for (line1, line2), (angle1, angle2) in zip(self.lines, truth_angles):
-            angle = angle2 if supplement else angle1
-            with self.subTest(
-                        line1=line1, line2=line2,
-                        supplement_flag=supplement, signed_flag=signed,
-                        angle=(f"Radians: {angle}, "
-                               + f"Degrees: {math.degrees(angle)}")
-                    ):
-                result_angle = line1.get_angle_between(line2,
-                                                       supplement, signed)
-                self.assertAlmostEqual(result_angle,
-                                       angle,
-                                       ROUNDING_PLACES)
+    # def compare_angles(self, truth_angles: list[float],
+                       # supplement: bool, signed: bool):
+        # for (line1, line2), (angle1, angle2) in zip(self.lines, truth_angles):
+            # angle = angle2 if supplement else angle1
+            # with self.subTest(
+                        # line1=line1, line2=line2,
+                        # supplement_flag=supplement, signed_flag=signed,
+                        # angle=(f"Radians: {angle}, "
+                               # + f"Degrees: {math.degrees(angle)}")
+                    # ):
+                # result_angle = line1.get_angle_between(line2,
+                                                       # supplement, signed)
+                # self.assertAlmostEqual(result_angle,
+                                       # angle,
+                                       # ROUNDING_PLACES)
     
-    def test_get_angle_between_default(self):
-        truth_angles = [list(map(abs, p)) for p in self.signed_angles]
-        self.compare_angles(truth_angles, supplement=False, signed=False)
+    # def test_get_angle_between_default(self):
+        # truth_angles = [list(map(abs, p)) for p in self.signed_angles]
+        # self.compare_angles(truth_angles, supplement=False, signed=False)
     
-    def test_get_angle_between_supplement_unsigned(self):
-        truth_angles = [list(map(abs, p)) for p in self.signed_angles]
-        self.compare_angles(truth_angles, supplement=True, signed=False)
+    # def test_get_angle_between_supplement_unsigned(self):
+        # truth_angles = [list(map(abs, p)) for p in self.signed_angles]
+        # self.compare_angles(truth_angles, supplement=True, signed=False)
     
-    def test_get_angle_between_signed(self):
-        truth_angles = self.signed_angles
-        self.compare_angles(truth_angles, supplement=False, signed=True)
+    # def test_get_angle_between_signed(self):
+        # truth_angles = self.signed_angles
+        # self.compare_angles(truth_angles, supplement=False, signed=True)
     
-    def test_get_angle_between_supplement_signed(self):
-        truth_angles = self.signed_angles
-        self.compare_angles(truth_angles, supplement=True, signed=True)
+    # def test_get_angle_between_supplement_signed(self):
+        # truth_angles = self.signed_angles
+        # self.compare_angles(truth_angles, supplement=True, signed=True)
 
 class TestPerpendicular(unittest.TestCase):
     def setUp(self):
@@ -552,8 +523,8 @@ class TestLinePointMovers2D(unittest.TestCase):
                 test_line = line.copy()
                 test_line.move_to_point(new_pt)
                 results = [
-                    test_line.is_coincident(new_pt),
-                    test_line.is_parallel(line)
+                    spatial_relations.coincident(test_line, new_pt),
+                    spatial_relations.parallel(test_line, line)
                 ]
                 self.assertTrue(all(results))
     
