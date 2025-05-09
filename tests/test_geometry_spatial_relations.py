@@ -4,6 +4,7 @@ import os
 import unittest
 
 from PanCAD.geometry import Point, Line, LineSegment, Plane, spatial_relations
+from PanCAD.utils import verification
 
 ROUNDING_PLACES = 10
 
@@ -210,6 +211,133 @@ class TestGetAngleBetweenLines(unittest.TestCase):
                                                         supplement, signed),
                     angle
                 )
+
+class TestCoplanarPoints(unittest.TestCase):
+    
+    def setUp(self):
+        point_sets = [
+            [(0, 0, 0), (1, 0, 0)],
+            [(0, 0, 0), (1, 0, 0), (0, 1, 0)],
+            [(0, 0, 1), (1, 0, 1), (0, 1, 1)],
+            [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 0)],
+            [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 5)],
+            [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, -1, 5), (0, -1, 6)],
+        ]
+        points = [list(map(Point, points)) for points in point_sets]
+        coplanar = [
+            True,
+            True,
+            True,
+            True,
+            False,
+            False,
+        ]
+        self.tests = zip(points, iter(coplanar))
+    
+    def test_coplanar_point(self):
+        for points, coplanar in self.tests:
+            with self.subTest(points=points, coplanar=coplanar):
+                self.assertEqual(spatial_relations.coplanar(*points), coplanar)
+
+class TestCoplanarLinePoints(unittest.TestCase):
+    
+    def setUp(self):
+        lines = [
+            [(0, 0, 0), (1, 0, 0)],
+            [(0, 0, 0), (1, 1, 1)],
+        ]
+        lines = list(itertools.starmap(Line.from_two_points, lines))
+        point_sets = [
+            [(1, 1, 0), (2, 3, 0), (-1, -4, 0)],
+            [(1, 1, 0), (2, 3, 0), (-1, -4, 0)],
+        ]
+        points = [list(map(Point, points)) for points in point_sets]
+        coplanar = [
+            True,
+            False,
+        ]
+        self.tests = zip(lines, points, coplanar)
+    
+    def test_coplanar_line_points(self):
+        for line, points, coplanar in self.tests:
+            with self.subTest(line=line, points=points, coplanar=coplanar):
+                self.assertEqual(spatial_relations.coplanar(line, *points),
+                                 coplanar)
+
+class TestCoplanarLineLineSegment(unittest.TestCase):
+    
+    def setUp(self):
+        line1s = [
+            [(0, 0, 0), (1, 1, 0)],
+            [(0, 0, 0), (1, 0, 0)],
+        ]
+        line2s = [
+            [(0, 0, 0), (1, 0, 0)],
+            [(0, 1, 0), (0, 1, 1)],
+        ]
+        coplanar = [
+            True,
+            False
+        ]
+        geometry_constructors = [Line.from_two_points, LineSegment]
+        self.tests = []
+        for gf1, gf2 in itertools.product(geometry_constructors, repeat=2):
+            self.tests.extend(
+                zip(itertools.starmap(gf1, line1s),
+                    itertools.starmap(gf2, line2s),
+                    coplanar)
+            )
+    
+    def test_coplanar_line_linesegment(self):
+        for line1, line2, coplanar in self.tests:
+            with self.subTest(line1=line1, line2=line2, coplanar=coplanar):
+                self.assertEqual(spatial_relations.coplanar(line1, line2),
+                                 coplanar)
+
+class TestLineIntersection(unittest.TestCase):
+    
+    def setUp(self):
+        tests = [
+            # 2D
+            ((0, 0), (1, 1), (0, 4), (4, 0), (2, 2)),
+            ((0, 0), (1, 1), (0, 0), (-1, 1), (0, 0)),
+            ((0, 0), (1, 1), (0, 1), (1, 2), None), # Parallel
+            # 3D
+            ((0, 0, 0), (1, 1, 0), (0, 4, 0), (4, 0, 0), (2, 2, 0)),
+            ((0, 0, 0), (1, 1, 0), (0, 4, 1), (4, 0, 1), None), # Skew
+            ((0, 0, 0), (1, 1, 0), (0, 0, 0), (-1, 1, 0), (0, 0, 0)),
+            ((0, 0, 0), (1, 1, 0), (0, 0, 1), (-1, 1, 1), None),
+        ]
+        line1_pts = [[pt1, pt2] for pt1, pt2, *_ in tests]
+        line2_pts = [[pt1, pt2] for _, _, pt1, pt2, *_ in tests]
+        intersection_coordinates = [pt for *_, pt in tests]
+        constructors = [Line.from_two_points, LineSegment]
+        intersections = []
+        
+        for i in intersection_coordinates:
+            intersections.append(None if i is None else Point(i))
+        self.tests = []
+        for func1, func2 in itertools.product(constructors, repeat=2):
+            self.tests.extend(
+                zip(itertools.starmap(func1, line1_pts),
+                    itertools.starmap(func2, line2_pts),
+                    intersections)
+            )
+    
+    def test_get_intersection(self):
+        for line1, line2, intersection in self.tests:
+            if intersection is None:
+                expected = "No Intersection"
+            else:
+                expected = tuple(intersection)
+            with self.subTest(line1=str(line1), line2=str(line2),
+                              intersection=expected):
+                result_pt = spatial_relations.get_intersect(line1, line2)
+                if intersection is None:
+                    self.assertEqual(result_pt, intersection)
+                else:
+                    verification.assertPointsAlmostEqual(self, result_pt,
+                                                         intersection)
 
 if __name__ == "__main__":
     unittest.main()
