@@ -92,32 +92,6 @@ class LineSegment:
         else:
             return trig.to_1D_tuple(np_vector_ab)
     
-    def is_collinear(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_collinear(other_line)
-    
-    def is_coincident(self, other: Point) -> bool:
-        return self.get_line().is_coincident(other)
-    
-    def is_coplanar(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_coplanar(other_line)
-    
-    def is_equal_length(self, other: LineSegment) -> bool:
-        return self._isclose(self.length, other.length)
-    
-    def is_parallel(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_parallel(other_line)
-    
-    def is_perpendicular(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_perpendicular(other)
-    
-    def is_skew(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_skew(other)
-    
     def set_length_from_a(self, value: float):
         if value != 0:
             new_vector_ab = np.array(self.direction) * value
@@ -188,15 +162,6 @@ class LineSegment:
         else:
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
-    
-    # Private Static Methods #
-    def _get_comparison_line(other: Line | LineSegment) -> Line:
-        if isinstance(other, Line):
-            return other
-        elif isinstance(other, LineSegment):
-            return other.get_line()
-        else:
-            raise ValueError("other must be a Line or LineSegment")
     
     # Python Dunders #
     def __copy__(self) -> LineSegment:

@@ -207,64 +207,6 @@ class Line:
             np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
         )
     
-    def is_collinear(self, other_line: Line) -> bool:
-        """Returns whether the line is collinear to another line
-        
-        :param other_line: A line that can be checked for collinearity
-        :returns: True if collinear, False otherwise
-        """
-        other_line = Line._get_comparison_line(other_line)
-        return self == other_line
-    
-    def is_coplanar(self, other_line: Line) -> bool:
-        """Returns whether the other line can lie on the same plane as this 
-        line. Effectively whether the line is intersecting or parallel.
-        
-        :param other_line: A line to check for coplanarity with this line
-        :returns: True if the other line is coplanar, otherwise False
-        """
-        other_line = Line._get_comparison_line(other_line)
-        return self.is_parallel(other_line) or not self.is_skew(other_line)
-    
-    def is_parallel(self, other_line: Line) -> bool:
-        """Returns whether the line is parallel to another line"""
-        other_line = Line._get_comparison_line(other_line)
-        return self._isclose_tuple(self.direction, other_line.direction)
-    
-    def is_perpendicular(self, other_line: Line) -> bool:
-        """Returns whether the line is intersects and is oriented 90 degrees 
-        to the other line.
-        
-        :param other_line: A line to check for perpendicularity with this line
-        :returns: True if the other line is perpendicular to this line, 
-                  otherwise False
-        """
-        other_line = Line._get_comparison_line(other_line)
-        if self.is_skew(other_line):
-            return False
-        else:
-            dot_product = np.dot(self.direction, other_line.direction)
-            return self._isclose(dot_product, 0)
-    
-    def is_skew(self, other_line: Line) -> bool:
-        """Returns whether the line is skew to another line"""
-        other_line = Line._get_comparison_line(other_line)
-        if self.is_parallel(other_line):
-            return False
-        elif len(self) != len(other_line):
-            raise ValueError("Both lines must have the same number of dimensions")
-        elif len(self) == 2:
-            return False
-        
-        pt1_to_pt2 = (np.array(self.reference_point)
-                      - np.array(other_line.reference_point))
-        cross_product = np.cross(self.direction, other_line.direction)
-        
-        if self._isclose(np.dot(pt1_to_pt2, cross_product), 0):
-            return False
-        else:
-            return True
-    
     def move_to_point(self, point: Point,
                       phi: float=None, theta: float=None) -> Line:
         """Moves the line to go through a point and changes the line's 
@@ -438,22 +380,6 @@ class Line:
             )
         
         return point_closest_to_origin
-    
-    @staticmethod
-    def _get_comparison_line(other) -> Line:
-        """Returns a PanCAD Line object from another object to use in 
-        comparisons. Used to handle cases like a LineSegment checking 
-        whether it is parallel to an infinite Line since LineSegments have 
-        Lines. Is not used for the __eq__ dunder since that is only to be 
-        used for checking Line to Line equality.
-        
-        :param other: Another object that is either another Line object, or a 
-                      has a "get_line" function that can return one
-        """
-        if isinstance(other, Line):
-            return other
-        elif hasattr(other, "get_line"):
-            return other.get_line()
     
     @staticmethod
     def _unique_direction(vector:np.ndarray) -> np.ndarray:

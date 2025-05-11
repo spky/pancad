@@ -3,14 +3,14 @@ PanCAD defines a spatial relation to be a relation that defines how an object
 is located in space relative to another object. Many of these also exist as 
 constraints in CAD programs.
 
-Example Relations: Coincident, Parallel, Perpendicular, Skew, Intersecting
+Example Relations: Coincident, Parallel, Perpendicular, Skew
 """
 from functools import singledispatch, partial
 import math
 
 import numpy as np
 
-from PanCAD.geometry import Point, Line, LineSegment, Plane
+from PanCAD.geometry import Point, Line, LineSegment, Plane, conversion
 from PanCAD.utils import trigonometry as trig
 from PanCAD.utils import verification
 
@@ -26,54 +26,85 @@ isclose = partial(verification.isclose,
 
 @singledispatch
 def coincident(geometry_a, geometry_b) -> bool:
-    """Returns whether geometry a is coincident to geometry b."""
+    """Returns whether geometry a is coincident to geometry b.
+    
+    :param geometry_a: A Point, Line, LineSegment, or Plane
+    :param geometry_b: One or more Points, Lines, LineSegments or Planes.
+    :returns: Whether the geometries are coincident to geometry a
+    """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
+@singledispatch
 def collinear(geometry_a, geometry_b) -> bool:
-    pass
+    """Returns whether the geometry a and b can lie on the same line.
+    
+    :param geometry_a: A Point, Line, or LineSegment
+    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be 
+        the same type.
+    :returns: Whether the geometries can all lie on the same line
+    """
+    raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
 @singledispatch
 def coplanar(geometry_a, geometry_b) -> bool:
-    """Returns whether geometry a is coplanar with geometry b."""
+    """Returns whether the geometry a and b can lie on the same plane.
+    
+    :param geometry_a: A Point, Line, LineSegment, or Plane
+    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be 
+        the same type.
+    :returns: Whether the geometries can all lie on the same plane
+    """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
 def crosses():
-    pass
+    raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
+@singledispatch
 def equal(geometry_a, geometry_b):
-    """Returns whether geometry a and geometry b are equal length"""
+    """Returns whether geometry a and geometry b are equal lengths
+    
+    :param geometry_a: A LineSegment
+    :param geometry_b: One or more other LineSegments
+    :returns: Whether geometry a and b are equal length
+    """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
-def intersects() -> bool:
-    """Returns whether geometry a intersects geometry b"""
-    pass
-
 @singledispatch
-def parallel(geometry_a, geometry_b):
+def parallel(geometry_a, geometry_b) -> bool:
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
-def perpendicular():
-    pass
-
-def symmetric():
-    pass
-
-def tangent():
-    pass
-
-def touches():
-    pass
-
-def get_distance_between():
-    pass
-
 @singledispatch
-def get_intersect(geometry_a, geometry_b):
-    """Returns the intersection of geometry a and b as a Point, Line, LineSegment 
-    or None depending on the input types.
+def perpendicular(geometry_a, geometry_b) -> bool:
+    """Returns whether the geometry a and b intersects and are oriented 90 degrees 
+    to each other.
     
     :param geometry_a: A Line, LineSegment, or Plane
-    :param other: Another Line, LineSegment, or Plane
+    :param geometry_b: Another Line, LineSegment, or Plane
+    :returns: Whether the geometries are perpendicular to each other
+    """
+    raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
+
+def symmetric():
+    raise NotImplementedError(f"TODO: Future work, not implemented")
+
+def tangent():
+    raise NotImplementedError(f"TODO: Future work, not implemented")
+
+def touches():
+    raise NotImplementedError(f"TODO: Future work, not implemented")
+
+def get_distance_between():
+    raise NotImplementedError(f"TODO: Future work, not implemented")
+
+@singledispatch
+def get_intersect(geometry_a, geometry_b) -> Point | Line | LineSegment:
+    """Returns the intersection of geometry a and b as a Point, Line, LineSegment 
+    or None depending on the input types. Note: LineSegments are treated as 
+    infinitely long to find the intersection, if you want to know whether the 
+    finite line actually crosses the other geometry use crosses() instead.
+    
+    :param geometry_a: A Line, LineSegment, or Plane
+    :param geometry_b: Another Line, LineSegment, or Plane
     :returns: The intersection if it exists, otherwise None
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
@@ -99,14 +130,19 @@ def get_angle_between(geometry_a, geometry_b,
         returned. If True and the element is 2D, angle will be negative if the 
         angle between this element's direction and the other element's 
         direction is clockwise
-    :returns: The value of the angle between the angles in radians. If the 
+    :returns: The value of the angle between the geometries in radians. If the 
         elements (usually lines) are skew, returns None.
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
-
 @singledispatch
-def skew(geometry_a, geometry_b):
+def skew(geometry_a, geometry_b) -> bool:
+    """Returns whether geometry a and b are skew.
+    
+    :param geometry_a: A Line or LineSegment
+    :param geometry_b: Another Line or LineSegment
+    :returns: Whether the geometries are skew to one another
+    """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
 ###############################################################################
@@ -162,6 +198,51 @@ def coincident_linesegment(linesegment: LineSegment,
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
+@collinear.register
+def collinear_point(point: Point, *other: Point | Line | LineSegment) -> bool:
+    if all(isinstance(g, Point) for g in other):
+        if len(other) == 1:
+            # 2 Points are always collinear
+            return True
+        else:
+            coordinates = []
+            coordinates.append(tuple(point))
+            coordinates.extend(map(tuple, other))
+            check_matrix = np.column_stack(coordinates)
+            return True if np.linalg.matrix_rank(check_matrix) < 2 else False
+    elif all(isinstance(g, (Line, LineSegment)) for g in other):
+        points = [point]
+        for line in other:
+            points.append(line.reference_point)
+            points.append(Point(np.array(line.reference_point) + line.direction))
+        return collinear(*points)
+    elif all(isinstance(g, LineSegment) for g in other):
+        return collinear(point, *list(map(conversion.to_line, other)))
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@collinear.register
+def collinear_line(line: Line, *other: Point | Line | LineSegment) -> bool:
+    if all(isinstance(g, Point) for g in other):
+        points = [line.reference_point,
+                  Point(np.array(line.reference_point) + line.direction),
+                  *other]
+        return collinear(*points)
+    elif all(isinstance(g, Line) for g in other):
+        for l in other:
+            if line != l:
+                return False
+        return True
+    elif all(isinstance(g, LineSegment) for g in other):
+        return collinear(line, *list(map(conversion.to_line, other)))
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@collinear.register
+def collinear_linesegment(line_segment: LineSegment,
+                          *other: Point | Line | LineSegment) -> bool:
+    return collinear(line_segment.get_line(), *other)
+
 @coplanar.register
 def coplanar_line(line: Line, *other: Point | Line | LineSegment) -> bool:
     if all(isinstance(g, Point) for g in other):
@@ -204,18 +285,25 @@ def coplanar_point(point: Point, *other: Point | Line | LineSegment) -> bool:
         else:
             coord_matrix = np.stack([point, *other])
             return True if np.linalg.matrix_rank(coord_matrix) == 2 else False
-    elif all(isinstance(g, Line) for g in other):
+    elif all(isinstance(g, (Line, LineSegment)) for g in other):
         if len(other) == 1:
             return True # Any point and line by themselves are always coplanar
-        else:
-            check_points = []
-            for line in other:
-                check_points.append(line.reference_point)
-                check_points.append(
-                    Point(np.array(line.reference_point)
-                          + np.array(line.direction))
-                )
-            raise NotImplementedError("TODO: Multiple arguments not implemented yet")
+        raise ValueError("A point would only be coplanar with multiple lines if "
+                         "all the lines intersected at the point or if all the "
+                         "lines were collinear, so this is a redundant case that "
+                         "collinear or coincident should be used for")
+    else:
+        types = [g.__class__ for g in other]
+        raise NotImplementedError(f"Unsupported 2nd type combo: {types}")
+
+@equal.register
+def equal_linesegment(line_segment: LineSegment, *other: LineSegment) -> bool:
+    if all(isinstance(g, LineSegment) for g in other):
+        length = line_segment.length
+        for other_linesegment in other:
+            if not isclose(length, other_linesegment.length):
+                return False
+        return True
     else:
         types = [g.__class__ for g in other]
         raise NotImplementedError(f"Unsupported 2nd type combo: {types}")
@@ -238,6 +326,32 @@ def parallel_linesegment(line_segment: LineSegment,
         return parallel(other, line_segment)
     elif isinstance(other, LineSegment):
         return parallel(line_segment.get_line(), other)
+    elif isinstance(other, Plane):
+        raise NotImplementedError(f"{other.__class__} not implemented yet")
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@perpendicular.register
+def perpendicular_line(line: Line, other: Line | LineSegment | Plane) -> bool:
+    if isinstance(other, Line):
+        if skew(line, other):
+            return False
+        else:
+            return isclose(np.dot(line.direction, other.direction), 0)
+    elif isinstance(other, LineSegment):
+        return perpendicular(line, other.get_line())
+    elif isinstance(other, Plane):
+        raise NotImplementedError(f"{other.__class__} not implemented yet")
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@perpendicular.register
+def perpendicular_line_segment(line_segment: LineSegment,
+                               other: Line | LineSegment | Plane) -> bool:
+    if isinstance(other, Line):
+        return perpendicular(line_segment.get_line(), other)
+    elif isinstance(other, LineSegment):
+        return perpendicular(line_segment.get_line(), other.get_line())
     elif isinstance(other, Plane):
         raise NotImplementedError(f"{other.__class__} not implemented yet")
     else:
@@ -339,7 +453,7 @@ def get_intersect_line(line: Line,
             non_zero_rows.append(not (isclose(c1, 0) and isclose(c2, 0)))
         
         if len(line) == 2:
-            pass # The lines will always intersect in 2D at this point
+            pass # 2D will always intersect since they are not parallel
         elif non_zero_rows[0] and non_zero_rows[1] and not non_zero_rows[2]:
             matrix_a = np.delete(matrix_a, (2), axis=0)
             pt1_to_pt2 = np.delete(pt1_to_pt2, (2), axis=0)

@@ -294,7 +294,7 @@ class TestCoplanarLineLineSegment(unittest.TestCase):
                 self.assertEqual(spatial_relations.coplanar(line1, line2),
                                  coplanar)
 
-class TestLineIntersection(unittest.TestCase):
+class TestGetIntersectionLineLineSegment(unittest.TestCase):
     
     def setUp(self):
         tests = [
@@ -338,6 +338,95 @@ class TestLineIntersection(unittest.TestCase):
                 else:
                     verification.assertPointsAlmostEqual(self, result_pt,
                                                          intersection)
+
+class TestPerpendicularLineLineSegment(unittest.TestCase):
+    def setUp(self):
+        tests = [
+            ((0, 0), (0, 1), (0, 0), (1, 0), True),
+            ((0, 0), (0, 1), (0, 0), (1, 1), False),
+        ]
+        line1_pts = [[pt1, pt2] for pt1, pt2, *_ in tests]
+        line2_pts = [[pt1, pt2] for _, _, pt1, pt2, *_ in tests]
+        perpendicular = [truth for *_, truth in tests]
+        constructors = [Line.from_two_points, LineSegment]
+        
+        self.tests = []
+        for func1, func2 in itertools.product(constructors, repeat=2):
+            self.tests.extend(
+                zip(itertools.starmap(func1, line1_pts),
+                    itertools.starmap(func2, line2_pts),
+                    perpendicular)
+            )
+    
+    def test_is_perpendicular(self):
+        for line1, line2, perpendicular in self.tests:
+            with self.subTest(
+                        line1=line1, line2=line2, perpendicular=perpendicular
+                    ):
+                self.assertEqual(spatial_relations.perpendicular(line1, line2),
+                                 perpendicular)
+
+class TestCollinear(unittest.TestCase):
+    def setUp(self):
+        tests = [
+            [(0, 0), (1, 1), (2, 2), True],
+            [(0, 0), (1, 1), (0, 1), False],
+            [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), True],
+        ]
+        self.constructors = [Line.from_two_points, LineSegment]
+        self.tests = [
+            (list(map(Point, c)), collinear) for *c, collinear in tests
+        ]
+    
+    def test_collinear_points(self):
+        for points, collinear in self.tests:
+            with self.subTest(points = list(map(tuple, points)),
+                              collinear=collinear):
+                self.assertEqual(spatial_relations.collinear(*points), collinear)
+    
+    def test_collinear_line_points(self):
+        tests = []
+        for func in self.constructors:
+            tests.extend([
+                (func(pt1, pt2), *pts, collinear)
+                for [pt1, pt2, *pts], collinear in self.tests
+            ])
+        for line, *pts, collinear in tests:
+            with self.subTest(line=line, points=pts, collinear=collinear):
+                self.assertEqual(spatial_relations.collinear(line, *pts),
+                                 collinear)
+
+class TestEqualLineSegment(unittest.TestCase):
+    
+    def setUp(self):
+        line1s = [
+            [(0, 0), (0, 1)],
+            [(0, 0), (0, 1)],
+            [(0, 0), (0, 1)],
+        ]
+        line2s = [
+            [(0, 0), (0, 1)],
+            [(1, 0), (1, 1)],
+            [(0, 0), (0, 2)],
+        ]
+        equal = [
+            True,
+            True,
+            False
+        ]
+        self.tests = zip(itertools.starmap(LineSegment, line1s),
+                         itertools.starmap(LineSegment, line2s),
+                         equal)
+    
+    def test_is_equal_length(self):
+        truths = [
+            True,
+            True,
+            False,
+        ]
+        for line1, line2, equal in self.tests:
+            with self.subTest(line1=line1, line2=line2, equal=equal):
+                self.assertEqual(spatial_relations.equal(line1, line2), equal)
 
 if __name__ == "__main__":
     unittest.main()
