@@ -53,12 +53,13 @@ def isTupleAlmostEqual(tuple_a: tuple, tuple_b: tuple, places: int = 7):
 
 @singledispatch
 def isclose(value_a, value_b,
-            abs_tol: float, rel_tol: float, nan_equal: bool = False):
+            abs_tol: float=1e-9, rel_tol: float=1e-9, nan_equal: bool = False):
     raise NotImplementedError(f"Unsupported 1st type {value_a.__class__}")
 
 @isclose.register
 def isclose_number(value_a: int | float, value_b: int | float,
-                   rel_tol: float, abs_tol: float, nan_equal: bool = False):
+                   rel_tol: float=1e-9, abs_tol: float=1e-9,
+                   nan_equal: bool=False):
     if isinstance(value_a, float) or isinstance(value_b, float):
         if nan_equal and math.isnan(value_a) and math.isnan(value_b):
             return True
@@ -70,7 +71,8 @@ def isclose_number(value_a: int | float, value_b: int | float,
 
 @isclose.register
 def isclose_tuple(tuple_a: tuple, tuple_b: tuple,
-                  rel_tol: float, abs_tol: float, nan_equal: bool = False):
+                  rel_tol: float=1e-9, abs_tol: float=1e-9,
+                  nan_equal: bool=False):
     comparisons = []
     for val1, val2 in zip(tuple_a, tuple_b):
         if isinstance(val1, float) or isinstance(val2, float):

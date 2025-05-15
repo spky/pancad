@@ -2,6 +2,7 @@
 between formats.
 """
 
+import functools
 import math
 import json
 
@@ -152,6 +153,46 @@ def rotation_2d(angle: float, decimals: int = None) -> np.ndarray:
     if decimals is not None:
         matrix = round_array(matrix, decimals)
     return matrix
+
+def rotation(angle: float, rotate_around: str) -> np.ndarray:
+    """Returns a rotation matrix that rotates around the given axis by the angle
+    
+    :param angle: The counter-clockwise rotation angle in radians
+    :param rotate_around: The axis to rotate around. Options x, y, z, and 2. 2 
+        produces a 2D rotation matrix
+    :returns: A numpy rotation matrix
+    """
+    cost = math.cos(angle)
+    sint = math.sin(angle)
+    match rotate_around:
+        case "x":
+            matrix = [
+                [1, 0, 0],
+                [0, cost, -sint],
+                [0, sint, cost],
+            ]
+        case "y":
+            matrix = [
+                [cost, 0, -sint],
+                [0, 1, 0],
+                [sint, 0, cost],
+            ]
+        case "z":
+            matrix = [
+                [cost, -sint, 0],
+                [sint, cost, 0],
+                [0, 0, 1],
+            ]
+        case "2":
+            matrix = [
+                [cost, -sint],
+                [sint, cost],
+            ]
+    return np.array(matrix)
+
+rotation_x = functools.partial(rotation, rotate_around="x")
+rotation_y = functools.partial(rotation, rotate_around="y")
+rotation_z = functools.partial(rotation, rotate_around="z")
 
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.
@@ -677,7 +718,7 @@ def to_1D_np(value: list | tuple | np.ndarray) -> tuple:
         return value.squeeze()
     else:
         raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
-                         + f"a 1D numpy.ndarray")
+                         f"a 1D numpy.ndarray")
 
 def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
     """Returns the unit vector of the given vector. If the vector is a zero 

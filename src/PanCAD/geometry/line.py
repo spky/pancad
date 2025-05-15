@@ -312,7 +312,7 @@ class Line:
         raise NotImplementedError
     
     @classmethod
-    def from_point_and_angle(cls, point: Point, phi: float,
+    def from_point_and_angle(cls, point: Point | tuple | np.ndarray, phi: float,
                              theta: float = None, uid: str = None) -> Line:
         """Return a line from a given point and phi or phi and theta.
         
@@ -322,6 +322,7 @@ class Line:
         :returns: A Line object that runs through the point in a direction 
             with the provided angles
         """
+        if isinstance(point, (tuple, np.ndarray)): point = Point(point)
         if len(point) == 2 and theta is None:
             direction_end_pt = Point(1, 0)
             direction_end_pt.phi = phi

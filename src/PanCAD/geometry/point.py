@@ -4,6 +4,8 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 import math
+from functools import singledispatchmethod
+from numbers import Real
 
 import numpy as np
 
@@ -276,6 +278,43 @@ class Point:
                              + "phi is NaN, change phi or both simultaneously")
         else:
             self.spherical = (self.r, self.phi, value)
+    
+    # Class Methods #
+    
+    @singledispatchmethod
+    @classmethod
+    def from_polar(cls, arg, *, uid: str=None, unit: str=None) -> Point:
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_polar.register
+    @classmethod
+    def from_polar_vector(cls, vector: tuple | np.ndarray | list, *,
+                          uid: str=None, unit: str=None):
+        return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_polar.register
+    @classmethod
+    def from_polar_r_phi(cls, r: Real, phi: Real, *,
+                         uid: str=None, unit: str=None):
+        return cls(trig.polar_to_cartesian((r, phi)), uid=uid, unit=unit)
+    
+    @singledispatchmethod
+    @classmethod
+    def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> Point:
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_spherical.register
+    @classmethod
+    def from_spherical_vector(cls, vector: tuple | np.ndarray | list, *,
+                              uid: str=None, unit: str=None):
+        return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_spherical.register
+    @classmethod
+    def from_spherical_r_phi_theta(cls, r: Real, phi: Real, theta: Real, *,
+                                   uid: str=None, unit: str=None):
+        return cls(trig.spherical_to_cartesian((r, phi, theta)),
+                   uid=uid, unit=unit)
     
     # Public Methods #
     def copy(self) -> Point:

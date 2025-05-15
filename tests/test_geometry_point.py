@@ -80,8 +80,49 @@ class TestPointInit(unittest.TestCase):
                 pt = Point(coordinate)
                 self.assertEqual(len(pt), expected_length)
     
-    def test_vector(self):
-        pass
+    def test_from_polar(self):
+        tests = [
+            (1, 0),
+            (1, 45),
+        ]
+        tests = [(r, math.radians(phi)) for r, phi in tests]
+        
+        for r, phi in tests:
+            with self.subTest(r=r, phi=(f"Degrees: {math.degrees(phi)} "
+                                        f"Radians: {phi}")):
+                verification.assertTupleAlmostEqual(
+                    self, Point.from_polar((r, phi)).polar, (r, phi),
+                    ROUNDING_PLACES
+                )
+                verification.assertTupleAlmostEqual(
+                    self, Point.from_polar(r, phi).polar, (r, phi),
+                    ROUNDING_PLACES
+                )
+    
+    def test_from_spherical(self):
+        tests = [
+            (1, math.nan, 0),
+            (1, 45, 90),
+        ]
+        tests = [(r, math.radians(phi), math.radians(theta))
+                 for r, phi, theta in tests]
+        
+        for r, phi, theta in tests:
+            with self.subTest(r=r,
+                              phi=(f"Degrees: {math.degrees(phi)} "
+                                   f"Radians: {phi}"),
+                              theta=(f"Degrees: {math.degrees(theta)} "
+                                     f"Radians: {theta}")):
+                spherical = (r, phi, theta)
+                verification.assertTupleAlmostEqual(
+                    self, Point.from_spherical(spherical).spherical, spherical,
+                    ROUNDING_PLACES
+                )
+                verification.assertTupleAlmostEqual(
+                    self, Point.from_spherical(r, phi, theta).spherical,
+                    spherical,
+                    ROUNDING_PLACES
+                )
 
 class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 

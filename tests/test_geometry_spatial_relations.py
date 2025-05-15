@@ -75,6 +75,69 @@ class TestCoincidentPointAndLine2D(unittest.TestCase):
             with self.subTest(line=line, point=point, coincident=truth):
                 self.assertEqual(spatial_relations.coincident(line, point), truth)
 
+class TestCoincidentPlanePoint(unittest.TestCase):
+    
+    def test_point(self):
+        pln = Plane(Point(0, 0, 0), (0, 0, 1))
+        points = [
+            [Point(1, 1, 0), True],
+            [Point(1, 1, 1), False],
+        ]
+        for pt, coincident in points:
+            with self.subTest(plane=pln, point=pt, coincident=coincident):
+                self.assertEqual(spatial_relations.coincident(pln, pt),
+                                 coincident)
+                self.assertEqual(spatial_relations.coincident(pt, pln),
+                                 coincident)
+
+class TestCoincidentPlanePlane(unittest.TestCase):
+    
+    def setUp(self):
+        plane1s = [
+            [Point(0, 0, 0), (0, 0, 1)], # On origin
+            [Point(0, 0, 1), (0, 0, 1)], # Off Origin
+        ]
+        plane2s = [
+            [Point(0, 0, 0), (0, 0, 1)],
+            [Point(0, 0, 0), (1, 0, 0)],
+            [Point(0, 0, 1), (0, 0, 1)],
+        ]
+        coincident2to1 = [
+            (True, False),
+            (False, False),
+            (False, True),
+        ]
+        plane1s = itertools.starmap(Plane, plane1s)
+        plane2s = itertools.starmap(Plane, plane2s)
+        tests = []
+        for i, pln in enumerate(plane2s):
+            tests.append([pln, coincident2to1[i][0]])
+            tests.append([pln, coincident2to1[i][1]])
+        self.tests = zip(itertools.cycle(plane1s), tests)
+    
+    def test_plane_plane(self):
+        for pln1, [pln2, coincident] in self.tests:
+            with self.subTest(plane1=pln1, plane2=pln2, coincident=coincident):
+                self.assertEqual(spatial_relations.coincident(pln1, pln2),
+                                 coincident)
+
+class TestCoincidentPlaneLine(unittest.TestCase):
+    
+    def test_plane_line(self):
+        pln = Plane((0, 0, 0), (0, 0, 1))
+        line1 = Line.from_two_points((-1, -1, 0), (1, 1, 0))
+        line2 = Line.from_two_points((-1, -1, 1), (1, 1, 1))
+        self.assertTrue(spatial_relations.coincident(pln, line1))
+        self.assertFalse(spatial_relations.coincident(pln, line2))
+    
+    def test_plane_linesegment(self):
+        pln = Plane((0, 0, 0), (0, 0, 1))
+        line1 = LineSegment((-1, -1, 0), (1, 1, 0))
+        line2 = LineSegment((-1, -1, 1), (1, 1, 1))
+        self.assertTrue(spatial_relations.coincident(pln, line1))
+        self.assertFalse(spatial_relations.coincident(pln, line2))
+
+
 class TestParallelLines2D(unittest.TestCase):
     def setUp(self):
         line1s = [
@@ -419,14 +482,51 @@ class TestEqualLineSegment(unittest.TestCase):
                          equal)
     
     def test_is_equal_length(self):
-        truths = [
-            True,
-            True,
-            False,
-        ]
         for line1, line2, equal in self.tests:
             with self.subTest(line1=line1, line2=line2, equal=equal):
                 self.assertEqual(spatial_relations.equal(line1, line2), equal)
+
+class TestPerpendicularPlane(unittest.TestCase):
+    
+    def setUp(self):
+        line_pms = [
+            [(0, 0, 0), 0, 0],
+            [(0, 0, 0), 0, 90],
+        ]
+        plane_pms = [
+            [(0, 0, 0), 0, 90],
+            [(0, 0, 0), 0, 0],
+        ]
+        
+        tests = []
+        self.tests = []
+        for pms in plane_pms:
+            tests.extend(
+                zip(
+                    itertools.repeat(pms, len(line_pms)),
+                    line_pms
+                )
+            )
+        for t in tests:
+            [pln_pt, pln_phi, pln_theta], [line_pt, line_phi, line_theta] = t
+            self.tests.append(
+                [
+                    Plane.from_point_and_angles(
+                        pln_pt, math.radians(pln_phi), math.radians(pln_theta)
+                    ),
+                    Line.from_point_and_angle(line_pt,
+                        math.radians(line_phi), math.radians(line_theta)
+                    ),
+                    pln_phi == line_phi and pln_theta == line_theta,
+                ]
+            )
+    
+    def test_plane_line(self):
+        for plane, line, perpendicular in self.tests:
+            with self.subTest(plane=plane, line=line,
+                              perpendicular=perpendicular):
+                self.assertEqual(spatial_relations.perpendicular(plane, line),
+                                 perpendicular)
 
 if __name__ == "__main__":
     unittest.main()

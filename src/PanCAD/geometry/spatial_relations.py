@@ -16,9 +16,7 @@ from PanCAD.utils import verification
 
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9
-isclose = partial(verification.isclose,
-                  abs_tol=ABSOLUTE_TOLERANCE, rel_tol=RELATIVE_TOLERANCE,
-                  nan_equal=True)
+isclose = partial(verification.isclose, nan_equal=True)
 
 ###############################################################################
 # Single Dispatches
@@ -47,9 +45,10 @@ def collinear(geometry_a, geometry_b) -> bool:
 
 @singledispatch
 def coplanar(geometry_a, geometry_b) -> bool:
-    """Returns whether the geometry a and b can lie on the same plane.
+    """Returns whether the geometry a and b can lie on the same plane. If you 
+    want to check whether a geometry is on an existing plane, use coincident.
     
-    :param geometry_a: A Point, Line, LineSegment, or Plane
+    :param geometry_a: A Point, Line, or LineSegment
     :param geometry_b: One or more Points, Lines, or LineSegments. All have to be 
         the same type.
     :returns: Whether the geometries can all lie on the same plane
@@ -71,6 +70,12 @@ def equal(geometry_a, geometry_b):
 
 @singledispatch
 def parallel(geometry_a, geometry_b) -> bool:
+    """Returns whether the geometry a and b are parallel.
+    
+    :param geometry_a: A Line, LineSegment, or Plane
+    :param geometry_b: Another Line, LineSegment or Plane
+    :returns: Whether the geometries are parallel
+    """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
 @singledispatch
@@ -172,7 +177,7 @@ def coincident_point(point: Point,
     elif isinstance(other, LineSegment):
         return coincident(point, other.get_line())
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return coincident(other, point)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -186,7 +191,7 @@ def coincident_line(line: Line,
     elif isinstance(other, LineSegment):
         return line == other.get_line()
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return coincident(other, line)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -195,6 +200,27 @@ def coincident_linesegment(linesegment: LineSegment,
                            other: Point | Line | LineSegment | Plane) -> bool:
     if isinstance(other, Point):
         return coincident(other, linesegment.get_line())
+    elif isinstance(other, (LineSegment, Line)):
+        return coincident(linesegment.get_line(), other)
+    elif isinstance(other, Plane):
+        return coincident(line_segment.get_line(), other)
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@coincident.register
+def coincident_plane(plane: Plane,
+                     other: Point | Line | LineSegment | Plane) -> bool:
+    if isinstance(other, (Point, Line, LineSegment)):
+        return coplanar(other, *conversion.get_3_points_on_plane(plane))
+    elif isinstance(other, Line):
+        points = [*conversion.get_3_points_on_plane(plane),
+                  *conversion.get_2_points_on_line(other)]
+        return coplanar(*points)
+    elif isinstance(other, Plane):
+        if plane.reference_point == other.reference_point == Point(0, 0, 0):
+            return isclose(plane.normal, other.normal)
+        else:
+            return plane.reference_point == other.reference_point
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -246,13 +272,11 @@ def collinear_linesegment(line_segment: LineSegment,
 @coplanar.register
 def coplanar_line(line: Line, *other: Point | Line | LineSegment) -> bool:
     if all(isinstance(g, Point) for g in other):
-        points = [line.reference_point,
-                  Point(np.array(line.reference_point) + line.direction),
+        points = [*conversion.get_2_points_on_line(line),
                   *other]
         return coplanar(*points)
     elif all(isinstance(g, Line) for g in other):
-        points = [line.reference_point,
-                  Point(np.array(line.reference_point) + line.direction)]
+        points = conversion.get_2_points_on_line(line)
         for l in other:
             points.append(l.reference_point)
             points.append(Point(np.array(l.reference_point)
@@ -284,7 +308,7 @@ def coplanar_point(point: Point, *other: Point | Line | LineSegment) -> bool:
             return True # Any set of 2 or 3 points are always coplanar
         else:
             coord_matrix = np.stack([point, *other])
-            return True if np.linalg.matrix_rank(coord_matrix) == 2 else False
+            return np.linalg.matrix_rank(coord_matrix) == 2
     elif all(isinstance(g, (Line, LineSegment)) for g in other):
         if len(other) == 1:
             return True # Any point and line by themselves are always coplanar
@@ -315,7 +339,7 @@ def parallel_line(line: Line, other: Line | LineSegment | Plane) -> bool:
     elif isinstance(other, LineSegment):
         return isclose(line.direction, other.get_line().direction)
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return parallel(other, line)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -327,7 +351,18 @@ def parallel_linesegment(line_segment: LineSegment,
     elif isinstance(other, LineSegment):
         return parallel(line_segment.get_line(), other)
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return parallel(other, line_segment)
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@parallel.register
+def parallel_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool:
+    if isinstance(other, Line):
+        return isclose(np.dot(other.direction, plane.normal), 0)
+    elif isinstance(other, LineSegment):
+        return parallel(plane, other.get_line())
+    elif isinstance(other, Plane):
+        return isclose(plane.normal, other.normal)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -341,7 +376,7 @@ def perpendicular_line(line: Line, other: Line | LineSegment | Plane) -> bool:
     elif isinstance(other, LineSegment):
         return perpendicular(line, other.get_line())
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return perpendicular(other, line)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -353,7 +388,26 @@ def perpendicular_line_segment(line_segment: LineSegment,
     elif isinstance(other, LineSegment):
         return perpendicular(line_segment.get_line(), other.get_line())
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return perpendicular(other, line_segment)
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@perpendicular.register
+def perpendicular_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool:
+    if isinstance(other, Line):
+        vector_1, vector_2 = conversion.get_2_vectors_on_plane(plane)
+        
+        plane_x = trig.rotation_x(math.pi/2) @ plane.normal
+        plane_y = trig.rotation_y(math.pi/2) @ plane.normal
+        
+        dot_x = np.dot(vector_1, other.direction)
+        dot_y = np.dot(vector_2, other.direction)
+        
+        return isclose(dot_x, 0) and isclose(dot_y, 0)
+    elif isinstance(other, LineSegment):
+        return perpendicular(plane, other.get_line())
+    elif isinstance(other, Plane):
+        return isclose(np.dot(other.normal, plane.normal), 0)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 

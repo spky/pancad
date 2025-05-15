@@ -18,14 +18,13 @@ class Plane:
                  normal_vector: list | tuple | np.ndarray = None,
                  uid: str = None):
         self.uid = uid
-        
+        point = Point(point) if isinstance(point, tuple) else point
         if isinstance(point, Point):
-            self.normal = normal_vector
-            self._point_closest_to_origin = (
-                Plane._closest_to_origin(point, self.normal)
-            )
-        else:
+            self.move_to_point(point, normal_vector)
+        elif point is None:
             self._point_closest_to_origin = None
+        else:
+            raise ValueError(f"1st arg must be tuple/Point, not {point.__class__}")
     
     # Getters #
     @property
@@ -46,15 +45,7 @@ class Plane:
                  the origin on the plane.
         :setter: There is no setter, reference_point is read-only
         """
-        return self._point_closest_to_origin
-    
-    # Setters #
-    @normal.setter
-    def normal(self, vector: list | tuple | np.ndarray):
-        if vector is not None:
-            self._normal = trig.to_1D_tuple(trig.get_unit_vector(vector))
-        else:
-            self._normal = None
+        return self._point_closest_to_origin.copy()
     
     # Public Methods #
     def get_d(self) -> float:
@@ -64,6 +55,51 @@ class Plane:
         a, b, c = self.normal
         x0, y0, z0 = tuple(self.reference_point)
         return -(a*x0 + b*y0 + c*z0)
+    
+    def get_normal_vector(self, vertical: bool=True) -> np.ndarray:
+        """Returns the normal vector of the plane as a numpy vector
+        
+        :param vertical: If True, the vector will be 3x1, otherwise 1x3
+        :returns: A numpy vector of the normal vector
+        """
+        vector = np.array(self.normal)
+        return vector.reshape(3, 1) if vertical else vector
+    
+    def move_to_point(self, point: Point,
+                      normal_vector: list | tuple | np.ndarray = None) -> Plane:
+        """Moves the plane to the point. Sets the normal vector at that point if 
+        it is given. If no normal vector is given, the plane is moved to be 
+        coincident with the point while maintaining the same normal 
+        vector.
+        
+        :param point: A point the plane will be coincident to.
+        :param normal_vector: A new normal vector for the plane
+        :returns: This plane so it can be fed into further functions
+        """
+        if normal_vector is None:
+            normal_vector = self.normal
+        else:
+            self._normal = trig.to_1D_tuple(trig.get_unit_vector(normal_vector))
+        self._point_closest_to_origin = Plane._closest_to_origin(point,
+                                                                 normal_vector)
+        return self
+    
+    # Class Methods #
+    @classmethod
+    def from_point_and_angles(cls, point: Point, phi: float, theta: float,
+                              uid: str=None) -> Plane:
+        """Return a Plane from a given point, phi, and theta.
+        
+        :param point: A point on the plane
+        :param phi: The phi angle of the plane's normal vector in radians
+        :param theta: The theta angle of the plane's normal vector in radians
+        :returns: A Plane object that runs through the point with a normal vector 
+            with the provided angles
+        """
+        if len(point) == 2:
+            raise ValueError("Planes can only be initialized by 2D points")
+        else:
+            return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
     
     # Private Methods
     def _isclose(self, value_a: float, value_b: float) -> bool:
