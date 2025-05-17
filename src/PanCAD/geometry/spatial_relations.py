@@ -17,6 +17,7 @@ from PanCAD.utils import verification
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9
 isclose = partial(verification.isclose, nan_equal=True)
+isclose0 = partial(verification.isclose, value_b=0, nan_equal=True)
 
 ###############################################################################
 # Single Dispatches
@@ -403,7 +404,7 @@ def perpendicular_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool
         dot_x = np.dot(vector_1, other.direction)
         dot_y = np.dot(vector_2, other.direction)
         
-        return isclose(dot_x, 0) and isclose(dot_y, 0)
+        return isclose0(dot_x) and isclose0(dot_y)
     elif isinstance(other, LineSegment):
         return perpendicular(plane, other.get_line())
     elif isinstance(other, Plane):
@@ -537,7 +538,7 @@ def get_intersect_line(line: Line,
 
 @get_intersect.register
 def get_intersect_line_segment(line_segment: LineSegment,
-                               other: Point | Line | LineSegment
+                               other: Line | LineSegment | Plane
                                ) -> Point | Line | LineSegment | None:
     if isinstance(other, (Line, LineSegment)):
         return get_intersect(line_segment.get_line(), other)
@@ -545,4 +546,41 @@ def get_intersect_line_segment(line_segment: LineSegment,
         raise NotImplementedError(f"{other.__class__} not implemented yet")
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
-    
+
+@get_intersect.register
+def get_intersect_plane(plane: Plane,
+                        other: Line | LineSegment | Plane
+                        ) -> Point | Line | None:
+    if isinstance(other, Line):
+        if parallel(plane, other):
+            return None
+        else:
+            t_intersect = (
+                np.dot(plane.normal,
+                       plane.reference_point - other.reference_point)
+                / np.dot(plane.normal, other.direction)
+            )
+            return other.get_parametric_point(t_intersect)
+    elif isinstance(other, LineSegment):
+        return get_intersect(plane, other.get_line())
+    elif isinstance(other, Plane):
+        if parallel(plane, other):
+            return None
+        else:
+            nr_vector = np.array(
+                [np.dot(plane.normal, plane.reference_point),
+                 np.dot(other.normal, other.reference_point)]
+            )
+            n_matrix = np.array([plane.normal, other.normal])
+            zeros = [list(map(isclose0, c)) for c in n_matrix]
+            zero_cols = np.all(zeros, axis=0).tolist()
+            zero_index = zero_cols.index(True) if np.any(zero_cols) else 2
+            
+            n_matrix = np.delete(n_matrix, zero_index, axis=1)
+            coordinates = np.linalg.inv(n_matrix) @ nr_vector
+            coordinates = np.insert(coordinates, zero_index, 0)
+            return Line(Point(coordinates),
+                        np.cross(plane.normal, other.normal))
+        
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")

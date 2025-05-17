@@ -613,5 +613,43 @@ class TestPointRichComparison(unittest.TestCase):
                 pt_a, pt_b = Point(point_a), Point(point_b)
                 self.assertEqual(pt_a != pt_b, expected_result)
 
+class TestPointNumericDunders(unittest.TestCase):
+    def setUp(self):
+        self.coordinates = [
+            [(0, 0), (0, 0)],
+            [(1, 1), (0, 0)],
+            [(0, 0, 0), (0, 0, 0)],
+            [(1, 1, 1), (0, 0, 0)],
+            [(0, 0, 0), (0, 0)],
+            [(0, 0, 0), (1.2, 2.3, 1.2)],
+        ]
+    
+    def test_add(self):
+        coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
+        results = map(
+            lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) + np.array(x[1]))),
+            coords
+        )
+        pts = [[Point(a), Point(b)] for a, b in coords]
+        for (pt1, pt2), result in zip(pts, results):
+            with self.subTest(point1=pt1, point2=pt2, result=result):
+                verification.assertTupleAlmostEqual(self, pt1+pt2, result,
+                                                    ROUNDING_PLACES)
+                self.assertEqual(str(pt1+pt2), str(result))    
+    
+    def test_sub(self):
+        coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
+        results = map(
+            lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) - np.array(x[1]))),
+            coords
+        )
+        pts = [[Point(a), Point(b)] for a, b in coords]
+        for (pt1, pt2), result in zip(pts, results):
+            with self.subTest(point1=pt1, point2=pt2, result=result):
+                verification.assertTupleAlmostEqual(self, pt1-pt2, result,
+                                                    ROUNDING_PLACES)
+                self.assertEqual(str(pt1-pt2), str(result))
+        
+
 if __name__ == "__main__":
     unittest.main()

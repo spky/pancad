@@ -207,6 +207,13 @@ class Line:
             np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
         )
     
+    def get_parametric_constants(self) -> tuple[float]:
+        """Returns a tuple containing parameters (x0, y0, z0, a, b, c) for the 
+        line. The reference point is used for the initial position and the 
+        line's direction vector is used for a, b, and c.
+        """
+        return (*tuple(self.reference_point), *self.direction)
+    
     def move_to_point(self, point: Point,
                       phi: float=None, theta: float=None) -> Line:
         """Moves the line to go through a point and changes the line's 

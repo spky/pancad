@@ -357,7 +357,7 @@ class TestCoplanarLineLineSegment(unittest.TestCase):
                 self.assertEqual(spatial_relations.coplanar(line1, line2),
                                  coplanar)
 
-class TestGetIntersectionLineLineSegment(unittest.TestCase):
+class TestGetIntersectLineLineSegment(unittest.TestCase):
     
     def setUp(self):
         tests = [
@@ -401,6 +401,63 @@ class TestGetIntersectionLineLineSegment(unittest.TestCase):
                 else:
                     verification.assertPointsAlmostEqual(self, result_pt,
                                                          intersection)
+
+class TestGetIntersectLinePlane(unittest.TestCase):
+    
+    def setUp(self):
+        plane_params = [
+            [(0, 0, 0), (0, 0, 1)],
+            [(0, 0, -1), (0, 0, 1)],
+        ]
+        planes = itertools.starmap(Plane, plane_params)
+        intersections = [coord for coord, *_ in plane_params]
+        line_p2s = [
+            (0, 0, 1),
+            (0, 1, 1),
+        ]
+        line_params = zip(
+            itertools.cycle(intersections),
+            [coord for ls in line_p2s for coord in (ls,)*len(intersections)],
+        )
+        intersections = map(Point, intersections)
+        lines = itertools.starmap(Line.from_two_points, line_params)
+        self.tests = zip(itertools.cycle(intersections),
+                         itertools.cycle(planes),
+                         lines)
+    
+    def test_get_intersect_line_plane(self):
+        for intersect, plane, line in self.tests:
+            with self.subTest(intersect=intersect, plane=plane, line=line):
+                verification.assertPanCADAlmostEqual(
+                    self,
+                    spatial_relations.get_intersect(plane, line),
+                    intersect,
+                    ROUNDING_PLACES,
+                )
+
+class TestGetIntersectPlanePlane(unittest.TestCase):
+    
+    def test_plane_plane_origin(self):
+        pln1 = Plane(Point(0, 0, 0), (0, 0, 1))
+        pln2 = Plane(Point(0, 0, 0), (0, 1, 0))
+        line = Line.from_point_and_angle((0, 0, 0), 0, math.radians(90))
+        verification.assertPanCADAlmostEqual(
+            self,
+            spatial_relations.get_intersect(pln1, pln2),
+            line,
+            ROUNDING_PLACES
+        )
+    
+    def test_plane_plane_off_origin(self):
+        pln1 = Plane(Point(0, 0, 1), (0, 0, 1))
+        pln2 = Plane(Point(0, 0, 0), (0, 1, 0))
+        line = Line.from_point_and_angle((0, 0, 1), 0, math.radians(90))
+        verification.assertPanCADAlmostEqual(
+            self,
+            spatial_relations.get_intersect(pln1, pln2),
+            line,
+            ROUNDING_PLACES
+        )
 
 class TestPerpendicularLineLineSegment(unittest.TestCase):
     def setUp(self):

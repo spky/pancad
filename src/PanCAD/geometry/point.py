@@ -367,6 +367,30 @@ class Point:
             return array
     
     # Python Dunders #
+    def __add__(self, other) -> tuple:
+        """Returns the addition of two point's cartesian position vectors as a 
+        tuple"""
+        if isinstance(other, Point):
+            if len(self) == len(other):
+                numpy_array = np.array(self) + np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot add 2D points to/from 3D points")
+        else:
+            return NotImplemented
+    
+    def __sub__(self, other) -> tuple:
+        """Returns the subtraction of two point's cartesian position vectors as a 
+        tuple"""
+        if isinstance(other, Point):
+            if len(self) == len(other):
+                numpy_array = np.array(self) - np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot subtract 2D points to/from 3D points")
+        else:
+            return NotImplemented
+    
     def __copy__(self) -> Point:
         """Returns a copy of the point that has the same coordinates, but no 
         assigned uid. Can be used with the python copy module"""
