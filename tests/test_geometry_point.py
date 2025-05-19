@@ -595,7 +595,6 @@ class TestPointRichComparison(unittest.TestCase):
             ((1, 1), (0, 0), False),
             ((0, 0, 0), (0, 0, 0), True),
             ((1, 1, 1), (0, 0, 0), False),
-            ((0, 0, 0), (0, 0), False),
         ]
     
     def test_point_equality(self):

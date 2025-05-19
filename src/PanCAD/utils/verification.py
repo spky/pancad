@@ -23,16 +23,25 @@ def assertPointsAlmostEqual(self_input,
     assertTupleAlmostEqual(self_input, tuple(point_a), tuple(point_b), places)
 
 def assertLinesAlmostEqual(self_input,
-                            line_a: Point, line_b: Point, places: int = 7):
+                            line_a: Line, line_b: Line, places: int = 7):
     line_a_tuple = tuple(line_a.reference_point) + line_a.direction
     line_b_tuple = tuple(line_b.reference_point) + line_b.direction
+    assertTupleAlmostEqual(self_input, line_a_tuple, line_b_tuple, places)
+
+def assertLineSegmentsAlmostEqual(self_input,
+                                  line_a: LineSegment, line_b: LineSegment,
+                                  places: int = 7):
+    line_a_tuple = tuple(line_a.point_a) + tuple(line_a.point_b)
+    line_b_tuple = tuple(line_b.point_a) + tuple(line_b.point_b)
     assertTupleAlmostEqual(self_input, line_a_tuple, line_b_tuple, places)
 
 def assertPanCADAlmostEqual(self_input, object_a, object_b, places):
     if isinstance(object_a, Point) and isinstance(object_b, Point):
         assertPointsAlmostEqual(self_input, object_a, object_b, places)
     elif isinstance(object_a, Line) and isinstance(object_b, Line):
-        assertLinesAlmostEqual(self_input, object_a, object_b)
+        assertLinesAlmostEqual(self_input, object_a, object_b, places)
+    elif isinstance(object_a, LineSegment) and isinstance(object_b, LineSegment):
+        assertLineSegmentsAlmostEqual(self_input, object_a, object_b, places)
     elif isinstance(object_a, tuple) and isinstance(object_b, tuple):
         assertTupleAlmostEqual(self_input, object_a, object_b, places)
     else:

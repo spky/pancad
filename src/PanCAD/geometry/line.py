@@ -4,6 +4,7 @@ segments, which is part of a line that is the shortest distance between two
 points.
 """
 from __future__ import annotations
+from functools import partial
 
 import math
 
@@ -11,6 +12,9 @@ import numpy as np
 
 from PanCAD.geometry import Point
 from PanCAD.utils import trigonometry as trig
+from PanCAD.utils import comparison
+
+isclose = partial(comparison.isclose, nan_equal=False)
 
 class Line:
     """A class representing infinite lines in 2D and 3D space. A Line 
@@ -26,10 +30,7 @@ class Line:
                 identification.
     """
     
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
-    def __init__(self, point:Point = None, direction:tuple | np.ndarray = None,
+    def __init__(self, point: Point=None, direction:tuple | np.ndarray = None,
                  uid:str = None):
         self.uid = uid
         self.direction = direction
@@ -244,33 +245,6 @@ class Line:
         )
         return self
     
-    # Private Methods
-    def _isclose(self, value_a: float, value_b: float) -> bool:
-        """Returns whether value_a is close to value_b using the Line's class 
-        variables.
-        
-        :param value_a: A value to compare
-        :param value_b: Another value to compare
-        :returns: True if value_a == value_b within the relative and absolute 
-                  tolerance class variables
-        """
-        return math.isclose(value_a, value_b,
-                            rel_tol=self.relative_tolerance,
-                            abs_tol=self.absolute_tolerance)
-    
-    def _isclose_tuple(self, value_a: tuple, value_b: tuple) -> bool:
-        """Returns whether the components of value_a are close to the 
-        corresponding components of value_b using the Line's class variables.
-        
-        :param value_a: A tuple to compare
-        :param value_b: Another tuple to compare
-        :returns: True if value_a's components == value_b's components within 
-                  the Line's relative and absolute tolerance class variables
-        """
-        return trig.isclose_tuple(value_a, value_b,
-                                  rel_tol=self.relative_tolerance,
-                                  abs_tol=self.absolute_tolerance)
-    
     # Class Methods #
     @classmethod
     def from_two_points(cls, a:Point | tuple, b:Point | tuple,
@@ -430,12 +404,11 @@ class Line:
         :returns: Whether the tuples of the lines' reference_points and 
                   directions are equal
         """
-        self_origin_pt = self._point_closest_to_origin
-        other_origin_pt = other._point_closest_to_origin
         if isinstance(other, Line):
             return (
-                self._isclose_tuple(tuple(self_origin_pt), tuple(other_origin_pt))
-                and self._isclose_tuple(self.direction, other.direction)
+                isclose(tuple(self._point_closest_to_origin),
+                        tuple(other._point_closest_to_origin))
+                and isclose(self.direction, other.direction)
             )
         else:
             return NotImplemented

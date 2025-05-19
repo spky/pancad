@@ -2,17 +2,18 @@
 graphics, and other geometry use cases."""
 from __future__ import annotations
 
+from functools import partial
 import math
 
 import numpy as np
 
 from PanCAD.geometry import Point
 from PanCAD.utils import trigonometry as trig
+from PanCAD.utils import comparison
+
+isclose = partial(comparison.isclose, nan_equal=False)
 
 class Plane:
-    
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
     
     def __init__(self, point: Point = None,
                  normal_vector: list | tuple | np.ndarray = None,
@@ -101,33 +102,6 @@ class Plane:
         else:
             return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
     
-    # Private Methods
-    def _isclose(self, value_a: float, value_b: float) -> bool:
-        """Returns whether value_a is close to value_b using the Plane's class 
-        variables.
-        
-        :param value_a: A value to compare
-        :param value_b: Another value to compare
-        :returns: True if value_a == value_b within the relative and absolute 
-                  tolerance class variables
-        """
-        return math.isclose(value_a, value_b,
-                            rel_tol=self.relative_tolerance,
-                            abs_tol=self.absolute_tolerance)
-    
-    def _isclose_tuple(self, value_a: tuple, value_b: tuple) -> bool:
-        """Returns whether the components of value_a are close to the 
-        corresponding components of value_b using the Plane's class variables.
-        
-        :param value_a: A tuple to compare
-        :param value_b: Another tuple to compare
-        :returns: True if value_a's components == value_b's components within 
-                  the Plane's relative and absolute tolerance class variables
-        """
-        return trig.isclose_tuple(value_a, value_b,
-                                  rel_tol=self.relative_tolerance,
-                                  abs_tol=self.absolute_tolerance)
-    
     # Static Methods #
     @staticmethod
     def _closest_to_origin(point: Point, vector: tuple) -> Point:
@@ -171,9 +145,9 @@ class Plane:
         """
         if isinstance(other, Plane):
             return (
-                self._isclose_tuple(tuple(self.reference_point),
-                                    tuple(other.reference_point))
-                and self._isclose_tuple(self.normal, other.normal)
+                isclose(tuple(self.reference_point),
+                        tuple(other.reference_point))
+                and isclose(self.normal, other.normal)
             )
         else:
             return NotImplemented

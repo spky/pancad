@@ -4,12 +4,15 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 import math
-from functools import singledispatchmethod
+from functools import partial, singledispatchmethod
 from numbers import Real
 
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
+from PanCAD.utils import comparison
+
+isclose = partial(comparison.isclose, nan_equal=False)
 
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
@@ -30,10 +33,6 @@ class Point:
                 identification.
     :param unit: The unit of the point's length values.
     """
-    
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
     
     def __init__(self, cartesian: (tuple[float, float, float]
                                    | np.ndarray | float) = None,
@@ -410,9 +409,11 @@ class Point:
         :returns: Whether the tuples of the points are equal.
         """
         if isinstance(other, Point):
-            return trig.isclose_tuple(tuple(self), tuple(other),
-                                      self.relative_tolerance,
-                                      self.absolute_tolerance)
+            if len(self) == len(other):
+                return isclose(tuple(self), tuple(other))
+            else:
+                raise ValueError("Can only compare points with the same"
+                                 " number of dimensions")
         else:
             return NotImplemented
     

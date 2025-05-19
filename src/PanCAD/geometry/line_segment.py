@@ -4,6 +4,7 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 import math
+from functools import partial
 
 import numpy as np
 
@@ -14,15 +15,12 @@ class LineSegment:
     """A class representing a finite line in 2D and 3D space.
     """
     
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
-    def __init__(self, point_a: Point | tuple, point_b: Point | tuple,
+    def __init__(self, point_a: Point | tuple | np.ndarray, point_b: Point | tuple,
                  uid: str = None):
         self.uid = uid
         
-        if isinstance(point_a, tuple): point_a = Point(point_a)
-        if isinstance(point_b, tuple): point_b = Point(point_b)
+        if isinstance(point_a, (tuple, np.ndarray)): point_a = Point(point_a)
+        if isinstance(point_b, (tuple, np.ndarray)): point_b = Point(point_b)
         
         self.update_points(point_a, point_b)
     
@@ -138,20 +136,6 @@ class LineSegment:
         else:
             raise ValueError("""point_a and point_b must have the same number of
                               dimensions to initialize a line segment""")
-    
-    # Private Methods
-    def _isclose(self, value_a: float, value_b: float) -> bool:
-        """Returns whether value_a is close to value_b using the LineSegment's
-        class variables.
-        
-        :param value_a: A value to compare
-        :param value_b: Another value to compare
-        :returns: True if value_a == value_b within the relative and absolute 
-                  tolerance class variables
-        """
-        return math.isclose(value_a, value_b,
-                            rel_tol=self.relative_tolerance,
-                            abs_tol=self.absolute_tolerance)
     
     def _update_axis_length(self, value: float, axis: int, from_point_a: bool):
         new_vector_ab = self.get_vector_ab()

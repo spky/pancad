@@ -90,6 +90,17 @@ def perpendicular(geometry_a, geometry_b) -> bool:
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
+@singledispatch
+def project(non_plane, plane):
+    """Returns the projection of the non_plane geometry onto the plane.
+    
+    :param non_plane: A Point, Line, or LineSegment
+    :param plane: A Plane
+    :returns: The geometry representing the projection of the non plane geometry 
+        onto the plane
+    """
+    raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
+
 def symmetric():
     raise NotImplementedError(f"TODO: Future work, not implemented")
 
@@ -412,6 +423,29 @@ def perpendicular_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
+@project.register
+def project_point(point: Point, plane: Plane) -> Point:
+    r_project = point - np.dot(plane.normal, point) * np.array(plane.normal)
+    return Point(r_project + plane.reference_point)
+
+@project.register
+def project_line(line: Line, plane: Plane) -> Point | Line:
+    if perpendicular(line, plane):
+        return project(line.reference_point, plane)
+    else:
+        point1, point2 = conversion.get_2_points_on_line(line)
+        return Line.from_two_points(project(point1, plane),
+                                    project(point2, plane))
+
+@project.register
+def project_line_segment(line_segment: LineSegment,
+                         plane: Plane) -> Point | LineSegment:
+    if perpendicular(line_segment, plane):
+        return project(line_segment.point_a, plane)
+    else:
+        return LineSegment(project(line_segment.point_a, plane),
+                           project(line_segment.point_b, plane))
+
 @skew.register
 def skew_line(line: Line, other: Line | LineSegment) -> bool:
     if isinstance(other, Line):
@@ -532,7 +566,7 @@ def get_intersect_line(line: Line,
     elif isinstance(other, LineSegment):
         return get_intersect(line, other.get_line())
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return get_intersect(other, line)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -543,7 +577,7 @@ def get_intersect_line_segment(line_segment: LineSegment,
     if isinstance(other, (Line, LineSegment)):
         return get_intersect(line_segment.get_line(), other)
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        return get_intersect(other, line_segment.get_line())
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
