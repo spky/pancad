@@ -71,9 +71,7 @@ class Line:
         radians.
         
         :getter: Returns the azimuth component of the line's direction.
-        :setter: Sets the azimuth component of the line while keeping theta 
-                 the same. Checks the value for polar or spherical vector 
-                 validity and will error if it is violated.
+        :setter: None, read-only. Use a public method to change the direction
         """
         return trig.phi_of_cartesian(self.direction)
     
@@ -83,7 +81,7 @@ class Line:
         
         :getter: Returns the Point instance representing the point closest to 
                  the origin on the line.
-        :setter: There is no setter, reference_point is read-only
+        :setter: None, read-only. Use a public method to change the line position
         """
         return self._point_closest_to_origin
     
@@ -109,10 +107,8 @@ class Line:
         """The spherical inclination component of the line's direction in 
         radians.
         
-        :getter: Returns the inclination coordinate of the point.
-        :setter: Sets the inclination component of the line's direction. 
-                 Checks the value for polar or spherical vector validity and 
-                 will error if it is violated.
+        :getter: Returns the inclination angle of the line's direction
+        :setter: None, read-only. Use a public method to change the direction
         """
         return trig.theta_of_cartesian(self.direction)
     
@@ -203,6 +199,7 @@ class Line:
         point closest to the origin.
         
         :param t: The value of the line parameter
+        :returns: The point on the line corresponding to the parameter's value
         """
         return Point(
             np.array(self.reference_point) + trig.to_1D_np(self.direction)*t

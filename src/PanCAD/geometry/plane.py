@@ -15,11 +15,11 @@ isclose = partial(comparison.isclose, nan_equal=False)
 
 class Plane:
     
-    def __init__(self, point: Point = None,
+    def __init__(self, point: Point | tuple | np.ndarray = None,
                  normal_vector: list | tuple | np.ndarray = None,
                  uid: str = None):
         self.uid = uid
-        point = Point(point) if isinstance(point, tuple) else point
+        point = Point(point) if isinstance(point, (tuple, np.ndarray)) else point
         if isinstance(point, Point):
             self.move_to_point(point, normal_vector)
         elif point is None:
@@ -39,14 +39,74 @@ class Plane:
         return self._normal
     
     @property
+    def normal_spherical(self) -> tuple:
+        """The unit vector describing the normal direction of the plane in 
+        spherical coordinates
+        
+        :getter: Returns the normal vector of the plane as a spherical tuple
+        :setter: None, read-only. Use a public method to change the direction
+        """
+        return trig.cartesian_to_spherical(self.normal)
+    
+    @property
+    def phi(self) -> float:
+        """The spherical azimuth component of the plane's normal vector in 
+        radians.
+        
+        :getter: Returns the azimuth component of the plane's normal vector
+        :setter: None, read-only. Use a public method to change the normal vector
+        """
+        return trig.phi_of_cartesian(self.normal)
+    
+    @property
     def reference_point(self) -> Point:
         """The closest point to the origin on the plane.
         
-        :getter: Returns the Point instance representing the point closest to 
-                 the origin on the plane.
-        :setter: There is no setter, reference_point is read-only
+        :getter: Returns a copy of the Point instance representing the point 
+            closest to the origin on the plane.
+        :setter: None, read-only. Use a public method to change the plane position
         """
         return self._point_closest_to_origin.copy()
+    
+    @property
+    def theta(self) -> float:
+        """The spherical inclination component of the plane's normal vector in 
+        radians.
+        
+        :getter: Returns the inclination angle of the plane's normal vector.
+        :setter: None, read-only. Use a public method to change the normal vector
+        """
+        return trig.theta_of_cartesian(self.normal)
+    
+    @property
+    def uid(self) -> str:
+        """The unique id of the plane. Can also be interpreted as the name of 
+        the plane
+        
+        :getter: Returns the unique id as a string.
+        :setter: Sets the unique id.
+        """
+        return self._uid
+    
+    # Setters #
+    @normal.setter
+    def normal(self, vector: list | tuple | np.ndarray):
+        if vector is not None:
+            self._normal = trig.to_1D_tuple(trig.get_unit_vector(vector))
+        else:
+            self._normal = None
+    
+    @phi.setter
+    def phi(self, value: float):
+        raise NotImplementedError
+    
+    @theta.setter
+    def theta(self, value: float):
+        raise NotImplementedError
+    
+    @uid.setter
+    def uid(self, uid: str) -> None:
+        self._uid = uid
     
     # Public Methods #
     def get_d(self) -> float:
@@ -80,7 +140,7 @@ class Plane:
         if normal_vector is None:
             normal_vector = self.normal
         else:
-            self._normal = trig.to_1D_tuple(trig.get_unit_vector(normal_vector))
+            self.normal = normal_vector
         self._point_closest_to_origin = Plane._closest_to_origin(point,
                                                                  normal_vector)
         return self

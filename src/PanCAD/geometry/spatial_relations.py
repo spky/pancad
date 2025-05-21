@@ -481,7 +481,7 @@ def skew_line_segment(line_segment: LineSegment, other: Line | LineSegment) -> b
 @get_angle_between.register
 def get_angle_between_line(line: Line, other: Line | LineSegment | Plane,
                            supplement: bool=False,
-                           signed: bool=False) -> bool | None:
+                           signed: bool=False) -> float | None:
     if isinstance(other, Line):
         if parallel(line, other):
             return math.pi if supplement else 0
@@ -503,7 +503,15 @@ def get_angle_between_line(line: Line, other: Line | LineSegment | Plane,
     elif isinstance(other, LineSegment):
         return get_angle_between(line, other.get_line(), supplement, signed)
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        if perpendicular(line, other):
+            if signed:
+                raise NotImplementedError("Signed perpendicular angle between"
+                                          " lines and planes not yet implemented")
+            else:
+                return math.pi/2
+        else:
+            projected_line = project(line, other)
+            return get_angle_between(line, projected_line, supplement, signed)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -511,7 +519,7 @@ def get_angle_between_line(line: Line, other: Line | LineSegment | Plane,
 def get_angle_between_line_segment(line_segment: LineSegment,
                                    other: Line | LineSegment | Plane,
                                    supplement: bool=False,
-                                   signed: bool=False) -> bool | None:
+                                   signed: bool=False) -> float | None:
     if isinstance(other, Line):
         return get_angle_between(line_segment.get_line(), other,
                                  supplement, signed)
@@ -519,6 +527,36 @@ def get_angle_between_line_segment(line_segment: LineSegment,
         return get_angle_between(line_segment.get_line(), other.get_line(),
                                  supplement, signed)
     elif isinstance(other, Plane):
+        raise NotImplementedError(f"{other.__class__} not implemented yet")
+    else:
+        raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+@get_angle_between.register
+def get_angle_between_plane(plane: Plane, other: Line | LineSegment | Plane,
+                            supplement: bool=False, signed:bool=False) -> float:
+    if isinstance(other, Line):
+        if perpendicular(plane, other):
+            if signed:
+                raise NotImplementedError("Signed perpendicular angle between"
+                                          " lines and planes not yet implemented")
+            else:
+                return math.pi/2
+        else:
+            projected_line = project(other, plane)
+            return get_angle_between(projected_line, other, supplement, signed)
+    elif isinstance(other, LineSegment):
+        raise NotImplementedError(f"{other.__class__} not implemented yet")
+    elif isinstance(other, Plane):
+        # Also called the "Dihedral Angle"
+        dot_product = np.dot(plane.normal, other.normal)
+        if supplement:
+            angle = math.pi - math.acos(dot_product)
+        else:
+            angle = math.acos(dot_product)
+        if signed:
+                raise NotImplementedError("Signed angle between planes not"
+                                          " yet implemented")
+        return angle
         raise NotImplementedError(f"{other.__class__} not implemented yet")
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")

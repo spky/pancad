@@ -1,4 +1,5 @@
 import itertools
+from itertools import repeat
 import math
 import os
 import unittest
@@ -274,6 +275,93 @@ class TestGetAngleBetweenLines(unittest.TestCase):
                                                         supplement, signed),
                     angle
                 )
+
+class TestGetAngleBetweenPlaneLinePhi0(unittest.TestCase):
+    
+    def setUp(self):
+        phi_zero = 0 # Zero so the test focuses just on theta
+        self.line_pre = [
+            [(0, 0, 0), phi_zero, 90],
+            [(0, 0, 0), phi_zero, 45],
+            [(0, 0, 0), phi_zero, 30],
+            [(0, 0, 0), phi_zero, 0],
+        ]
+        self.plane_pre = [
+            [(0, 0, 0), phi_zero, 0],
+        ]
+        
+        line_params = [(Point(pt), math.radians(p), math.radians(t))
+                       for pt, p, t in self.line_pre]
+        plane_params = [(Point(pt), math.radians(p), math.radians(t))
+                        for pt, p, t in self.plane_pre]
+        
+        lines = itertools.starmap(Line.from_point_and_angle, line_params)
+        planes = itertools.starmap(Plane.from_point_and_angles, plane_params)
+        self.pairs = []
+        for p in planes:
+            self.pairs.extend(zip(lines, repeat(p)))
+    
+    def test_line_plane_unsigned(self):
+        tests = [(line, pln, math.pi/2 - line.theta - pln.theta)
+                 for line, pln in self.pairs]
+        for line, plane, angle in tests:
+            with self.subTest(line=line, plane=plane,
+                              angle=f"R:{angle} D:{math.degrees(angle)}"):
+                self.assertAlmostEqual(
+                    spatial_relations.get_angle_between(line, plane),
+                    angle
+                )
+    
+    def test_line_plane_unsigned_supplement(self):
+        tests = [(line, pln, math.pi - (math.pi/2 - line.theta - pln.theta))
+                 for line, pln in self.pairs]
+        for line, plane, angle in tests:
+            with self.subTest(line=line, plane=plane,
+                              angle=f"R:{angle} D:{math.degrees(angle)}"):
+                self.assertAlmostEqual(
+                    spatial_relations.get_angle_between(line, plane,
+                                                        supplement=True),
+                    angle
+                )
+
+class TestGetAngleBetweenPlanes(unittest.TestCase):
+    
+    def test_perpendicular(self):
+        plane_params = [
+            [(0, 0, 0), 0, 0],
+            [(0, 0, 0), 0, 90],
+        ]
+        
+        plane_params = [(Point(pt), math.radians(phi), math.radians(theta))
+                        for pt, phi, theta in plane_params]
+        plane1 = Plane.from_point_and_angles(*plane_params[0])
+        plane2 = Plane.from_point_and_angles(*plane_params[1])
+        result = spatial_relations.get_angle_between(plane1, plane2)
+        self.assertAlmostEqual(result, math.radians(90))
+    
+    def test_45(self):
+        plane_params = [
+            [(0, 0, 0), 0, 0],
+            [(0, 0, 0), 0, 45],
+        ]
+        plane_params = [(Point(pt), math.radians(phi), math.radians(theta))
+                        for pt, phi, theta in plane_params]
+        plane1 = Plane.from_point_and_angles(*plane_params[0])
+        plane2 = Plane.from_point_and_angles(*plane_params[1])
+        result = spatial_relations.get_angle_between(plane1, plane2)
+        self.assertAlmostEqual(result, math.radians(45))
+    
+    def test_135(self):
+        plane_params = [
+            [(0, 0, 0), 0, 0],
+            [(0, 0, 0), 0, 135],
+        ]
+        plane_params = [(Point(pt), math.radians(phi), math.radians(theta))
+                        for pt, phi, theta in plane_params]
+        plane1 = Plane.from_point_and_angles(*plane_params[0])
+        plane2 = Plane.from_point_and_angles(*plane_params[1])
+        result = spatial_relations.get_angle_between(plane1, plane2)
+        self.assertAlmostEqual(result, math.radians(135))
 
 class TestCoplanarPoints(unittest.TestCase):
     
