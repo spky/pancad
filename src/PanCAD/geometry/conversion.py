@@ -9,9 +9,9 @@ import numpy as np
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry import Point, Line, LineSegment, Plane
-from PanCAD.utils import verification
+from PanCAD.utils import comparison
 
-isclose = partial(verification.isclose, nan_equal=True)
+isclose = partial(comparison.isclose, nan_equal=True)
 
 def to_line(line_segment: LineSegment) -> Line:
     return line_segment.get_line()

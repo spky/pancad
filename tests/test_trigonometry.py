@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import unittest
 import math
+from math import radians, degrees
 
 import numpy as np
 
@@ -9,6 +10,7 @@ sys.path.append('src')
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.graphics.svg import parsers as sp
+from PanCAD.constants.angle_convention import AngleConvention as AC
 
 class TestTrigonometry(unittest.TestCase):
     
@@ -535,6 +537,40 @@ class TestVectorUtilities(unittest.TestCase):
             with self.subTest(value=value, expected_tuple=expected_tuple):
                 self.assertCountEqual(trig.to_1D_np(value), expected_tuple)
                 self.assertEqual(str(trig.to_1D_np(value)), str(expected_tuple))
+    
+    def test_is_clockwise_2d(self):
+        v1 = (1, 0)
+        v2 = (0, 1)
+        self.assertFalse(trig.is_clockwise(v1, v2))
+        self.assertTrue(trig.is_clockwise(v2, v1))
+    
+    def test__get_angle_between_2d_vectors_tau(self):
+        v1 = (1, 0)
+        for phi in range(0, 360, 45):
+            v2 = trig.polar_to_cartesian((1, radians(phi)))
+            with self.subTest(vector1=v1, vector2=v2,
+                              phi=f"R: {radians(phi)}, D: {phi}"):
+                angle = trig.get_vector_angle(v1, v2, convention=AC.PLUS_TAU)
+                self.assertAlmostEqual(angle, radians(phi))
+    
+    def test__get_angle_between_2d_vectors_2pi_explementary(self):
+        v1 = (1, 0)
+        for phi in range(0, 360, 45):
+            v2 = trig.polar_to_cartesian((1, radians(phi)))
+            with self.subTest(vector1=v1, vector2=v2,
+                              phi=f"R: {radians(phi)}, D: {phi}"):
+                angle = trig.get_vector_angle(
+                    v1, v2, opposite=True, convention=AC.PLUS_TAU
+                )
+                self.assertAlmostEqual(angle, math.tau-radians(phi))
+    
+    def test__get_angle_between_3d_vectors_pi(self):
+        theta = 90
+        v1 = trig.spherical_to_cartesian((1, 0, radians(theta)))
+        for phi in range(0, 180+1, 45):
+            v2 = trig.spherical_to_cartesian((1, radians(phi), radians(theta)))
+            angle = trig.get_vector_angle(v1, v2)
+            self.assertAlmostEqual(angle, radians(phi))
 
 class TestPrecisionComparison(unittest.TestCase):
     

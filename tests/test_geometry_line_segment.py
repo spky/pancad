@@ -57,6 +57,76 @@ class TestLineSegmentInit3d(unittest.TestCase):
                 verification.assertPanCADAlmostEqual(self, test, check,
                                                      ROUNDING_PLACES)
 
+class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
+    def test_init_polar_vector(self):
+        point = (0, 0)
+        polar = (2, math.radians(45))
+        test_ls = LineSegment.from_point_length_angle(point, polar)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_polar_float(self):
+        point = (0, 0)
+        polar = (2, math.radians(45))
+        test_ls = LineSegment.from_point_length_angle(point, *polar)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_spherical_vector(self):
+        point = (0, 0, 0)
+        spherical = (2, math.radians(45), math.radians(90))
+        test_ls = LineSegment.from_point_length_angle(point, spherical)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_spherical_float(self):
+        point = (0, 0, 0)
+        spherical = (2, math.radians(45), math.radians(90))
+        test_ls = LineSegment.from_point_length_angle(point, *spherical)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+
+class TestLineSegmentFromPointLengthAngleExceptions(unittest.TestCase):
+    
+    def setUp(self):
+        self.pt2d = (0, 0)
+        self.polar = (2, math.radians(45))
+        self.pt3d = self.pt2d + (0,)
+        self.spherical = self.polar + (math.radians(90),)
+        self.length, self.phi, self.theta = self.spherical
+    
+    def test_polar_vector_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.polar, 3)
+    
+    def test_polar_vector_phi_theta(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.polar, 3, 3)
+    
+    def test_spherical_vector_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3)
+    
+    def test_spherical_vector_phi_theta(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3, 3)
+    
+    def test_length_no_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.length)
+    
+    def test_dimension_mismatch_3to2(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.polar)
+    
+    def test_dimension_mismatch_2to3(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.spherical)
+
 class TestLineSegmentGetters(unittest.TestCase):
     
     def setUp(self):

@@ -1,11 +1,13 @@
 import itertools
 from itertools import repeat
 import math
+from math import radians, degrees
 import os
 import unittest
 
 from PanCAD.geometry import Point, Line, LineSegment, Plane, spatial_relations
-from PanCAD.utils import verification
+from PanCAD.utils import verification, trigonometry as trig
+from PanCAD.constants.angle_convention import AngleConvention as AC
 
 ROUNDING_PLACES = 10
 
@@ -215,66 +217,52 @@ class TestSkewLines(unittest.TestCase):
 class TestGetAngleBetweenLines(unittest.TestCase):
     
     def setUp(self):
-        line1s = [
-            ((0, 0), (0, 1)),
-            ((0, 0), (1, 0)),
-            ((0, 0), (1, 0)),
-            ((0, 0), (1, 0)),
-            ((0, 0), (1, 0)),
-            ((0, 0), (1, 1)),
-        ]
-        line2s = [
-            ((0, 0), (1, 0)),
-            ((0, 0), (0, 1)),
-            ((0, 0), (-1, 1)),
-            ((0, 1), (1, 1)),
-            ((0, 0), (1, 1)),
-            ((0, 0), (1, 0)),
-        ]
-        signed_angles = [
-            (-90, 90),
-            (90, -90),
-            (135, -45),
-            (0, 180),
-            (45, -135),
-            (-45, 135),
-        ]
-        angles = [math.radians(a[0]) for a in signed_angles]
-        supplements = [math.radians(a[1]) for a in signed_angles]
-        line_constructors = [Line.from_two_points, LineSegment] #, LineSegment]
-        
-        line_input_iters = [
-            (map(abs, iter(angles)),
-             itertools.repeat(False), itertools.repeat(False)),
-            (map(abs, iter(supplements)),
-             itertools.repeat(True), itertools.repeat(False)),
-            (iter(angles), itertools.repeat(False), itertools.repeat(True)),
-            (iter(supplements), itertools.repeat(True), itertools.repeat(True)),
-        ]
-        
-        self.tests = []
-        for lc1, lc2 in itertools.product(line_constructors, repeat=2):
-            for angle_iter, supplement, signed in line_input_iters:
-                self.tests.extend(
-                    zip(itertools.starmap(lc1, line1s),
-                        itertools.starmap(lc2, line2s),
-                        map(abs, iter(angles)),
-                        itertools.repeat(False), itertools.repeat(False)
-                    )
-                )
+        common_pt = (0, 0)
+        lines = [Line.from_point_and_angle(common_pt, radians(phi))
+                 for phi in range(0, 180+1, 45)]
+        self.line_pairs = list(itertools.product(lines, repeat=2))
     
-    def test_get_angle_between_line(self):
-        for line1, line2, angle, supplement, signed in self.tests:
-            with self.subTest(line1=line1, line2=line2,
-                              angle=(f"Radians: {angle}, "
-                                     f"Degrees: {math.degrees(angle)}"),
-                              supplement=supplement,
-                              signed=signed):
-                self.assertAlmostEqual(
-                    spatial_relations.get_angle_between(line1, line2,
-                                                        supplement, signed),
-                    angle
+    def test_get_angle_between_lines_convention_plus_pi(self):
+        CONVENTION = AC.PLUS_PI
+        IS_SUPPLEMENT = False
+        for l1, l2 in self.line_pairs:
+            angle = abs(l2.phi - l1.phi)
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
                 )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_get_angle_between_lines_convention_sign_pi(self):
+        CONVENTION = AC.SIGN_PI
+        IS_SUPPLEMENT = False
+        for l1, l2 in self.line_pairs:
+            angle = abs(l2.phi - l1.phi)
+            if trig.is_clockwise(l1.direction, l2.direction):
+                angle = -angle
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+
+class TestGetAngleBetweenLineSegments(unittest.TestCase):
+    
+    def test_horizontal_0_to_315_phi(self):
+        common_pt = (0, 0)
+        start_phi = radians(0)
+        length = 1
+        
+        start_polar = (length, start_phi)
+        start_ls = LineSegment.from_point_length_angle(common_pt, start_polar)
+        for phi in range(0, 360, 45):
+            polar = (length, radians(phi))
+            test_ls = LineSegment.from_point_length_angle(common_pt, polar)
+            result = spatial_relations.get_angle_between(start_ls, test_ls,
+                                                         convention=AC.PLUS_TAU)
+            self.assertAlmostEqual(result, radians(phi))
 
 class TestGetAngleBetweenPlaneLinePhi0(unittest.TestCase):
     
@@ -320,7 +308,7 @@ class TestGetAngleBetweenPlaneLinePhi0(unittest.TestCase):
                               angle=f"R:{angle} D:{math.degrees(angle)}"):
                 self.assertAlmostEqual(
                     spatial_relations.get_angle_between(line, plane,
-                                                        supplement=True),
+                                                        opposite=True),
                     angle
                 )
 

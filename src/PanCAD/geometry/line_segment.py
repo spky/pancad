@@ -15,12 +15,14 @@ class LineSegment:
     """A class representing a finite line in 2D and 3D space.
     """
     
-    def __init__(self, point_a: Point | tuple | np.ndarray, point_b: Point | tuple,
+    def __init__(self, point_a: Point|tuple|np.ndarray, point_b: Point|tuple,
                  uid: str = None):
         self.uid = uid
         
-        if isinstance(point_a, (tuple, np.ndarray)): point_a = Point(point_a)
-        if isinstance(point_b, (tuple, np.ndarray)): point_b = Point(point_b)
+        if isinstance(point_a, (tuple, np.ndarray)):
+            point_a = Point(point_a)
+        if isinstance(point_b, (tuple, np.ndarray)):
+            point_b = Point(point_b)
         
         self.update_points(point_a, point_b)
     
@@ -146,6 +148,55 @@ class LineSegment:
         else:
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
+    
+    # Class Methods #
+    @classmethod
+    def from_point_length_angle(cls, point: Point|tuple|list|np.ndarray,
+                                length: float|tuple|list|np.ndarray,
+                                phi: float=None, theta: float=None,
+                                uid: str=None):
+        """Returns a LineSegment defined by a point and a length, azimuth angle 
+        phi, and inclination angle theta relative to the point.
+        
+        :point: A Point, or iterable with 2 or 3 dimensions
+        :length: The length of the segment, or a polar/spherical vector iterable
+        :phi: The azimuth angle of the line relative to the point in radians. 
+            Must not be given or None if length is a polar/spherical vector.
+        :theta: The inclination angle of the line relative to the point in 
+            radians. Must be None or not given to make the line 2D.
+        :returns: A LineSegment with its start at point, and end at the point's 
+            position plus the polar/spherical vector
+        """
+        length_number_input = isinstance(length, (int,float))
+        if length_number_input and phi is not None and theta is None:
+            vector_ab = trig.polar_to_cartesian((length, phi))
+        elif length_number_input and phi is not None and theta is not None:
+            vector_ab = trig.spherical_to_cartesian((length, phi, theta))
+        elif isinstance(length, (tuple|np.ndarray)) and phi is None:
+            if len(length) == 2:
+                vector_ab = trig.polar_to_cartesian(length)
+            elif len(length) == 3:
+                vector_ab = trig.spherical_to_cartesian(length)
+            else:
+                raise ValueError(f"Spherical/Polar Vector must have 2 or 3"
+                                 f" elements, given {length}")
+        elif (isinstance(length, (tuple|np.ndarray))
+                and (phi is not None or theta is not None)):
+            raise ValueError("phi/theta must not be given or None if a "
+                             "polar/spherical vector was provided. Given"
+                             f" Vector: {length}, phi: {phi}, theta: {theta}")
+        elif length_number_input and phi is None:
+            raise ValueError("If length is a number, phi must not be None")
+        else:
+            raise ValueError(f"Unhandled type combo given {point.__class__},"
+                             f" {length.__class__}, {phi.__class__},"
+                             f" {theta.__class__}")
+        
+        if len(point) == len(vector_ab):
+            return cls(point, np.array(point) + vector_ab, uid)
+        else:
+            raise ValueError("Point and vector must have the same number of"
+                             " dimensions")
     
     # Python Dunders #
     def __copy__(self) -> LineSegment:

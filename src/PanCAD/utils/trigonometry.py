@@ -2,11 +2,16 @@
 between formats.
 """
 
-import functools
+from functools import partial
 import math
+from math import degrees
 import json
 
 import numpy as np
+from numpy.linalg import norm
+
+from PanCAD.utils import comparison
+from PanCAD.constants.angle_convention import AngleConvention as AC
 
 def point_2d(point: list[float | int]) -> np.ndarray:
     """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
@@ -190,9 +195,9 @@ def rotation(angle: float, rotate_around: str) -> np.ndarray:
             ]
     return np.array(matrix)
 
-rotation_x = functools.partial(rotation, rotate_around="x")
-rotation_y = functools.partial(rotation, rotate_around="y")
-rotation_z = functools.partial(rotation, rotate_around="z")
+rotation_x = partial(rotation, rotate_around="x")
+rotation_y = partial(rotation, rotate_around="y")
+rotation_z = partial(rotation, rotate_around="z")
 
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.
@@ -892,3 +897,116 @@ def cartesian_to_spherical(
     else:
         raise ValueError(f"Invalid cartesian vector, must be 3 long to return"
                          + f" a polar coordinate, given: {cartesian}")
+
+def is_clockwise(vector1: list|tuple|np.ndarray,
+                 vector2: list|tuple|np.ndarray) -> bool:
+    """Returns whether vector2 is clockwise of vector1.
+    
+    :param vector1: A vector with cartesian components
+    :param vector2: Another vector with the same number of cartesian components 
+        as vector1
+    :returns: Whether vector2 is clockwise of vector1
+    """
+    if len(vector1) == len(vector2) == 2:
+        x1, y1 = vector1
+        vector1_90_ccw = (-y1, x1)
+        return np.dot(vector1_90_ccw, vector2) < 0
+    else:
+        raise ValueError("Given vectors must both have 2 components")
+
+def get_vector_angle(vector1: list|tuple|np.ndarray,
+                     vector2: list|tuple|np.ndarray, *,
+                     opposite: bool=False, convention: AC=AC.PLUS_PI) -> float:
+    """Returns the angle between vector1 and vector2 based on the given angle 
+    convention.
+    
+    :param vector1: A vector with cartesian components
+    :param vector2: Another vector with cartesian components
+    :param opposite: Sets whether to return the supplement/explement of the angle 
+        between vector1 and vector2.
+    :param convention: The angle convention the output will follow. See 
+        PanCAD.constants.angle_convention.AngleConvention for available options.
+    :returns: The angle between vector1 and vector2
+    """
+    dimensions = len(vector1)
+    if dimensions != len(vector2):
+        raise ValueError("Vectors must be the same length")
+    elif dimensions == 2:
+        match convention:
+            case AC.PLUS_PI | AC.PLUS_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, False)
+            case AC.SIGN_PI | AC.SIGN_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, True)
+            case AC.PLUS_TAU | AC.PLUS_360:
+                angle = _get_angle_between_2d_vectors_2pi(vector1, vector2,
+                                                          opposite)
+            case _:
+                raise ValueError(f"Convention {convention} not recognized")
+    elif dimensions == 3:
+        angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
+    
+    if convention in (AC.PLUS_180, AC.PLUS_360, AC.SIGN_180):
+        return degrees(angle)
+    else:
+        return angle
+
+def _get_angle_between_2d_vectors_2pi(vector1: list|tuple|np.ndarray,
+                                      vector2: list|tuple|np.ndarray,
+                                      explementary: bool=False) -> float:
+    """Returns the counter-clockwise angle between vector1 and vector2 in radians 
+    bounded between 0 and 2*pi. Returns the clockwise angle if explementary is 
+    set to True.
+    
+    :param vector1: A 2D vector with cartesian components
+    :param vector2: Another 2D vector with cartesian components
+    :param explementary: Sets whether to return the explement of the angle 
+        between vector1 and vector2
+    :returns: The angle between vector1 and vector2
+    """
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    angle = math.acos(unit_dot)
+    
+    if is_clockwise(vector1, vector2):
+        angle = math.tau - angle
+    
+    if explementary:
+        return math.tau - angle
+    else:
+        return angle
+
+def _get_angle_between_2d_vectors_pi(vector1: list|tuple|np.ndarray,
+                                     vector2: list|tuple|np.ndarray,
+                                     supplementary: bool=False,
+                                     signed: bool=False) -> float:
+    """Returns the angle between vector1 and vector2 in radians between 0 and 
+    pi.
+    
+    :param vector1: A 2D vector with cartesian components
+    :param vector2: Another 2D vector with cartesian components
+    :param supplementary: Sets whether to return the supplement of the angle 
+        between vector1 and vector2
+    :param signed: Sets whether to return a negative angle if the angle is 
+        oriented clockwise
+    :returns: The angle between vector1 and vector2
+    """
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    angle = math.acos(unit_dot)
+    if supplementary:
+        angle = math.pi - angle
+    
+    if signed and (is_clockwise(vector1, vector2) ^ supplementary):
+        return -angle
+    else:
+        return angle
+
+def _get_angle_between_3d_vectors_pi(vector1: list|tuple|np.ndarray,
+                                     vector2: list|tuple|np.ndarray,
+                                     supplementary: bool=False) -> float:
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    angle = math.acos(unit_dot)
+    if supplementary:
+        return math.pi - angle
+    else:
+        return angle

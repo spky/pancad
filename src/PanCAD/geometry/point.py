@@ -195,7 +195,7 @@ class Point:
         if len(value) == 2 or len(value) == 3:
             self._cartesian = value
         else:
-            raise ValueError(f"Given cartesian {cartesian} needs 2 or 3 elements")
+            raise ValueError(f"Given cartesian {value} needs 2 or 3 elements")
     
     @uid.setter
     def uid(self, uid: str) -> None:
@@ -369,7 +369,14 @@ class Point:
     def __add__(self, other) -> tuple:
         """Returns the addition of two point's cartesian position vectors as a 
         tuple"""
-        if isinstance(other, Point):
+        if isinstance(other, (np.ndarray, tuple)):
+            if len(self) == len(other):
+                print(self)
+                numpy_array = np.array(self) + np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot add 2D points/arrays to/from 3D point/arrays")
+        elif isinstance(other, Point):
             if len(self) == len(other):
                 numpy_array = np.array(self) + np.array(other)
                 return tuple(map(lambda x: x.item(), numpy_array))
