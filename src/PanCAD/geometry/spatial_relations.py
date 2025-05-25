@@ -522,8 +522,6 @@ def get_angle_between_line_segment(line_segment: LineSegment,
             line_segment.get_vector_ab(), other.get_vector_ab(),
             opposite=opposite, convention=convention
         )
-        return get_angle_between(line_segment.get_line(), other.get_line(),
-                                 opposite=opposite, convention=convention)
     elif isinstance(other, Plane):
         raise NotImplementedError(f"{other.__class__} not implemented yet")
     else:

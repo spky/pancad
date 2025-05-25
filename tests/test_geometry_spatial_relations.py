@@ -250,19 +250,143 @@ class TestGetAngleBetweenLines(unittest.TestCase):
 
 class TestGetAngleBetweenLineSegments(unittest.TestCase):
     
-    def test_horizontal_0_to_315_phi(self):
+    def setUp(self):
         common_pt = (0, 0)
-        start_phi = radians(0)
         length = 1
-        
-        start_polar = (length, start_phi)
-        start_ls = LineSegment.from_point_length_angle(common_pt, start_polar)
-        for phi in range(0, 360, 45):
-            polar = (length, radians(phi))
-            test_ls = LineSegment.from_point_length_angle(common_pt, polar)
-            result = spatial_relations.get_angle_between(start_ls, test_ls,
-                                                         convention=AC.PLUS_TAU)
-            self.assertAlmostEqual(result, radians(phi))
+        segments = [
+            LineSegment.from_point_length_angle(common_pt, length, radians(phi))
+            for phi in range(0, 360 + 1, 45)
+        ]
+        self.segment_pairs = list(itertools.product(segments, repeat=2))
+    
+    def test_convention_plus_tau(self):
+        CONVENTION = AC.PLUS_TAU
+        IS_EXPLEMENT = False
+        for l1, l2 in self.segment_pairs:
+            phi1 = l1.phi
+            phi2 = l2.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            angle = phi2 - phi1
+            if angle < 0: angle += math.tau
+            
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_EXPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_convention_plus_tau_explement(self):
+        CONVENTION = AC.PLUS_TAU
+        IS_EXPLEMENT = True
+        for l1, l2 in self.segment_pairs:
+            phi1 = l1.phi
+            phi2 = l2.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            angle = phi2 - phi1
+            if angle < 0: angle += math.tau
+            angle = math.tau - angle
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_EXPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_convention_plus_pi(self):
+        CONVENTION = AC.PLUS_PI
+        IS_SUPPLEMENT = False
+        for l1, l2 in self.segment_pairs:
+            phi1 = l1.phi
+            phi2 = l2.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            if phi2 > phi1 and phi2 - phi1 < math.pi:
+                angle = phi2 - phi1
+            elif phi2 > phi1 and phi2 - phi1 > math.pi:
+                angle = math.tau - phi2 + phi1
+            elif phi2 < phi1 and phi1 - phi2 < math.pi:
+                angle = phi1 - phi2
+            elif phi2 < phi1 and phi1 - phi2 > math.pi:
+                angle = math.tau - phi1 + phi2
+            elif abs(phi1 - phi2) == math.pi:
+                angle = math.pi
+            else:
+                angle = 0
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_convention_plus_pi_supplement(self):
+        CONVENTION = AC.PLUS_PI
+        IS_SUPPLEMENT = True
+        for l1, l2 in self.segment_pairs:
+            phi1 = l1.phi
+            phi2 = l2.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            if phi2 > phi1 and phi2 - phi1 < math.pi:
+                angle = phi2 - phi1
+            elif phi2 > phi1 and phi2 - phi1 > math.pi:
+                angle = math.tau - phi2 + phi1
+            elif phi2 < phi1 and phi1 - phi2 < math.pi:
+                angle = phi1 - phi2
+            elif phi2 < phi1 and phi1 - phi2 > math.pi:
+                angle = math.tau - phi1 + phi2
+            elif abs(phi1 - phi2) == math.pi:
+                angle = math.pi
+            else:
+                angle = 0
+            angle = math.pi - angle
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_convention_sign_pi(self):
+        CONVENTION = AC.SIGN_PI
+        IS_SUPPLEMENT = False
+        for l1, l2 in self.segment_pairs:
+            phi1 = l1.phi
+            phi2 = l2.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            diff = abs(phi2 - phi1)
+            if phi2 > phi1 and diff < math.pi:
+                angle = phi2 - phi1
+            
+            elif phi2 > phi1 and diff > math.pi:
+                angle = -(math.tau - phi2 + phi1)
+            
+            elif phi2 < phi1 and diff < math.pi:
+                angle = -(phi1 - phi2)
+            
+            elif phi2 < phi1 and diff > math.pi:
+                angle = math.tau - phi1 + phi2
+            elif phi1 - phi2 == math.pi:
+                angle = -math.pi
+            elif phi1 - phi2 == -math.pi:
+                angle = math.pi
+            else:
+                angle = 0
+            with self.subTest(line1=l1, line2=l2,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
 
 class TestGetAngleBetweenPlaneLinePhi0(unittest.TestCase):
     

@@ -12,6 +12,7 @@ from numpy.linalg import norm
 
 from PanCAD.utils import comparison
 from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.utils.comparison import isclose
 
 def point_2d(point: list[float | int]) -> np.ndarray:
     """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
@@ -767,7 +768,7 @@ def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
 
 def phi_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
     """Returns the polar/spherical azimuth component of the equivalent 
-    polar/spherical vector in radians.
+    polar/spherical vector in radians. Bounded from -pi to pi.
     
     :param cartesian: A 3D vector with cartesian components x, y, z
     :returns: The azimuth component of the equivalent polar/spherical vector
@@ -966,7 +967,10 @@ def _get_angle_between_2d_vectors_2pi(vector1: list|tuple|np.ndarray,
     :returns: The angle between vector1 and vector2
     """
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    angle = math.acos(unit_dot)
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
     
     if is_clockwise(vector1, vector2):
         angle = math.tau - angle
@@ -992,7 +996,11 @@ def _get_angle_between_2d_vectors_pi(vector1: list|tuple|np.ndarray,
     :returns: The angle between vector1 and vector2
     """
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    angle = math.acos(unit_dot)
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
+    
     if supplementary:
         angle = math.pi - angle
     
@@ -1005,7 +1013,11 @@ def _get_angle_between_3d_vectors_pi(vector1: list|tuple|np.ndarray,
                                      vector2: list|tuple|np.ndarray,
                                      supplementary: bool=False) -> float:
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    angle = math.acos(unit_dot)
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
+    
     if supplementary:
         return math.pi - angle
     else:

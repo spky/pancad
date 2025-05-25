@@ -50,6 +50,14 @@ class LineSegment:
         return float(np.linalg.norm(self.get_vector_ab()))
     
     @property
+    def phi(self) -> float:
+        return trig.phi_of_cartesian(self.direction)
+    
+    @property
+    def theta(self) -> float:
+        return trig.theta_of_cartesian(self.direction)
+    
+    @property
     def point_a(self) -> Point:
         return self._point_a
     
