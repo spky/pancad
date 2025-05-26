@@ -13,6 +13,7 @@ from PanCAD.utils import trigonometry as trig
 from PanCAD.utils import comparison
 
 isclose = partial(comparison.isclose, nan_equal=False)
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
@@ -447,12 +448,26 @@ class Point:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the point"""
-        return f"PanCAD_Point{self.cartesian}"
+        pt_strs = []
+        for i in range(0, len(self.cartesian)):
+            if isclose0(self.cartesian[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self.cartesian[i]))
+        point_str = ",".join(pt_strs)
+        return f"<PanCAD_Point({point_str})>"
     
     def __str__(self) -> str:
         """String function to output the point's description and cartesian 
         position when the point is fed to the str() function"""
-        return f"PanCAD Point at cartesian {self.cartesian}"
+        pt_strs = []
+        for i in range(0, len(self.cartesian)):
+            if isclose0(self.cartesian[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self.cartesian[i]))
+        point_str = ", ".join(pt_strs)
+        return f"PanCAD Point at cartesian ({point_str})"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

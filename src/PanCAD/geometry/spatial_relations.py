@@ -134,18 +134,18 @@ def get_angle_between(geometry_a, geometry_b) -> float | None:
     argument.
     
     :param geometry_a: A Line, LineSegment, or Plane
-    :param other: Another Line, LineSegment, or Plane
-    :param supplement: If False, the angle's magnitude is the angle 
+    :param geometry_b: Another Line, LineSegment, or Plane
+    :param opposite: If False, the angle's magnitude is the angle 
         clockwise of this element and counterclockwise of the other element 
         (which is equal to the angle counterclockwise of this element and 
         clockwise of the other element). If True, the angle's magnitude will 
-        be the supplement of the False angle which is the angle of 
-        the other two quadrants. Note: If the elements are parallel, this 
-        will cause the function to return pi
-    :param signed: If False, the absolute value of the angle will be 
-        returned. If True and the element is 2D, angle will be negative if the 
-        angle between this element's direction and the other element's 
-        direction is clockwise
+        be the supplement/explement of the False angle which is the angle of 
+        the other two/four quadrants. Note: If the elements are parallel, this 
+        will cause the function to return pi/tau
+    :param convention: The angle convention selection from the 
+        PanCAD.constants.angle_convention.AngleConvention enumeration. Used to 
+        select how the returned angle should be represented (0 to 2pi, -pi to pi, 
+        etc).
     :returns: The value of the angle between the geometries in radians. If the 
         elements (usually lines) are skew, returns None.
     """
@@ -520,17 +520,32 @@ def get_angle_between_line_segment(line_segment: LineSegment,
                                    opposite: bool=False,
                                    convention: AC=AC.PLUS_PI) -> float | None:
     if isinstance(other, Line):
-        return trig.get_vector_angle(
-            line_segment.direction, other.direction,
-            opposite=opposite, convention=convention
-        )
+        if skew(line_segment, other):
+            return None
+        else:
+            return trig.get_vector_angle(
+                line_segment.direction, other.direction,
+                opposite=opposite, convention=convention
+            )
     elif isinstance(other, LineSegment):
-        return trig.get_vector_angle(
-            line_segment.direction, other.direction,
-            opposite=opposite, convention=convention
-        )
+        if skew(line_segment, other):
+            return None
+        else:
+            return trig.get_vector_angle(
+                line_segment.direction, other.direction,
+                opposite=opposite, convention=convention
+            )
     elif isinstance(other, Plane):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        if perpendicular(line_segment, other):
+            if convention in (AC.SIGN_PI, AC.SIGN_180):
+                raise NotImplementedError("Signed perpendicular angle between"
+                                          " lines and planes not yet implemented")
+            else:
+                return math.pi/2
+        else:
+            projected_line = project(line_segment.get_line(), other)
+            return get_angle_between(line_segment, projected_line,
+                                     opposite=opposite, convention=convention)
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -550,7 +565,16 @@ def get_angle_between_plane(plane: Plane,
             projected_line = project(other, plane)
             return get_angle_between(projected_line, other, opposite, convention)
     elif isinstance(other, LineSegment):
-        raise NotImplementedError(f"{other.__class__} not implemented yet")
+        if perpendicular(plane, other):
+            if convention in (AC.SIGN_PI, AC.SIGN_180):
+                raise NotImplementedError("Signed perpendicular angle between"
+                                          " lines and planes not yet implemented")
+            else:
+                return math.pi/2
+        else:
+            projected_line = project(other.get_line(), plane)
+            return get_angle_between(projected_line, other,
+                                     opposite=opposite, convention=convention)
     elif isinstance(other, Plane):
         # Also called the "Dihedral Angle"
         return trig.get_vector_angle(plane.normal, other.normal,

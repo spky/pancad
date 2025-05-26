@@ -10,6 +10,9 @@ import numpy as np
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry import Point, Line
+from PanCAD.utils import comparison
+
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class LineSegment:
     """A class representing a finite line in 2D and 3D space.
@@ -235,12 +238,35 @@ class LineSegment:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the line"""
-        return f"PanCAD_LineSegment{tuple(self.point_a)}{tuple(self.point_b)}"
+        pt_a_strs, pt_b_strs = [], []
+        for i in range(0, len(self)):
+            if isclose0(self.point_a[i]):
+                pt_a_strs.append("0")
+            else:
+                pt_a_strs.append("{:g}".format(self.point_a[i]))
+            if isclose0(self.point_b[i]):
+                pt_b_strs.append("0")
+            else:
+                pt_b_strs.append("{:g}".format(self.point_b[i]))
+        pt_a_str = ",".join(pt_a_strs)
+        pt_b_str = ",".join(pt_b_strs)
+        return f"<PanCAD_LineSegment({pt_a_str})({pt_b_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
-        return (f"PanCAD LineSegment with point_a {tuple(self.point_a)},"
-                f" point_b {tuple(self.point_b)} and a line in direction"
-                f" {self.get_line().direction}")
+        pt_a_strs, pt_b_strs = [], []
+        for i in range(0, len(self)):
+            if isclose0(self.point_a[i]):
+                pt_a_strs.append("0")
+            else:
+                pt_a_strs.append("{:g}".format(self.point_a[i]))
+            if isclose0(self.point_b[i]):
+                pt_b_strs.append("0")
+            else:
+                pt_b_strs.append("{:g}".format(self.point_b[i]))
+        pt_a_str = ", ".join(pt_a_strs)
+        pt_b_str = ", ".join(pt_b_strs)
+        return (f"PanCAD LineSegment with start ({pt_a_str})"
+                f" and end ({pt_b_str})")

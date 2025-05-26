@@ -12,6 +12,7 @@ from PanCAD.utils import trigonometry as trig
 from PanCAD.utils import comparison
 
 isclose = partial(comparison.isclose, nan_equal=False)
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Plane:
     
@@ -220,12 +221,35 @@ class Plane:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the plane"""
-        return f"PanCAD_Plane{tuple(self._point_closest_to_origin)},{self.normal}"
+        pt_strs, normal_strs = [], []
+        for i in range(0, len(self.normal)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.normal[i]):
+                normal_strs.append("0")
+            else:
+                normal_strs.append("{:g}".format(self.normal[i]))
+        point_str = ",".join(pt_strs)
+        normal_str = ",".join(normal_strs)
+        return f"<PanCAD_Plane({point_str})({normal_str})>"
     
     def __str__(self) -> str:
         """String function to output the plane's description, closest 
         cartesian point to the origin, and cartesian normal unit vector
         """
-        closest_point = tuple(self._point_closest_to_origin)
+        pt_strs, normal_strs = [], []
+        for i in range(0, len(self.normal)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.normal[i]):
+                normal_strs.append("0")
+            else:
+                normal_strs.append("{:g}".format(self.normal[i]))
+        point_str = ", ".join(pt_strs)
+        normal_str = ", ".join(normal_strs)
         return (f"PanCAD Plane with a point closest to the origin at"
-                + f" {closest_point} and with normal vector {self.normal}")
+                + f" ({point_str}) and with normal vector ({normal_str})")

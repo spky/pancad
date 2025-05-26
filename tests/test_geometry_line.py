@@ -35,7 +35,7 @@ class TestLineInit(unittest.TestCase):
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
         expected = ("PanCAD Line with a point closest to the origin at"
-                    + " (1.0, 0.0, 0.0) and in the direction (0.0, 1.0, 0.0)")
+                    + " (1, 0, 0) and in the direction (0, 1, 0)")
         self.assertEqual(str(test), expected)
 
 class TestLineVectorMethods(unittest.TestCase):

@@ -420,12 +420,35 @@ class Line:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the line"""
-        return f"PanCAD_Line{tuple(self._point_closest_to_origin)},{self.direction}"
+        pt_strs, direction_strs = [], []
+        for i in range(0, len(self.direction)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.direction[i]):
+                direction_strs.append("0")
+            else:
+                direction_strs.append("{:g}".format(self.direction[i]))
+        point_str = ",".join(pt_strs)
+        direction_str = ",".join(direction_strs)
+        return f"<PanCAD_Line({point_str})({direction_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
-        closest_point = tuple(self._point_closest_to_origin)
+        pt_strs, direction_strs = [], []
+        for i in range(0, len(self.direction)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.direction[i]):
+                direction_strs.append("0")
+            else:
+                direction_strs.append("{:g}".format(self.direction[i]))
+        point_str = ", ".join(pt_strs)
+        direction_str = ", ".join(direction_strs)
         return (f"PanCAD Line with a point closest to the origin at"
-                + f" {closest_point} and in the direction {self.direction}")
+                + f" ({point_str}) and in the direction ({direction_str})")

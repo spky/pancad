@@ -470,6 +470,21 @@ class TestGetAngleBetweenLineLineSegments2d(unittest.TestCase):
                 )
                 self.assertAlmostEqual(test, angle)
 
+class TestGetAngleBetweenPlaneLineSegment(unittest.TestCase):
+    def test_line_segment_to_plane(self):
+        # Just checks that the functions can run in one case, easier to check 
+        # after the plane can be represented in CAD
+        common_pt = (0, 0, 0)
+        theta = 45
+        ls = LineSegment.from_point_length_angle(
+            common_pt, 1, radians(0), radians(theta)
+        )
+        pln = Plane.from_point_and_angles(common_pt, radians(0), radians(0))
+        test_angle_ls_pln = spatial_relations.get_angle_between(ls, pln)
+        test_angle_pln_ls = spatial_relations.get_angle_between(pln, ls)
+        self.assertAlmostEqual(test_angle_ls_pln, radians(theta))
+        self.assertAlmostEqual(test_angle_pln_ls, radians(theta))
+
 class TestGetAngleBetweenPlaneLinePhi0(unittest.TestCase):
     
     def setUp(self):
