@@ -572,30 +572,6 @@ class TestVectorUtilities(unittest.TestCase):
             angle = trig.get_vector_angle(v1, v2)
             self.assertAlmostEqual(angle, radians(phi))
 
-class TestPrecisionComparison(unittest.TestCase):
-    
-    def setUp(self):
-        self.tests = [
-            ((0, 0, 0), (0, 0, 0), 1e-9, 1e-9, True),
-            ((0, 0, 0), (1e-9, 1e-9, 1e-9), 1e-9, 1e-9, True),
-            ((0, 0, 0), (-1e-9, -1e-9, -1e-9), 1e-9, 1e-9, True),
-            ((0, 0, 0), (2e-9, 2e-9, 2e-9), 1e-9, 1e-9, False),
-            ((0, 0, 0), (-2e-9, -2e-9, -2e-9), 1e-9, 1e-9, False),
-            ((1 + 1e-10, 0, 0), (1, 0, 0), 1e-9, 1e-9, True),
-            ((0, 0, 0), (0, 0), 1e-9, 1e-9, False),
-        ]
-    
-    def test_isclose_tuple(self):
-        for tuple_a, tuple_b, rel_tol, abs_tol, expected_result in self.tests:
-            
-            with self.subTest(tuple_a=tuple_a, tuple_b=tuple_b,
-                              rel_tol=rel_tol, abs_tol=abs_tol,
-                              expected_result=expected_result):
-                self.assertEqual(
-                    trig.isclose_tuple(tuple_a, tuple_b, rel_tol, abs_tol),
-                    expected_result
-                )
-
 if __name__ == "__main__":
     with open("tests/logs/"
               + Path(sys.modules[__name__].__file__).stem

@@ -15,6 +15,7 @@ from PanCAD.utils import trigonometry as trig
 from PanCAD.utils import comparison
 
 isclose = partial(comparison.isclose, nan_equal=False)
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Line:
     """A class representing infinite lines in 2D and 3D space. A Line 
@@ -371,16 +372,18 @@ class Line:
         """
         unit_vector = trig.get_unit_vector(vector)
         if len(unit_vector) == 3:
-            if unit_vector[0] < 0 and unit_vector[1] == 0 and unit_vector[2] == 0:
+            x, y, z = unit_vector
+            if x < 0 and isclose0(y) and isclose0(z):
                 unit_vector = -unit_vector
-            elif unit_vector[1] < 0 and unit_vector[2] == 0:
+            elif y < 0 and isclose0(z):
                 unit_vector = -unit_vector
-            elif unit_vector[2] < 0:
+            elif z < 0:
                 unit_vector = -unit_vector
         elif len(unit_vector) == 2:
-            if unit_vector[0] < 0 and unit_vector[1] == 0:
+            x, y = unit_vector
+            if x < 0 and isclose0(y):
                 unit_vector = -unit_vector
-            elif unit_vector[1] < 0:
+            elif not isclose0(y) and y < 0:
                 unit_vector = -unit_vector
         
         # Add 0 to ensure negative zero representations are eliminated
@@ -424,6 +427,5 @@ class Line:
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
         closest_point = tuple(self._point_closest_to_origin)
-        
         return (f"PanCAD Line with a point closest to the origin at"
                 + f" {closest_point} and in the direction {self.direction}")

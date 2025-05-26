@@ -248,7 +248,7 @@ class TestGetAngleBetweenLines(unittest.TestCase):
                 )
                 self.assertAlmostEqual(test, angle)
 
-class TestGetAngleBetweenLineSegments(unittest.TestCase):
+class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
     
     def setUp(self):
         common_pt = (0, 0)
@@ -270,7 +270,6 @@ class TestGetAngleBetweenLineSegments(unittest.TestCase):
             
             angle = phi2 - phi1
             if angle < 0: angle += math.tau
-            
             with self.subTest(line1=l1, line2=l2,
                               angle=f"R:{angle}, D:{degrees(angle)}"):
                 test = spatial_relations.get_angle_between(
@@ -306,15 +305,16 @@ class TestGetAngleBetweenLineSegments(unittest.TestCase):
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
-            if phi2 > phi1 and phi2 - phi1 < math.pi:
+            diff = abs(phi2 - phi1)
+            if phi2 > phi1 and diff < math.pi:
                 angle = phi2 - phi1
-            elif phi2 > phi1 and phi2 - phi1 > math.pi:
+            elif phi2 > phi1 and diff > math.pi:
                 angle = math.tau - phi2 + phi1
-            elif phi2 < phi1 and phi1 - phi2 < math.pi:
+            elif phi2 < phi1 and diff < math.pi:
                 angle = phi1 - phi2
-            elif phi2 < phi1 and phi1 - phi2 > math.pi:
+            elif phi2 < phi1 and diff > math.pi:
                 angle = math.tau - phi1 + phi2
-            elif abs(phi1 - phi2) == math.pi:
+            elif diff == math.pi:
                 angle = math.pi
             else:
                 angle = 0
@@ -385,6 +385,88 @@ class TestGetAngleBetweenLineSegments(unittest.TestCase):
                               angle=f"R:{angle}, D:{degrees(angle)}"):
                 test = spatial_relations.get_angle_between(
                     l1, l2, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+
+class TestGetAngleBetweenLineLineSegments2d(unittest.TestCase):
+    
+    def setUp(self):
+        common_pt = (0, 0)
+        length = 1
+        segments = [
+            LineSegment.from_point_length_angle(common_pt, length, radians(phi))
+            for phi in range(0, 360 + 1, 45)
+        ]
+        lines = [
+            Line.from_point_and_angle(common_pt, radians(phi))
+            for phi in range(0, 180, 45)
+        ]
+        self.pairs = []
+        for ls in segments:
+            self.pairs.extend(
+                zip(repeat(ls), lines)
+            )
+    
+    # This test appears to prove that the vector method works for both lines and 
+    # line segments. As PanCAD is set up, Lines will just have a subset of the 
+    # direction vectors that LineSegments can have.
+    def test_convention_plus_pi_segment2line(self):
+        CONVENTION = AC.PLUS_PI
+        IS_SUPPLEMENT = False
+        for ls, l in self.pairs:
+            phi1 = ls.phi
+            phi2 = l.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            diff = abs(phi2 - phi1)
+            if phi2 > phi1 and diff < math.pi:
+                angle = phi2 - phi1
+            elif phi2 > phi1 and diff > math.pi:
+                angle = math.tau - phi2 + phi1
+            elif phi2 < phi1 and diff < math.pi:
+                angle = phi1 - phi2
+            elif phi2 < phi1 and diff > math.pi:
+                angle = math.tau - phi1 + phi2
+            elif diff == math.pi:
+                angle = math.pi
+            else:
+                angle = 0
+            
+            with self.subTest(line_segment=ls, line=l,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    ls, l, opposite=IS_SUPPLEMENT, convention=CONVENTION
+                )
+                self.assertAlmostEqual(test, angle)
+    
+    def test_convention_plus_pi_line2segment(self):
+        CONVENTION = AC.PLUS_PI
+        IS_SUPPLEMENT = False
+        for ls, l in self.pairs:
+            phi1 = l.phi
+            phi2 = ls.phi
+            if phi1 < 0: phi1 += math.tau
+            if phi2 < 0: phi2 += math.tau
+            
+            diff = abs(phi2 - phi1)
+            if phi2 > phi1 and diff < math.pi:
+                angle = phi2 - phi1
+            elif phi2 > phi1 and diff > math.pi:
+                angle = math.tau - phi2 + phi1
+            elif phi2 < phi1 and diff < math.pi:
+                angle = phi1 - phi2
+            elif phi2 < phi1 and diff > math.pi:
+                angle = math.tau - phi1 + phi2
+            elif diff == math.pi:
+                angle = math.pi
+            else:
+                angle = 0
+            
+            with self.subTest(line_segment=ls, line=l,
+                              angle=f"R:{angle}, D:{degrees(angle)}"):
+                test = spatial_relations.get_angle_between(
+                    l, ls, opposite=IS_SUPPLEMENT, convention=CONVENTION
                 )
                 self.assertAlmostEqual(test, angle)
 

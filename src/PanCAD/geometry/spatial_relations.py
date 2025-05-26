@@ -493,8 +493,13 @@ def get_angle_between_line(line: Line,
         return trig.get_vector_angle(line.direction, other.direction,
                                      opposite=opposite, convention=convention)
     elif isinstance(other, LineSegment):
-        return get_angle_between(line, other.get_line(),
-                                 opposite=opposite, convention=convention)
+        if skew(line, other):
+            return None
+        else:
+            return trig.get_vector_angle(
+                line.direction, other.direction,
+                opposite=opposite, convention=convention
+            )
     elif isinstance(other, Plane):
         if perpendicular(line, other):
             if convention in (AC.SIGN_PI, AC.SIGN_180):
@@ -515,11 +520,13 @@ def get_angle_between_line_segment(line_segment: LineSegment,
                                    opposite: bool=False,
                                    convention: AC=AC.PLUS_PI) -> float | None:
     if isinstance(other, Line):
-        return get_angle_between(line_segment.get_line(), other,
-                                 opposite=opposite, convention=convention)
+        return trig.get_vector_angle(
+            line_segment.direction, other.direction,
+            opposite=opposite, convention=convention
+        )
     elif isinstance(other, LineSegment):
         return trig.get_vector_angle(
-            line_segment.get_vector_ab(), other.get_vector_ab(),
+            line_segment.direction, other.direction,
             opposite=opposite, convention=convention
         )
     elif isinstance(other, Plane):
@@ -611,8 +618,7 @@ def get_intersect_line_segment(line_segment: LineSegment,
 
 @get_intersect.register
 def get_intersect_plane(plane: Plane,
-                        other: Line | LineSegment | Plane
-                        ) -> Point | Line | None:
+                        other: Line|LineSegment|Plane) -> Point|Line|None:
     if isinstance(other, Line):
         if parallel(plane, other):
             return None
