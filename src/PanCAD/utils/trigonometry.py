@@ -179,9 +179,9 @@ def rotation(angle: float, rotate_around: str) -> np.ndarray:
             ]
         case "y":
             matrix = [
-                [cost, 0, -sint],
+                [cost, 0, sint],
                 [0, 1, 0],
-                [sint, 0, cost],
+                [-sint, 0, cost],
             ]
         case "z":
             matrix = [
@@ -199,6 +199,7 @@ def rotation(angle: float, rotate_around: str) -> np.ndarray:
 rotation_x = partial(rotation, rotate_around="x")
 rotation_y = partial(rotation, rotate_around="y")
 rotation_z = partial(rotation, rotate_around="z")
+rotation_2 = partial(rotation, rotate_around="2")
 
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.
