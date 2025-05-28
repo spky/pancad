@@ -82,43 +82,6 @@ class TestTrigonometry(unittest.TestCase):
                 angle = trig.three_point_angle(i[0], i[1], i[2], dec)
                 self.assertEqual(angle, t[1])
     
-    def test_rotation_2d(self):
-        dec = 6
-        tests = [
-            [
-                0,
-                [
-                    [1, 0],
-                    [0, 1]
-                ]
-            ],
-            [
-                math.radians(45),
-                [
-                    [round(1/math.sqrt(2),dec), round(-1/math.sqrt(2),dec)],
-                    [round(1/math.sqrt(2),dec), round(1/math.sqrt(2),dec)]
-                ]
-            ],
-            [
-                math.radians(10),
-                [
-                    [0.984808, -0.173648],
-                    [0.173648, 0.984808]
-                ]
-            ],
-            [
-                math.radians(-10),
-                [
-                    [0.984808, 0.173648],
-                    [-0.173648, 0.984808]
-                ]
-            ],
-        ]
-        for test in tests:
-            with self.subTest(test=test):
-                matrix = trig.rotation_2d(test[0],dec)
-                self.assertCountEqual(matrix.tolist(), test[1])
-    
     def test_midpoint_2d(self):
         tests = [
             [trig.point_2d([0, 0]), trig.point_2d([1, 1]), [0.5, 0.5]],
@@ -571,6 +534,63 @@ class TestVectorUtilities(unittest.TestCase):
             v2 = trig.spherical_to_cartesian((1, radians(phi), radians(theta)))
             angle = trig.get_vector_angle(v1, v2)
             self.assertAlmostEqual(angle, radians(phi))
+
+class TestRotation(unittest.TestCase):
+    
+    def setUp(self):
+        self.t = radians(45)
+        self.cost = math.cos(self.t)
+        self.sint = math.sin(self.t)
+    
+    def test_x(self):
+        matrix = trig.rotation(self.t, (1, 0, 0))
+        expected = [
+            [1, 0, 0],
+            [0, self.cost, -self.sint],
+            [0, self.sint, self.cost],
+        ]
+        self.assertTrue(
+            np.allclose(matrix, np.array(expected))
+        )
+    
+    def test_y(self):
+        matrix = trig.rotation(self.t, (0, 1, 0))
+        expected = [
+            [self.cost, 0, self.sint],
+            [0, 1, 0],
+            [-self.sint, 0, self.cost],
+        ]
+        self.assertTrue(
+            np.allclose(matrix, np.array(expected))
+        )
+    
+    def test_z(self):
+        matrix = trig.rotation(self.t, (0, 0, 1))
+        expected = [
+            [self.cost, -self.sint, 0],
+            [self.sint, self.cost, 0],
+            [0, 0, 1],
+        ]
+        self.assertTrue(
+            np.allclose(matrix, np.array(expected))
+        )
+    
+    def test_2(self):
+        matrix = trig.rotation(self.t, "2")
+        expected = [
+            [self.cost, -self.sint],
+            [self.sint, self.cost],
+        ]
+        self.assertTrue(
+            np.allclose(matrix, np.array(expected))
+        )
+    
+    def test_arbitrary_negative_z(self):
+        matrix = trig.rotation(self.t, (0, 0, -1))
+        expected = trig.rotation(-self.t, (0, 0, 1))
+        self.assertTrue(
+            np.allclose(matrix, np.array(expected))
+        )
 
 if __name__ == "__main__":
     with open("tests/logs/"

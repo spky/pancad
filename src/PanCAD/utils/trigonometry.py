@@ -144,46 +144,32 @@ def round_array(array: np.ndarray, decimals: int) -> np.ndarray:
     rounder = lambda x: np.round(x, decimals)
     return rounder(array)
 
-def rotation_2d(angle: float, decimals: int = None) -> np.ndarray:
-    """Returns a 2d numpy rotation matrix.
-    
-    :param angle: Rotation matrix angle in radians
-    :param decimals: The number of decimals the output elements are 
-                     rounded to, defaults to None (no rounding)
-    :returns: Rotation matrix to achieve the angle
-    """
-    matrix = np.array([
-        [np.cos(angle), -np.sin(angle)],
-        [np.sin(angle), np.cos(angle)]
-    ])
-    if decimals is not None:
-        matrix = round_array(matrix, decimals)
-    return matrix
-
-def rotation(angle: float, rotate_around: str) -> np.ndarray:
-    """Returns a rotation matrix that rotates around the given axis by the angle
+def rotation(angle: float, around: str|tuple[float,float,float]) -> np.ndarray:
+    """Returns a rotation matrix that rotates around the given axis/vector by the 
+    angle. Assumes a right-handed coordinate system.
     
     :param angle: The counter-clockwise rotation angle in radians
-    :param rotate_around: The axis to rotate around. Options x, y, z, and 2. 2 
-        produces a 2D rotation matrix
+    :param around: The axis to rotate around. Options x, y, z, 2, and a 
+        tuple. 2 produces a 2D rotation matrix. If given tuple of 3 floats, the 
+        rotation matrix will be for rotating around that vector
     :returns: A numpy rotation matrix
     """
     cost = math.cos(angle)
     sint = math.sin(angle)
-    match rotate_around:
-        case "x":
+    match around:
+        case "x" | (1, 0, 0):
             matrix = [
                 [1, 0, 0],
                 [0, cost, -sint],
                 [0, sint, cost],
             ]
-        case "y":
+        case "y" | (0, 1, 0):
             matrix = [
                 [cost, 0, sint],
                 [0, 1, 0],
                 [-sint, 0, cost],
             ]
-        case "z":
+        case "z" | (0, 0, 1):
             matrix = [
                 [cost, -sint, 0],
                 [sint, cost, 0],
@@ -194,12 +180,24 @@ def rotation(angle: float, rotate_around: str) -> np.ndarray:
                 [cost, -sint],
                 [sint, cost],
             ]
+        case _:
+            if len(around) != 3:
+                raise ValueError("Vector around must be 3 elements long,"
+                                 f" given {around}")
+            around = get_unit_vector(around)
+            x, y, z = around
+            mcost = 1 - cost
+            matrix = [
+                [x**2 * mcost + cost, x*y*mcost - z*sint, x*z*mcost + y*sint],
+                [x*y*mcost + z*sint, y**2 * mcost + cost, y*z*mcost - x*sint],
+                [x*z*mcost - y*sint, y*z*mcost + x*sint, z**2 * mcost + cost],
+            ]
     return np.array(matrix)
 
-rotation_x = partial(rotation, rotate_around="x")
-rotation_y = partial(rotation, rotate_around="y")
-rotation_z = partial(rotation, rotate_around="z")
-rotation_2 = partial(rotation, rotate_around="2")
+rotation_x = partial(rotation, around="x")
+rotation_y = partial(rotation, around="y")
+rotation_z = partial(rotation, around="z")
+rotation_2 = partial(rotation, around="2")
 
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.
@@ -231,7 +229,7 @@ def ellipse_point(center_point: np.ndarray,
     b = minor_radius
     angle = angle_mod(angle) if abs(angle) > (2*np.pi) else angle
     t = round(angle, decimals)
-    major_axis_rotation = rotation_2d(major_axis_angle)
+    major_axis_rotation = rotation_2(major_axis_angle)
     # E is 'Eccentric Anomaly'
     E = math.atan2(a * math.sin(t), b * math.cos(t))
     x = a * math.cos(E)
@@ -285,7 +283,7 @@ def elliptical_arc_endpoint_to_center(
     rx = major_radius
     ry = minor_radius
     theta = major_axis_angle
-    rotation = rotation_2d(-theta)
+    rotation = rotation_2(-theta)
     midpoint = midpoint_2d(start, end)
     pt1_p = rotation @ (start - midpoint)
     x1p, y1p = pt1_p[0, 0], pt1_p[1, 0]
@@ -301,7 +299,7 @@ def elliptical_arc_endpoint_to_center(
     step_2_term_2 = np.array([[rx * y1p / ry], [-ry * x1p / rx]])
     center_pt_p = step_2_term_1 * step_2_term_2
     
-    back_rotation = rotation_2d(theta)
+    back_rotation = rotation_2(theta)
     center_pt = (back_rotation @ center_pt_p) + midpoint
     
     rx_ry = np.array([[rx],[ry]])
