@@ -1,7 +1,5 @@
 import itertools
 import math
-import sys
-from pathlib import Path
 import unittest
 
 import numpy as np
@@ -59,6 +57,76 @@ class TestLineSegmentInit3d(unittest.TestCase):
                 verification.assertPanCADAlmostEqual(self, test, check,
                                                      ROUNDING_PLACES)
 
+class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
+    def test_init_polar_vector(self):
+        point = (0, 0)
+        polar = (2, math.radians(45))
+        test_ls = LineSegment.from_point_length_angle(point, polar)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_polar_float(self):
+        point = (0, 0)
+        polar = (2, math.radians(45))
+        test_ls = LineSegment.from_point_length_angle(point, *polar)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_spherical_vector(self):
+        point = (0, 0, 0)
+        spherical = (2, math.radians(45), math.radians(90))
+        test_ls = LineSegment.from_point_length_angle(point, spherical)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+    
+    def test_init_spherical_float(self):
+        point = (0, 0, 0)
+        spherical = (2, math.radians(45), math.radians(90))
+        test_ls = LineSegment.from_point_length_angle(point, *spherical)
+        expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
+        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
+                                             ROUNDING_PLACES)
+
+class TestLineSegmentFromPointLengthAngleExceptions(unittest.TestCase):
+    
+    def setUp(self):
+        self.pt2d = (0, 0)
+        self.polar = (2, math.radians(45))
+        self.pt3d = self.pt2d + (0,)
+        self.spherical = self.polar + (math.radians(90),)
+        self.length, self.phi, self.theta = self.spherical
+    
+    def test_polar_vector_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.polar, 3)
+    
+    def test_polar_vector_phi_theta(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.polar, 3, 3)
+    
+    def test_spherical_vector_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3)
+    
+    def test_spherical_vector_phi_theta(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3, 3)
+    
+    def test_length_no_phi(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.length)
+    
+    def test_dimension_mismatch_3to2(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt3d, self.polar)
+    
+    def test_dimension_mismatch_2to3(self):
+        with self.assertRaises(ValueError):
+            LineSegment.from_point_length_angle(self.pt2d, self.spherical)
+
 class TestLineSegmentGetters(unittest.TestCase):
     
     def setUp(self):
@@ -113,139 +181,13 @@ class TestLineSegmentGetters(unittest.TestCase):
                                   func=func.__name__, length=length):
                     self.assertAlmostEqual(func(), length)
 
-class TestLineSegmentLineComparisons(unittest.TestCase):
+class TestLineSegmentUpdate(unittest.TestCase):
     
-    def setUp(self):
-        # The order of these lines correspond to the truths in each test
-        self.lines = [
-            (((0, 0), (1, 1)), ((0, 1), (1, 2))),
-            (((0, 0), (-1, -1)), ((0, 1), (1, 2))),
-            (((0, 0), (1, 1)), ((0, 0), (-1, -1))),
-            (((0, 0), (0, 1)), ((0, 1), (1, 2))),
-            (((0, 0), (1, 0)), ((0, 1), (1, 1))),
-            (((0, 0), (1, 0)), ((0, 0), (0, 1))),
-            (((0, 0), (1, 1)), ((0, 0), (1, 1))),
-            (((0, 0, 0), (1, 1, 1)), ((0, 0, 1), (1, 0, 1))),
-        ]
-        # product creates every unordered combination of line functions possible, 
-        # checking for incompatibilities between any combo of Line and LineSegment
-        line_funcs = [LineSegment, Line.from_two_points]
-        self.line_func_perms = list(itertools.product(line_funcs, repeat=2))
-    
-    def zip_truths(self, truths):
-        """Applies every permutation of line function to the line points and zips 
-        the truth value for the test to the resulting tuple"""
-        tests = []
-        for (line1pts, line2pts), truth in zip(self.lines, truths):
-            for func_1, func_2 in self.line_func_perms:
-                tests.append(
-                    (func_1(*line1pts), func_2(*line2pts), truth)
-                )
-        return tests
-    
-    def test_is_parallel(self):
-        truths = [
-            True,
-            True,
-            True,
-            False,
-            True,
-            False,
-            True,
-            False,
-        ]
-        tests = self.zip_truths(truths)
-        for line1, line2, truth in tests:
-            with self.subTest(line1=line1, line2=line2, parallel=truth):
-                self.assertEqual(line1.is_parallel(line2), truth)
-    
-    def test_is_perpendicular(self):
-        truths = [
-            False,
-            False,
-            False,
-            False,
-            False,
-            True,
-            False,
-            False,
-        ]
-        tests = self.zip_truths(truths)
-        for line1, line2, truth in tests:
-            with self.subTest(line1=line1, line2=line2, perpendicular=truth):
-                self.assertEqual(line1.is_perpendicular(line2), truth)
-    
-    def test_is_coplanar(self):
-        truths = [
-            True,
-            True,
-            True,
-            True,
-            True,
-            True,
-            True,
-            False,
-        ]
-        tests = self.zip_truths(truths)
-        for line1, line2, truth in tests:
-            with self.subTest(line1=line1, line2=line2, coplanar=truth):
-                self.assertEqual(line1.is_coplanar(line2), truth)
-    
-    def test_is_collinear(self):
-        truths = [
-            False,
-            False,
-            True,
-            False,
-            False,
-            False,
-            True,
-            False,
-        ]
-        tests = self.zip_truths(truths)
-        for line1, line2, truth in tests:
-            with self.subTest(line1=line1, line2=line2, collinear=truth):
-                self.assertEqual(line1.is_collinear(line2), truth)
-    
-    def test_is_skew(self):
-        truths = [
-            False,
-            False,
-            False,
-            False,
-            False,
-            False,
-            False,
-            True,
-        ]
-        tests = self.zip_truths(truths)
-        for line1, line2, truth in tests:
-            with self.subTest(line1=line1, line2=line2, skew=truth):
-                self.assertEqual(line1.is_skew(line2), truth)
-
-class TestLineSegmentSpecificComparisons(unittest.TestCase):
-    
-    def setUp(self):
-        lines = [
-            (((0, 0), (0, 1)), ((0, 0), (0, 1))),
-            (((0, 0), (0, 1)), ((1, 0), (1, 1))),
-            (((0, 0), (0, 1)), ((0, 0), (0, 2))),
-        ]
-        self.lines = [(LineSegment(*l1), LineSegment(*l2)) for l1, l2 in lines]
-    
-    def test_is_equal_length(self):
-        truths = [
-            True,
-            True,
-            False,
-        ]
-        for (line1, line2), truth in zip(self.lines, truths):
-            with self.subTest(line1=line1, line2=line2, equal=truth):
-                self.assertEqual(line1.is_equal_length(line2), truth)
-
+    def test_update(self):
+        ls = LineSegment((0, 0, 0), (1, 0, 0))
+        new = LineSegment((1, 1, 1), (2, 2, 2))
+        ls.update(new)
+        verification.assertPanCADAlmostEqual(self, ls, new, ROUNDING_PLACES)
 
 if __name__ == "__main__":
-    with open("tests/logs/" + Path(sys.modules[__name__].__file__).stem
-              +".log", "w") as f:
-        f.write("finished")
     unittest.main()

@@ -4,6 +4,7 @@ segments, which is part of a line that is the shortest distance between two
 points.
 """
 from __future__ import annotations
+from functools import partial
 
 import math
 
@@ -11,6 +12,10 @@ import numpy as np
 
 from PanCAD.geometry import Point
 from PanCAD.utils import trigonometry as trig
+from PanCAD.utils import comparison
+
+isclose = partial(comparison.isclose, nan_equal=False)
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Line:
     """A class representing infinite lines in 2D and 3D space. A Line 
@@ -26,10 +31,7 @@ class Line:
                 identification.
     """
     
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
-    def __init__(self, point:Point = None, direction:tuple | np.ndarray = None,
+    def __init__(self, point: Point=None, direction:tuple | np.ndarray = None,
                  uid:str = None):
         self.uid = uid
         self.direction = direction
@@ -70,9 +72,7 @@ class Line:
         radians.
         
         :getter: Returns the azimuth component of the line's direction.
-        :setter: Sets the azimuth component of the line while keeping theta 
-                 the same. Checks the value for polar or spherical vector 
-                 validity and will error if it is violated.
+        :setter: None, read-only. Use a public method to change the direction
         """
         return trig.phi_of_cartesian(self.direction)
     
@@ -80,11 +80,11 @@ class Line:
     def reference_point(self) -> Point:
         """The closest point to the origin of the line.
         
-        :getter: Returns the Point instance representing the point.
-        :setter: Sets the closest point to the origin of the line while 
-                 keeping the direction the same.
+        :getter: Returns the Point instance representing the point closest to 
+                 the origin on the line.
+        :setter: None, read-only. Use a public method to change the line position
         """
-        return self._point_closest_to_origin
+        return self._point_closest_to_origin.copy()
     
     @property
     def slope(self) -> float:
@@ -108,10 +108,8 @@ class Line:
         """The spherical inclination component of the line's direction in 
         radians.
         
-        :getter: Returns the inclination coordinate of the point.
-        :setter: Sets the inclination component of the line's direction. 
-                 Checks the value for polar or spherical vector validity and 
-                 will error if it is violated.
+        :getter: Returns the inclination angle of the line's direction
+        :setter: None, read-only. Use a public method to change the direction
         """
         return trig.theta_of_cartesian(self.direction)
     
@@ -196,192 +194,24 @@ class Line:
     def copy(self) -> Line:
         return self.__copy__()
     
-    def get_angle_between(self, other_line: Line,
-                          supplement: bool=False, signed: bool=False) -> float:
-        """Returns the value of the angle between this line and the 
-        other line.
-        
-        :param other_line: A line to find the angle of relative to this line
-        :param supplement: If False, the angle's magnitude is the angle 
-            clockwise of this line and counterclockwise of the other line 
-            (which is equal to the angle counterclockwise of this line and 
-            clockwise of the other line). If True, the angle's magnitude will 
-            be the supplement of the False angle which is the angle of 
-            the other two quadrants. Note: If the lines are parallel, this 
-            will cause the function to return pi
-        :param signed: If False, the absolute value of the angle will be 
-            returned. If True and the line is 2D, angle will be negative the 
-            angle between this line's direction and the other line's 
-            direction is clockwise
-        :returns: The value of the angle between the lines in radians. If the 
-            lines are skew, returns None.
-        """
-        if self.is_parallel(other_line):
-            if supplement:
-                return math.pi
-            else:
-                return 0
-        elif self.is_skew(other_line):
-            return None
-        
-        dot_angle = math.acos(np.dot(self.direction, other_line.direction))
-        if supplement:
-            angle_magnitude = math.pi - dot_angle
-        else:
-            angle_magnitude = dot_angle
-        
-        if len(self) == 3 and signed:
-            raise NotImplementedError("""Signed angles between 3D lines will
-                                      require a not yet made implementation 
-                                      of planes""")
-        elif len(self) == 2 and signed:
-            direction_90_ccw = (-self.direction[1], self.direction[0])
-            is_clockwise = np.dot(direction_90_ccw, other_line.direction) < 0
-            if is_clockwise ^ supplement:
-                return -angle_magnitude
-            else:
-                return angle_magnitude
-        else:
-            return angle_magnitude
-    
-    
-    def get_intersection(self, other_line: Line) -> Point | None:
-        """Returns the intersection of this line with another line as a Point 
-        if it exists.
-        
-        :param other_line: Another line to compare to this line and find the 
-            intersection point, if it exists.
-        :returns: The intersection point if it exists, otherwise None
-        """
-        if self.is_parallel(other_line) or self.is_skew(other_line):
-            return None
-        
-        pt1_to_pt2 = (self.reference_point.vector() 
-                      - other_line.reference_point.vector())
-        matrix_a = np.column_stack(
-            (np.array(other_line.direction), -np.array(self.direction))
-        )
-        
-        non_zero_rows = []
-        for c1, c2 in zip(self.direction, other_line.direction):
-            non_zero_rows.append(not (self._isclose(c1, 0)
-                                      and self._isclose(c2, 0)))
-        
-        if len(self) == 2:
-            pass
-        elif non_zero_rows[0] and non_zero_rows[1] and not non_zero_rows[2]:
-            matrix_a = np.delete(matrix_a, (2), axis=0)
-            pt1_to_pt2 = np.delete(pt1_to_pt2, (2), axis=0)
-        elif non_zero_rows[0] and not non_zero_rows[1] and non_zero_rows[2]:
-            matrix_a = np.delete(matrix_a, (1), axis=0)
-            pt1_to_pt2 = np.delete(pt1_to_pt2, (1), axis=0)
-        elif all(non_zero_rows):
-            matrix_a_yz = np.delete(matrix_a, (0), axis=0)
-            if self._isclose(np.det(matrix_a_yz), 0):
-                return None
-            matrix_a = np.delete(matrix_a, (2), axis=0)
-        else:
-            matrix_a = np.delete(matrix_a, (0), axis=0)
-            pt1_to_pt2 = np.delete(pt1_to_pt2, (0), axis=0)
-        
-        if self._isclose(np.linalg.det(matrix_a), 0):
-            return None
-        else:
-            t = np.linalg.inv(matrix_a) @ pt1_to_pt2
-            return self.get_parametric_point(t[1])
-    
     def get_parametric_point(self, t: float) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by 
         the unique unit vector direction of the line and initialized at the 
         point closest to the origin.
         
         :param t: The value of the line parameter
+        :returns: The point on the line corresponding to the parameter's value
         """
         return Point(
             np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
         )
     
-    def is_collinear(self, other_line: Line) -> bool:
-        """Returns whether the line is collinear to another line
-        
-        :param other_line: A line that can be checked for collinearity
-        :returns: True if collinear, False otherwise
+    def get_parametric_constants(self) -> tuple[float]:
+        """Returns a tuple containing parameters (x0, y0, z0, a, b, c) for the 
+        line. The reference point is used for the initial position and the 
+        line's direction vector is used for a, b, and c.
         """
-        other_line = Line._get_comparison_line(other_line)
-        return self == other_line
-    
-    def is_coincident(self, point: Point) -> bool:
-        """Returns whether the given point is on the line.
-        
-        :param point: A Point to check the location of
-        :returns: True if the point is on the line, false otherwise
-        """
-        if self.reference_point == point:
-            # Cover the edge cases where point is the zero vector or if the 
-            # point is the reference_point
-            return True
-        
-        point_vector = np.array(point)
-        reference_vector = np.array(self.reference_point)
-        direction_vector = np.array(self.direction)
-        
-        ref_pt_to_pt = (np.dot(point_vector, direction_vector)
-                        * direction_vector)
-        check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
-        
-        if self._isclose_tuple(check_point_tuple, tuple(point)):
-            return True
-        else:
-            return False
-    
-    def is_coplanar(self, other_line: Line) -> bool:
-        """Returns whether the other line can lie on the same plane as this 
-        line. Effectively whether the line is intersecting or parallel.
-        
-        :param other_line: A line to check for coplanarity with this line
-        :returns: True if the other line is coplanar, otherwise False
-        """
-        other_line = Line._get_comparison_line(other_line)
-        return self.is_parallel(other_line) or not self.is_skew(other_line)
-    
-    def is_parallel(self, other_line: Line) -> bool:
-        """Returns whether the line is parallel to another line"""
-        other_line = Line._get_comparison_line(other_line)
-        return self._isclose_tuple(self.direction, other_line.direction)
-    
-    def is_perpendicular(self, other_line: Line) -> bool:
-        """Returns whether the line is intersects and is oriented 90 degrees 
-        to the other line.
-        
-        :param other_line: A line to check for perpendicularity with this line
-        :returns: True if the other line is perpendicular to this line, 
-                  otherwise False
-        """
-        other_line = Line._get_comparison_line(other_line)
-        if self.is_skew(other_line):
-            return False
-        else:
-            dot_product = np.dot(self.direction, other_line.direction)
-            return self._isclose(dot_product, 0)
-    
-    def is_skew(self, other_line: Line) -> bool:
-        """Returns whether the line is skew to another line"""
-        other_line = Line._get_comparison_line(other_line)
-        if self.is_parallel(other_line):
-            return False
-        elif len(self) != len(other_line):
-            raise ValueError("Both lines must have the same number of dimensions")
-        elif len(self) == 2:
-            return False
-        
-        pt1_to_pt2 = (np.array(self.reference_point)
-                      - np.array(other_line.reference_point))
-        cross_product = np.cross(self.direction, other_line.direction)
-        
-        if self._isclose(np.dot(pt1_to_pt2, cross_product), 0):
-            return False
-        else:
-            return True
+        return (*tuple(self.reference_point), *self.direction)
     
     def move_to_point(self, point: Point,
                       phi: float=None, theta: float=None) -> Line:
@@ -413,32 +243,13 @@ class Line:
         )
         return self
     
-    # Private Methods
-    def _isclose(self, value_a: float, value_b: float) -> bool:
-        """Returns whether value_a is close to value_b using the Line's class 
-        variables.
+    def update(self, other: Line) -> None:
+        """Updates the line to match the position and direction of another line.
         
-        :param value_a: A value to compare
-        :param value_b: Another value to compare
-        :returns: True if value_a == value_b within the relative and absolute 
-                  tolerance class variables
+        :param other: The line to update to
         """
-        return math.isclose(value_a, value_b,
-                            rel_tol=self.relative_tolerance,
-                            abs_tol=self.absolute_tolerance)
-    
-    def _isclose_tuple(self, value_a: tuple, value_b: tuple) -> bool:
-        """Returns whether the components of value_a are close to the 
-        corresponding components of value_b using the Line's class variables.
-        
-        :param value_a: A tuple to compare
-        :param value_b: Another tuple to compare
-        :returns: True if value_a's components == value_b's components within 
-                  the Line's relative and absolute tolerance class variables
-        """
-        return trig.isclose_tuple(value_a, value_b,
-                                  rel_tol=self.relative_tolerance,
-                                  abs_tol=self.absolute_tolerance)
+        self._point_closest_to_origin = other.reference_point
+        self.direction = other.direction
     
     # Class Methods #
     @classmethod
@@ -488,7 +299,7 @@ class Line:
         raise NotImplementedError
     
     @classmethod
-    def from_point_and_angle(cls, point: Point, phi: float,
+    def from_point_and_angle(cls, point: Point | tuple | np.ndarray, phi: float,
                              theta: float = None, uid: str = None) -> Line:
         """Return a line from a given point and phi or phi and theta.
         
@@ -498,6 +309,7 @@ class Line:
         :returns: A Line object that runs through the point in a direction 
             with the provided angles
         """
+        if isinstance(point, (tuple, np.ndarray)): point = Point(point)
         if len(point) == 2 and theta is None:
             direction_end_pt = Point(1, 0)
             direction_end_pt.phi = phi
@@ -524,7 +336,7 @@ class Line:
     
     # Static Methods #
     @staticmethod
-    def closest_to_origin(point:Point, vector: list | tuple | np.ndarray):
+    def closest_to_origin(point: Point, vector: list | tuple | np.ndarray) -> Point:
         """Returns the point on the line created by the point and vector 
         closest to the origin.
         
@@ -558,22 +370,6 @@ class Line:
         return point_closest_to_origin
     
     @staticmethod
-    def _get_comparison_line(other) -> Line:
-        """Returns a PanCAD Line object from another object to use in 
-        comparisons. Used to handle cases like a LineSegment checking 
-        whether it is parallel to an infinite Line since LineSegments have 
-        Lines. Is not used for the __eq__ dunder since that is only to be 
-        used for checking Line to Line equality.
-        
-        :param other: Another object that is either another Line object, or a 
-                      has a "get_line" function that can return one
-        """
-        if isinstance(other, Line):
-            return other
-        elif hasattr(other, "get_line"):
-            return other.get_line()
-    
-    @staticmethod
     def _unique_direction(vector:np.ndarray) -> np.ndarray:
         """Returns a unit vector that can uniquely identify the direction of 
         the given vector. Does so flipping the unit vector if necessary to 
@@ -584,16 +380,18 @@ class Line:
         """
         unit_vector = trig.get_unit_vector(vector)
         if len(unit_vector) == 3:
-            if unit_vector[0] < 0 and unit_vector[1] == 0 and unit_vector[2] == 0:
+            x, y, z = unit_vector
+            if x < 0 and isclose0(y) and isclose0(z):
                 unit_vector = -unit_vector
-            elif unit_vector[1] < 0 and unit_vector[2] == 0:
+            elif y < 0 and isclose0(z):
                 unit_vector = -unit_vector
-            elif unit_vector[2] < 0:
+            elif z < 0:
                 unit_vector = -unit_vector
         elif len(unit_vector) == 2:
-            if unit_vector[0] < 0 and unit_vector[1] == 0:
+            x, y = unit_vector
+            if x < 0 and isclose0(y):
                 unit_vector = -unit_vector
-            elif unit_vector[1] < 0:
+            elif not isclose0(y) and y < 0:
                 unit_vector = -unit_vector
         
         # Add 0 to ensure negative zero representations are eliminated
@@ -614,12 +412,11 @@ class Line:
         :returns: Whether the tuples of the lines' reference_points and 
                   directions are equal
         """
-        self_origin_pt = self._point_closest_to_origin
-        other_origin_pt = other._point_closest_to_origin
         if isinstance(other, Line):
             return (
-                self._isclose_tuple(tuple(self_origin_pt), tuple(other_origin_pt))
-                and self._isclose_tuple(self.direction, other.direction)
+                isclose(tuple(self._point_closest_to_origin),
+                        tuple(other._point_closest_to_origin))
+                and isclose(self.direction, other.direction)
             )
         else:
             return NotImplemented
@@ -631,13 +428,35 @@ class Line:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the line"""
-        return f"PanCAD_Line{tuple(self._point_closest_to_origin)},{self.direction}"
+        pt_strs, direction_strs = [], []
+        for i in range(0, len(self.direction)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.direction[i]):
+                direction_strs.append("0")
+            else:
+                direction_strs.append("{:g}".format(self.direction[i]))
+        point_str = ",".join(pt_strs)
+        direction_str = ",".join(direction_strs)
+        return f"<PanCAD_Line({point_str})({direction_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
-        closest_point = tuple(self._point_closest_to_origin)
-        
+        pt_strs, direction_strs = [], []
+        for i in range(0, len(self.direction)):
+            if isclose0(self._point_closest_to_origin[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self._point_closest_to_origin[i]))
+            if isclose0(self.direction[i]):
+                direction_strs.append("0")
+            else:
+                direction_strs.append("{:g}".format(self.direction[i]))
+        point_str = ", ".join(pt_strs)
+        direction_str = ", ".join(direction_strs)
         return (f"PanCAD Line with a point closest to the origin at"
-                + f" {closest_point} and in the direction {self.direction}")
+                + f" ({point_str}) and in the direction ({direction_str})")

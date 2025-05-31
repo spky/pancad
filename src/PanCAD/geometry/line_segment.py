@@ -4,25 +4,28 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 import math
+from functools import partial
 
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry import Point, Line
+from PanCAD.utils import comparison
+
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class LineSegment:
     """A class representing a finite line in 2D and 3D space.
     """
     
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
-    def __init__(self, point_a: Point | tuple, point_b: Point | tuple,
+    def __init__(self, point_a: Point|tuple|np.ndarray, point_b: Point|tuple,
                  uid: str = None):
         self.uid = uid
         
-        if isinstance(point_a, tuple): point_a = Point(point_a)
-        if isinstance(point_b, tuple): point_b = Point(point_b)
+        if isinstance(point_a, (tuple, np.ndarray)):
+            point_a = Point(point_a)
+        if isinstance(point_b, (tuple, np.ndarray)):
+            point_b = Point(point_b)
         
         self.update_points(point_a, point_b)
     
@@ -48,6 +51,14 @@ class LineSegment:
     @property
     def length(self) -> float:
         return float(np.linalg.norm(self.get_vector_ab()))
+    
+    @property
+    def phi(self) -> float:
+        return trig.phi_of_cartesian(self.direction)
+    
+    @property
+    def theta(self) -> float:
+        return trig.theta_of_cartesian(self.direction)
     
     @property
     def point_a(self) -> Point:
@@ -92,32 +103,6 @@ class LineSegment:
         else:
             return trig.to_1D_tuple(np_vector_ab)
     
-    def is_collinear(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_collinear(other_line)
-    
-    def is_coincident(self, other: Point) -> bool:
-        return self.get_line().is_coincident(other)
-    
-    def is_coplanar(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_coplanar(other_line)
-    
-    def is_equal_length(self, other: LineSegment) -> bool:
-        return self._isclose(self.length, other.length)
-    
-    def is_parallel(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_parallel(other_line)
-    
-    def is_perpendicular(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_perpendicular(other)
-    
-    def is_skew(self, other: LineSegment | Line) -> bool:
-        other_line = LineSegment._get_comparison_line(other)
-        return self.get_line().is_skew(other)
-    
     def set_length_from_a(self, value: float):
         if value != 0:
             new_vector_ab = np.array(self.direction) * value
@@ -148,6 +133,14 @@ class LineSegment:
     def set_z_length_from_b(self, value: float):
         self._update_axis_length(value, 2, False)
     
+    def update(self, other: LineSegment):
+        """Updates the points of the line segment to match the points of another 
+        line segment.
+        
+        :param other: The line segment to update to
+        """
+        self.update_points(other.point_a, other.point_b)
+    
     def update_points(self, point_a: Point, point_b: Point):
         if point_a == point_b:
             raise ValueError("""Line Segments cannot be defined with 2 of the 
@@ -165,20 +158,6 @@ class LineSegment:
             raise ValueError("""point_a and point_b must have the same number of
                               dimensions to initialize a line segment""")
     
-    # Private Methods
-    def _isclose(self, value_a: float, value_b: float) -> bool:
-        """Returns whether value_a is close to value_b using the LineSegment's
-        class variables.
-        
-        :param value_a: A value to compare
-        :param value_b: Another value to compare
-        :returns: True if value_a == value_b within the relative and absolute 
-                  tolerance class variables
-        """
-        return math.isclose(value_a, value_b,
-                            rel_tol=self.relative_tolerance,
-                            abs_tol=self.absolute_tolerance)
-    
     def _update_axis_length(self, value: float, axis: int, from_point_a: bool):
         new_vector_ab = self.get_vector_ab()
         new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])
@@ -189,14 +168,54 @@ class LineSegment:
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
     
-    # Private Static Methods #
-    def _get_comparison_line(other: Line | LineSegment) -> Line:
-        if isinstance(other, Line):
-            return other
-        elif isinstance(other, LineSegment):
-            return other.get_line()
+    # Class Methods #
+    @classmethod
+    def from_point_length_angle(cls, point: Point|tuple|list|np.ndarray,
+                                length: float|tuple|list|np.ndarray,
+                                phi: float=None, theta: float=None,
+                                uid: str=None):
+        """Returns a LineSegment defined by a point and a length, azimuth angle 
+        phi, and inclination angle theta relative to the point.
+        
+        :point: A Point, or iterable with 2 or 3 dimensions
+        :length: The length of the segment, or a polar/spherical vector iterable
+        :phi: The azimuth angle of the line relative to the point in radians. 
+            Must not be given or None if length is a polar/spherical vector.
+        :theta: The inclination angle of the line relative to the point in 
+            radians. Must be None or not given to make the line 2D.
+        :returns: A LineSegment with its start at point, and end at the point's 
+            position plus the polar/spherical vector
+        """
+        length_number_input = isinstance(length, (int,float))
+        if length_number_input and phi is not None and theta is None:
+            vector_ab = trig.polar_to_cartesian((length, phi))
+        elif length_number_input and phi is not None and theta is not None:
+            vector_ab = trig.spherical_to_cartesian((length, phi, theta))
+        elif isinstance(length, (tuple|np.ndarray)) and phi is None:
+            if len(length) == 2:
+                vector_ab = trig.polar_to_cartesian(length)
+            elif len(length) == 3:
+                vector_ab = trig.spherical_to_cartesian(length)
+            else:
+                raise ValueError(f"Spherical/Polar Vector must have 2 or 3"
+                                 f" elements, given {length}")
+        elif (isinstance(length, (tuple|np.ndarray))
+                and (phi is not None or theta is not None)):
+            raise ValueError("phi/theta must not be given or None if a "
+                             "polar/spherical vector was provided. Given"
+                             f" Vector: {length}, phi: {phi}, theta: {theta}")
+        elif length_number_input and phi is None:
+            raise ValueError("If length is a number, phi must not be None")
         else:
-            raise ValueError("other must be a Line or LineSegment")
+            raise ValueError(f"Unhandled type combo given {point.__class__},"
+                             f" {length.__class__}, {phi.__class__},"
+                             f" {theta.__class__}")
+        
+        if len(point) == len(vector_ab):
+            return cls(point, np.array(point) + vector_ab, uid)
+        else:
+            raise ValueError("Point and vector must have the same number of"
+                             " dimensions")
     
     # Python Dunders #
     def __copy__(self) -> LineSegment:
@@ -227,12 +246,35 @@ class LineSegment:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the line"""
-        return f"PanCAD_LineSegment{tuple(self.point_a)}{tuple(self.point_b)}"
+        pt_a_strs, pt_b_strs = [], []
+        for i in range(0, len(self)):
+            if isclose0(self.point_a[i]):
+                pt_a_strs.append("0")
+            else:
+                pt_a_strs.append("{:g}".format(self.point_a[i]))
+            if isclose0(self.point_b[i]):
+                pt_b_strs.append("0")
+            else:
+                pt_b_strs.append("{:g}".format(self.point_b[i]))
+        pt_a_str = ",".join(pt_a_strs)
+        pt_b_str = ",".join(pt_b_strs)
+        return f"<PanCAD_LineSegment({pt_a_str})({pt_b_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
         unit vector"""
-        return (f"""PanCAD LineSegment with point_a {tuple(self.point_a)},
-                point_b {tuple(self.point_b)} and a line in direction
-                {self.get_line().direction}""")
+        pt_a_strs, pt_b_strs = [], []
+        for i in range(0, len(self)):
+            if isclose0(self.point_a[i]):
+                pt_a_strs.append("0")
+            else:
+                pt_a_strs.append("{:g}".format(self.point_a[i]))
+            if isclose0(self.point_b[i]):
+                pt_b_strs.append("0")
+            else:
+                pt_b_strs.append("{:g}".format(self.point_b[i]))
+        pt_a_str = ", ".join(pt_a_strs)
+        pt_b_str = ", ".join(pt_b_strs)
+        return (f"PanCAD LineSegment with start ({pt_a_str})"
+                f" and end ({pt_b_str})")

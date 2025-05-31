@@ -4,10 +4,16 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 import math
+from functools import partial, singledispatchmethod
+from numbers import Real
 
 import numpy as np
 
 from PanCAD.utils import trigonometry as trig
+from PanCAD.utils import comparison
+
+isclose = partial(comparison.isclose, nan_equal=False)
+isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point:
     """A class representing points in 2D and 3D space. Point can freely 
@@ -28,10 +34,6 @@ class Point:
                 identification.
     :param unit: The unit of the point's length values.
     """
-    
-    relative_tolerance = 1e-9
-    absolute_tolerance = 1e-9
-    
     
     def __init__(self, cartesian: (tuple[float, float, float]
                                    | np.ndarray | float) = None,
@@ -194,7 +196,7 @@ class Point:
         if len(value) == 2 or len(value) == 3:
             self._cartesian = value
         else:
-            raise ValueError(f"Given cartesian {cartesian} needs 2 or 3 elements")
+            raise ValueError(f"Given cartesian {value} needs 2 or 3 elements")
     
     @uid.setter
     def uid(self, uid: str) -> None:
@@ -277,6 +279,43 @@ class Point:
         else:
             self.spherical = (self.r, self.phi, value)
     
+    # Class Methods #
+    
+    @singledispatchmethod
+    @classmethod
+    def from_polar(cls, arg, *, uid: str=None, unit: str=None) -> Point:
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_polar.register
+    @classmethod
+    def from_polar_vector(cls, vector: tuple | np.ndarray | list, *,
+                          uid: str=None, unit: str=None):
+        return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_polar.register
+    @classmethod
+    def from_polar_r_phi(cls, r: Real, phi: Real, *,
+                         uid: str=None, unit: str=None):
+        return cls(trig.polar_to_cartesian((r, phi)), uid=uid, unit=unit)
+    
+    @singledispatchmethod
+    @classmethod
+    def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> Point:
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_spherical.register
+    @classmethod
+    def from_spherical_vector(cls, vector: tuple | np.ndarray | list, *,
+                              uid: str=None, unit: str=None):
+        return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_spherical.register
+    @classmethod
+    def from_spherical_r_phi_theta(cls, r: Real, phi: Real, theta: Real, *,
+                                   uid: str=None, unit: str=None):
+        return cls(trig.spherical_to_cartesian((r, phi, theta)),
+                   uid=uid, unit=unit)
+    
     # Public Methods #
     def copy(self) -> Point:
         return self.__copy__()
@@ -313,6 +352,13 @@ class Point:
         """
         self.phi = math.radians(value)
     
+    def update(self, other: Point) -> None:
+        """Updates the point to match the position of another point.
+        
+        :param other: The point to update to
+        """
+        self.cartesian = other.cartesian
+    
     def vector(self, vertical = True) -> np.ndarray:
         """Returns a numpy vector of the point's cartesian.
         
@@ -328,6 +374,37 @@ class Point:
             return array
     
     # Python Dunders #
+    def __add__(self, other) -> tuple:
+        """Returns the addition of two point's cartesian position vectors as a 
+        tuple"""
+        if isinstance(other, (np.ndarray, tuple)):
+            if len(self) == len(other):
+                print(self)
+                numpy_array = np.array(self) + np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot add 2D points/arrays to/from 3D point/arrays")
+        elif isinstance(other, Point):
+            if len(self) == len(other):
+                numpy_array = np.array(self) + np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot add 2D points to/from 3D points")
+        else:
+            return NotImplemented
+    
+    def __sub__(self, other) -> tuple:
+        """Returns the subtraction of two point's cartesian position vectors as a 
+        tuple"""
+        if isinstance(other, Point):
+            if len(self) == len(other):
+                numpy_array = np.array(self) - np.array(other)
+                return tuple(map(lambda x: x.item(), numpy_array))
+            else:
+                raise ValueError("Cannot subtract 2D points to/from 3D points")
+        else:
+            return NotImplemented
+    
     def __copy__(self) -> Point:
         """Returns a copy of the point that has the same coordinates, but no 
         assigned uid. Can be used with the python copy module"""
@@ -347,9 +424,11 @@ class Point:
         :returns: Whether the tuples of the points are equal.
         """
         if isinstance(other, Point):
-            return trig.isclose_tuple(tuple(self), tuple(other),
-                                      self.relative_tolerance,
-                                      self.absolute_tolerance)
+            if len(self) == len(other):
+                return isclose(tuple(self), tuple(other))
+            else:
+                raise ValueError("Can only compare points with the same"
+                                 " number of dimensions")
         else:
             return NotImplemented
     
@@ -376,12 +455,26 @@ class Point:
     
     def __repr__(self) -> str:
         """Returns the short string representation of the point"""
-        return f"PanCAD_Point{self.cartesian}"
+        pt_strs = []
+        for i in range(0, len(self.cartesian)):
+            if isclose0(self.cartesian[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self.cartesian[i]))
+        point_str = ",".join(pt_strs)
+        return f"<PanCAD_Point({point_str})>"
     
     def __str__(self) -> str:
         """String function to output the point's description and cartesian 
         position when the point is fed to the str() function"""
-        return f"PanCAD Point at cartesian {self.cartesian}"
+        pt_strs = []
+        for i in range(0, len(self.cartesian)):
+            if isclose0(self.cartesian[i]):
+                pt_strs.append("0")
+            else:
+                pt_strs.append("{:g}".format(self.cartesian[i]))
+        point_str = ", ".join(pt_strs)
+        return f"PanCAD Point at cartesian ({point_str})"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:
