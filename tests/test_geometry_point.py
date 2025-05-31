@@ -124,6 +124,14 @@ class TestPointInit(unittest.TestCase):
                     ROUNDING_PLACES
                 )
 
+class TestPointUpdate(unittest.TestCase):
+    
+    def test_update(self):
+        pt = Point(0, 0, 0)
+        new = Point(1, 1, 1)
+        pt.update(new)
+        verification.assertPanCADAlmostEqual(self, pt, new, ROUNDING_PLACES)
+
 class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 
     and from polar/spherical coordinates"""

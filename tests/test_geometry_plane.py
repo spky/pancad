@@ -45,6 +45,14 @@ class TestPlaneInit(unittest.TestCase):
         ]
         self.assertTrue(all(results))
 
+class TestPlaneUpdate(unittest.TestCase):
+    
+    def test_update(self):
+        plane = Plane((0, 0, 0), (0, 0, 1))
+        new = Plane((1, 1, 1), (1, 1, 1))
+        plane.update(new)
+        verification.assertPanCADAlmostEqual(self, plane, new, ROUNDING_PLACES)
+
 class TestPlaneConversion(unittest.TestCase):
     def test_get_3_points_on_plane(self):
         pt = Point(0, 0, 0)

@@ -194,10 +194,30 @@ def rotation(angle: float, around: str|tuple[float,float,float]) -> np.ndarray:
             ]
     return np.array(matrix)
 
+# Special Case Rotation Matrices
 rotation_x = partial(rotation, around="x")
 rotation_y = partial(rotation, around="y")
 rotation_z = partial(rotation, around="z")
 rotation_2 = partial(rotation, around="2")
+
+def multi_rotation(permutation: str, *angles: float):
+    if len(angles) != len(permutation):
+        raise ValueError("Length of permutation must be the same as the number"
+                         f" of angles ({len(permutation)}!={len(angles)})")
+    
+    rotation_funcs = {
+        "x": rotation_x,
+        "y": rotation_y,
+        "z": rotation_z,
+    }
+    permutation = permutation.casefold()
+    matrix = np.identity(3)
+    for angle, axis in zip(angles, list(permutation)):
+        matrix = matrix @ rotation_funcs[axis](angle)
+    return matrix
+
+# Special Case Multi-Rotations
+yaw_pitch_roll = partial(multi_rotation, "zyx")
 
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.

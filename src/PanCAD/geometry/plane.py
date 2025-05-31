@@ -146,6 +146,15 @@ class Plane:
                                                                  normal_vector)
         return self
     
+    def update(self, other: Plane) -> None:
+        """Updates the plane to match the position and normal direction of 
+        another plane.
+        
+        :param other: The plane to update to
+        """
+        self._point_closest_to_origin = other.reference_point
+        self.normal = other.normal
+    
     # Class Methods #
     @classmethod
     def from_point_and_angles(cls, point: Point, phi: float, theta: float,

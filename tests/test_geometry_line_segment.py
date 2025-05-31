@@ -181,5 +181,13 @@ class TestLineSegmentGetters(unittest.TestCase):
                                   func=func.__name__, length=length):
                     self.assertAlmostEqual(func(), length)
 
+class TestLineSegmentUpdate(unittest.TestCase):
+    
+    def test_update(self):
+        ls = LineSegment((0, 0, 0), (1, 0, 0))
+        new = LineSegment((1, 1, 1), (2, 2, 2))
+        ls.update(new)
+        verification.assertPanCADAlmostEqual(self, ls, new, ROUNDING_PLACES)
+
 if __name__ == "__main__":
     unittest.main()

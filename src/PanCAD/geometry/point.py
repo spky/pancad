@@ -352,6 +352,13 @@ class Point:
         """
         self.phi = math.radians(value)
     
+    def update(self, other: Point) -> None:
+        """Updates the point to match the position of another point.
+        
+        :param other: The point to update to
+        """
+        self.cartesian = other.cartesian
+    
     def vector(self, vertical = True) -> np.ndarray:
         """Returns a numpy vector of the point's cartesian.
         

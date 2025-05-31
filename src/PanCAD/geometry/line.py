@@ -84,7 +84,7 @@ class Line:
                  the origin on the line.
         :setter: None, read-only. Use a public method to change the line position
         """
-        return self._point_closest_to_origin
+        return self._point_closest_to_origin.copy()
     
     @property
     def slope(self) -> float:
@@ -242,6 +242,14 @@ class Line:
             point, self.direction
         )
         return self
+    
+    def update(self, other: Line) -> None:
+        """Updates the line to match the position and direction of another line.
+        
+        :param other: The line to update to
+        """
+        self._point_closest_to_origin = other.reference_point
+        self.direction = other.direction
     
     # Class Methods #
     @classmethod

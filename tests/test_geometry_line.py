@@ -402,5 +402,13 @@ class TestLinePointMovers2D(unittest.TestCase):
                 line = Line.from_point_and_angle(pt, phi)
                 self.assertEqual(expected_line, line)
 
+class TestLineUpdate(unittest.TestCase):
+    
+    def test_update(self):
+        line = Line(Point(0, 0, 0), (1, 0, 0))
+        new = Line(Point(1, 1, 0), (1, 1, 1))
+        line.update(new)
+        verification.assertPanCADAlmostEqual(self, line, new, ROUNDING_PLACES)
+
 if __name__ == "__main__":
     unittest.main()

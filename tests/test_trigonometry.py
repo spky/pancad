@@ -591,6 +591,11 @@ class TestRotation(unittest.TestCase):
         self.assertTrue(
             np.allclose(matrix, np.array(expected))
         )
+    
+    def test_multi_rotation(self):
+        matrix = trig.multi_rotation("xyz", 0, 0, radians(90))
+        expected = trig.rotation_z(radians(90))
+        self.assertTrue(np.allclose(matrix, expected))
 
 if __name__ == "__main__":
     with open("tests/logs/"

@@ -133,6 +133,14 @@ class LineSegment:
     def set_z_length_from_b(self, value: float):
         self._update_axis_length(value, 2, False)
     
+    def update(self, other: LineSegment):
+        """Updates the points of the line segment to match the points of another 
+        line segment.
+        
+        :param other: The line segment to update to
+        """
+        self.update_points(other.point_a, other.point_b)
+    
     def update_points(self, point_a: Point, point_b: Point):
         if point_a == point_b:
             raise ValueError("""Line Segments cannot be defined with 2 of the 
