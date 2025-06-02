@@ -81,6 +81,22 @@ class LineSegment:
     def copy(self) -> LineSegment:
         return self.__copy__()
     
+    def get_fit_box(self) -> tuple[Point, Point]:
+        """Returns the corner points of the smallest axis-aligned box that fits 
+        the line segment.
+        
+        :returns: A tuple of the minimum point and the maximum point of the fit 
+            box
+        """
+        min_coordinates = (min(self.point_a.x, self.point_b.x),
+                           min(self.point_a.y, self.point_b.y))
+        max_coordinates = (max(self.point_a.x, self.point_b.x),
+                           max(self.point_a.y, self.point_b.y))
+        if len(self) == 3:
+            min_coordinates += (min(self.point_a.z, self.point_b.z),)
+            max_coordinates += (max(self.point_a.z, self.point_b.z),)
+        return (Point(min_coordinates), Point(max_coordinates))
+    
     def get_length(self) -> float:
         return self.length
     

@@ -5,7 +5,8 @@ import unittest
 import numpy as np
 from PanCAD.geometry import Point, Line, LineSegment
 from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import verification
+# from PanCAD.utils import verification
+from PanCAD.utils.verification import assertPanCADAlmostEqual
 
 ROUNDING_PLACES = 10
 
@@ -21,8 +22,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                verification.assertPanCADAlmostEqual(self, test, check,
-                                                     ROUNDING_PLACES)
+                assertPanCADAlmostEqual(self, test, check, ROUNDING_PLACES)
     
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
@@ -30,8 +30,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                verification.assertPanCADAlmostEqual(self, test, check,
-                                                     ROUNDING_PLACES)
+                assertPanCADAlmostEqual(self, test, check, ROUNDING_PLACES)
 
 class TestLineSegmentInit3d(unittest.TestCase):
     def setUp(self):
@@ -45,8 +44,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                verification.assertPanCADAlmostEqual(self, test, check,
-                                                     ROUNDING_PLACES)
+                assertPanCADAlmostEqual(self, test, check, ROUNDING_PLACES)
     
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
@@ -54,8 +52,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                verification.assertPanCADAlmostEqual(self, test, check,
-                                                     ROUNDING_PLACES)
+                assertPanCADAlmostEqual(self, test, check, ROUNDING_PLACES)
 
 class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
     def test_init_polar_vector(self):
@@ -63,32 +60,28 @@ class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
         polar = (2, math.radians(45))
         test_ls = LineSegment.from_point_length_angle(point, polar)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
-        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
-                                             ROUNDING_PLACES)
+        assertPanCADAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
     
     def test_init_polar_float(self):
         point = (0, 0)
         polar = (2, math.radians(45))
         test_ls = LineSegment.from_point_length_angle(point, *polar)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
-        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
-                                             ROUNDING_PLACES)
+        assertPanCADAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
     
     def test_init_spherical_vector(self):
         point = (0, 0, 0)
         spherical = (2, math.radians(45), math.radians(90))
         test_ls = LineSegment.from_point_length_angle(point, spherical)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
-        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
-                                             ROUNDING_PLACES)
+        assertPanCADAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
     
     def test_init_spherical_float(self):
         point = (0, 0, 0)
         spherical = (2, math.radians(45), math.radians(90))
         test_ls = LineSegment.from_point_length_angle(point, *spherical)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
-        verification.assertPanCADAlmostEqual(self, test_ls, expected_ls,
-                                             ROUNDING_PLACES)
+        assertPanCADAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
 
 class TestLineSegmentFromPointLengthAngleExceptions(unittest.TestCase):
     
@@ -161,7 +154,7 @@ class TestLineSegmentGetters(unittest.TestCase):
     def test_direction_getter(self):
         for line_segment, direction in self.direction_tests:
             with self.subTest(line_segment=line_segment, direction=direction):
-                verification.assertPanCADAlmostEqual(
+                assertPanCADAlmostEqual(
                     self, line_segment.direction, direction, ROUNDING_PLACES
                 )
     
@@ -181,13 +174,29 @@ class TestLineSegmentGetters(unittest.TestCase):
                                   func=func.__name__, length=length):
                     self.assertAlmostEqual(func(), length)
 
+class TestLineSegmentFitBox(unittest.TestCase):
+    
+    def test_get_fit_box_2d(self):
+        ls = LineSegment((0, 0), (1, -1))
+        fitbox = ls.get_fit_box()
+        expected = (Point(0, -1), Point(1, 0))
+        for pt, exp in zip(fitbox, expected):
+            assertPanCADAlmostEqual(self, pt, exp, ROUNDING_PLACES)
+    
+    def test_get_fit_box_3d(self):
+        ls = LineSegment((0, 0, 0), (1, -1, 1))
+        fitbox = ls.get_fit_box()
+        expected = (Point(0, -1, 0), Point(1, 0, 1))
+        for pt, exp in zip(fitbox, expected):
+            assertPanCADAlmostEqual(self, pt, exp, ROUNDING_PLACES)
+
 class TestLineSegmentUpdate(unittest.TestCase):
     
     def test_update(self):
         ls = LineSegment((0, 0, 0), (1, 0, 0))
         new = LineSegment((1, 1, 1), (2, 2, 2))
         ls.update(new)
-        verification.assertPanCADAlmostEqual(self, ls, new, ROUNDING_PLACES)
+        assertPanCADAlmostEqual(self, ls, new, ROUNDING_PLACES)
 
 if __name__ == "__main__":
     unittest.main()

@@ -755,10 +755,8 @@ def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
     :param cartesian: A 2D or 3D vector with cartesian components (x, y, z)
     :returns: The radius component of the equivalent polar/spherical vector
     """
-    if len(cartesian) == 2:
-        return math.hypot(cartesian[0], cartesian[1])
-    elif len(cartesian) == 3:
-        return math.hypot(cartesian[0], cartesian[1], cartesian[2])
+    if len(cartesian) in (2, 3):
+        return math.hypot(*cartesian)
     else:
         ValueError("Can only return r if the cartesian vector is 2 or 3"
                    + f" elements long, given: {cartesian}")
@@ -783,15 +781,15 @@ def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
     :returns: The inclination coordinate of the equivalent polar/spherical 
               coordinate
     """
-    if cartesian[2] == 0 and math.hypot(cartesian[0], cartesian[1]) != 0:
+    x, y, z = cartesian
+    if z == 0 and math.hypot(x, y) != 0:
         return math.pi/2
-    elif cartesian[0] == 0 and cartesian[1] == 0 and cartesian[2] == 0:
+    elif x == y == z == 0:
         return math.nan
-    elif cartesian[2] > 0:
-        return math.atan(math.hypot(cartesian[0], cartesian[1])/cartesian[2])
-    elif cartesian[2] < 0:
-        return math.pi + math.atan(math.hypot(cartesian[0], cartesian[1])
-                                   /cartesian[2])
+    elif z > 0:
+        return math.atan(math.hypot(x, y) / z)
+    elif z < 0:
+        return math.pi + math.atan(math.hypot(x, y) / z)
     else:
         raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
 
@@ -875,9 +873,8 @@ def spherical_to_cartesian(
         raise ValueError(f"Invalid tuple length {len(spherical)}, must be 3 to"
                          + "return a spherical vector")
 
-def cartesian_to_spherical(
-            cartesian: list|tuple|np.ndarray
-        ) -> tuple[float, float, float]:
+def cartesian_to_spherical(cartesian: list|tuple|np.ndarray
+                           ) -> tuple[float, float, float]:
     """Returns the spherical version of the given cartesian vector.
     
     :param cartesian: A 3D vector with cartesian components x, y, z
