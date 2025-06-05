@@ -1,88 +1,179 @@
-"""A Module providing constants for svg grammar regular expressions"""
+"""A Module providing constants for svg grammar regular expressions
 
-# Abbreviations
-## CONST = Constant
-## INT = Integer
-## WSP = Whitespace
-## ARG = Argument
+Abbreviations
+CONST = Constant, INT = Integer
+WSP = Whitespace, ARG = Argument
+FRAC = Fractional
+"""
+import re
+from collections import namedtuple
 
-# Whitespace and Separators
-WSP = "(\u0020|\u0009|\u000D|\u000A)"
-COMMA = ","
-COMMA_WSP = f"({WSP}+{COMMA}?{WSP}*|{COMMA}{WSP}*)"
+def _capture_re(pattern: str, group_name: str) -> namedtuple:
+    """Initializes a namedtuple with regular expressions that contain a pattern,
+    a non-grouped pattern, a grouped pattern, and a named group pattern.
+    
+    :param pattern: A regular expression pattern
+    :param group_name: The name of the named regular expression group
+    :returns: A namedtuple with names ca (capture), dc (don't capture), na (named 
+        group), and pa (plain pattern)
+    """
+    CaptureRegex = namedtuple("CaptureRegex", ["ca", "dc", "na", "pa"])
+    return CaptureRegex(
+        f"({pattern})",
+        f"(?:{pattern})",
+        f"(?P<{group_name}>{pattern})",
+        pattern,
+    )
+
+# Manual Constants
+SVG_CMD_TYPES = {
+    "pairs": ["M", "L", "C", "S", "Q", "T"],
+    "singles": ["H", "V"],
+    "arcs": ["A"],
+    "closepath": ["Z"],
+}
+WSP = _capture_re("\u0020|\u0009|\u000D|\u000A", "whitespace")
+SIGN = _capture_re("\+|-", "sign")
+_PIPE = "|"
+DIGIT_SEQUENCE = _capture_re("[0-9]+", "digit_sequence")
+INT_CONST = _capture_re("[0-9]+", "integer_constant")
+FLAG = _capture_re("0|1", "flag")
+
+# Derived Whitespace/Separators
+comma_wsp = _capture_re(f"{WSP.dc}+,?{WSP.dc}*|,{WSP.dc}*", "comma_whitespace")
+
+# Number Components
+exponent = _capture_re(f"(?:e|E){SIGN.dc}?{DIGIT_SEQUENCE.dc}", "exponent")
+
+fractional_const = _capture_re(
+    f"{DIGIT_SEQUENCE.dc}?\.{DIGIT_SEQUENCE.dc}|{DIGIT_SEQUENCE.dc}\.",
+    "fractional_constant"
+)
+float_const = _capture_re(
+    f"{fractional_const.dc}{exponent.dc}?|{DIGIT_SEQUENCE.dc}{exponent.dc}",
+    "floating_point_constant"
+)
+_number_pattern = f"{SIGN.dc}?{float_const.dc}|{SIGN.dc}?{INT_CONST.dc}"
 
 # Numbers
-DIGIT = "[0-9]"
-SIGN = "(\+|-)"
-DIGIT_SEQUENCE = f"({DIGIT}+)"
-INT_CONST = DIGIT_SEQUENCE
-EXPONENT = f"((e|E){SIGN}?{DIGIT_SEQUENCE})"
-FRACTIONAL_CONST = f"({DIGIT_SEQUENCE}?\.{DIGIT_SEQUENCE}|{DIGIT_SEQUENCE}\.)"
-FLOAT_CONST = f"({FRACTIONAL_CONST}{EXPONENT}?|{DIGIT_SEQUENCE}{EXPONENT})"
-NUMBER = f"({SIGN}?{FLOAT_CONST}|{SIGN}?{INT_CONST})"
-NONNEGATIVE_NUMBER = f"({FLOAT_CONST}|{INT_CONST})"
+number = _capture_re(_number_pattern, "number")
+nonnegative_number = _capture_re(f"{float_const.dc}|{INT_CONST.dc}",
+                                 "nonnegative_number")
+
+# Named Number Groups
+_exp_num = _capture_re(DIGIT_SEQUENCE.pa, "exponent_number")
+_exp_sign = _capture_re(SIGN.pa, "exponent_sign")
+
+_whole_num = _capture_re(DIGIT_SEQUENCE.pa, "whole_number")
+_dec_num = _capture_re(DIGIT_SEQUENCE.pa, "decimal_number")
+
+_exp_named = _capture_re(f"(?:E|e){_exp_sign.na}?{_exp_num.na}", "exponent_na")
+
+_frac_const_dec_exp = f"{SIGN.na}?{_whole_num.na}?\.{_dec_num.na}{_exp_named.dc}?"
+_frac_const_exp = f"{SIGN.na}?{_whole_num.na}\.{_exp_named.dc}?"
+_int_const_exp = f"{SIGN.na}?{_whole_num.na}{_exp_named.dc}?"
 
 # Coordinates
-COORDINATE = NUMBER
-COORDINATE_PAIR = f"{COORDINATE}{COMMA_WSP}{COORDINATE}"
-COORDINATE_PAIR_SEQUENCE = f"({COORDINATE_PAIR}{COMMA_WSP}?|{COORDINATE_PAIR})+"
-COORDINATE_SEQUENCE = f"({COORDINATE}{COMMA_WSP}?|{COORDINATE})+"
-
-# Command Characters
-MOVETO_CHAR = "(M|m)"
-FLAG = "(0|1)"
-CLOSEPATH = "(Z|z)"
-LINETO_CHAR = "(L|l)"
-HORIZONTAL_LINETO_CHAR = "(H|h)"
-VERTICAL_LINETO_CHAR = "(V|v)"
-CURVETO_CHAR = "(C|c)"
-SMOOTH_CURVETO_CHAR = "(S|s)"
-QUAD_BEZIER_CURVETO_CHAR = "(Q|q)"
-SMOOTH_QUAD_BEZIER_CURVETO_CHAR = "(T|t)"
-ELLIPTICAL_ARC_CHAR = "(A|a)"
+coordinate = _capture_re(_number_pattern, "coordinate")
+coordinate_pair = _capture_re(f"{coordinate.dc}{comma_wsp.dc}{coordinate.dc}",
+                              "coordinate_pair")
+coordinate_pair_sequence = _capture_re(
+    f"(?:{coordinate_pair.pa}{comma_wsp.dc}?|{coordinate_pair.pa})+",
+    "coordinate_pair_sequence"
+)
+coordinate_sequence = _capture_re(
+    f"(?:{coordinate.dc}{comma_wsp.dc}?|{coordinate.dc})+",
+    "coordinate_sequence"
+)
 
 # Commands
 ## Expressions assume the correct number of arguments have been provided for 
 ## each command
+def _arc_command(character_re: str) -> str:
+    """Produces an SVG elliptical arc command regular expression. SVG arcs 
+    are a special case of commands that have their arguments in the 
+    following order: rx, ry, x-axis-rotation, large-arc-flag, sweep-flag, x, y
+    """
+    _elliptical_args = [
+        nonnegative_number.dc, nonnegative_number.dc, number.dc,
+        FLAG.dc, FLAG.dc, coordinate_pair.dc
+    ]
+    elliptical_arc_arg = _capture_re(f"{comma_wsp.dc.join(_elliptical_args)}",
+                                     "elliptical_arc_argument")
+    elliptical_arc_arg_sequence = _capture_re(
+        f"(?:{elliptical_arc_arg.pa}{comma_wsp.dc}?|{elliptical_arc_arg.pa})+",
+        "elliptical_arc_argument_sequence"
+    )
+    return f"{character_re}{WSP.dc}*{elliptical_arc_arg_sequence.dc}"
 
-def _pair_command(character: str) -> str:
-    return f"{character}{WSP}*{COORDINATE_PAIR_SEQUENCE}"
+def _pair_command(character_re: str) -> str:
+    """Returns an svg command regex for a command that takes a sequence of 
+    coordinate pairs as its arguments"""
+    return f"{character_re}{WSP.dc}*{coordinate_pair_sequence.dc}"
 
-def _singles_command(character: str) -> str:
-    return f"{character}{WSP}*{COORDINATE_SEQUENCE}"
+def _singles_command(character_re: str) -> str:
+    """Returns an svg command regex for a command that takes a sequence of 
+    standalone coordinates as its arguments"""
+    return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
 
-# MOVETO = f"{MOVETO_CHAR}{WSP}*{COORDINATE_PAIR_SEQUENCE}"
-MOVETO = _pair_command(MOVETO_CHAR)
+def _upper_lower_case_command(character: str, group: str="command") -> str:
+    """Initializes a command character that consists of the upper and lower case 
+    characters to initialize svg command regular expressions.
+    """
+    if len(character) == 1:
+        pattern = f"{character.upper()}|{character.lower()}"
+        return _capture_re(pattern, group)
+    else:
+        raise ValueError(f"character must be 1 character, given: {character}")
 
-LINETO = _pair_command(LINETO_CHAR)
-HORIZONTAL_LINETO = _singles_command(HORIZONTAL_LINETO_CHAR)
-VERTICAL_LINETO = _singles_command(VERTICAL_LINETO_CHAR)
-CURVETO = _pair_command(CURVETO_CHAR)
-SMOOTH_CURVETO = _pair_command(SMOOTH_CURVETO_CHAR)
-QUAD_BEZIER_CURVETO = _pair_command(QUAD_BEZIER_CURVETO_CHAR)
-SMOOTH_QUAD_BEZIER_CURVETO = _pair_command(SMOOTH_QUAD_BEZIER_CURVETO_CHAR)
+def _cmd_re(character: str):
+    """Returns an svg command regex for a command based on its character and 
+    command type"""
+    cmd_character_re = _upper_lower_case_command(character).dc
+    for cmd_type, command_letters in SVG_CMD_TYPES.items():
+        if character.upper() in command_letters:
+            match cmd_type:
+                case "pairs":
+                    return _pair_command(cmd_character_re)
+                case "singles":
+                    return _singles_command(cmd_character_re)
+                case "arcs":
+                    return _arc_command(cmd_character_re)
+                case "closepath":
+                    return cmd_character_re
+    raise ValueError(f"Character '{character}' is not an svg path command")
 
-# rx, ry, x-axis-rotation, large-arc-flag, sweep-flag, x, y
+def parse_number(string: str) -> float | int:
+    """Returns the value of a number in a string. Supports floats, integers 
+    and scientific notation.
+    
+    :param string: A string that contains a number
+    :returns: The value of the number in the string
+    """
+    if re.search(_frac_const_dec_exp, string):
+        match = re.search(_frac_const_dec_exp, string)
+    elif re.search(_frac_const_exp, string):
+        match = re.search(_frac_const_exp, string)
+    elif re.search(_int_const_exp, string):
+        match = re.search(_int_const_exp, string)
+    else:
+        raise ValueError(f"Could not find a number in string: {string}")
 
-_elliptical_args = [
-    NONNEGATIVE_NUMBER, NONNEGATIVE_NUMBER, NUMBER,
-    FLAG, FLAG, COORDINATE_PAIR
-]
-ELLIPTICAL_ARC_ARG = f"({COMMA_WSP.join(_elliptical_args)})"
-ELLIPTICAL_ARC_ARG_SEQUENCE = (f"({ELLIPTICAL_ARC_ARG}{COMMA_WSP}?"
-                               f"|{ELLIPTICAL_ARC_ARG})+")
-ELLIPTICAL_ARC = f"{ELLIPTICAL_ARC_CHAR}{WSP}*{ELLIPTICAL_ARC_ARG_SEQUENCE}"
+# Generate Command Sensing Regular Expressions
+_command_list = []
+for _, cmd_letters in SVG_CMD_TYPES.items():
+    _command_list.extend(
+        [_cmd_re(letter) for letter in cmd_letters]
+    )
 
-_drawto_command_list = [
-    CLOSEPATH,
-    LINETO, HORIZONTAL_LINETO, VERTICAL_LINETO,
-    CURVETO, SMOOTH_CURVETO, QUAD_BEZIER_CURVETO,
-    SMOOTH_QUAD_BEZIER_CURVETO,
-    ELLIPTICAL_ARC,
-]
+command =  f"{WSP.dc}*({_PIPE.join(_command_list)})"
 
-_PIPE = "|"
-DRAWTO_COMMAND = f"({_PIPE.join(_drawto_command_list)})"
-
-_command_list = _drawto_command_list + [MOVETO]
-COMMAND =  f"({_PIPE.join(_command_list)})"
+moveto = _cmd_re("M")
+lineto = _cmd_re("L")
+horizontal_lineto = _cmd_re("H")
+vertical_lineto = _cmd_re("V")
+curveto = _cmd_re("C")
+smooth_curveto = _cmd_re("S")
+quad_bezier_curveto = _cmd_re("Q")
+smooth_quad_bezier_curveto = _cmd_re("T")
+elliptical_arc = _cmd_re("A")
