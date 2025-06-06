@@ -184,16 +184,3 @@ quad_bezier_curveto = _cmd_re("Q")
 smooth_quad_bezier_curveto = _cmd_re("T")
 elliptical_arc = _cmd_re("A")
 closepath = _cmd_re("z")
-
-# Named Number Groups
-# _exp_num = capture_re(DIGIT_SEQUENCE.pa, "exponent_number")
-# _exp_sign = capture_re(SIGN.pa, "exponent_sign")
-
-# _whole_num = capture_re(DIGIT_SEQUENCE.pa, "whole_number")
-# _dec_num = capture_re(DIGIT_SEQUENCE.pa, "decimal_number")
-
-# _exp_named = capture_re(f"(?:E|e){_exp_sign.na}?{_exp_num.na}", "exponent_na")
-
-# _frac_const_dec_exp = f"{SIGN.na}?{_whole_num.na}?\.{_dec_num.na}{_exp_named.dc}?"
-# _frac_const_exp = f"{SIGN.na}?{_whole_num.na}\.{_exp_named.dc}?"
-# _int_const_exp = f"{SIGN.na}?{_whole_num.na}{_exp_named.dc}?"
