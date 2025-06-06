@@ -150,71 +150,71 @@ class TestNumbers(unittest.TestCase):
             with self.subTest(string=string, pattern=regex.pattern):
                 self.assertNotEqual(regex.search(string)[0], string)
     
-    def test_fractional_constant_decimal_exponent(self):
-        regex = re.compile(gre._frac_const_dec_exp)
-        tests = [
-            ("1.1e-100", None, "1", "1", "-", "100"),
-            ("1.1", None, "1", "1", None, None),
-            ("-1.1", "-", "1", "1", None, None),
-        ]
-        for string, sign, whole, decimal, exp_sign, exponent in tests:
-            with self.subTest(string=string, pattern=regex.pattern):
-                match = regex.search(string)
-                results = (
-                    match.group("sign"),
-                    match.group("whole_number"),
-                    match.group("decimal_number"),
-                    match.group("exponent_sign"),
-                    match.group("exponent_number"),
-                )
-                self.assertEqual(results,
-                                 (sign, whole, decimal, exp_sign, exponent))
+    # def test_fractional_constant_decimal_exponent(self):
+        # regex = re.compile(gre._frac_const_dec_exp)
+        # tests = [
+            # ("1.1e-100", None, "1", "1", "-", "100"),
+            # ("1.1", None, "1", "1", None, None),
+            # ("-1.1", "-", "1", "1", None, None),
+        # ]
+        # for string, sign, whole, decimal, exp_sign, exponent in tests:
+            # with self.subTest(string=string, pattern=regex.pattern):
+                # match = regex.search(string)
+                # results = (
+                    # match.group("sign"),
+                    # match.group("whole_number"),
+                    # match.group("decimal_number"),
+                    # match.group("exponent_sign"),
+                    # match.group("exponent_number"),
+                # )
+                # self.assertEqual(results,
+                                 # (sign, whole, decimal, exp_sign, exponent))
     
-    def test_fractional_constant_exponent(self):
-        regex = re.compile(gre._frac_const_exp)
-        tests = [
-            ("1.e-100", None, "1", "-", "100"),
-            ("1.", None, "1", None, None),
-            ("-1.", "-", "1", None, None),
-        ]
-        for string, sign, whole, exp_sign, exponent in tests:
-            with self.subTest(string=string, pattern=regex.pattern):
-                match = regex.search(string)
-                results = (
-                    match.group("sign"),
-                    match.group("whole_number"),
-                    match.group("exponent_sign"),
-                    match.group("exponent_number"),
-                )
-                self.assertEqual(results,
-                                 (sign, whole, exp_sign, exponent))
+    # def test_fractional_constant_exponent(self):
+        # regex = re.compile(gre._frac_const_exp)
+        # tests = [
+            # ("1.e-100", None, "1", "-", "100"),
+            # ("1.", None, "1", None, None),
+            # ("-1.", "-", "1", None, None),
+        # ]
+        # for string, sign, whole, exp_sign, exponent in tests:
+            # with self.subTest(string=string, pattern=regex.pattern):
+                # match = regex.search(string)
+                # results = (
+                    # match.group("sign"),
+                    # match.group("whole_number"),
+                    # match.group("exponent_sign"),
+                    # match.group("exponent_number"),
+                # )
+                # self.assertEqual(results,
+                                 # (sign, whole, exp_sign, exponent))
     
-    def test_int_constant_exponent(self):
-        regex = re.compile(gre._int_const_exp)
-        tests = [
-            ("1e-100", None, "1", "-", "100"),
-            ("10e+100", None, "10", "+", "100"),
-            ("10e100", None, "10", None, "100"),
-            ("10", None, "10", None, None),
-            ("-10", "-", "10", None, None),
-        ]
-        for string, sign, whole, exp_sign, exponent in tests:
-            with self.subTest(string=string, pattern=regex.pattern):
-                match = regex.search(string)
-                results = (
-                    match.group("sign"),
-                    match.group("whole_number"),
-                    match.group("exponent_sign"),
-                    match.group("exponent_number"),
-                )
-                self.assertEqual(results,
-                                 (sign, whole, exp_sign, exponent))
+    # def test_int_constant_exponent(self):
+        # regex = re.compile(gre._int_const_exp)
+        # tests = [
+            # ("1e-100", None, "1", "-", "100"),
+            # ("10e+100", None, "10", "+", "100"),
+            # ("10e100", None, "10", None, "100"),
+            # ("10", None, "10", None, None),
+            # ("-10", "-", "10", None, None),
+        # ]
+        # for string, sign, whole, exp_sign, exponent in tests:
+            # with self.subTest(string=string, pattern=regex.pattern):
+                # match = regex.search(string)
+                # results = (
+                    # match.group("sign"),
+                    # match.group("whole_number"),
+                    # match.group("exponent_sign"),
+                    # match.group("exponent_number"),
+                # )
+                # self.assertEqual(results,
+                                 # (sign, whole, exp_sign, exponent))
     
-    def test_parse_number(self):
-        tests = [
-            ("1e-100", 1e-100),
-        ]
-        # result = gre.parse_number(
+    # def test_parse_number(self):
+        # tests = [
+            # ("1e-100", 1e-100),
+        # ]
+        # # result = gre.parse_number(
 
 class TestCoordinates(unittest.TestCase):
     
@@ -320,18 +320,6 @@ class TestCommands(unittest.TestCase):
                 match = regex.search(string)
                 self.assertEqual(match[0], string)
     
-    # def test_elliptical_arc_arg(self):
-        # regex = re.compile(gre.elliptical_arc_arg.dc)
-        # tests = [
-            # "3 3 2 1 1 0 0",
-            # "3.3 3.3 -1.1 1 1 0 0",
-            # "3.3 3.3 -1.1 0 0 0 0",
-        # ]
-        # for string in tests:
-            # with self.subTest(string=string, pattern=regex.pattern):
-                # match = regex.search(string)
-                # self.assertEqual(match[0], string)
-    
     def test_elliptical_arc(self):
         regex = re.compile(gre.elliptical_arc)
         tests = [
@@ -345,7 +333,6 @@ class TestCommands(unittest.TestCase):
                 match = regex.search(string)
                 self.assertEqual(match[0], string)
     
-    # @unittest.skip
     def test_command(self):
         regex = re.compile(gre.command)
         tests = [

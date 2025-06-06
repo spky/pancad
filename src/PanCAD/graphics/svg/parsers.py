@@ -4,6 +4,9 @@ other formats
 
 import re
 
+from PanCAD.utils.regex import capture_re
+from PanCAD.graphics.svg.grammar_regex import DIGIT_SEQUENCE, SIGN
+
 def parse_coordinate_string(coordinate: str) -> list:
     """Uses re to figure out what string of coordinates are in path 
     data's coordinate string and returns a list of coordinate pairs
@@ -498,3 +501,52 @@ def circle(id_: str, radius: float, center: list[float, float]):
         "id": id_, "radius": radius,
         "center": center, "geometry_type": "circle"
     }
+
+def to_number(string: str) -> int | float:
+    """Returns the value of a number in a string. Supports floats, integers 
+    and scientific notation.
+    
+    :param string: A string that contains a number
+    :returns: The value of the number in the string
+    """
+    exp_num = capture_re(DIGIT_SEQUENCE.pa, "exponent_number")
+    exp_sign = capture_re(SIGN.pa, "exponent_sign")
+    exponent = capture_re(f"(?:E|e){exp_sign.na}?{exp_num.na}", "exponent")
+    whole_num = capture_re(DIGIT_SEQUENCE.pa, "whole")
+    dec_num = capture_re(DIGIT_SEQUENCE.pa, "decimal")
+    
+    decimal = f"{SIGN.na}?{whole_num.na}?\.{dec_num.na}{exponent.dc}?"
+    int_decimal = f"{SIGN.na}?{whole_num.na}\.{exponent.dc}?"
+    integer_exp = f"{SIGN.na}?{whole_num.na}{exponent.dc}?"
+    
+    if re.search(decimal, string):
+        match = re.search(decimal, string)
+        (number_sign, whole, decimal,
+         exponent_sign, exponent_number) = match.groups()
+        if number_sign == "-":
+            number = -float(f"{whole}.{decimal}")
+        else:
+            number = float(f"{whole}.{decimal}")
+    elif re.search(int_decimal, string):
+        match = re.search(int_decimal, string)
+        number_sign, whole, exponent_sign, exponent_number = match.groups()
+        if number_sign == "-":
+            number = -float(whole)
+        else:
+            number = float(whole)
+    elif re.search(integer_exp, string):
+        match = re.search(integer_exp, string)
+        number_sign, whole, exponent_sign, exponent_number = match.groups()
+        if number_sign == "-":
+            number = -int(whole)
+        else:
+            number = int(whole)
+    else:
+        raise ValueError(f"Could not find a number in string: {string}")
+    
+    if exponent_number is not None and exponent_sign == "-":
+            number = number * 10**(-int(exponent_number))
+    elif exponent_number is not None:
+        number = number * 10**(int(exponent_number))
+    
+    return number
