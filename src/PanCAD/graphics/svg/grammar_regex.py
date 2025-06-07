@@ -56,14 +56,30 @@ coordinate_pair: Finds pairs of numbers in a string.
 import re
 from collections import namedtuple
 
+from PanCAD.graphics.svg import PathParameterType, PathCommandCharacter
 from PanCAD.utils.regex import capture_re
 
 # Manual Constants
+
 SVG_CMD_TYPES = {
-    "pairs": ["M", "L", "C", "S", "Q", "T"],
-    "singles": ["H", "V"],
-    "arcs": ["A"],
-    "closepath": ["Z"],
+    PathParameterType.PAIR: [
+        PathCommandCharacter.M, PathCommandCharacter.m,
+        PathCommandCharacter.L, PathCommandCharacter.l,
+        PathCommandCharacter.C, PathCommandCharacter.c,
+        PathCommandCharacter.S, PathCommandCharacter.s,
+        PathCommandCharacter.Q, PathCommandCharacter.q,
+        PathCommandCharacter.T, PathCommandCharacter.t,
+    ],
+    PathParameterType.SINGLE: [
+        PathCommandCharacter.H, PathCommandCharacter.h,
+        PathCommandCharacter.V, PathCommandCharacter.v,
+    ],
+    PathParameterType.ARC: [
+        PathCommandCharacter.A, PathCommandCharacter.a,
+    ],
+    PathParameterType.CLOSEPATH: [
+        PathCommandCharacter.Z, PathCommandCharacter.z,
+    ],
 }
 WSP = capture_re("\u0020|\u0009|\u000D|\u000A", "whitespace")
 SIGN = capture_re("\+|-", "sign")
@@ -131,7 +147,7 @@ def _arc_command(character_re: str) -> str:
 def _pair_command(character_re: str) -> str:
     """Returns an svg command regex for a command that takes a sequence of 
     coordinate pairs as its arguments"""
-    return f"{character_re}{WSP.dc}*{coordinate_pair_sequence.dc}"
+    return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
 
 def _singles_command(character_re: str) -> str:
     """Returns an svg command regex for a command that takes a sequence of 
@@ -153,15 +169,15 @@ def _cmd_re(character: str):
     command type"""
     cmd_character_re = _upper_lower_case_command(character).dc
     for cmd_type, command_letters in SVG_CMD_TYPES.items():
-        if character.upper() in command_letters:
+        if character in command_letters:
             match cmd_type:
-                case "pairs":
+                case PathParameterType.PAIR:
                     return _pair_command(cmd_character_re)
-                case "singles":
+                case PathParameterType.SINGLE:
                     return _singles_command(cmd_character_re)
-                case "arcs":
+                case PathParameterType.ARC:
                     return _arc_command(cmd_character_re)
-                case "closepath":
+                case PathParameterType.CLOSEPATH:
                     return cmd_character_re
     raise ValueError(f"Character '{character}' is not an svg path command")
 
@@ -174,13 +190,13 @@ for _, cmd_letters in SVG_CMD_TYPES.items():
 
 command =  f"{WSP.dc}*({_PIPE.join(_command_list)})"
 
-moveto = _cmd_re("M")
-lineto = _cmd_re("L")
-horizontal_lineto = _cmd_re("H")
-vertical_lineto = _cmd_re("V")
-curveto = _cmd_re("C")
-smooth_curveto = _cmd_re("S")
-quad_bezier_curveto = _cmd_re("Q")
-smooth_quad_bezier_curveto = _cmd_re("T")
-elliptical_arc = _cmd_re("A")
-closepath = _cmd_re("z")
+moveto = _cmd_re(PathCommandCharacter.M)
+lineto = _cmd_re(PathCommandCharacter.L)
+horizontal_lineto = _cmd_re(PathCommandCharacter.H)
+vertical_lineto = _cmd_re(PathCommandCharacter.V)
+curveto = _cmd_re(PathCommandCharacter.C)
+smooth_curveto = _cmd_re(PathCommandCharacter.S)
+quad_bezier_curveto = _cmd_re(PathCommandCharacter.Q)
+smooth_quad_bezier_curveto = _cmd_re(PathCommandCharacter.T)
+elliptical_arc = _cmd_re(PathCommandCharacter.A)
+closepath = _cmd_re(PathCommandCharacter.Z)
