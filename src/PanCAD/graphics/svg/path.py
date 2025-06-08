@@ -1,20 +1,31 @@
 """ A module providing the SVG path element class that converts path elements 
-into PanCAD geometry and vice-versa
+into PanCAD geometry and vice-versa.
+
+The Path class is primarily intended to generate PanCAD geometry using its 
+initialization 'd' (the string representing the path's path data) argument.
+
 """
 import re
 from itertools import islice
 
 import numpy as np
 
-from PanCAD.graphics.svg import PathParameterType, PathCommandCharacter
+from PanCAD.graphics.svg import (
+    PathParameterType, PathCommandCharacter as CmdChar
+)
 from PanCAD.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
 from PanCAD.graphics.svg.parsers import to_number
 
-from PanCAD.geometry import LineSegment, Point
+from PanCAD.geometry import LineSegment, Point, Line, Plane, CoordinateSystem
 
 class Path:
+    COORDINATE_DELIMITER = ","
+    PARAMETER_DELIMITER = " "
+    POST_COMMAND_CHAR = " "
+    PRE_COMMAND_CHAR = " "
     
-    def __init__(self, svg_id: str=None, d: str=None):
+    def __init__(self, svg_id: str, d: str=None):
+        self.svg_id = svg_id
         self.d = d
     
     # Getters #
@@ -35,10 +46,82 @@ class Path:
     @d.setter
     def d(self, path_data: str):
         self._d = path_data
-        self._geometry = self._parse_path_data(path_data)
+        separated_cmds = self._separate_path_data(path_data)
+        explicit_cmds = self._to_explicit(separated_cmds)
+        self._geometry = self._to_geometry(explicit_cmds)
+    
+    @geometry.setter
+    def geometry(self, geometry_list: list):
+        self._geometry = geometry_list
+        explicit_cmds = self._geometry_to_explicit(geometry_list)
+        implicit_cmds = cls._to_implicit(explicit_cmds)
+        self._d = cls._implicit_to_string(implicit_cmds)
+    
+    # Class Methods #
+    @classmethod
+    def from_geometry(cls, svg_id: str, geometry_list: list):
+        explicit_cmds = cls._geometry_to_explicit(geometry_list)
+        implicit_cmds = cls._to_implicit(explicit_cmds)
+        path_data = cls._implicit_to_string(implicit_cmds)
+        return cls(svg_id, path_data)
+    
+    # Static Methods #
+    @staticmethod
+    def _geometry_to_explicit(geometry_list: list) -> list[tuple[str, str]]:
+        cmds = []
+        previous_pt = None
+        for geometry in geometry_list:
+            if isinstance(geometry, LineSegment):
+                if previous_pt is None or previous_pt != geometry.point_a:
+                    cmds.append(
+                        (CmdChar.M, tuple(geometry.point_a))
+                    )
+                cmds.append(
+                    (CmdChar.L, tuple(geometry.point_b))
+                )
+                previous_pt = geometry.point_b
+            elif isinstance(geometry, (Point, Line, Plane, CoordinateSystem)):
+                raise ValueError(f"{geometry.__class__} cannot be represented"
+                                 " by svg path data")
+            else:
+                raise ValueError(f"{geometry.__class__} not recognized")
+        return cmds
     
     @staticmethod
-    def _parse_path_data(path_data: str) -> tuple:
+    def _normalize_d(path_data: str, explicit=False):
+        """Returns a path data string with consistent formatting since the input 
+        path data can be any format as long as it meets the svg standard"""
+        cmds = Path._separate_path_data(path_data)
+        if explicit:
+            cmds = Path._to_explicit(cmds)
+            cmds = [(character, [params]) for character, params in cmds]
+        return Path._implicit_to_string(cmds)
+    
+    @staticmethod
+    def _implicit_to_string(cmds: list) -> str:
+        """Returns an equivalent string from a series of implicit commands"""
+        normalized_cmds = []
+        for character, params in cmds:
+            normalized_params = []
+            for p in params:
+                str_p = map(str, p)
+                normalized_params.append(Path.COORDINATE_DELIMITER.join(str_p))
+            normalized_cmds.append(
+                character + Path.POST_COMMAND_CHAR
+                + Path.PARAMETER_DELIMITER.join(normalized_params)
+            )
+        return Path.PRE_COMMAND_CHAR.join(normalized_cmds)
+    
+    @staticmethod
+    def _separate_path_data(path_data: str) -> list[tuple[str, str]]:
+        """Separates a path data string into two length tuples consisting of its 
+        character and its associated parameters. The parameters will maintain the
+        implied commands.
+        
+        :param path_data: A string of svg path data commands
+        :returns: A tuple where the first element is the command's character and 
+            the second element is the command's parameter string
+        """
         d_commands = re.findall(command, path_data)
         
         cmd_params = []
@@ -47,9 +130,10 @@ class Path:
             parameters = re.findall(number.ca, cmd)
             parameters = map(to_number, parameters)
             parameters = Path._batch_command(character, parameters)
-            cmd_params.append((character, list(parameters)))
-        explicit_cmds = Path._make_explicit(cmd_params)
-        return Path._to_geometry(explicit_cmds)
+            cmd_params.append(
+                (character, list(parameters))
+            )
+        return cmd_params
     
     @staticmethod
     def _batch_command(character: str, parameters: list[float|int]) -> tuple:
@@ -57,7 +141,6 @@ class Path:
         type"""
         for cmd_type, cmd_letters in SVG_CMD_TYPES.items():
             if character in cmd_letters:
-                itercopy = parameters
                 match cmd_type:
                     case PathParameterType.PAIR:
                         batch_size = 2
@@ -81,27 +164,29 @@ class Path:
             else:
                 yield batch
     
-    def _make_explicit(cmd_params: list[tuple[str, tuple]]) -> list[tuple]:
-        """Returns a list of explicit commands from a list of raw command 
+    @staticmethod
+    def _to_explicit(cmd_params: list[tuple[str, str]]
+                     ) -> list[tuple[str, str]]:
+        """Returns a list of explicit commands from a list of separated command 
         tuples"""
         explicit = []
         for character, params in cmd_params:
             match character:
-                case PathCommandCharacter.M:
+                case CmdChar.M:
                     explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(PathCommandCharacter.L.value, p) for p in params]
+                        [(CmdChar.L, p) for p in params]
                     )
-                case PathCommandCharacter.m:
+                case CmdChar.m:
                     if len(explicit) == 0:
                         # If m is the first command in the path, it is absolute
-                        explicit.append((PathCommandCharacter.M, params.pop(0)))
+                        explicit.append((CmdChar.M, params.pop(0)))
                     else:
                         explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(PathCommandCharacter.l.value, p) for p in params]
+                        [(CmdChar.l, p) for p in params]
                     )
-                case PathCommandCharacter.z | PathCommandCharacter.Z:
+                case CmdChar.z | CmdChar.Z:
                     explicit.append((character, None))
                 case _:
                     if len(explicit) == 0:
@@ -111,49 +196,117 @@ class Path:
                         explicit.extend([(character, p) for p in params])
         return explicit
     
+    @staticmethod
+    def _to_implicit(explicit_cmds: list[tuple[str, tuple]]
+                     ) -> list[tuple[str, list]]:
+        """Returns a smaller set of commands that take advantage of implicit 
+        commands in svg.
+        
+        """
+        character, coordinate = explicit_cmds.pop(0)
+        previous_character = character
+        combine_with_previous = False
+        cmds = [(character, [coordinate])]
+        for character, param in explicit_cmds:
+            
+            if character == CmdChar.L and previous_character == CmdChar.M:
+                character, coordinates = cmds.pop(-1)
+                param = coordinates + [param]
+                combine_with_previous = False
+            elif character == CmdChar.l and previous_character == CmdChar.m:
+                character, coordinates = cmds.pop(-1)
+                param = coordinates + [param]
+                combine_with_previous = False
+            elif (character not in (CmdChar.m, CmdChar.M)
+                    and character == previous_character):
+                character, coordinates = cmds.pop(-1)
+                param = coordinates + [param]
+                combine_with_previous = False
+            else:
+                param = [param]
+            cmds.append((character, param))
+            previous_character = character
+        return cmds
+    
+    @staticmethod
     def _to_geometry(explicit_cmds: list[tuple]) -> list:
         """Returns a list of PanCAD geometry from a list of explicit svg path 
-        data commands"""
+        data commands. Here, explicit commands are defined as svg path data 
+        commands that only contain a single set of their parameters with no 
+        implied continuation parameters. Ex: M 1 1 L 2 2 and not M 1 1 2 2
+        
+        :param explicit_cmds: A list of 2 length tuples containing the command 
+            character as the first element and its parameters as the second 
+            element
+        :returns: A list of equivalent PanCAD Geometry
+        """
         geometry = []
         _, coordinate = explicit_cmds.pop(0)
         current_pt = Point(coordinate)
         sub_path_pt = current_pt.copy()
-        for character, parameter in explicit_cmds:
+        for character, param in explicit_cmds:
             match character:
-                case PathCommandCharacter.M:
-                    current_pt = Point(parameter)
+                case CmdChar.M:
+                    # Absolute Moveto
+                    current_pt = Point(param)
                     sub_path_pt = current_pt.copy()
-                case PathCommandCharacter.m:
-                    current_pt = Point(
-                        np.array(current_pt) + np.array(parameter)
-                    )
+                case CmdChar.m:
+                    # Relative Moveto
+                    current_pt = Point(np.array(current_pt) + np.array(param))
                     sub_path_pt = current_pt.copy()
-                case PathCommandCharacter.L:
-                    geometry.append(LineSegment(current_pt, parameter))
-                    current_pt = Point(parameter)
-                case PathCommandCharacter.l:
-                    new_pt = Point(np.array(current_pt) + np.array(parameter))
+                case CmdChar.L:
+                    # Absolute Lineto
+                    geometry.append(LineSegment(current_pt, param))
+                    current_pt = Point(param)
+                case CmdChar.l:
+                    # Relative Lineto
+                    new_pt = Point(np.array(current_pt) + np.array(param))
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case PathCommandCharacter.H:
-                    new_pt = Point(parameter, current_pt.y)
+                case CmdChar.H:
+                    # Absolute Horizontal Lineto
+                    new_pt = Point(param, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case PathCommandCharacter.h:
-                    new_pt = Point(parameter + current_pt.x, current_pt.y)
+                case CmdChar.h:
+                    # Relative Horizontal Lineto
+                    new_pt = Point(param + current_pt.x, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case PathCommandCharacter.V:
-                    new_pt = Point(current_pt.x, parameter)
+                case CmdChar.V:
+                    # Absolute Vertical Lineto
+                    new_pt = Point(current_pt.x, param)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case PathCommandCharacter.v:
-                    new_pt = Point(current_pt.x, parameter + current_pt.y)
+                case CmdChar.v:
+                    # Relative Vertical Lineto
+                    new_pt = Point(current_pt.x, param + current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case PathCommandCharacter.z | PathCommandCharacter.Z:
+                case CmdChar.z | CmdChar.Z:
+                    # Closepath
                     geometry.append(LineSegment(current_pt, sub_path_pt))
                     current_pt = sub_path_pt.copy()
-                case _:
+                case CmdChar.a:
                     raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.A:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.c:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.C:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.s:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.S:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.q:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.Q:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.t:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case CmdChar.T:
+                    raise NotImplementedError(f"{character} not implemented yet")
+                case _:
+                    raise ValueError(f"{character} not recognized")
         return geometry

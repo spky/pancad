@@ -62,11 +62,11 @@ class LineSegment:
     
     @property
     def point_a(self) -> Point:
-        return self._point_a
+        return self._point_a.copy()
     
     @property
     def point_b(self) -> Point:
-        return self._point_b
+        return self._point_b.copy()
     
     # Setters #
     @point_a.setter
