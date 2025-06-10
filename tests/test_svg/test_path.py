@@ -50,6 +50,24 @@ class TestGeometrySetting(unittest.TestCase):
         ]
         path = Path.from_geometry(self.path_id, geo_list)
         self.assertEqual(path.d, "M 1,1 2,2 M 3,3 5,5")
+    
+    def test_geometry_uids(self):
+        geo_list = []
+        for i in range(1, 12):
+            geo_list.append(LineSegment((0, 0), (i, i/2)))
+        path = Path.from_geometry(self.path_id, geo_list)
+        self.assertEqual(path.geometry[0].uid, self.path_id + "_00")
+    
+    def test_svg_id_update(self):
+        geo_list = [
+            LineSegment((1, 1), (2, 2)),
+            LineSegment((3, 3), (5, 5)),
+        ]
+        path = Path.from_geometry(self.path_id, geo_list)
+        new_id = "new_test_path"
+        path.svg_id = new_id
+        self.assertEqual(path.geometry[0].uid, new_id + "_0")
+        
 
 if __name__ == "__main__":
     unittest.main()

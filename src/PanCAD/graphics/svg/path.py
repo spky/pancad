@@ -19,12 +19,22 @@ from PanCAD.graphics.svg.parsers import to_number
 from PanCAD.geometry import LineSegment, Point, Line, Plane, CoordinateSystem
 
 class Path:
+    """A class that represents svg path elements and syncs them with PanCAD 
+    geometry.
+    
+    :param svg_id: The id of the svg path element. Will be prepended to each 
+        geometry element's id
+    :param d: The path element's path data string. Will be translated into PanCAD 
+        geometry
+    """
+    
     COORDINATE_DELIMITER = ","
     PARAMETER_DELIMITER = " "
     POST_COMMAND_CHAR = " "
     PRE_COMMAND_CHAR = " "
     
     def __init__(self, svg_id: str, d: str=None):
+        self._geometry = []
         self.svg_id = svg_id
         self.d = d
     
@@ -40,7 +50,16 @@ class Path:
     
     @property
     def geometry(self) -> list:
+        """The PanCAD geometry elements that represent the path data
+        
+        :getter: Returns a list of PanCAD geometry
+        :setter: Sets the PanCAD geometry and syncs the path data
+        """
         return self._geometry
+    
+    @property
+    def svg_id(self) -> str:
+        return self._svg_id
     
     # Setters #
     @d.setter
@@ -49,17 +68,24 @@ class Path:
         separated_cmds = self._separate_path_data(path_data)
         explicit_cmds = self._to_explicit(separated_cmds)
         self._geometry = self._to_geometry(explicit_cmds)
+        self._update_geometry_uids()
     
     @geometry.setter
     def geometry(self, geometry_list: list):
-        self._geometry = geometry_list
-        explicit_cmds = self._geometry_to_explicit(geometry_list)
+        explicit_cmds = cls._geometry_to_explicit(geometry_list)
         implicit_cmds = cls._to_implicit(explicit_cmds)
-        self._d = cls._implicit_to_string(implicit_cmds)
+        self.d = self._implicit_to_string(implicit_cmds)
+    
+    @svg_id.setter
+    def svg_id(self, new_id: str):
+        self._svg_id = new_id
+        if len(self.geometry) > 0:
+            self._update_geometry_uids()
     
     # Class Methods #
     @classmethod
     def from_geometry(cls, svg_id: str, geometry_list: list):
+        """Initializes a Path element purely from PanCAD elements"""
         explicit_cmds = cls._geometry_to_explicit(geometry_list)
         implicit_cmds = cls._to_implicit(explicit_cmds)
         path_data = cls._implicit_to_string(implicit_cmds)
@@ -68,6 +94,9 @@ class Path:
     # Static Methods #
     @staticmethod
     def _geometry_to_explicit(geometry_list: list) -> list[tuple[str, str]]:
+        """Creates a list of explicit (i.e. one parameter per command) path data 
+        commands from a list of PanCAD geometry.
+        """
         cmds = []
         previous_pt = None
         for geometry in geometry_list:
@@ -90,7 +119,8 @@ class Path:
     @staticmethod
     def _normalize_d(path_data: str, explicit=False):
         """Returns a path data string with consistent formatting since the input 
-        path data can be any format as long as it meets the svg standard"""
+        path data can be any format as long as it meets the svg standard.
+        """
         cmds = Path._separate_path_data(path_data)
         if explicit:
             cmds = Path._to_explicit(cmds)
@@ -99,7 +129,8 @@ class Path:
     
     @staticmethod
     def _implicit_to_string(cmds: list) -> str:
-        """Returns an equivalent string from a series of implicit commands"""
+        """Returns an equivalent string from a series of implicit commands.
+        """
         normalized_cmds = []
         for character, params in cmds:
             normalized_params = []
@@ -138,7 +169,8 @@ class Path:
     @staticmethod
     def _batch_command(character: str, parameters: list[float|int]) -> tuple:
         """Returns the command's parameters in batches according to its command 
-        type"""
+        type
+        """
         for cmd_type, cmd_letters in SVG_CMD_TYPES.items():
             if character in cmd_letters:
                 match cmd_type:
@@ -168,7 +200,8 @@ class Path:
     def _to_explicit(cmd_params: list[tuple[str, str]]
                      ) -> list[tuple[str, str]]:
         """Returns a list of explicit commands from a list of separated command 
-        tuples"""
+        tuples
+        """
         explicit = []
         for character, params in cmd_params:
             match character:
@@ -310,3 +343,13 @@ class Path:
                 case _:
                     raise ValueError(f"{character} not recognized")
         return geometry
+    
+    # Private Methods #
+    def _update_geometry_uids(self):
+        """Syncs the uids on the geometry with the svg_id"""
+        num_id_digits = len(
+            str(len(self._geometry))
+        )
+        for i, geometry in enumerate(self._geometry):
+            geometry_id = str(i).zfill(num_id_digits)
+            geometry.uid = f"{self.svg_id}_{geometry_id}"
