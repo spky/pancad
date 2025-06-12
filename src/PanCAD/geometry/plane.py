@@ -20,7 +20,9 @@ class Plane:
                  normal_vector: list | tuple | np.ndarray = None,
                  uid: str = None):
         self.uid = uid
-        point = Point(point) if isinstance(point, (tuple, np.ndarray)) else point
+        if isinstance(point, (tuple, np.ndarray)):
+            point = Point(point)
+        
         if isinstance(point, Point):
             self.move_to_point(point, normal_vector)
         elif point is None:

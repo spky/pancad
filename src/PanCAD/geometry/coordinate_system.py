@@ -9,10 +9,11 @@ import math
 import numpy as np
 
 from PanCAD.geometry import Point, Line, Plane
+from PanCAD.geometry.constants import PlaneName
+
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import (
-    yaw_pitch_roll, rotation_2,
-    to_1D_tuple
+    yaw_pitch_roll, rotation_2, to_1D_tuple
 )
 
 isclose = partial(comparison.isclose, nan_equal=False)
@@ -118,6 +119,18 @@ class CoordinateSystem:
         else:
             return (self.x_vector, self.y_vector, self.z_vector)
     
+    def get_plane_by_name(self, name: str) -> Plane:
+        match name:
+            case PlaneName.XY:
+                return self.get_xy_plane()
+            case PlaneName.XZ:
+                return self.get_xz_plane()
+            case PlaneName.YZ:
+                return self.get_yz_plane()
+            case _:
+                raise ValueError(f"{name} not recognized, must be one of"
+                                 f" {list(PlaneName)}")
+    
     def get_xy_plane(self) -> Plane:
         return Plane(self.origin, self.z_vector)
     
@@ -182,6 +195,11 @@ class CoordinateSystem:
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
         return f"<PanCAD_CoordinateSystem({point_str}){axis_str}>"
+    
+    def __len__(self) -> int:
+        """Returns the number of dimensions of the coordinate system by returning 
+        the number of dimensions of the origin point"""
+        return len(self.origin)
     
     def __str__(self) -> str:
         """Returns the string representation of the coordinate system"""
