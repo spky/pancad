@@ -12,8 +12,7 @@ import numpy as np
 
 from PanCAD.constants.angle_convention import AngleConvention as AC
 from PanCAD.geometry import Point, Line, LineSegment, Plane, conversion
-from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import comparison
+from PanCAD.utils import trigonometry as trig, comparison
 
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9

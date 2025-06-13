@@ -34,8 +34,11 @@ class Sketch:
         self.uid = uid
         self.coordinate_system = coordinate_system
         self.geometry = geometry
-        self.constraints = constraints
         self.plane_name = plane_name
+        
+        for c in constraints:
+            self._validate_constraint_references(c)
+        self.constraints = constraints
     
     # Getters #
     @property
@@ -49,6 +52,20 @@ class Sketch:
         return self._coordinate_system
     
     @property
+    def externals(self) -> list:
+        """The list of 3D external geometry referenced by the sketch.
+        
+        """
+        return self._externals
+    
+    @property
+    def geometry(self) -> list:
+        """The list of 2D geometry in the sketch.
+        
+        """
+        return self._geometry
+    
+    @property
     def plane_name(self) -> str:
         """The name of the CoordinateSystem's plane that contains the sketch's
         geometry. The name must be one of the enumeration values in 
@@ -59,17 +76,29 @@ class Sketch:
         """
         return self._plane_name
     
-    @property
-    def geometry(self) -> list:
-        """The list of 2D geometry in the sketch.
-        
-        """
-        return self._geometry
-    
     # Setters #
     @coordinate_system.setter
     def coordinate_system(self, coordinate_system: CoordinateSystem):
         self._coordinate_system = coordinate_system
+    
+    @externals.setter
+    def externals(self, externals: list):
+        non_3d_geometry = list(
+            filter(lambda g: len(g) != 3, geometry)
+        )
+        if non_3d_geometry != []:
+            raise ValueError(f"3D Geometry only, 2D: {non_3d_geometry}")
+        self._externals = externals
+    
+    @geometry.setter
+    def geometry(self, geometry: list):
+        non_2d_geometry = list(
+            filter(lambda g: len(g) != 2, geometry)
+        )
+        if non_2d_geometry != []:
+            raise ValueError(f"2D Geometry only, 3D: {non_2d_geometry}")
+        
+        self._geometry = geometry
     
     @plane_name.setter
     def plane_name(self, letters: str):
@@ -82,20 +111,27 @@ class Sketch:
             raise ValueError(f"{letters} not recognized as a plane name, must"
                              f" be one of {list(PlaneName)}")
     
-    @geometry.setter
-    def geometry(self, geometry: list):
-        non_2d_geometry = list(
-            filter(lambda g: len(g) != 2, geometry)
-        )
-        if non_2d_geometry != []:
-            raise ValueError(f"2D Geometry only, 3D: {non_2d_geometry}")
-        
-        self._geometry = geometry
-    
     # Public Functions #
+    def add_constraint_by_uid(self, uid_a: str, uid_b: str):
+        pass
+    
     def get_plane(self):
         """Returns a copy of the plane that contains the sketch geometry.
         
         :returns: A copy of the sketch plane
         """
         return self.coordinate_system.get_plane_by_name(self.plane_name)
+    
+    # Private Functions #
+    def _validate_constraint_references(self, constraint):
+        """Checks whether a constraint references geometry in the sketch's 
+        geometry or externals"""
+        a = constraint.get_a()
+        b = constraint.get_b()
+        if not any(a is x for x in self.geometry):
+            raise ValueError(f"{repr(constraint)}'s geometry a is not in the sketch"
+                             " geometry")
+        
+        if not any(b is x for x in self.geometry):
+            raise ValueError(f"The {repr(constraint)} constraint's geometry"
+                             " b is not in the sketch geometry")

@@ -1,7 +1,7 @@
 import unittest
 
 from PanCAD.geometry import (
-    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point
+    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Coincident
 )
 from PanCAD.geometry.constants import PlaneName
 
@@ -45,6 +45,34 @@ class TestGeometry(unittest.TestCase):
         ]
         with self.assertRaises(ValueError):
             self.sketch.geometry = geometry
+
+class TestConstraints(unittest.TestCase):
+    
+    def setUp(self):
+        self.cs = CoordinateSystem((0, 0, 0))
+    
+    def test_constraint_validation_success(self):
+        geometry = [
+            Point(0, 0),
+            Point(1, 1),
+        ]
+        constraints = [
+            Coincident(geometry[0], geometry[1])
+        ]
+        sketch = Sketch(self.cs, geometry=geometry, constraints=constraints)
+    
+    def test_constraint_validation_failure(self):
+        geometry = [
+            Point(0, 0),
+            Point(1, 1),
+        ]
+        wild_point = Point(2, 2)
+        constraints = [
+            Coincident(geometry[0], wild_point)
+        ]
+        with self.assertRaises(ValueError):
+            sketch = Sketch(self.cs, geometry=geometry, constraints=constraints)
+    
 
 if __name__ == "__main__":
     unittest.main()

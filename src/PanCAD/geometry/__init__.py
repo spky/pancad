@@ -5,3 +5,5 @@ from PanCAD.geometry.line_segment import LineSegment
 from PanCAD.geometry.plane import Plane
 from PanCAD.geometry.coordinate_system import CoordinateSystem
 from PanCAD.geometry.sketch import Sketch
+
+from PanCAD.geometry.coincident import Coincident
