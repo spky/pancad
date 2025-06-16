@@ -66,8 +66,8 @@ class TestPointInit(unittest.TestCase):
         self.assertCountEqual(np.array(pt), np.array(self.coordinate1))
     
     def test_point_str_dunder(self):
-        pt = Point(self.coordinate1)
-        self.assertEqual(str(pt), "PanCAD Point at cartesian (1, 1, 1)")
+        pt = Point(self.coordinate1, uid="test")
+        self.assertEqual(str(pt), "PanCAD Point 'test' at cartesian (1, 1, 1)")
     
     def test_point_len_dunder(self):
         tests = [

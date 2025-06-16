@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from PanCAD.geometry import Point, Line, Plane
-from PanCAD.geometry.constants import PlaneName
+from PanCAD.geometry.constants import PlaneName, ConstraintReference
 
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import (
@@ -34,38 +34,54 @@ class CoordinateSystem:
     :param uid: The unique ID of the coordinate system for interoperable CAD 
         identification
     """
+    UID_SEPARATOR = "_"
+    XLINE_UID = "xline"
+    YLINE_UID = "yline"
+    ZLINE_UID = "zline"
+    ORIGIN_UID = "origin"
     
     def __init__(self, origin: Point|tuple|np.ndarray,
                  alpha: float=0, beta: float=0, gamma: float=0, *,
                  right_handed: bool=True, uid: str=None):
-        self.uid = uid
         
         if isinstance(origin, (tuple, np.ndarray)):
             origin = Point(origin)
-        self.origin = origin
         
         if not right_handed:
             raise NotImplementedError("Left-Handed CoordinateSystems not"
                                       " yet implemented.")
         
-        if len(self.origin) == 2:
+        # Initialize reference geometry and then translate/rotate into place
+        if len(origin) == 2:
+            self._origin = Point(0, 0)
+            self.origin = origin
             if beta != 0 or gamma != 0:
                 raise ValueError("beta and/or gamma angles cannot be set for a"
                                  " 2D coordinate system")
+            self._x_axis_line = Line(self.origin, (1, 0))
+            self._y_axis_line = Line(self.origin, (0, 1))
             initial_axis_matrix = (
-                (1, 0),
-                (0, 1),
+                self._x_axis_line.direction, self._y_axis_line.direction,
             )
             rotation_matrix = rotation_2(alpha)
         else:
+            self._origin = Point(0, 0, 0)
+            self.origin = origin
+            self._x_axis_line = Line(self.origin, (1, 0, 0))
+            self._y_axis_line = Line(self.origin, (0, 1, 0))
+            self._z_axis_line = Line(self.origin, (0, 0, 1))
+            self._xy_plane = Plane(self.origin, self._z_axis_line.direction)
+            self._xz_plane = Plane(self.origin, self._y_axis_line.direction)
+            self._yz_plane = Plane(self.origin, self._x_axis_line.direction)
+            
             initial_axis_matrix = (
-                (1, 0, 0),
-                (0, 1, 0),
-                (0, 0, 1),
+                self._x_axis_line.direction, self._y_axis_line.direction,
+                self._z_axis_line.direction,
             )
             rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
         self._set_axes(initial_axis_matrix)
         self._rotate_axes(rotation_matrix)
+        self.uid = uid
     
     # Getters #
     @property
@@ -80,7 +96,7 @@ class CoordinateSystem:
     
     @property
     def origin(self) -> Point:
-        return self._origin.copy()
+        return self._origin
     
     @property
     def x_vector(self) -> tuple:
@@ -97,21 +113,41 @@ class CoordinateSystem:
     # Setters #
     @origin.setter
     def origin(self, point: Point|tuple|np.ndarray):
-        self._origin = point
+        if isinstance(point, Point):
+            self._origin.update(point)
+        else:
+            self._origin.cartesian = point
     
     @uid.setter
     def uid(self, uid: str) -> None:
+        if uid is None:
+            self._x_axis_line.uid = self.XLINE_UID
+            self._y_axis_line.uid = self.YLINE_UID
+            self._origin.uid = self.ORIGIN_UID
+        else:
+            self._x_axis_line.uid = self.UID_SEPARATOR.join([uid,
+                                                             self.XLINE_UID])
+            self._y_axis_line.uid = self.UID_SEPARATOR.join([uid,
+                                                             self.YLINE_UID])
+            self._origin.uid = self.UID_SEPARATOR.join([uid, self.ORIGIN_UID])
+            
+        if len(self.origin) == 3 and uid is None:
+            self._z_axis_line.uid = self.ZLINE_UID
+        elif len(self.origin) == 3:
+            self._z_axis_line.uid = self.UID_SEPARATOR.join([uid,
+                                                             self.ZLINE_UID])
+        
         self._uid = uid
     
     # Public Methods #
     def get_axis_line_x(self) -> Line:
-        return Line(self.origin, self.x_vector)
+        return self._x_axis_line
     
     def get_axis_line_y(self) -> Line:
-        return Line(self.origin, self.y_vector)
+        return self._y_axis_line
     
     def get_axis_line_z(self) -> Line:
-        return Line(self.origin, self.z_vector)
+        return self._z_axis_line
     
     def get_axis_vectors(self) -> tuple[tuple]:
         if len(self.origin) == 2:
@@ -131,14 +167,47 @@ class CoordinateSystem:
                 raise ValueError(f"{name} not recognized, must be one of"
                                  f" {list(PlaneName)}")
     
+    def get_reference(self,
+                      reference: ConstraintReference) -> Point | Line | Plane:
+        if len(self.origin) == 2:
+            match reference:
+                case ConstraintReference.ORIGIN:
+                    return self.origin
+                case ConstraintReference.X:
+                    return self.get_axis_line_x()
+                case ConstraintReference.Y:
+                    return self.get_axis_line_y()
+                case _:
+                    raise ValueError(f"2D {self.__class__}s do not have any"
+                                     f" {reference.name} reference geometry")
+        else:
+            match reference:
+                case ConstraintReference.ORIGIN:
+                    return self.origin
+                case ConstraintReference.X:
+                    return self.get_axis_line_x()
+                case ConstraintReference.Y:
+                    return self.get_axis_line_y()
+                case ConstraintReference.Z:
+                    return self.get_axis_line_z()
+                case ConstraintReference.XY:
+                    return self.get_xy_plane()
+                case ConstraintReference.XZ:
+                    return self.get_xz_plane()
+                case ConstraintReference.YZ:
+                    return self.get_yz_plane()
+                case _:
+                    raise ValueError(f"3D {self.__class__}s do not have any"
+                                     f" {reference.name} reference geometry")
+    
     def get_xy_plane(self) -> Plane:
-        return Plane(self.origin, self.z_vector)
+        return self._xy_plane
     
     def get_xz_plane(self) -> Plane:
-        return Plane(self.origin, self.y_vector)
+        return self._xz_plane
     
     def get_yz_plane(self) -> Plane:
-        return Plane(self.origin, self.x_vector)
+        return self._yz_plane
     
     def update(self, other: CoordinateSystem) -> None:
         self.origin = other.origin
@@ -169,6 +238,17 @@ class CoordinateSystem:
         else:
             raise ValueError("axis_matrix must be for the same number of"
                              " dimensions as the origin point")
+        self._update_axis_lines_and_planes()
+    
+    def _update_axis_lines_and_planes(self):
+        self._x_axis_line.update(Line(self.origin, self._x_vector))
+        self._y_axis_line.update(Line(self.origin, self._y_vector))
+        if len(self.origin) == 3:
+            self._z_axis_line.update(Line(self.origin, self._z_vector))
+            
+            self._xy_plane.update(Plane(self.origin, self._z_vector))
+            self._xz_plane.update(Plane(self.origin, self._y_vector))
+            self._yz_plane.update(Plane(self.origin, self._x_vector))
     
     # Python Dunders #
     def __repr__(self) -> str:
@@ -194,7 +274,7 @@ class CoordinateSystem:
             axis_strs.append(axis_name + "(" + component_str + ")")
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
-        return f"<PanCAD_CoordinateSystem({point_str}){axis_str}>"
+        return f"<PanCADCoordSys({point_str}){axis_str}>"
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by returning 

@@ -9,8 +9,8 @@ from numbers import Real
 
 import numpy as np
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import comparison
+from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.geometry.constants import ConstraintReference
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -42,21 +42,16 @@ class Point:
         """Constructor method"""
         self.uid = uid
         
-        if (
-               isinstance(cartesian, (int, float))
+        if (isinstance(cartesian, (int, float))
                and isinstance(y, (int, float))
-               and isinstance(z, (int, float))
-            ):
+               and isinstance(z, (int, float))):
             self.cartesian = (cartesian, y, z)
-        elif (
-                 isinstance(cartesian, (int, float))
+        elif (isinstance(cartesian, (int, float))
                  and isinstance(y, (int, float))
                  and z is None):
             self.cartesian = (cartesian, y)
-        elif (
-                 isinstance(cartesian, (tuple, np.ndarray))
-                 and (y is not None or z is not None)
-              ):
+        elif (isinstance(cartesian, (tuple, np.ndarray))
+                 and (y is not None or z is not None)):
             raise ValueError(f"Cartesian {cartesian} can not be given as a"
                              + f" non-float/int if y and z are not None."
                              + f" y value: {y}, z value: {z}")
@@ -273,9 +268,10 @@ class Point:
     
     @theta.setter
     def theta(self, value: float) -> None:
-        if math.isnan(self.phi) and value != 0 and value != math.pi and not math.isnan(value):
-            raise ValueError("Cannot set theta to anything except NaN, 0, or pi if "
-                             + "phi is NaN, change phi or both simultaneously")
+        if (math.isnan(self.phi)
+                and value != 0 and value != math.pi and not math.isnan(value)):
+            raise ValueError("Cannot set theta to anything except NaN, 0, or pi"
+                             " if phi = NaN, change phi or both simultaneously")
         else:
             self.spherical = (self.r, self.phi, value)
     
@@ -319,6 +315,21 @@ class Point:
     # Public Methods #
     def copy(self) -> Point:
         return self.__copy__()
+    
+    def get_reference(self, reference: ConstraintReference) -> Point:
+        """Returns reference geometry for use in external modules like 
+        constraints.
+        
+        :param reference: A ConstraintReference enumeration value. Points only 
+            have a core reference, so any other value will cause an error.
+        :returns: The Point itself or an error.
+        """
+        match reference:
+            case ConstraintReference.CORE:
+                return self
+            case _:
+                raise ValueError(f"{self.__class__}s do not have any"
+                                 f" {reference.name} reference geometry")
     
     def phi_degrees(self) -> float:
         """Returns the polar/spherical azimuth coordinate of the point in 
@@ -383,7 +394,8 @@ class Point:
                 numpy_array = np.array(self) + np.array(other)
                 return tuple(map(lambda x: x.item(), numpy_array))
             else:
-                raise ValueError("Cannot add 2D points/arrays to/from 3D point/arrays")
+                raise ValueError("Cannot add 2D points/arrays to/from 3D"
+                                 " point/arrays")
         elif isinstance(other, Point):
             if len(self) == len(other):
                 numpy_array = np.array(self) + np.array(other)
@@ -394,8 +406,8 @@ class Point:
             return NotImplemented
     
     def __sub__(self, other) -> tuple:
-        """Returns the subtraction of two point's cartesian position vectors as a 
-        tuple"""
+        """Returns the subtraction of two point's cartesian position vectors as
+        a tuple"""
         if isinstance(other, Point):
             if len(self) == len(other):
                 numpy_array = np.array(self) - np.array(other)
@@ -417,7 +429,7 @@ class Point:
     
     def __eq__(self, other: Point) -> bool:
         """Rich comparison for point equality that allows for points to be 
-        directly compared with ==. Note: A point at (0,0) and a point at (0,0,0) 
+        directly compared with ==. Note: A point at (0,0) and a point at (0,0,0)
         will not be found equal since the first's z coordinate is not defined.
         
         :param other: The point to compare self to.
@@ -433,7 +445,7 @@ class Point:
             return NotImplemented
     
     def __len__(self) -> int:
-        """Returns the length of the cartesian tuple, which is equivalent to the 
+        """Returns the length of the cartesian tuple, which is equivalent to the
         point's number of dimnesions."""
         return len(self.cartesian)
     
@@ -462,7 +474,7 @@ class Point:
             else:
                 pt_strs.append("{:g}".format(self.cartesian[i]))
         point_str = ",".join(pt_strs)
-        return f"<PanCAD_Point({point_str})>"
+        return f"<PanCADPoint'{self.uid}'({point_str})>"
     
     def __str__(self) -> str:
         """String function to output the point's description and cartesian 
@@ -474,7 +486,7 @@ class Point:
             else:
                 pt_strs.append("{:g}".format(self.cartesian[i]))
         point_str = ", ".join(pt_strs)
-        return f"PanCAD Point at cartesian ({point_str})"
+        return f"PanCAD Point '{self.uid}' at cartesian ({point_str})"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

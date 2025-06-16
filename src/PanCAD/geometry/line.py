@@ -11,8 +11,8 @@ import math
 import numpy as np
 
 from PanCAD.geometry import Point
-from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import comparison
+from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.utils import trigonometry as trig, comparison
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -212,6 +212,21 @@ class Line:
         line's direction vector is used for a, b, and c.
         """
         return (*tuple(self.reference_point), *self.direction)
+    
+    def get_reference(self, reference: ConstraintReference) -> Line:
+        """Returns reference geometry for use in external modules like 
+        constraints.
+        
+        :param reference: A ConstraintReference enumeration value. Lines only 
+            have a core reference, so any other value will cause an error.
+        :returns: The Line itself or an error.
+        """
+        match reference:
+            case ConstraintReference.CORE:
+                return self
+            case _:
+                raise ValueError(f"{self.__class__}s do not have any"
+                                 f" {reference.name} reference geometry")
     
     def move_to_point(self, point: Point,
                       phi: float=None, theta: float=None) -> Line:
@@ -440,7 +455,7 @@ class Line:
                 direction_strs.append("{:g}".format(self.direction[i]))
         point_str = ",".join(pt_strs)
         direction_str = ",".join(direction_strs)
-        return f"<PanCAD_Line({point_str})({direction_str})>"
+        return f"<PanCADLine'{self.uid}'({point_str})({direction_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
