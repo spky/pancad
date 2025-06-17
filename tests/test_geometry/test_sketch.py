@@ -3,7 +3,7 @@ import unittest
 from PanCAD.geometry import (
     Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Coincident
 )
-from PanCAD.geometry.constants import (PlaneName, SketchConstraint,
+from PanCAD.geometry.constants import (SketchConstraint,
                                        ConstraintReference as CR)
 
 class TestSketchInit(unittest.TestCase):
@@ -11,18 +11,34 @@ class TestSketchInit(unittest.TestCase):
     def setUp(self):
         self.cs = CoordinateSystem((0, 0, 0))
     
-    def test_plane_name(self):
-        sketch = Sketch(self.cs, "yx")
-        self.assertEqual(sketch.plane_name, PlaneName.XY)
+    def test_plane_reference(self):
+        sketch = Sketch(self.cs, CR.XY)
+        self.assertEqual(sketch.plane_reference, CR.XY)
     
-    def test_plane_name_exception(self):
+    def test_plane_reference_exception(self):
         with self.assertRaises(ValueError):
-            sketch = Sketch(self.cs, "fake")
+            sketch = Sketch(self.cs, CR.CORE)
     
     def test_get_plane(self):
-        sketch = Sketch(self.cs, "YZ")
+        sketch = Sketch(self.cs, CR.YZ)
         plane = sketch.get_plane()
         self.assertEqual(plane, Plane((0, 0, 0), (1, 0, 0)))
+
+class TestDunder(unittest.TestCase):
+    def setUp(self):
+        cs = CoordinateSystem((0, 0, 0))
+        geom = [Point(1,1), LineSegment((-1,-1),(-1,1))]
+        cons = [Coincident(geom[0], CR.CORE, geom[1], CR.CORE)]
+        uid = "TestSketch"
+        self.sketch = Sketch(cs, geometry=geom, constraints=cons, uid=uid)
+    
+    def test_repr(self):
+        # Checks whether repr errors out
+        sketch_repr = repr(self.sketch)
+    
+    def test_str(self):
+        # Checks whether str errors out
+        sketch_str = str(self.sketch)
 
 class TestGeometrySetting(unittest.TestCase):
     def setUp(self):

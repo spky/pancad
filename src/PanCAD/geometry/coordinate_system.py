@@ -9,7 +9,7 @@ import math
 import numpy as np
 
 from PanCAD.geometry import Point, Line, Plane
-from PanCAD.geometry.constants import PlaneName, ConstraintReference
+from PanCAD.geometry.constants import ConstraintReference
 
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import (
@@ -154,18 +154,6 @@ class CoordinateSystem:
             return (self.x_vector, self.y_vector)
         else:
             return (self.x_vector, self.y_vector, self.z_vector)
-    
-    def get_plane_by_name(self, name: str) -> Plane:
-        match name:
-            case PlaneName.XY:
-                return self.get_xy_plane()
-            case PlaneName.XZ:
-                return self.get_xz_plane()
-            case PlaneName.YZ:
-                return self.get_yz_plane()
-            case _:
-                raise ValueError(f"{name} not recognized, must be one of"
-                                 f" {list(PlaneName)}")
     
     def get_reference(self,
                       reference: ConstraintReference) -> Point | Line | Plane:

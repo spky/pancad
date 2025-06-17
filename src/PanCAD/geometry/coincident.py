@@ -69,10 +69,13 @@ class Coincident:
         return self._b.get_reference(self._b_reference)
     
     def get_constrained(self) -> tuple[GeometryType]:
+        """Returns a tuple of the constrained geometries"""
         return (self.get_a(), self.get_b())
     
     # Private Methods #
     def _validate_parent_geometry(self):
+        """Raises an error if the geometries are not one of the allowed 
+        types"""
         a = self.get_a()
         b = self.get_b()
         if (not isinstance(a, self.GEOMETRY_TYPES)
@@ -85,6 +88,8 @@ class Coincident:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
     def _validate_constrained_geometry(self):
+        """Raises an error if the constrainted geometries are not one of the 
+        allowed types"""
         a_constrain = self.get_a_constrained()
         b_constrain = self.get_b_constrained()
         if (not isinstance(a_constrain, self.REFERENCE_TYPES)
@@ -111,9 +116,11 @@ class Coincident:
             return NotImplemented
     
     def __repr__(self) -> str:
+        """Returns the short string representation of the Coincident"""
         return f"<Coincident'{self.uid}'{repr(self._a)}{repr(self._b)}>"
     
     def __str__(self) -> str:
+        """Returns the longer string representation of the Coincident"""
         return (
             f"PanCAD Coincident Constraint '{self.uid}' with {repr(self._a)}"
             f" as geometry a and {repr(self._b)} as geometry b"
