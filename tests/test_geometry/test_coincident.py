@@ -1,6 +1,7 @@
 import unittest
 
-from PanCAD.geometry import Coincident, Point
+from PanCAD.geometry import Point
+from PanCAD.geometry.constraints import Coincident
 from PanCAD.geometry.constants import ConstraintReference as CR
 
 class test_init(unittest.TestCase):

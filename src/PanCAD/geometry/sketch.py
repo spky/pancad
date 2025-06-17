@@ -11,8 +11,8 @@ from collections import namedtuple
 from functools import reduce
 from itertools import compress
 
-from PanCAD.geometry import (CoordinateSystem, Point, Line, LineSegment, Plane,
-                             Coincident)
+from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
+from PanCAD.geometry.constraints import Coincident
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
 class Sketch:

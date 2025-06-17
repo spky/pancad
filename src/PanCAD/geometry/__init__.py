@@ -5,8 +5,5 @@ from PanCAD.geometry.line_segment import LineSegment
 from PanCAD.geometry.plane import Plane
 from PanCAD.geometry.coordinate_system import CoordinateSystem
 
-# Import Constraints
-from PanCAD.geometry.coincident import Coincident
-
 # Import Geometry Aggregations
 from PanCAD.geometry.sketch import Sketch

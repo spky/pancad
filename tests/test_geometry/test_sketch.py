@@ -1,8 +1,9 @@
 import unittest
 
 from PanCAD.geometry import (
-    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Coincident
+    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point
 )
+from PanCAD.geometry.constraints import Coincident
 from PanCAD.geometry.constants import (SketchConstraint,
                                        ConstraintReference as CR)
 
