@@ -3,7 +3,7 @@ import unittest
 from PanCAD.geometry import (
     Sketch, CoordinateSystem, Plane, Line, LineSegment, Point
 )
-from PanCAD.geometry.constraints import Coincident
+from PanCAD.geometry.constraints import Coincident, Vertical, Horizontal
 from PanCAD.geometry.constants import (SketchConstraint,
                                        ConstraintReference as CR)
 
@@ -105,6 +105,8 @@ class TestConstraints(unittest.TestCase):
         self.geo = [
             Point(0, 0, uid="Point1"),
             Point(1, 1, uid="Point2"),
+            LineSegment((0, 0), (1, 0), uid="horizontal_line"),
+            LineSegment((0, 0), (0, 1), uid="vertical_line"),
         ]
     
     def test_constraint_validation_success(self):
@@ -127,6 +129,22 @@ class TestConstraints(unittest.TestCase):
         sketch.add_constraint_by_uid(SketchConstraint.COINCIDENT,
                                      self.geo[0].uid, CR.CORE,
                                      self.geo[1].uid, CR.CORE)
+        self.assertEqual(sketch.constraints[0], expected_constraint)
+    
+    def test_add_constraint_by_uid_vertical(self):
+        sketch = Sketch(self.cs, geometry=self.geo)
+        expected_constraint = Vertical(self.geo[2], CR.CORE,
+                                       uid=self.geo[2].uid)
+        sketch.add_constraint_by_uid(SketchConstraint.VERTICAL,
+                                     self.geo[2].uid, CR.CORE)
+        self.assertEqual(sketch.constraints[0], expected_constraint)
+    
+    def test_add_constraint_by_uid_horizontal(self):
+        sketch = Sketch(self.cs, geometry=self.geo)
+        expected_constraint = Horizontal(self.geo[2], CR.CORE,
+                                       uid=self.geo[2].uid)
+        sketch.add_constraint_by_uid(SketchConstraint.HORIZONTAL,
+                                     self.geo[2].uid, CR.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_index(self):

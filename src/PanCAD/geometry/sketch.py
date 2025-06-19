@@ -12,7 +12,7 @@ from functools import reduce
 from itertools import compress
 
 from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
-from PanCAD.geometry.constraints import Coincident
+from PanCAD.geometry.constraints import Coincident, Vertical, Horizontal
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
 class Sketch:
@@ -228,7 +228,7 @@ class Sketch:
     def add_constraint_by_uid(
                 self, constraint_choice: SketchConstraint,
                 uid_a: str, reference_a: ConstraintReference,
-                uid_b: str, reference_b: ConstraintReference,
+                uid_b: str=None, reference_b: ConstraintReference=None,
                 uid_c: str=None, reference_c: ConstraintReference=None
             ) -> None:
         """Adds a sketch constraint between two geometry elements selected by 
@@ -390,6 +390,12 @@ class Sketch:
             case SketchConstraint.COINCIDENT:
                 new_constraint = Coincident(a, reference_a, b, reference_b,
                                             uid=constraint_uid)
+            case SketchConstraint.HORIZONTAL:
+                new_constraint = Horizontal(a, reference_a, b, reference_b,
+                                            uid=constraint_uid)
+            case SketchConstraint.VERTICAL:
+                new_constraint = Vertical(a, reference_a, b, reference_b,
+                                          uid=constraint_uid)
             case _:
                 raise ValueError("Constraint choice not recognized")
         self.constraints += (new_constraint,)
