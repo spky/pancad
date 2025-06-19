@@ -36,3 +36,7 @@ class test_check(unittest.TestCase):
         b = Point(1, 1)
         c = Coincident(a, CR.CORE, b, CR.CORE, "test")
         self.assertFalse(c.check())
+    
+
+if __name__ == "__main__":
+    unittest.main()

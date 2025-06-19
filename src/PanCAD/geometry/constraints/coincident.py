@@ -20,10 +20,8 @@ class Coincident:
     ReferenceType = reduce(lambda x, y: x | y, REFERENCE_TYPES)
     
     def __init__(self,
-                 geometry_a: GeometryType,
-                 reference_a: ConstraintReference,
-                 geometry_b: GeometryType,
-                 reference_b: ConstraintReference,
+                 geometry_a: GeometryType, reference_a: ConstraintReference,
+                 geometry_b: GeometryType, reference_b: ConstraintReference,
                  uid: str=None):
         self.uid = uid
         
@@ -52,7 +50,7 @@ class Coincident:
         """Returns the ConstraintReference of geometry a."""
         return self._a_reference
     
-    def get_a_constrained(self) -> GeometryType:
+    def get_a_constrained(self) -> ReferenceType:
         """Returns the constrained reference geometry of geometry a."""
         return self._a.get_reference(self._a_reference)
     
@@ -64,11 +62,11 @@ class Coincident:
         """Returns the ConstraintReference of geometry b."""
         return self._b_reference
     
-    def get_b_constrained(self) -> GeometryType:
+    def get_b_constrained(self) -> ReferenceType:
         """Returns the constrained reference geometry of geometry b."""
         return self._b.get_reference(self._b_reference)
     
-    def get_constrained(self) -> tuple[GeometryType]:
+    def get_constrained(self) -> tuple[ReferenceType]:
         """Returns a tuple of the constrained geometries"""
         return (self.get_a(), self.get_b())
     
