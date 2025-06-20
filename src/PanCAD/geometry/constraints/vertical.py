@@ -73,7 +73,7 @@ class Vertical:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
     def _validate_constrained_geometry(self) -> None:
-        """Raises an error if the constrainted geometries are not one of the 
+        """Raises an error if the constrained geometries are not one of the 
         allowed types"""
         a_constrain = self.get_a_constrained()
         b_constrain = self.get_b_constrained()
@@ -126,7 +126,7 @@ class Vertical:
             return self._b.get_reference(self._b_reference)
     
     def get_constrained(self) -> tuple[GeometryType]:
-        """Returns a tuple of the constrained geometries"""
+        """Returns a tuple of the constrained geometry parents"""
         if self.get_b() is None:
             return (self.get_a(),)
         else:
