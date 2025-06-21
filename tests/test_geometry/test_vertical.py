@@ -4,7 +4,7 @@ from PanCAD.geometry import Point, Line, LineSegment
 from PanCAD.geometry.constraints import Vertical
 from PanCAD.geometry.constants import ConstraintReference as CR
 
-class test_init(unittest.TestCase):
+class TestInit(unittest.TestCase):
     
     def setUp(self):
         self.uid = "test"

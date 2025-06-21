@@ -6,7 +6,7 @@ from PanCAD.geometry.constraints import (
 )
 from PanCAD.geometry.constants import ConstraintReference as CR
 
-class test_init(unittest.TestCase):
+class TestInit(unittest.TestCase):
     
     def setUp(self):
         self.uid = "test"
@@ -31,7 +31,7 @@ class test_init(unittest.TestCase):
         d = Distance(self.a_3d, CR.CORE, self.b_3d, CR.CORE,
                      self.distance, uid=self.uid)
 
-class test_validation(unittest.TestCase):
+class TestValidation(unittest.TestCase):
     
     def setUp(self):
         self.uid = "test"

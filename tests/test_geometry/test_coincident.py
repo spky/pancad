@@ -4,7 +4,7 @@ from PanCAD.geometry import Point
 from PanCAD.geometry.constraints import Coincident
 from PanCAD.geometry.constants import ConstraintReference as CR
 
-class test_init(unittest.TestCase):
+class TestInit(unittest.TestCase):
     
     def setUp(self):
         self.a = Point(0, 0)
@@ -23,7 +23,7 @@ class test_init(unittest.TestCase):
         self.a.update(new_a)
         self.assertEqual(c.get_a(), new_a)
 
-class test_check(unittest.TestCase):
+class TestCheck(unittest.TestCase):
     
     def test_points_coincident(self):
         a = Point(0, 0)
