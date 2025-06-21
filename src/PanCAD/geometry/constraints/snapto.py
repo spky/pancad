@@ -1,17 +1,27 @@
-"""A module providing a constraint class for Horizontal constraints in 2D 
-geometry contexts. Horizontal can be used to force a Line/LineSegment to be held 
-Horizontal (parallel to x-axis in 2D) or it can be used to force 2 points to be 
-collinear with a theoretical Horizontal line.
+"""A module providing a constraint classes for snapto constraints in 2D 
+geometry contexts. PanCAD defines a snapto constraint as one that can be applied 
+to geometry with no additional arguments but still meaningfully constrain the 
+geometry.
+
+Horizontal can be used to force a Line/LineSegment to be held horizontal 
+(parallel to x-axis in 2D) or it can be used to force 2 points to be 
+collinear with a theoretical horizontal line.
+
+Vertical can be used to force a Line/LineSegment to be held vertical 
+(parallel to y-axis in 2D) or it can be used to force 2 points to be collinear 
+with a theoretical vertical line.
+
 """
 
 from __future__ import annotations
 
 from functools import reduce
+from abc import ABC, abstractmethod
 
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 
-class Horizontal:
+class AbstractSnapTo(ABC):
     # Type Tuples for checking with isinstance()
     GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
@@ -68,7 +78,8 @@ class Horizontal:
                 f"Given: {a.__class__} and {b.__class__}"
             )
         elif len(a) == 3 or len(b) == 3:
-            raise ValueError("geometry must be 2D to be constrained Horizontal")
+            name = self.__class__.__name__
+            raise ValueError(f"geometry must be 2D to be constrained {name}")
         elif a is b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
@@ -79,24 +90,24 @@ class Horizontal:
         b_constrain = self.get_b_constrained()
         if b_constrain is None:
             if not isinstance(a_constrain, self.ONE_GEOMETRY_TYPES):
+                name = self.__class__.__name__
                 raise ValueError(
-                    "A single geometry Horizontal relation can only constrain:"
+                    f"A single geometry {name} relation can only constrain:"
                     f"\n{self.ONE_GEOMETRY_TYPES}\nGiven: {a_constrain}"
                 )
         else:
             b_constrain = self.get_b_constrained()
             if (not isinstance(a_constrain, self.TWO_GEOMETRY_TYPES)
                     or not isinstance(b_constrain, self.TWO_GEOMETRY_TYPES)):
+                name = self.__class__.__name__
                 raise ValueError(
-                    "A two geometry Horizontal relation can only constrain:"
+                    f"A two geometry {name} relation can only constrain:"
                     f"\n{self.TWO_GEOMETRY_TYPES}\nGiven:"
                     f" {a_constrain.__class__} and {b_constrain.__class__}"
                 )
     
     # Public Methods
-    def check(self) -> bool:
-        """Returns whether the constraint is met by the geometry."""
-        raise NotImplementedError("Horizontal check not implemented yet")
+    
     
     def get_a(self) -> GeometryType:
         """Returns geometry a."""
@@ -133,14 +144,14 @@ class Horizontal:
             return (self.get_a(), self.get_b())
     
     # Python Dunders #
-    def __eq__(self, other: Horizontal) -> bool:
-        """Checks whether two Horizontal relations are functionally the same by 
+    def __eq__(self, other: AbstractSnapTo) -> bool:
+        """Checks whether two snapto relations are functionally the same by 
         comparing the memory ids of their constrained geometries.
         
-        :param other: Another Horizontal relationship.
+        :param other: Another snapto relationship of the same type.
         :returns: Whether the relations are the same.
         """
-        if isinstance(other, Horizontal):
+        if isinstance(other, self.__class__):
             return (
                 self.get_a_constrained() is other.get_a_constrained()
                 and self.get_b_constrained() is other.get_b_constrained()
@@ -149,19 +160,36 @@ class Horizontal:
             return NotImplemented
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the Horizontal"""
+        """Returns the short string representation of the snapto relation"""
+        name = self.__class__.__name__
         if self.get_b() is None:
-            return (f"<Horizontal'{self.uid}'"
+            return (f"<{name}'{self.uid}'"
                     f"{repr(self._a)}{self._a_reference.name}>")
         else:
-            return f"<Horizontal'{self.uid}'{repr(self._a)}{repr(self._b)}>"
+            return f"<{name}'{self.uid}'{repr(self._a)}{repr(self._b)}>"
     
     def __str__(self) -> str:
-        """Returns the longer string representation of the Horizontal"""
+        """Returns the longer string representation of the snapto relation"""
+        name = self.__class__.__name__
         if self.get_b() is None:
-            return (f"PanCAD Horizontal Constraint '{self.uid}' constraining"
+            return (f"PanCAD {name} Constraint '{self.uid}' constraining"
                     f" {repr(self._a)}")
         else:
-            return (f"PanCAD Horizontal Constraint '{self.uid}' with"
+            return (f"PanCAD {name} Constraint '{self.uid}' with"
                     f" {repr(self._a)} as constrained a and {repr(self._b)}"
                     " as constrained b")
+    
+    # Abstract Methods #
+    @abstractmethod
+    def check(self) -> bool:
+        """Returns whether the constraint is met by the geometry."""
+
+class Horizontal(AbstractSnapTo):
+    def check(self) -> bool:
+        """Returns whether the constraint is met by the geometry."""
+        raise NotImplementedError("Horizontal check not implemented yet")
+
+class Vertical(AbstractSnapTo):
+    def check(self) -> bool:
+        """Returns whether the constraint is met by the geometry."""
+        raise NotImplementedError("Vertical check not implemented yet")
