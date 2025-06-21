@@ -14,17 +14,25 @@ from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractDistance(ABC):
     
+    VALUE_STR_FORMAT = "{value}{unit}"
+    
     def __init__(self,
                  geometry_a: GeometryType, reference_a: ConstraintReference,
                  geometry_b: GeometryType, reference_b: ConstraintReference,
                  value: int | float,
-                 uid: str=None):
+                 uid: str=None,
+                 unit: str=None):
         self.uid = uid
         self._a = geometry_a
         self._a_reference = reference_a
         self._b = geometry_b
         self._b_reference = reference_b
         self.value = value
+        self._unit = unit
+        
+        self._validate_parent_geometry()
+        self._validate_constrained_geometry()
+        self._validate_value()
     
     # Shared Public Methods #
     def get_a(self) -> GeometryType:
@@ -54,6 +62,24 @@ class AbstractDistance(ABC):
     def get_constrained(self) -> tuple[GeometryType]:
         """Returns a tuple of the constrained geometry parents"""
         return (self.get_a(), self.get_b())
+    
+    def get_value_string(self, include_unit: bool=True) -> str:
+        """Returns a string of the value of the distance constraint with its 
+        associated unit.
+        """
+        return VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
+    
+    # Shared Private Methods #
+    def _validate_value(self):
+        """Raises an error if the value of the constraint cannot be used."""
+        if not isinstance(self.value, (int, float)):
+            raise ValueError("Value must be an int or float,"
+                             f" given: {value.__class__}")
+        elif self.value < 0:
+            name = self.__class__.__name__
+            raise ValueError(f"Values for {name} constraints cannot be < 0,"
+                " negative value behavior should be handled outside of"
+                " distance constraint contexts")
     
     # Shared Dunder Methods
     def __repr__(self) -> str:
@@ -123,12 +149,18 @@ class AbstractDistance(ABC):
         """Raises an error if the constrained geometries are not one of the 
         allowed types"""
 
-class AbstractDistance2D(AbstractDistance):
-    """An abstract class for 2D distance constraints"""
-    GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem)
-    REFERENCE_TYPES = (Point, Line, LineSegment)
+# 2D and 3D Distance Classes #
+################################################################################
+class Distance(AbstractDistance):
+    GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane)
+    REFERENCE_TYPES = (Point, Line, LineSegment, Plane)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     ReferenceType = reduce(lambda x, y: x | y, REFERENCE_TYPES)
+    
+    def check(self) -> bool:
+        """Returns whether the constraint is met by the geometry."""
+        raise NotImplementedError("HorizontalDistance check not implemented"
+                                  " yet")
     
     # Private Methods #
     def _validate_parent_geometry(self):
@@ -142,8 +174,10 @@ class AbstractDistance2D(AbstractDistance):
                 f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
                 f"Given: {a.__class__} and {b.__class__}"
             )
-        elif not len(a) == len(b) == 2:
-            raise ValueError("geometry must be 2D")
+        elif not len(a) == len(b):
+            # Distance can apply to 3D contexts, but a and b must match
+            raise ValueError("Geometry a and b must have the same number"
+                             " of dimensions")
         elif a is b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
@@ -159,14 +193,17 @@ class AbstractDistance2D(AbstractDistance):
                 f"Given: {a_constrain.__class__} and {b_constrain.__class__}"
             )
 
-class Distance(AbstractDistance):
-    GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane)
-    REFERENCE_TYPES = (Point, Line, LineSegment, Plane)
+# 2D Only Classes #
+################################################################################
+class AbstractDistance2D(AbstractDistance):
+    """An abstract class for 2D distance constraints"""
+    GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    REFERENCE_TYPES = (Point, Line, LineSegment)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     ReferenceType = reduce(lambda x, y: x | y, REFERENCE_TYPES)
     
     # Private Methods #
-    def _validate_parent_geometry(self):
+    def _validate_parent_geometry(self) -> None:
         """Raises an error if the geometries are not one of the allowed 
         types"""
         a = self.get_a()
@@ -177,13 +214,12 @@ class Distance(AbstractDistance):
                 f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
                 f"Given: {a.__class__} and {b.__class__}"
             )
-        elif not len(a) == len(b):
-            raise ValueError("Geometry a and b must have the same number"
-                             " of dimensions")
+        elif not len(a) == len(b) == 2:
+            raise ValueError("geometry must be 2D")
         elif a is b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
-    def _validate_constrained_geometry(self):
+    def _validate_constrained_geometry(self) -> None:
         """Raises an error if the constrained geometries are not one of the 
         allowed types"""
         a_constrain = self.get_a_constrained()

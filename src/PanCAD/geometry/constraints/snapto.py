@@ -117,7 +117,7 @@ class AbstractSnapTo(ABC):
         """Returns the ConstraintReference of geometry a."""
         return self._a_reference
     
-    def get_a_constrained(self) -> GeometryType:
+    def get_a_constrained(self) -> ReferenceType:
         """Returns the constrained reference geometry of geometry a."""
         return self._a.get_reference(self._a_reference)
     
@@ -129,7 +129,7 @@ class AbstractSnapTo(ABC):
         """Returns the ConstraintReference of geometry b."""
         return self._b_reference
     
-    def get_b_constrained(self) -> GeometryType:
+    def get_b_constrained(self) -> ReferenceType:
         """Returns the constrained reference geometry of geometry b."""
         if self._b is None:
             return None

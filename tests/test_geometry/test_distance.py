@@ -1,6 +1,6 @@
 import unittest
 
-from PanCAD.geometry import Point, Line, LineSegment
+from PanCAD.geometry import Point, Line, LineSegment, Plane
 from PanCAD.geometry.constraints import (
     HorizontalDistance, VerticalDistance, Distance
 )
@@ -10,13 +10,57 @@ class test_init(unittest.TestCase):
     
     def setUp(self):
         self.uid = "test"
+        self.a = Point(0, 0)
+        self.b = Point(1, 1)
+        self.a_3d = Point(0, 0, 0)
+        self.b_3d = Point(1, 1, 1)
+        self.distance = 10
     
-    def test_point_point_init(self):
+    def test_horizontal_distance_init(self):
         # Checking whether init errors out nominally
-        a = Point(0, 0)
-        b = Point(0, 0)
-        distance = 10
-        hd = HorizontalDistance(a, CR.CORE, b, CR.CORE, 10, uid=self.uid)
+        hd = HorizontalDistance(self.a, CR.CORE, self.b, CR.CORE,
+                                self.distance, uid=self.uid)
+    
+    def test_distance_init_2d(self):
+        # Checking whether init errors out nominally
+        d = Distance(self.a, CR.CORE, self.b, CR.CORE,
+                     self.distance, uid=self.uid)
+    
+    def test_distance_init_3d(self):
+        # Checking whether init errors out nominally
+        d = Distance(self.a_3d, CR.CORE, self.b_3d, CR.CORE,
+                     self.distance, uid=self.uid)
+
+class test_validation(unittest.TestCase):
+    
+    def setUp(self):
+        self.uid = "test"
+        self.a = Point(0, 0)
+        self.b = Point(1, 1)
+        self.a_3d = Point(0, 0, 0)
+        self.b_3d = Point(1, 1, 1)
+        self.distance = 10
+    
+    def test_3d_horizontal(self):
+        with self.assertRaises(ValueError):
+            hd = HorizontalDistance(self.a_3d, CR.CORE, self.b_3d, CR.CORE,
+                                    self.distance, uid=self.uid)
+    
+    def test_mixed_dimension_distance(self):
+        with self.assertRaises(ValueError):
+            d = Distance(self.a_3d, CR.CORE, self.b, CR.CORE,
+                         self.distance, uid=self.uid)
+    
+    def test_negative_value(self):
+        with self.assertRaises(ValueError):
+            d = Distance(self.a, CR.CORE, self.b, CR.CORE,
+                         -self.distance, uid=self.uid)
+    
+    def test_plane_to_horizontal_distance(self):
+        plane = Plane((0,0,0), (0,0,1))
+        with self.assertRaises(ValueError):
+            hd = HorizontalDistance(plane, CR.CORE, self.b, CR.CORE,
+                                    self.distance, uid=self.uid)
 
 class TestDunder(unittest.TestCase):
     def setUp(self):
@@ -41,7 +85,7 @@ class TestDunder(unittest.TestCase):
         # Checks whether repr errors out
         vd_repr = repr(self.vd)
     
-    def test_str__vertical_distance(self):
+    def test_str_vertical_distance(self):
         # Checks whether str errors out
         vd_str = str(self.vd)
     
