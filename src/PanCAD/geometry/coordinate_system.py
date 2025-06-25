@@ -40,9 +40,12 @@ class CoordinateSystem:
     ZLINE_UID = "zline"
     ORIGIN_UID = "origin"
     
-    def __init__(self, origin: Point|tuple|np.ndarray,
+    def __init__(self, origin: Point|tuple|np.ndarray=None,
                  alpha: float=0, beta: float=0, gamma: float=0, *,
                  right_handed: bool=True, uid: str=None):
+        
+        if origin is None:
+            origin = (0, 0, 0)
         
         if isinstance(origin, (tuple, np.ndarray)):
             origin = Point(origin)

@@ -3,7 +3,10 @@ import unittest
 from PanCAD.geometry import (
     Sketch, CoordinateSystem, Plane, Line, LineSegment, Point
 )
-from PanCAD.geometry.constraints import Coincident, Vertical, Horizontal
+from PanCAD.geometry.constraints import (
+    Coincident, Vertical, Horizontal,
+    Distance, HorizontalDistance, VerticalDistance
+)
 from PanCAD.geometry.constants import (SketchConstraint,
                                        ConstraintReference as CR)
 
@@ -142,9 +145,35 @@ class TestConstraints(unittest.TestCase):
     def test_add_constraint_by_uid_horizontal(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         expected_constraint = Horizontal(self.geo[2], CR.CORE,
-                                       uid=self.geo[2].uid)
+                                         uid=self.geo[2].uid)
         sketch.add_constraint_by_uid(SketchConstraint.HORIZONTAL,
                                      self.geo[2].uid, CR.CORE)
+        self.assertEqual(sketch.constraints[0], expected_constraint)
+    
+    def test_add_constraint_by_uid_distance(self):
+        sketch = Sketch(self.cs, geometry=self.geo)
+        distance = 10
+        expected_constraint = Distance(self.geo[0], CR.CORE,
+                                       self.geo[1], CR.CORE,
+                                       uid="test_pt_distance",
+                                       value=distance)
+        sketch.add_constraint_by_uid(SketchConstraint.DISTANCE,
+                                     self.geo[0].uid, CR.CORE,
+                                     self.geo[1].uid, CR.CORE,
+                                     value=distance)
+        self.assertEqual(sketch.constraints[0], expected_constraint)
+    
+    def test_add_constraint_by_uid_horizontal_distance(self):
+        sketch = Sketch(self.cs, geometry=self.geo)
+        distance = 10
+        expected_constraint = HorizontalDistance(self.geo[0], CR.CORE,
+                                                 self.geo[1], CR.CORE,
+                                                 uid="test_pt_distance",
+                                                 value=distance)
+        sketch.add_constraint_by_uid(SketchConstraint.DISTANCE_HORIZONTAL,
+                                     self.geo[0].uid, CR.CORE,
+                                     self.geo[1].uid, CR.CORE,
+                                     value=distance)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_index(self):

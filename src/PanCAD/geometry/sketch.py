@@ -12,7 +12,10 @@ from functools import reduce
 from itertools import compress
 
 from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
-from PanCAD.geometry.constraints import Coincident, Vertical, Horizontal
+from PanCAD.geometry.constraints import (
+    Coincident, Vertical, Horizontal,
+    Distance, HorizontalDistance, VerticalDistance,
+)
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
 class Sketch:
@@ -229,7 +232,8 @@ class Sketch:
                 self, constraint_choice: SketchConstraint,
                 uid_a: str, reference_a: ConstraintReference,
                 uid_b: str=None, reference_b: ConstraintReference=None,
-                uid_c: str=None, reference_c: ConstraintReference=None
+                uid_c: str=None, reference_c: ConstraintReference=None,
+                **kwargs
             ) -> None:
         """Adds a sketch constraint between two geometry elements selected by 
         their uids. Prefixes the new constraint's uid with the sketch's uid. All 
@@ -256,13 +260,15 @@ class Sketch:
         self._add_new_constraint(constraint_choice,
                                  geometry_a, reference_a,
                                  geometry_b, reference_b,
-                                 geometry_c, reference_c)
+                                 geometry_c, reference_c,
+                                 **kwargs)
     
     def add_constraint_by_index(
                 self, constraint_choice: SketchConstraint,
                 index_a: int, reference_a: ConstraintReference,
                 index_b: int=None, reference_b: ConstraintReference=None,
-                index_c: int=None, reference_c: ConstraintReference=None
+                index_c: int=None, reference_c: ConstraintReference=None,
+                **kwargs
             ) -> None:
         """Adds a sketch constraint between two geometry elements selected by 
         their indices. Prefixes the new constraint's uid with the sketch's uid. 
@@ -288,7 +294,8 @@ class Sketch:
         self._add_new_constraint(constraint_choice,
                                  geometry_a, reference_a,
                                  geometry_b, reference_b,
-                                 geometry_c, reference_c)
+                                 geometry_c, reference_c,
+                                 **kwargs)
     
     def get_construction_geometry(self) -> tuple[GeometryType]:
         """Returns a tuple of the sketch's construction geometry."""
@@ -379,7 +386,8 @@ class Sketch:
                 self, constraint_choice: SketchConstraint,
                 a: GeometryType, reference_a: ConstraintReference,
                 b: GeometryType, reference_b: ConstraintReference,
-                c: GeometryType=None, reference_c: ConstraintReference=None
+                c: GeometryType=None, reference_c: ConstraintReference=None,
+                **kwargs
             ) -> None:
         """Adds a new constraint to the constraint tuple. Assumes that a, b, and 
         c are in the geometry tuple.
@@ -396,6 +404,18 @@ class Sketch:
             case SketchConstraint.VERTICAL:
                 new_constraint = Vertical(a, reference_a, b, reference_b,
                                           uid=constraint_uid)
+            case SketchConstraint.DISTANCE:
+                new_constraint = Distance(
+                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
+                )
+            case SketchConstraint.DISTANCE_HORIZONTAL:
+                new_constraint = HorizontalDistance(
+                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
+                )
+            case SketchConstraint.DISTANCE_VERTICAL:
+                new_constraint = HorizontalDistance(
+                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
+                )
             case _:
                 raise ValueError("Constraint choice not recognized")
         self.constraints += (new_constraint,)
