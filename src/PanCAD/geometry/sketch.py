@@ -228,6 +228,15 @@ class Sketch:
             )
     
     # Public Functions #
+    def add_constraint(self, constraint) -> None:
+        dependencies = constraint.get_constrained()
+        if all([d in self for d in dependencies]):
+            self.constraints = self.constraints + (constraint,)
+        else:
+            missing = filter(lambda d: d not in self, dependencies)
+            raise LookupError(f"Dependencies for {repr(constraint)} are missing"
+                             f" from part: {list(missing)}")
+    
     def add_constraint_by_uid(
                 self, constraint_choice: SketchConstraint,
                 uid_a: str, reference_a: ConstraintReference,
@@ -301,10 +310,16 @@ class Sketch:
         """Returns a tuple of the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
     
-    def get_non_construction_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the sketch's non-construction geometry."""
-        non_construction = [not c for c in self.construction]
-        return tuple(compress(self.geometry, non_construction))
+    def get_dependencies(self) -> tuple[ExternalType]:
+        """Returns a tuple of the sketch's external dependencies"""
+        return (self.coordinate_system,) + self.externals
+    
+    def get_geometry_status(self) -> iter[GeometryStatus]:
+        """Returns an iterator of GeometryStatus namedtuples that contains the 
+        geometry and whether the geometry is construction geometry
+        """
+        for geometry, construction in zip(self.geometry, self.construction):
+            yield self.GeometryStatus(geometry, construction)
     
     def get_geometry_by_uid(self, uid: str|ConstraintReference) -> GeometryType:
         """Returns an element of geometry if a geometry with that uid matches 
@@ -326,12 +341,10 @@ class Sketch:
         else:
             raise ValueError(f"uid '{uid}' was not found in sketch's geometry")
     
-    def get_geometry_status(self) -> iter[GeometryStatus]:
-        """Returns an iterator of GeometryStatus namedtuples that contains the 
-        geometry and whether the geometry is construction geometry
-        """
-        for geometry, construction in zip(self.geometry, self.construction):
-            yield self.GeometryStatus(geometry, construction)
+    def get_non_construction_geometry(self) -> tuple[GeometryType]:
+        """Returns a tuple of the sketch's non-construction geometry."""
+        non_construction = [not c for c in self.construction]
+        return tuple(compress(self.geometry, non_construction))
     
     def get_plane(self):
         """Returns a copy of the plane that contains the sketch geometry.
@@ -439,7 +452,11 @@ class Sketch:
         raise NotImplementedError("Sketch copy hasn't been implemented yet,"
                                   " see github issue #53")
     
-    def __eq__(self) -> bool:
+    def __contains__(self, item):
+        contents = (self.get_sketch_coordinate_system(),) + self.geometry
+        return any([item is c for c in contents])
+    
+    def __eq__(self, other) -> bool:
         raise NotImplementedError("Sketch equality hasn't been implemented yet,"
                                   " see github issue #54")
     

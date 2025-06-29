@@ -17,7 +17,7 @@ in another application).
 import os
 from collections import defaultdict
 
-from PanCAD.geometry import CoordinateSystem
+from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 from PanCAD.filetypes.constants import SoftwareName
 
 class PartFile:
@@ -39,7 +39,7 @@ class PartFile:
     def __init__(self,
                  filename: str,
                  original_software: SoftwareName,
-                 geometry: tuple=None,
+                 features: tuple=None,
                  *,
                  metadata: dict=None,
                  coordinate_system: CoordinateSystem=None,
@@ -51,12 +51,33 @@ class PartFile:
         if metadata_map is None:
             metadata_map = dict()
         
+        if features is None:
+            self._features = tuple()
+        else:
+            self._features = tuple(features)
+        
         if coordinate_system is None:
             self._coordinate_system = CoordinateSystem()
         else:
             self._coordinate_system = coordinate_system
         
         self._initialize_metadata(metadata, original_software, metadata_map)
+    
+    # Public Methods
+    def add_feature(self, feature: Sketch | Extrude):
+        dependencies = feature.get_dependencies()
+        if all([d in self for d in dependencies]):
+            self._features = self._features + (feature,)
+        else:
+            missing = filter(lambda d: d not in self, dependencies)
+            raise LookupError(f"Dependencies for {repr(feature)} are missing"
+                             f" from part: {list(missing)}")
+    
+    def get_coordinate_system(self):
+        return self._coordinate_system
+    
+    def get_features(self):
+        return self._features
     
     def get_metadata_value(self, software: SoftwareName, metadata_name: str):
         try:
@@ -106,3 +127,9 @@ class PartFile:
         PartFile's filename"""
         name, extension = os.path.splitext(string)
         self.filename = name
+    
+    # Python Dunders #
+    
+    def __contains__(self, item):
+        contents = (self._coordinate_system,) + self._features
+        return any([item is c for c in contents])

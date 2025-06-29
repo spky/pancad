@@ -8,8 +8,10 @@ from PanCAD.geometry.line_segment import LineSegment
 from PanCAD.geometry.plane import Plane
 from PanCAD.geometry.coordinate_system import CoordinateSystem
 
-# Import 2D Geometry Aggregations
+# Import 2D Geometry Aggregations - dependent on Geometry Types
 from PanCAD.geometry.sketch import Sketch
 
-# Import 3D Geometry Aggregations (can contain 
+# Import 3D Geometry Aggregations - dependent on 2D Geometry Aggregations
+from PanCAD.geometry.extrude import Extrude
+
 from PanCAD.geometry.body import Body
