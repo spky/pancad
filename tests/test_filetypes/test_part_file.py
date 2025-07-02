@@ -1,5 +1,7 @@
+import os
 import unittest
 
+import PanCAD
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
 
@@ -8,7 +10,9 @@ from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance
 )
-from PanCAD.geometry.constants import ConstraintReference as CR
+from PanCAD.geometry.constants import ConstraintReference
+
+from PanCAD.cad.freecad import to_freecad
 
 class TestPartFile(unittest.TestCase):
     
@@ -39,7 +43,8 @@ class TestPartFile(unittest.TestCase):
              "units": "UnitSystem",
         }
     
-    def square_sketch(self, uid: str, cs: CoordinateSystem):
+    def square_sketch(self, uid: str, cs: CoordinateSystem,
+                      plane_ref: ConstraintReference=ConstraintReference.XY):
         geometry = [ # A 1x1 square
             LineSegment((0, 0), (1, 0)),
             LineSegment((1, 0), (1, 1)),
@@ -48,23 +53,37 @@ class TestPartFile(unittest.TestCase):
         ]
         # Constrain geometry to each other
         constraints = [
-            Horizontal(geometry[0], CR.CORE),
-            Vertical(geometry[1], CR.CORE),
-            Horizontal(geometry[2], CR.CORE),
-            Vertical(geometry[3], CR.CORE),
-            Coincident(geometry[0], CR.START, geometry[3], CR.END),
-            Coincident(geometry[0], CR.END, geometry[1], CR.START),
-            Coincident(geometry[1], CR.END, geometry[2], CR.START),
-            Coincident(geometry[2], CR.END, geometry[3], CR.START),
-            VerticalDistance(geometry[0], CR.CORE, geometry[2], CR.CORE, 1),
-            HorizontalDistance(geometry[1], CR.CORE, geometry[3], CR.CORE, 1),
+            Horizontal(geometry[0], ConstraintReference.CORE),
+            Vertical(geometry[1], ConstraintReference.CORE),
+            Horizontal(geometry[2], ConstraintReference.CORE),
+            Vertical(geometry[3], ConstraintReference.CORE),
+            Coincident(geometry[0], ConstraintReference.START,
+                       geometry[3], ConstraintReference.END),
+            Coincident(geometry[0], ConstraintReference.END,
+                       geometry[1], ConstraintReference.START),
+            Coincident(geometry[1], ConstraintReference.END,
+                       geometry[2], ConstraintReference.START),
+            Coincident(geometry[2], ConstraintReference.END,
+                       geometry[3], ConstraintReference.START),
+            VerticalDistance(geometry[0], ConstraintReference.CORE,
+                             geometry[2], ConstraintReference.CORE,
+                             1),
+            HorizontalDistance(geometry[1], ConstraintReference.CORE,
+                               geometry[3], ConstraintReference.CORE,
+                               1),
         ]
-        sketch = Sketch(cs, geometry=geometry, constraints=constraints, uid=uid)
+        sketch = Sketch(cs,
+                        plane_reference=plane_ref,
+                        geometry=geometry,
+                        constraints=constraints,
+                        uid=uid)
         # Constrain bottom left corner to origin
-        sketch.add_constraint(
-            Coincident(geometry[0], CR.START,
-                       sketch.get_sketch_coordinate_system(), CR.ORIGIN)
-        )
+        # sketch.add_constraint(
+            # Coincident(geometry[0], ConstraintReference.START,
+                       # sketch.get_sketch_coordinate_system(),
+                       # ConstraintReference.ORIGIN)
+        # )
+        
         return sketch
 
 class TestPartFileInitialization(TestPartFile):
@@ -105,6 +124,36 @@ class TestAddGeometry(TestPartFile):
         with self.assertRaises(LookupError):
             self.file.add_feature(test_extrude)
 
+class TestWritePartFileToFreeCAD(TestPartFile):
+    def setUp(self):
+        super().setUp()
+        self.file = PartFile(filename=self.filename,
+                             original_software=SoftwareName.FREECAD,
+                             metadata=self.metadata,
+                             metadata_map=self.metadata_map)
+        self.sketch = self.square_sketch("TestSquareSketch",
+                                         self.file.get_coordinate_system(),
+                                         ConstraintReference.XZ)
+        
+        tests_folder = os.path.abspath(
+            os.path.join(PanCAD.__file__, "..", "..", "..", "tests")
+        )
+        self.dump_folder = os.path.join(tests_folder, "test_output_dump")
+        self.filepath = os.path.join(self.dump_folder, self.filename)
+    
+    # def tearDown(self):
+        # if os.path.exists(self.filepath):
+            # os.remove(self.filepath)
+    
+    @unittest.skip
+    def test_to_freecad_create_body(self):
+        to_freecad(self.filepath, self.file)
+    
+    def test_to_freecad_create_body_and_sketch(self):
+        self.file.add_feature(self.sketch)
+        to_freecad(self.filepath, self.file)
+    
+    
 
 if __name__ == "__main__":
     unittest.main()

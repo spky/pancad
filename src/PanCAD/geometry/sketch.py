@@ -341,6 +341,18 @@ class Sketch:
         else:
             raise ValueError(f"uid '{uid}' was not found in sketch's geometry")
     
+    def get_index_of(self, item: object) -> int:
+        """Returns the index of a geometry, constraint, or external item in 
+        their respective lists. Raises an error if its not in any of them."""
+        if any([item is g for g in self.geometry]):
+            return [item is g for g in self.geometry].index(True)
+        elif any([item is c for c in self.constraints]):
+            return [item is c for c in self.constraints].index(True)
+        elif any([item is g for g in self.externals]):
+            return [item is g for g in self.externals].index(True)
+        else:
+            raise LookupError(f"Item {item} is not in sketch")
+    
     def get_non_construction_geometry(self) -> tuple[GeometryType]:
         """Returns a tuple of the sketch's non-construction geometry."""
         non_construction = [not c for c in self.construction]
@@ -455,10 +467,6 @@ class Sketch:
     def __contains__(self, item):
         contents = (self.get_sketch_coordinate_system(),) + self.geometry
         return any([item is c for c in contents])
-    
-    def __eq__(self, other) -> bool:
-        raise NotImplementedError("Sketch equality hasn't been implemented yet,"
-                                  " see github issue #54")
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the sketch's contextual 

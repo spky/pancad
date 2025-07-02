@@ -20,6 +20,7 @@ from collections import defaultdict
 from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 from PanCAD.filetypes.constants import SoftwareName
 
+
 class PartFile:
     
     # dcterms defined here:

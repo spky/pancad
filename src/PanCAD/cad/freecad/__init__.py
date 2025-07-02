@@ -16,3 +16,4 @@ import Sketcher
 import Part
 
 from PanCAD.cad.freecad.file import File
+from PanCAD.cad.freecad.to_part_file import to_freecad
