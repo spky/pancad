@@ -78,11 +78,11 @@ class TestPartFile(unittest.TestCase):
                         constraints=constraints,
                         uid=uid)
         # Constrain bottom left corner to origin
-        # sketch.add_constraint(
-            # Coincident(geometry[0], ConstraintReference.START,
-                       # sketch.get_sketch_coordinate_system(),
-                       # ConstraintReference.ORIGIN)
-        # )
+        sketch.add_constraint(
+            Coincident(geometry[0], ConstraintReference.START,
+                       sketch.get_sketch_coordinate_system(),
+                       ConstraintReference.ORIGIN)
+        )
         
         return sketch
 

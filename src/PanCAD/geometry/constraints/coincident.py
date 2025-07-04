@@ -70,6 +70,10 @@ class Coincident:
         """Returns a tuple of the constrained geometries"""
         return (self.get_a(), self.get_b())
     
+    def get_references(self) -> tuple[ConstraintReference]:
+        """Returns a tuple of the constrained geometry's references"""
+        return (self.get_a_reference(), self.get_b_reference())
+    
     # Private Methods #
     def _validate_parent_geometry(self):
         """Raises an error if the geometries are not one of the allowed 

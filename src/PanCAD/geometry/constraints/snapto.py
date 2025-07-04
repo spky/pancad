@@ -143,6 +143,13 @@ class AbstractSnapTo(ABC):
         else:
             return (self.get_a(), self.get_b())
     
+    def get_references(self) -> tuple[ConstraintReference]:
+        """Returns a tuple of the constrained geometry's references"""
+        if self.get_b() is None:
+            return (self.get_a_reference(),)
+        else:
+            return (self.get_a_reference(), self.get_b_reference())
+    
     # Python Dunders #
     def __eq__(self, other: AbstractSnapTo) -> bool:
         """Checks whether two snapto relations are functionally the same by 

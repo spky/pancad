@@ -11,7 +11,10 @@ from PanCAD.filetypes import PartFile
 from PanCAD.geometry import (
     CoordinateSystem, Sketch, LineSegment
 )
-from PanCAD.geometry.constraints import Coincident
+from PanCAD.geometry.constraints import (
+    Coincident, Vertical, Horizontal,
+    Distance, HorizontalDistance, VerticalDistance,
+)
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import file_handlers
 
@@ -92,22 +95,76 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
             raise ValueError(f"Geometry class {g.__class__} not recognized")
     
     for i, constraint in enumerate(sketch.constraints):
+        print(f"__ Constraint {i} __")
+        constraint_inputs = get_constraint_inputs(sketch, constraint)
         if isinstance(constraint, Coincident):
-            print(repr(constraint))
-            a_index = sketch.get_index_of(constraint.get_a())
-            a_subpart = map_to_subpart(constraint.get_a_reference())
-            
-            b_index = sketch.get_index_of(constraint.get_b())
-            b_subpart = map_to_subpart(constraint.get_b_reference())
-            new_constraint = Sketcher.Constraint(
-                "Coincident", a_index, a_subpart, b_index, b_subpart
-            )
-            freecad_sketch.addConstraint(new_constraint)
-            feature_map.update(
-                {(sketch, "constraint", i): new_constraint}
-            )
+            new_constraint = Sketcher.Constraint("Coincident",
+                                                 *constraint_inputs)
+        elif isinstance(constraint, (Horizontal, Vertical)):
+            if constraint.get_b() is None:
+                # Horizontal/Vertical One Geometry Case
+                if isinstance(constraint, Horizontal):
+                    new_constraint = Sketcher.Constraint("Horizontal",
+                                                         constraint_inputs[0])
+                else:
+                    new_constraint = Sketcher.Constraint("Vertical",
+                                                         constraint_inputs[0])
+            else:
+                # Horizontal/Vertical Two Geometry Case
+                if isinstance(constraint, Horizontal):
+                    new_constraint = Sketcher.Constraint("Horizontal",
+                                                         *constraint_inputs)
+                else:
+                    new_constraint = Sketcher.Constraint("Vertical",
+                                                         *constraint_inputs)
+        else:
+            # IN WORK TEMP #
+            continue
+            # IN WORK TEMP #
+        
+        # Add constraint to freecad and map
+        freecad_sketch.addConstraint(new_constraint)
+        pprint(freecad_sketch.Constraints)
+        # print(freecad_sketch.Constraints[-1])
+        feature_map.update(
+            {(sketch, "constraint", i): new_constraint}
+        )
     
     return feature_map
+
+def get_constraint_inputs(sketch: Sketch, constraint) -> tuple[int, int]:
+    """Returns the indices required to reference constraint geometry in FreeCAD. 
+    FreeCAD references the sketch origin, x-axis, and y-axis with hidden 
+    external geometry elements. The origin is the start point of the x-axis 
+    line, the x-axis line is at index -1, and the y-axis line is at index 
+    -2. If those elements are referenced then they need to be mapped differently 
+    than they are in PanCAD and likely other programs.
+    """
+    original_inputs = zip(constraint.get_constrained(),
+                          constraint.get_references())
+    freecad_inputs = tuple()
+    for constrained, reference in original_inputs:
+        if constrained is sketch.get_sketch_coordinate_system():
+            # FreeCAD keeps its sketch coordinate system in negative index 
+            # locations, so this is a special case for constraints.
+            match reference:
+                case ConstraintReference.ORIGIN:
+                    index = -1
+                    subpart = EdgeSubPart.START
+                case ConstraintReference.X:
+                    index = -1
+                    subpart = EdgeSubPart.EDGE
+                case ConstraintReference.Y:
+                    index = -2
+                    subpart = EdgeSubPart.EDGE
+                case _:
+                    raise ValueError(f"Invalid ConstraintReference {reference}")
+        else:
+            index = sketch.get_index_of(constrained)
+            subpart = map_to_subpart(reference)
+        freecad_inputs = freecad_inputs + (index, subpart)
+    return freecad_inputs
+
 
 def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
     match pancad_reference:
@@ -122,6 +179,8 @@ def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
 
 def map_coordinate_system(coordinate_system: CoordinateSystem,
                           origin: App.DocumentObject) -> dict:
+    """Returns a dict that maps pancad (coordinate system, reference) tuples to 
+    a freecad origin object"""
     return { # Assumes FreeCAD maintains the same order in the future
         (coordinate_system, ConstraintReference.ORIGIN): origin,
         (coordinate_system, ConstraintReference.X): origin.OriginFeatures[0],

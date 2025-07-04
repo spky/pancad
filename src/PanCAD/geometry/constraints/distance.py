@@ -63,6 +63,10 @@ class AbstractDistance(ABC):
         """Returns a tuple of the constrained geometry parents"""
         return (self.get_a(), self.get_b())
     
+    def get_references(self) -> tuple[ConstraintReference]:
+        """Returns a tuple of the constrained geometry's references"""
+        return (self.get_a_reference(), self.get_b_reference())
+    
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the distance constraint with its 
         associated unit.
