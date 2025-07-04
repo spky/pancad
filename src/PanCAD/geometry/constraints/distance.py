@@ -28,7 +28,7 @@ class AbstractDistance(ABC):
         self._b = geometry_b
         self._b_reference = reference_b
         self.value = value
-        self._unit = unit
+        self.unit = unit
         
         self._validate_parent_geometry()
         self._validate_constrained_geometry()

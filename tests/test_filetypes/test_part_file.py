@@ -45,11 +45,14 @@ class TestPartFile(unittest.TestCase):
     
     def square_sketch(self, uid: str, cs: CoordinateSystem,
                       plane_ref: ConstraintReference=ConstraintReference.XY):
+        length = 1
+        width = 2
+        unit = "mm"
         geometry = [ # A 1x1 square
-            LineSegment((0, 0), (1, 0)),
-            LineSegment((1, 0), (1, 1)),
-            LineSegment((1, 1), (0, 1)),
-            LineSegment((0, 1), (0, 0)),
+            LineSegment((0, 0), (width, 0)),
+            LineSegment((width, 0), (width, length)),
+            LineSegment((width, length), (0, length)),
+            LineSegment((0, length), (0, 0)),
         ]
         # Constrain geometry to each other
         constraints = [
@@ -65,12 +68,12 @@ class TestPartFile(unittest.TestCase):
                        geometry[2], ConstraintReference.START),
             Coincident(geometry[2], ConstraintReference.END,
                        geometry[3], ConstraintReference.START),
-            VerticalDistance(geometry[0], ConstraintReference.CORE,
-                             geometry[2], ConstraintReference.CORE,
-                             1),
-            HorizontalDistance(geometry[1], ConstraintReference.CORE,
-                               geometry[3], ConstraintReference.CORE,
-                               1),
+            Distance(geometry[0], ConstraintReference.CORE,
+                     geometry[2], ConstraintReference.CORE,
+                     length, unit="mm"),
+            Distance(geometry[1], ConstraintReference.CORE,
+                     geometry[3], ConstraintReference.CORE,
+                     width, unit="mm"),
         ]
         sketch = Sketch(cs,
                         plane_reference=plane_ref,
@@ -103,6 +106,7 @@ class TestAddGeometry(TestPartFile):
                              metadata_map=self.metadata_map)
         self.sketch = self.square_sketch("TestSquareSketch",
                                          self.file.get_coordinate_system())
+        self.height = 3
     
     def test_add_sketch(self):
         self.file.add_feature(self.sketch)
@@ -120,7 +124,8 @@ class TestAddGeometry(TestPartFile):
             self.file.add_feature(sketch)
     
     def test_add_extrude_missing_dependency(self):
-        test_extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
+        test_extrude = Extrude.from_length(self.sketch, self.height,
+                                           "test_extrude")
         with self.assertRaises(LookupError):
             self.file.add_feature(test_extrude)
 
@@ -134,7 +139,7 @@ class TestWritePartFileToFreeCAD(TestPartFile):
         self.sketch = self.square_sketch("TestSquareSketch",
                                          self.file.get_coordinate_system(),
                                          ConstraintReference.XZ)
-        
+        self.extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
         tests_folder = os.path.abspath(
             os.path.join(PanCAD.__file__, "..", "..", "..", "tests")
         )
@@ -149,10 +154,15 @@ class TestWritePartFileToFreeCAD(TestPartFile):
     def test_to_freecad_create_body(self):
         to_freecad(self.filepath, self.file)
     
+    @unittest.skip
     def test_to_freecad_create_body_and_sketch(self):
         self.file.add_feature(self.sketch)
         to_freecad(self.filepath, self.file)
     
+    def test_to_freecad_create_body_and_pad(self):
+        self.file.add_feature(self.sketch)
+        self.file.add_feature(self.extrude)
+        to_freecad(self.filepath, self.file)
     
 
 if __name__ == "__main__":
