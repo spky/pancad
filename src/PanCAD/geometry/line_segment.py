@@ -10,6 +10,7 @@ import numpy as np
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.geometry import Point, Line
+from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -99,6 +100,28 @@ class LineSegment:
     
     def get_length(self) -> float:
         return self.length
+    
+    def get_reference(self, reference: ConstraintReference
+                      ) -> LineSegment | Point:
+        """Returns reference geometry for use in external modules like 
+        constraints. Warning: Unlike some common PanCAD functions this one does 
+        not return a copy of geometry, but the a reference to the internal 
+        geometry object.
+        
+        :param reference: A ConstraintReference enumeration value. LineSegments 
+            contain CORE, START, and END reference geometries.
+        :returns: The Point itself or an error.
+        """
+        match reference:
+            case ConstraintReference.CORE:
+                return self
+            case ConstraintReference.START:
+                return self._point_a
+            case ConstraintReference.END:
+                return self._point_b
+            case _:
+                raise ValueError(f"{self.__class__}s do not have any"
+                                 f" {reference.name} reference geometry")
     
     def get_x_length(self) -> float:
         return abs(self.point_a.x - self.point_b.x)
@@ -274,7 +297,7 @@ class LineSegment:
                 pt_b_strs.append("{:g}".format(self.point_b[i]))
         pt_a_str = ",".join(pt_a_strs)
         pt_b_str = ",".join(pt_b_strs)
-        return f"<PanCAD_LineSegment({pt_a_str})({pt_b_str})>"
+        return f"<PanCADLineSegment'{self.uid}'({pt_a_str})({pt_b_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 

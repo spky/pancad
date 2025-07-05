@@ -8,8 +8,8 @@ import math
 import numpy as np
 
 from PanCAD.geometry import Point
-from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import comparison
+from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.geometry.constants import ConstraintReference
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -20,7 +20,9 @@ class Plane:
                  normal_vector: list | tuple | np.ndarray = None,
                  uid: str = None):
         self.uid = uid
-        point = Point(point) if isinstance(point, (tuple, np.ndarray)) else point
+        if isinstance(point, (tuple, np.ndarray)):
+            point = Point(point)
+        
         if isinstance(point, Point):
             self.move_to_point(point, normal_vector)
         elif point is None:
@@ -126,6 +128,24 @@ class Plane:
         """
         vector = np.array(self.normal)
         return vector.reshape(3, 1) if vertical else vector
+    
+    def get_reference(self, reference: ConstraintReference
+                      ) -> Plane:
+        """Returns reference geometry for use in external modules like 
+        constraints. Warning: Unlike some common PanCAD functions this one does 
+        not return a copy of geometry, but the a reference to the internal 
+        geometry object.
+        
+        :param reference: A ConstraintReference enumeration value. Planes only 
+            have a core reference, so any other value will cause an error.
+        :returns: The Line itself or an error.
+        """
+        match reference:
+            case ConstraintReference.CORE:
+                return self
+            case _:
+                raise ValueError(f"{self.__class__}s do not have any"
+                                 f" {reference.name} reference geometry")
     
     def move_to_point(self, point: Point,
                       normal_vector: list | tuple | np.ndarray = None) -> Plane:
