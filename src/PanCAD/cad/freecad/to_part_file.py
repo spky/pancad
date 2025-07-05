@@ -21,13 +21,18 @@ from PanCAD.utils import file_handlers
 
 
 
-def to_freecad(filepath: str, pancad_file) -> App.Document:
+def to_freecad(filepath: str, pancad_file: PartFile) -> None:
+    """Saves a PanCAD file object to a FreeCAD file.
     
+    :param filepath: Location to save the new FreeCAD file.
+    :param pancad_file: A pancad file object
+    """
     if isinstance(pancad_file, PartFile):
         document = App.newDocument()
         document.FileName = file_handlers.filepath(filepath)
         
-        """FreeCAD does not have a file that forces users to put only one part 
+        """
+        FreeCAD does not have a file that forces users to put only one part 
         into a file, but most other cad programs do. The file created by 
         PanCAD sets up a file structured to only have one body in it at the 
         end of processing.
@@ -35,7 +40,6 @@ def to_freecad(filepath: str, pancad_file) -> App.Document:
         
         # Add body and coordinate system
         root = document.addObject(ObjectType.BODY, "Body")
-        root.Visibility = True
         file_cs = pancad_file.get_coordinate_system()
         
         # Initialize feature map with part file coordinate system
@@ -45,21 +49,26 @@ def to_freecad(filepath: str, pancad_file) -> App.Document:
         )
         for f in pancad_file.get_features():
             feature_map = add_feature_to_freecad(f, feature_map)
-        # pprint(feature_map)
         
         document.recompute()
         document.save()
     else:
         raise ValueError(f"File type {pancad_file.__class__} not recognized")
 
-def add_feature_to_freecad(feature, feature_map: dict) -> dict:
+def add_feature_to_freecad(feature: Sketch | Extrude,
+                           feature_map: dict) -> dict:
     """Adds the feature to the freecad file and updates the feature map to 
     maintain the connection between the new freecad feature and the pancad 
     feature.
+    
+    :param feature: A PanCAD feature.
+    :param feature_map: A dict connecting pancad objects to equivalent freecad 
+        objects.
+    :return: The feature_map with new entries for the feature.
     """
     
     if isinstance(feature, Sketch):
-        # Assuming that the sketch is placed on a freecad coordinate system
+        # Assumes that the sketch is placed on a freecad coordinate system
         freecad_origin = feature_map[
             (feature.coordinate_system, ConstraintReference.ORIGIN)
         ]
@@ -92,8 +101,16 @@ def add_feature_to_freecad(feature, feature_map: dict) -> dict:
     return feature_map
 
 def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
+    """Updates and returns a feature_map with the geometry in the sketch.
+    
+    :param sketch: A PanCAD sketch.
+    :param feature_map: A dict connecting pancad objects to equivalent freecad 
+        objects.
+    """
     freecad_sketch = feature_map[(sketch, ConstraintReference.CORE)]
+    
     for i, (geo, cons) in enumerate(zip(sketch.geometry, sketch.construction)):
+        # Add all sketch geometry
         if isinstance(geo, LineSegment):
             start = App.Vector(tuple(geo.point_a) + (0,))
             end = App.Vector(tuple(geo.point_b) + (0,))
@@ -106,10 +123,10 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
             raise ValueError(f"Geometry class {g.__class__} not recognized")
     
     for i, constraint in enumerate(sketch.constraints):
+        # Add all sketch constraints
         geometry_inputs = get_constraint_inputs(sketch, constraint)
         if isinstance(constraint, Coincident):
-            new_constraint = Sketcher.Constraint("Coincident",
-                                                 *geometry_inputs)
+            new_constraint = Sketcher.Constraint("Coincident", *geometry_inputs)
         elif isinstance(constraint, (Horizontal, Vertical)):
             if constraint.get_b() is None:
                 # Horizontal/Vertical One Geometry Case
@@ -156,6 +173,10 @@ def bug_fix_001_distance(sketch: Sketch, constraint: Distance) -> tuple[int]:
     made it possible to place the distance constraint is removed without 
     removing the distance constraint. Additionally, this scenario takes fewer 
     geometry inputs than normal (3 instead of 4).
+    
+    :param sketch: A PanCAD sketch.
+    :param constraint: A PanCAD Distance constraint.
+    :returns: A tuple of integer inputs to define a FreeCAD constraint.
     """
     original_inputs = zip(constraint.get_constrained(),
                           constraint.get_references())
@@ -173,6 +194,10 @@ def get_constraint_inputs(sketch: Sketch, constraint) -> tuple[int]:
     line, the x-axis line is at index -1, and the y-axis line is at index 
     -2. If those elements are referenced then they need to be mapped differently 
     than they are in PanCAD and likely other programs.
+    
+    :param sketch: A PanCAD sketch.
+    :param constraint: A PanCAD Distance constraint.
+    :returns: A tuple of integer inputs to define a FreeCAD constraint.
     """
     original_inputs = zip(constraint.get_constrained(),
                           constraint.get_references())
@@ -201,6 +226,11 @@ def get_constraint_inputs(sketch: Sketch, constraint) -> tuple[int]:
 
 
 def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
+    """Returns the EdgeSubPart that matches the PanCAD constraint reference.
+    
+    :param pancad_reference: A reference to a subpart of geometry.
+    :returns: The FreeCAD equivalent to the pancad_reference.
+    """
     match pancad_reference:
         case ConstraintReference.CORE:
             return EdgeSubPart.EDGE
@@ -214,7 +244,13 @@ def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
 def map_coordinate_system(coordinate_system: CoordinateSystem,
                           origin: App.DocumentObject) -> dict:
     """Returns a dict that maps pancad (coordinate system, reference) tuples to 
-    a freecad origin object"""
+    a freecad origin object.
+    
+    :param coordinate_system: A PanCAD coordinate system.
+    :param origin: A FreeCAD origin object.
+    :returns: A dict mapping the coordinate_system's subgeometry to the FreeCAD 
+        origin's OriginFeatures with ConstraintReferences.
+    """
     return { # Assumes FreeCAD maintains the same order in the future
         (coordinate_system, ConstraintReference.ORIGIN): origin,
         (coordinate_system, ConstraintReference.X): origin.OriginFeatures[0],

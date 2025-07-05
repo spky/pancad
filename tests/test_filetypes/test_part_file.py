@@ -116,6 +116,7 @@ class TestAddGeometry(TestPartFile):
         self.file.add_feature(self.sketch)
         test_extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
         self.file.add_feature(test_extrude)
+        print(); print(repr(self.file))
     
     def test_add_sketch_missing_dependency(self):
         sketch = self.square_sketch("TestSquareSketch",
@@ -146,15 +147,13 @@ class TestWritePartFileToFreeCAD(TestPartFile):
         self.dump_folder = os.path.join(tests_folder, "test_output_dump")
         self.filepath = os.path.join(self.dump_folder, self.filename)
     
-    # def tearDown(self):
-        # if os.path.exists(self.filepath):
-            # os.remove(self.filepath)
+    def tearDown(self):
+        if os.path.exists(self.filepath):
+            os.remove(self.filepath)
     
-    @unittest.skip
     def test_to_freecad_create_body(self):
         to_freecad(self.filepath, self.file)
     
-    @unittest.skip
     def test_to_freecad_create_body_and_sketch(self):
         self.file.add_feature(self.sketch)
         to_freecad(self.filepath, self.file)

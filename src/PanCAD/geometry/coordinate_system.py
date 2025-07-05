@@ -38,6 +38,9 @@ class CoordinateSystem:
     XLINE_UID = "xline"
     YLINE_UID = "yline"
     ZLINE_UID = "zline"
+    XYPLANE_UID = "xyplane"
+    XZPLANE_UID = "xzplane"
+    YZPLANE_UID = "yzplane"
     ORIGIN_UID = "origin"
     
     def __init__(self, origin: Point|tuple|np.ndarray=None,
@@ -66,6 +69,9 @@ class CoordinateSystem:
             initial_axis_matrix = (
                 self._x_axis_line.direction, self._y_axis_line.direction,
             )
+            self._references = (ConstraintReference.ORIGIN,
+                                ConstraintReference.X,
+                                ConstraintReference.Y)
             rotation_matrix = rotation_2(alpha)
         else:
             self._origin = Point(0, 0, 0)
@@ -77,8 +83,17 @@ class CoordinateSystem:
             self._xz_plane = Plane(self.origin, self._y_axis_line.direction)
             self._yz_plane = Plane(self.origin, self._x_axis_line.direction)
             
+            self._references =  (ConstraintReference.ORIGIN,
+                                 ConstraintReference.X,
+                                 ConstraintReference.Y,
+                                 ConstraintReference.Z,
+                                 ConstraintReference.XY,
+                                 ConstraintReference.XZ,
+                                 ConstraintReference.YZ)
+            
             initial_axis_matrix = (
-                self._x_axis_line.direction, self._y_axis_line.direction,
+                self._x_axis_line.direction,
+                self._y_axis_line.direction,
                 self._z_axis_line.direction,
             )
             rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
@@ -136,9 +151,18 @@ class CoordinateSystem:
             
         if len(self.origin) == 3 and uid is None:
             self._z_axis_line.uid = self.ZLINE_UID
+            self._xy_plane.uid = self.XYPLANE_UID
+            self._xz_plane.uid = self.XZPLANE_UID
+            self._yz_plane.uid = self.YZPLANE_UID
         elif len(self.origin) == 3:
             self._z_axis_line.uid = self.UID_SEPARATOR.join([uid,
                                                              self.ZLINE_UID])
+            self._xy_plane.uid = self.UID_SEPARATOR.join([uid,
+                                                          self.XYPLANE_UID])
+            self._xz_plane.uid = self.UID_SEPARATOR.join([uid,
+                                                          self.XZPLANE_UID])
+            self._yz_plane.uid = self.UID_SEPARATOR.join([uid,
+                                                          self.YZPLANE_UID])
         
         self._uid = uid
     
@@ -190,6 +214,9 @@ class CoordinateSystem:
                 case _:
                     raise ValueError(f"3D {self.__class__}s do not have any"
                                      f" {reference.name} reference geometry")
+    
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
     
     def get_xy_plane(self) -> Plane:
         return self._xy_plane
