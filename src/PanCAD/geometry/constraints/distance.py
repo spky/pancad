@@ -36,37 +36,19 @@ class AbstractDistance(AbstractConstraint):
         self._validate_value()
     
     # Shared Public Methods #
-    def get_a(self) -> GeometryType:
-        """Returns geometry a."""
-        return self._a
-    
-    def get_a_reference(self) -> ConstraintReference:
-        """Returns the ConstraintReference of geometry a."""
-        return self._a_reference
-    
-    def get_a_constrained(self) -> ReferenceType:
-        """Returns the constrained reference geometry of geometry a."""
-        return self._a.get_reference(self._a_reference)
-    
-    def get_b(self) -> GeometryType:
-        """Returns geometry a"""
-        return self._b
-    
-    def get_b_reference(self) -> ConstraintReference:
-        """Returns the ConstraintReference of geometry b."""
-        return self._b_reference
-    
-    def get_b_constrained(self) -> ReferenceType:
-        """Returns the constrained reference geometry of geometry b."""
-        return self._b.get_reference(self._b_reference)
-    
     def get_constrained(self) -> tuple[GeometryType]:
         """Returns a tuple of the constrained geometry parents"""
-        return (self.get_a(), self.get_b())
+        return (self._a, self._b)
+    
+    def get_geometry(self) -> tuple[GeometryType]:
+        """Returns a tuple of the specific geometry elements inside of the 
+        constrained elements"""
+        return (self._a.get_reference(self._a_reference),
+                self._b.get_reference(self._b_reference))
     
     def get_references(self) -> tuple[ConstraintReference]:
         """Returns a tuple of the constrained geometry's references"""
-        return (self.get_a_reference(), self.get_b_reference())
+        return (self._a_reference, self._b_reference)
     
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the distance constraint with its 
@@ -84,23 +66,17 @@ class AbstractDistance(AbstractConstraint):
             name = self.__class__.__name__
             raise ValueError(f"Values for {name} constraints cannot be < 0,"
                 " negative value behavior should be handled outside of"
-                " distance constraint contexts")
+                f" distance constraint contexts.\nGiven: {self.value}")
     
     # Shared Dunder Methods
     def __repr__(self) -> str:
-        a = self.get_a()
-        b = self.get_b()
-        value = self.value
-        name = self.__class__.__name__
-        return f"<{name}'{self.uid}'{repr(a)}{repr(b)}d{value}>"
+        return (f"<{self.__class__.__name__}'{self.uid}'"
+                f"{repr(self._a)}{repr(self._b)}d{self.value}>")
     
     def __str__(self) -> str:
-        a = self.get_a()
-        b = self.get_b()
-        value = self.value
-        name = self.__class__.__name__
-        return (f"PanCAD {name} Constraint '{self.uid}' with {repr(a)} as"
-                f" geometry a and {repr(b)} as geometry b and value {value}")
+        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
+                f" with {repr(self._a)} as geometry a and {repr(self._b)} as"
+                f" geometry b and value {self.value}")
     
     def __eq__(self, other: AbstractDistance) -> bool:
         """Checks whether two distance relations are functionally the same by 
@@ -110,12 +86,9 @@ class AbstractDistance(AbstractConstraint):
         :param other: Another distance relationship of the same type.
         :returns: Whether the relations are functionally the same.
         """
+        geometry_zip = zip(self.get_geometry(), other.get_geometry())
         if isinstance(other, self.__class__):
-            return (
-                self.get_a_constrained() is other.get_a_constrained()
-                and self.get_b_constrained() is other.get_b_constrained()
-                and self.value == other.value
-            )
+            return all([g is other_g for g, other_g in geometry_zip])
         else:
             return NotImplemented
     
@@ -171,31 +144,28 @@ class Distance(AbstractDistance):
     def _validate_parent_geometry(self):
         """Raises an error if the geometries are not one of the allowed 
         types"""
-        a = self.get_a()
-        b = self.get_b()
-        if (not isinstance(a, self.GEOMETRY_TYPES)
-                or not isinstance(b, self.GEOMETRY_TYPES)):
+        if (not isinstance(self._a, self.GEOMETRY_TYPES)
+                or not isinstance(self._b, self.GEOMETRY_TYPES)):
             raise ValueError(
                 f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
-                f"Given: {a.__class__} and {b.__class__}"
+                f"Given: {self._a.__class__} and {self._b.__class__}"
             )
-        elif not len(a) == len(b):
+        elif not len(self._a) == len(self._b):
             # Distance can apply to 3D contexts, but a and b must match
             raise ValueError("Geometry a and b must have the same number"
                              " of dimensions")
-        elif a is b:
+        elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
     def _validate_constrained_geometry(self):
         """Raises an error if the constrained geometries are not one of the 
         allowed types"""
-        a_constrain = self.get_a_constrained()
-        b_constrain = self.get_b_constrained()
-        if (not isinstance(a_constrain, self.REFERENCE_TYPES)
-                or not isinstance(a_constrain, self.REFERENCE_TYPES)):
+        if not any([isinstance(g, self.REFERENCE_TYPES)
+                    for g in self.get_geometry()]):
+            classes = [g.__class__ for g in self.get_geometry()]
             raise ValueError(
                 f"geometry a and b must be one of:\n{self.REFERENCE_TYPES}\n"
-                f"Given: {a_constrain.__class__} and {b_constrain.__class__}"
+                f"Given: {classes}"
             )
 
 # 2D Only Classes #
@@ -211,29 +181,26 @@ class AbstractDistance2D(AbstractDistance):
     def _validate_parent_geometry(self) -> None:
         """Raises an error if the geometries are not one of the allowed 
         types"""
-        a = self.get_a()
-        b = self.get_b()
-        if (not isinstance(a, self.GEOMETRY_TYPES)
-                or not isinstance(b, self.GEOMETRY_TYPES)):
+        if (not isinstance(self._a, self.GEOMETRY_TYPES)
+                or not isinstance(self._b, self.GEOMETRY_TYPES)):
             raise ValueError(
                 f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
-                f"Given: {a.__class__} and {b.__class__}"
+                f"Given: {self._a.__class__} and {self._b.__class__}"
             )
-        elif not len(a) == len(b) == 2:
+        elif not len(self._a) == len(self._b) == 2:
             raise ValueError("geometry must be 2D")
-        elif a is b:
+        elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
     def _validate_constrained_geometry(self) -> None:
         """Raises an error if the constrained geometries are not one of the 
         allowed types"""
-        a_constrain = self.get_a_constrained()
-        b_constrain = self.get_b_constrained()
-        if (not isinstance(a_constrain, self.REFERENCE_TYPES)
-                or not isinstance(a_constrain, self.REFERENCE_TYPES)):
+        if not any([isinstance(g, self.REFERENCE_TYPES)
+                    for g in self.get_geometry()]):
+            classes = [g.__class__ for g in self.get_geometry()]
             raise ValueError(
                 f"geometry a and b must be one of:\n{self.REFERENCE_TYPES}\n"
-                f"Given: {a_constrain.__class__} and {b_constrain.__class__}"
+                f"Given: {classes}"
             )
 
 class HorizontalDistance(AbstractDistance2D):

@@ -11,6 +11,8 @@ from collections import namedtuple
 from functools import reduce
 from itertools import compress
 
+from PanCAD.geometry.abstract_feature import AbstractFeature
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
@@ -18,7 +20,7 @@ from PanCAD.geometry.constraints import (
 )
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
-class Sketch:
+class Sketch(AbstractFeature):
     """A class representing a set of 2D geometry on a coordinate system plane in 
     3D space.
     

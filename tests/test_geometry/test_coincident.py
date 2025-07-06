@@ -21,7 +21,7 @@ class TestInit(unittest.TestCase):
         original_a = self.a.copy()
         new_a = Point(1, 1)
         self.a.update(new_a)
-        self.assertEqual(c.get_a(), new_a)
+        self.assertEqual(c.get_constrained()[0], new_a)
 
 if __name__ == "__main__":
     unittest.main()

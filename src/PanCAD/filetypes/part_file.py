@@ -70,13 +70,12 @@ class PartFile:
     
     # Public Methods
     def add_feature(self, feature: Sketch | Extrude):
-        dependencies = feature.get_dependencies()
-        if all([d in self for d in dependencies]):
+        if all([d in self for d in feature.get_dependencies()]):
             self._features = self._features + (feature,)
         else:
-            missing = filter(lambda d: d not in self, dependencies)
+            missed = filter(lambda d: d not in self, feature.get_dependencies())
             raise LookupError(f"Dependencies for {repr(feature)} are missing"
-                             f" from part: {list(missing)}")
+                             f" from part: {list(missed)}")
     
     def get_coordinate_system(self):
         return self._coordinate_system

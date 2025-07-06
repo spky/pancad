@@ -16,6 +16,13 @@ class AbstractConstraint(ABC):
         """Returns a tuple of the constrained geometries."""
     
     @abstractmethod
+    def get_geometry(self) -> tuple[AbstractGeometry]:
+        """Returns a tuple of the specific geometry inside the constrained 
+        geometries (e.g. the X-axis of a CoordinateSystem or the start point 
+        of a LineSegment).
+        """
+    
+    @abstractmethod
     def get_references(self) -> tuple[ConstraintReference]:
         """Returns a tuple of the constrained geometrys'
         ConstraintReferences.
