@@ -17,7 +17,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
                                Line.from_two_points(self.pt_a, self.pt_b))
     
     def test_init_two_points(self):
-        line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b))
+        line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b), uid="test")
         test_features = (line_seg.point_a, line_seg.point_b,
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):

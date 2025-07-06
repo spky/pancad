@@ -8,27 +8,29 @@ from functools import partial
 
 import numpy as np
 
-from PanCAD.utils import trigonometry as trig
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Point, Line
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison
+from PanCAD.utils import comparison, trigonometry as trig
 
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class LineSegment:
+class LineSegment(AbstractGeometry):
     """A class representing a finite line in 2D and 3D space.
     """
     
     def __init__(self, point_a: Point|tuple|np.ndarray, point_b: Point|tuple,
                  uid: str = None):
-        self.uid = uid
-        
+        self._references = (ConstraintReference.CORE,
+                            ConstraintReference.START,
+                            ConstraintReference.END)
         if isinstance(point_a, (tuple, np.ndarray)):
             point_a = Point(point_a)
         if isinstance(point_b, (tuple, np.ndarray)):
             point_b = Point(point_b)
         
         self.update_points(point_a, point_b)
+        self.uid = uid
     
     # Getters #
     @property
@@ -58,16 +60,25 @@ class LineSegment:
         return trig.phi_of_cartesian(self.direction)
     
     @property
+    def point_a(self) -> Point:
+        return self._point_a
+    
+    @property
+    def point_b(self) -> Point:
+        return self._point_b
+    
+    @property
     def theta(self) -> float:
         return trig.theta_of_cartesian(self.direction)
     
     @property
-    def point_a(self) -> Point:
-        return self._point_a.copy()
-    
-    @property
-    def point_b(self) -> Point:
-        return self._point_b.copy()
+    def uid(self) -> str:
+        """The unique id of the LineSegment.
+        
+        :getter: Returns the unique id as a string.
+        :setter: Sets the unique id.
+        """
+        return self._uid
     
     # Setters #
     @point_a.setter
@@ -77,6 +88,12 @@ class LineSegment:
     @point_b.setter
     def point_b(self, pt: Point):
         self.update_points(self.point_a, pt)
+    
+    @uid.setter
+    def uid(self, value: str):
+        self._uid = value
+        self.point_a.uid = f"{self._uid}_point_a"
+        self.point_b.uid = f"{self._uid}_point_b"
     
     # Public Methods #
     def copy(self) -> LineSegment:
@@ -122,6 +139,9 @@ class LineSegment:
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
+    
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
     
     def get_x_length(self) -> float:
         return abs(self.point_a.x - self.point_b.x)
@@ -182,8 +202,8 @@ class LineSegment:
     
     def update_points(self, point_a: Point, point_b: Point):
         if point_a == point_b:
-            raise ValueError("""Line Segments cannot be defined with 2 of the 
-                             same point""")
+            raise ValueError("Line Segments cannot be defined with 2 of the"
+                             " same point""")
         elif len(point_a) == len(point_b):
             if hasattr(self, "_point_a"):
                 # Update existing points
@@ -194,8 +214,8 @@ class LineSegment:
                 self._point_a = point_a
                 self._point_b = point_b
         else:
-            raise ValueError("""point_a and point_b must have the same number of
-                              dimensions to initialize a line segment""")
+            raise ValueError("point_a and point_b must have the same number of"
+                             " dimensions to initialize a line segment")
     
     def _update_axis_length(self, value: float, axis: int, from_point_a: bool):
         new_vector_ab = self.get_vector_ab()

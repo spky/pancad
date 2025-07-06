@@ -3,10 +3,12 @@ starting from a sketch profile.
 """
 from __future__ import annotations
 
+from PanCAD.geometry.abstract_feature import AbstractFeature
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Sketch
 from PanCAD.geometry.constants import FeatureType
 
-class Extrude:
+class Extrude(AbstractFeature):
     """A class representing linear extrusions starting from a sketch profile in 
     3D space.
     """
@@ -47,8 +49,18 @@ class Extrude:
             raise ValueError(f"{feature_type} is not a valid extrude feature"
                              " type")
     
+    # Getters #
+    @property
+    def uid(self) -> str:
+        return self._uid
+    
+    # Setters #
+    @uid.setter
+    def uid(self, uid: str):
+        self._uid = uid
+    
     # Public Methods #
-    def get_dependencies(self) -> tuple:
+    def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
         if self.end_feature is not None:
             return (self.profile, self.end_feature)
         else:

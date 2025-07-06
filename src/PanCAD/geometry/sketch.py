@@ -11,6 +11,8 @@ from collections import namedtuple
 from functools import reduce
 from itertools import compress
 
+from PanCAD.geometry.abstract_feature import AbstractFeature
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
@@ -18,7 +20,7 @@ from PanCAD.geometry.constraints import (
 )
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
-class Sketch:
+class Sketch(AbstractFeature):
     """A class representing a set of 2D geometry on a coordinate system plane in 
     3D space.
     
@@ -359,7 +361,7 @@ class Sketch:
         return tuple(compress(self.geometry, non_construction))
     
     def get_plane(self):
-        """Returns a copy of the plane that contains the sketch geometry.
+        """Returns the plane that contains the sketch geometry.
         
         :returns: The sketch's plane.
         """
@@ -438,7 +440,7 @@ class Sketch:
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
             case SketchConstraint.DISTANCE_VERTICAL:
-                new_constraint = HorizontalDistance(
+                new_constraint = VerticalDistance(
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
             case _:

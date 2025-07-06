@@ -8,18 +8,17 @@ import math
 
 import numpy as np
 
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Point, Line, Plane
 from PanCAD.geometry.constants import ConstraintReference
 
 from PanCAD.utils import comparison
-from PanCAD.utils.trigonometry import (
-    yaw_pitch_roll, rotation_2, to_1D_tuple
-)
+from PanCAD.utils.trigonometry import yaw_pitch_roll, rotation_2, to_1D_tuple
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class CoordinateSystem:
+class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space. Initial 
     rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
     

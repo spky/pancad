@@ -7,6 +7,7 @@ import math
 
 import numpy as np
 
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Point
 from PanCAD.utils import trigonometry as trig, comparison
 from PanCAD.geometry.constants import ConstraintReference
@@ -14,12 +15,14 @@ from PanCAD.geometry.constants import ConstraintReference
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class Plane:
+class Plane(AbstractGeometry):
     
     def __init__(self, point: Point | tuple | np.ndarray = None,
                  normal_vector: list | tuple | np.ndarray = None,
                  uid: str = None):
         self.uid = uid
+        self._references = (ConstraintReference.CORE,)
+        
         if isinstance(point, (tuple, np.ndarray)):
             point = Point(point)
         
@@ -146,6 +149,9 @@ class Plane:
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
+    
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
     
     def move_to_point(self, point: Point,
                       normal_vector: list | tuple | np.ndarray = None) -> Plane:

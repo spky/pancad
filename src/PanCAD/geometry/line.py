@@ -10,14 +10,15 @@ import math
 
 import numpy as np
 
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Point
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.utils import comparison, trigonometry as trig
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class Line:
+class Line(AbstractGeometry):
     """A class representing infinite lines in 2D and 3D space. A Line 
     instance can be uniquely identified and compared for equality/inequality 
     with other lines by using its direction and reference_point. The 
@@ -35,6 +36,7 @@ class Line:
                  uid:str = None):
         self.uid = uid
         self.direction = direction
+        self._references = (ConstraintReference.CORE,)
         
         if isinstance(point, Point):
             self._point_closest_to_origin = Line.closest_to_origin(
@@ -227,6 +229,9 @@ class Line:
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
+    
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
     
     def move_to_point(self, point: Point,
                       phi: float=None, theta: float=None) -> Line:

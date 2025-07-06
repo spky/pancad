@@ -16,139 +16,110 @@ with a theoretical vertical line.
 from __future__ import annotations
 
 from functools import reduce
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractSnapTo(ABC):
+class AbstractSnapTo(AbstractConstraint):
     # Type Tuples for checking with isinstance()
-    GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
     TWO_GEOMETRY_TYPES = (Point,)
-    REFERENCE_TYPES = ONE_GEOMETRY_TYPES + TWO_GEOMETRY_TYPES
+    GEOMETRY_TYPES = ONE_GEOMETRY_TYPES + TWO_GEOMETRY_TYPES
     
     # Type Hints
+    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
+    OneConstrainedType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
+    TwoConstrainedType = TWO_GEOMETRY_TYPES
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    OneGeometryType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
-    TwoGeometryType = TWO_GEOMETRY_TYPES
-    ReferenceType = reduce(lambda x, y: x | y, REFERENCE_TYPES)
     
     def __init__(self,
-                 geometry_a: GeometryType,
+                 constrain_a: ConstrainedType,
                  reference_a: ConstraintReference,
-                 geometry_b: GeometryType=None,
+                 constrain_b: ConstrainedType=None,
                  reference_b: ConstraintReference=None,
                  uid: str=None):
         self.uid = uid
-        if geometry_b is None:
+        if constrain_b is None or len(constrain_a) == len(constrain_b):
             # One geometry case (e.g. Line or LineSegment)
-            self._a = geometry_a
+            self._a = constrain_a
             self._a_reference = reference_a
-            self._b = None
-            self._b_reference = None
-        elif len(geometry_a) == len(geometry_b):
-            # Two geometry case (e.g. Point to Point)
-            self._a = geometry_a
-            self._a_reference = reference_a
-            self._b = geometry_b
+            self._b = constrain_b
             self._b_reference = reference_b
         else:
             raise ValueError("Geometry a and b must have the same number"
                              " of dimensions")
-        self._validate_parent_geometry()
-        self._validate_constrained_geometry()
+        self._validate_constrained()
+        self._validate_geometry()
     
     # Private Methods #
-    def _validate_parent_geometry(self):
+    def _validate_constrained(self):
         """Raises an error if the geometries are not one of the allowed 
         types"""
-        a = self.get_a()
-        b = self.get_b()
-        if b is None:
-            if not isinstance(a, self.GEOMETRY_TYPES):
+        if self._b is None:
+            if not isinstance(self._a, self.CONSTRAINED_TYPES):
                 raise ValueError(
-                    f"geometry a must be one of:\n{self.GEOMETRY_TYPES}\n"
-                    f"Given: {a.__class__}"
+                    f"geometry a must be one of:\n{self.CONSTRAINED_TYPES}\n"
+                    f"Given: {self._a.__class__}"
                 )
-        elif (not isinstance(a, self.GEOMETRY_TYPES)
-                or not isinstance(b, self.GEOMETRY_TYPES)):
+        elif (not isinstance(self._a, self.CONSTRAINED_TYPES)
+                or not isinstance(self._b, self.CONSTRAINED_TYPES)):
             raise ValueError(
-                f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
-                f"Given: {a.__class__} and {b.__class__}"
+                f"geometry a and b must be one of:\n{self.CONSTRAINED_TYPES}\n"
+                f"Given: {self._a.__class__} and {self._b.__class__}"
             )
-        elif len(a) == 3 or len(b) == 3:
-            name = self.__class__.__name__
-            raise ValueError(f"geometry must be 2D to be constrained {name}")
-        elif a is b:
+        elif len(self._a) == 3 or len(self._b) == 3:
+            raise ValueError("geometry must be 2D to be constrained"
+                             f" {self.__class__.__name__}")
+        elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
-    def _validate_constrained_geometry(self) -> None:
+    def _validate_geometry(self) -> None:
         """Raises an error if the constrained geometries are not one of the 
         allowed types"""
-        a_constrain = self.get_a_constrained()
-        b_constrain = self.get_b_constrained()
-        if b_constrain is None:
-            if not isinstance(a_constrain, self.ONE_GEOMETRY_TYPES):
-                name = self.__class__.__name__
-                raise ValueError(
-                    f"A single geometry {name} relation can only constrain:"
-                    f"\n{self.ONE_GEOMETRY_TYPES}\nGiven: {a_constrain}"
-                )
-        else:
-            b_constrain = self.get_b_constrained()
-            if (not isinstance(a_constrain, self.TWO_GEOMETRY_TYPES)
-                    or not isinstance(b_constrain, self.TWO_GEOMETRY_TYPES)):
-                name = self.__class__.__name__
-                raise ValueError(
-                    f"A two geometry {name} relation can only constrain:"
-                    f"\n{self.TWO_GEOMETRY_TYPES}\nGiven:"
-                    f" {a_constrain.__class__} and {b_constrain.__class__}"
-                )
+        if self._b is None and not isinstance(self._a,
+                                              self.ONE_GEOMETRY_TYPES):
+            name = self.__class__.__name__
+            raise ValueError(
+                f"A single geometry {self.__class__.__name__} relation can only"
+                f" constrain:\n{self.ONE_GEOMETRY_TYPES}\nGiven: {self._a}"
+            )
+        elif (self._b is not None
+                and not any(
+                    [isinstance(g, self.TWO_GEOMETRY_TYPES)
+                     for g in self.get_geometry()]
+                )):
+            classes = [g.__class__ for g in self.get_geometry()]
+            raise ValueError(
+                f"A two geometry {self.__class__.__name__} relation can only"
+                f" constrain:\n{self.TWO_GEOMETRY_TYPES}\nGiven: {classes}"
+            )
     
     # Public Methods
-    
-    
-    def get_a(self) -> GeometryType:
-        """Returns geometry a."""
-        return self._a
-    
-    def get_a_reference(self) -> ConstraintReference:
-        """Returns the ConstraintReference of geometry a."""
-        return self._a_reference
-    
-    def get_a_constrained(self) -> ReferenceType:
-        """Returns the constrained reference geometry of geometry a."""
-        return self._a.get_reference(self._a_reference)
-    
-    def get_b(self) -> GeometryType:
-        """Returns geometry a"""
-        return self._b
-    
-    def get_b_reference(self) -> ConstraintReference:
-        """Returns the ConstraintReference of geometry b."""
-        return self._b_reference
-    
-    def get_b_constrained(self) -> ReferenceType:
-        """Returns the constrained reference geometry of geometry b."""
-        if self._b is None:
-            return None
-        else:
-            return self._b.get_reference(self._b_reference)
-    
-    def get_constrained(self) -> tuple[GeometryType]:
+    def get_constrained(self) -> tuple[ConstrainedType]:
         """Returns a tuple of the constrained geometry parents"""
-        if self.get_b() is None:
-            return (self.get_a(),)
+        if self._b is None:
+            return (self._a,)
         else:
-            return (self.get_a(), self.get_b())
+            return (self._a, self._b)
+    
+    def get_geometry(self) -> tuple[GeometryType]:
+        """Returns a tuple of the specific geometry elements inside of the 
+        constrained elements"""
+        if self._b is None:
+            return (self._a.get_reference(self._a_reference),)
+        else:
+            return (self._a.get_reference(self._a_reference),
+                    self._b.get_reference(self._b_reference))
     
     def get_references(self) -> tuple[ConstraintReference]:
         """Returns a tuple of the constrained geometry's references"""
-        if self.get_b() is None:
-            return (self.get_a_reference(),)
+        if self._b is None:
+            return (self._a_reference,)
         else:
-            return (self.get_a_reference(), self.get_b_reference())
+            return (self._a_reference, self._b_reference)
     
     # Python Dunders #
     def __eq__(self, other: AbstractSnapTo) -> bool:
@@ -158,18 +129,16 @@ class AbstractSnapTo(ABC):
         :param other: Another snapto relationship of the same type.
         :returns: Whether the relations are the same.
         """
+        geometry_zip = zip(self.get_geometry(), other.get_geometry())
         if isinstance(other, self.__class__):
-            return (
-                self.get_a_constrained() is other.get_a_constrained()
-                and self.get_b_constrained() is other.get_b_constrained()
-            )
+            return all([g is other_g for g, other_g in geometry_zip])
         else:
             return NotImplemented
     
     def __repr__(self) -> str:
         """Returns the short string representation of the snapto relation"""
         name = self.__class__.__name__
-        if self.get_b() is None:
+        if self._b is None:
             return (f"<{name}'{self.uid}'"
                     f"{repr(self._a)}{self._a_reference.name}>")
         else:
@@ -178,7 +147,7 @@ class AbstractSnapTo(ABC):
     def __str__(self) -> str:
         """Returns the longer string representation of the snapto relation"""
         name = self.__class__.__name__
-        if self.get_b() is None:
+        if self._b is None:
             return (f"PanCAD {name} Constraint '{self.uid}' constraining"
                     f" {repr(self._a)}")
         else:
