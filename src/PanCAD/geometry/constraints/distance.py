@@ -7,12 +7,13 @@ to be limited to the x or y direction respectively.
 from __future__ import annotations
 
 from functools import reduce
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem, Plane
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractDistance(ABC):
+class AbstractDistance(AbstractConstraint):
     
     VALUE_STR_FORMAT = "{value}{unit}"
     

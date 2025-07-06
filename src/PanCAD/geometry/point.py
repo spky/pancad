@@ -9,13 +9,14 @@ from numbers import Real
 
 import numpy as np
 
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.utils import trigonometry as trig, comparison
 from PanCAD.geometry.constants import ConstraintReference
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class Point:
+class Point(AbstractGeometry):
     """A class representing points in 2D and 3D space. Point can freely 
     translate its position between coordinate systems for easy position 
     translation. Point's __init__ function can only take cartesian coordinates, 
@@ -41,6 +42,7 @@ class Point:
                  *, uid: str = None, unit: str = None):
         """Constructor method"""
         self.uid = uid
+        self._references = (ConstraintReference.CORE,)
         
         if (isinstance(cartesian, (int, float))
                and isinstance(y, (int, float))
@@ -330,6 +332,9 @@ class Point:
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
+    
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
     
     def phi_degrees(self) -> float:
         """Returns the polar/spherical azimuth coordinate of the point in 

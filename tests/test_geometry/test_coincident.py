@@ -23,20 +23,5 @@ class TestInit(unittest.TestCase):
         self.a.update(new_a)
         self.assertEqual(c.get_a(), new_a)
 
-class TestCheck(unittest.TestCase):
-    
-    def test_points_coincident(self):
-        a = Point(0, 0)
-        b = Point(0, 0)
-        c = Coincident(a, CR.CORE, b, CR.CORE, "test")
-        self.assertTrue(c.check())
-    
-    def test_points_not_coincident(self):
-        a = Point(0, 0)
-        b = Point(1, 1)
-        c = Coincident(a, CR.CORE, b, CR.CORE, "test")
-        self.assertFalse(c.check())
-    
-
 if __name__ == "__main__":
     unittest.main()

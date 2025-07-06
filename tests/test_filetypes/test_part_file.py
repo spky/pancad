@@ -116,7 +116,6 @@ class TestAddGeometry(TestPartFile):
         self.file.add_feature(self.sketch)
         test_extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
         self.file.add_feature(test_extrude)
-        print(); print(repr(self.file))
     
     def test_add_sketch_missing_dependency(self):
         sketch = self.square_sketch("TestSquareSketch",

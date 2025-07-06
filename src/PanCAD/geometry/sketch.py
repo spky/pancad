@@ -359,7 +359,7 @@ class Sketch:
         return tuple(compress(self.geometry, non_construction))
     
     def get_plane(self):
-        """Returns a copy of the plane that contains the sketch geometry.
+        """Returns the plane that contains the sketch geometry.
         
         :returns: The sketch's plane.
         """
@@ -438,7 +438,7 @@ class Sketch:
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
             case SketchConstraint.DISTANCE_VERTICAL:
-                new_constraint = HorizontalDistance(
+                new_constraint = VerticalDistance(
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
             case _:

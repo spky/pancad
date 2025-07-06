@@ -128,7 +128,7 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
         if isinstance(constraint, Coincident):
             new_constraint = Sketcher.Constraint("Coincident", *geometry_inputs)
         elif isinstance(constraint, (Horizontal, Vertical)):
-            if constraint.get_b() is None:
+            if len(constraint.get_constrained()) == 1:
                 # Horizontal/Vertical One Geometry Case
                 if isinstance(constraint, Horizontal):
                     new_constraint = Sketcher.Constraint("Horizontal",

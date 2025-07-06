@@ -6,11 +6,12 @@ from __future__ import annotations
 
 from functools import reduce
 
+from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.geometry.spatial_relations import coincident
 
-class Coincident:
+class Coincident(AbstractConstraint):
     # Type Tuples for checking with isinstance()
     GEOMETRY_TYPES = (Point, Line, LineSegment, Plane, CoordinateSystem)
     REFERENCE_TYPES = (Point, Line, LineSegment, Plane)
@@ -25,7 +26,6 @@ class Coincident:
                  uid: str=None):
         self.uid = uid
         
-        
         if len(geometry_a) == len(geometry_b):
             self._a = geometry_a
             self._a_reference = reference_a
@@ -38,10 +38,6 @@ class Coincident:
         self._validate_constrained_geometry()
     
     # Public Methods
-    def check(self) -> bool:
-        """Returns whether the constraint is met by the geometry."""
-        return coincident(self.get_a_constrained(), self.get_b_constrained())
-    
     def get_a(self) -> GeometryType:
         """Returns geometry a."""
         return self._a

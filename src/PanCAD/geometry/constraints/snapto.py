@@ -16,12 +16,13 @@ with a theoretical vertical line.
 from __future__ import annotations
 
 from functools import reduce
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractSnapTo(ABC):
+class AbstractSnapTo(AbstractConstraint):
     # Type Tuples for checking with isinstance()
     GEOMETRY_TYPES = (Point, Line, LineSegment, CoordinateSystem)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
