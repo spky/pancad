@@ -1,7 +1,3 @@
-# TEMP #
-from pprint import pprint
-# TEMP #
-
 from collections import OrderedDict
 
 from PanCAD.cad.freecad import App, Sketcher, Part
@@ -17,9 +13,6 @@ from PanCAD.geometry.constraints import (
 )
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import file_handlers
-
-
-
 
 def to_freecad(filepath: str, pancad_file: PartFile) -> None:
     """Saves a PanCAD file object to a FreeCAD file.
