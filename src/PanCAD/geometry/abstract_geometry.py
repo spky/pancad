@@ -33,7 +33,7 @@ class AbstractGeometry(ABC):
         memory location (Python id). Should return itself afterwards.
         """
     
-    # Python Dunders
+    # Python Dunders #
     def __len__(self) -> int:
         """Implements the Python len() function to return whether the geometry 
         is 2D or 3D.
