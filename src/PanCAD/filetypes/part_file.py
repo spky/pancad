@@ -70,6 +70,14 @@ class PartFile:
     
     # Public Methods
     def add_feature(self, feature: Sketch | Extrude):
+        
+        if (isinstance(feature, Sketch)
+            and feature.coordinate_system is not self.get_coordinate_system()):
+            # Replace the sketch's locating coordinate system with the part 
+            # file's. Sketches are currently only possible to place on Part File 
+            # baseplanes
+            feature.coordinate_system = self.get_coordinate_system()
+        
         if all([d in self for d in feature.get_dependencies()]):
             self._features = self._features + (feature,)
         else:

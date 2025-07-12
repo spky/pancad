@@ -13,10 +13,12 @@ from itertools import compress
 
 from PanCAD.geometry.abstract_feature import AbstractFeature
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import CoordinateSystem, Point, Line, LineSegment, Plane
+from PanCAD.geometry import (
+    Circle, CoordinateSystem, Point, Line, LineSegment, Plane,
+)
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance,
+    Distance, HorizontalDistance, VerticalDistance, Diameter, Radius,
 )
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
@@ -25,7 +27,8 @@ class Sketch(AbstractFeature):
     3D space.
     
     :param coordinate_system: A coordinate system defining where the sketch's 
-        location and orientation.
+        location and orientation. If no coordinate system is provided, the 
+        sketch will be placed at the default (0, 0, 0) coordinate system.
     :param plane_reference: A string specifying which plane of the coordinate 
         system to place the geometry on. Options include: XY, XZ, YZ. Defaults
         to XY.
@@ -45,8 +48,8 @@ class Sketch(AbstractFeature):
     CS_2D_UID = "sketchcs"
     
     # Type Tuples for checking with isinstance()
-    GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
-    EXTERNAL_TYPES = (Point, Line, LineSegment, Plane, CoordinateSystem)
+    GEOMETRY_TYPES = (Circle, Line, LineSegment, Point)
+    EXTERNAL_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Point, Plane)
     
     # Type Hints
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -57,7 +60,7 @@ class Sketch(AbstractFeature):
     GeometryStatus = namedtuple("GeometryStatus", ["geometry", "construction"])
     
     def __init__(self,
-                 coordinate_system: CoordinateSystem,
+                 coordinate_system: CoordinateSystem=None,
                  plane_reference: ConstraintReference=ConstraintReference.XY,
                  geometry: tuple[GeometryType]=None,
                  construction: tuple[bool]=None,
@@ -76,7 +79,11 @@ class Sketch(AbstractFeature):
         
         self._sketch_cs = CoordinateSystem((0, 0), uid=self.CS_2D_UID)
         
-        self.coordinate_system = coordinate_system
+        if coordinate_system is None:
+            self.coordinate_system = CoordinateSystem()
+        else:
+            self.coordinate_system = coordinate_system
+            
         self.geometry = geometry
         self.externals = externals
         self.construction = construction
@@ -412,12 +419,13 @@ class Sketch(AbstractFeature):
     def _add_new_constraint(
                 self, constraint_choice: SketchConstraint,
                 a: GeometryType, reference_a: ConstraintReference,
-                b: GeometryType, reference_b: ConstraintReference,
+                b: GeometryType=None, reference_b: ConstraintReference=None,
                 c: GeometryType=None, reference_c: ConstraintReference=None,
                 **kwargs
             ) -> None:
         """Adds a new constraint to the constraint tuple. Assumes that a, b, and 
-        c are in the geometry tuple.
+        c are in the geometry tuple and has been checked before calling this 
+        private function.
         """
         constraint_uid = self._new_constraint_uid()
         
@@ -442,6 +450,14 @@ class Sketch(AbstractFeature):
             case SketchConstraint.DISTANCE_VERTICAL:
                 new_constraint = VerticalDistance(
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
+                )
+            case SketchConstraint.DISTANCE_RADIUS:
+                new_constraint = Radius(
+                    a, reference_a, uid=constraint_uid, **kwargs
+                )
+            case SketchConstraint.DISTANCE_DIAMETER:
+                new_constraint = Diameter(
+                    a, reference_a, uid=constraint_uid, **kwargs
                 )
             case _:
                 raise ValueError("Constraint choice not recognized")

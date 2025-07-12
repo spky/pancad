@@ -50,6 +50,7 @@ class Circle(AbstractGeometry):
     @property
     def center(self) -> Point:
         """Center point of the circle.
+        
         :getter: Returns the point.
         :setter: Updates the internal point with the values of a new point.
         """
@@ -58,6 +59,7 @@ class Circle(AbstractGeometry):
     @property
     def radius(self) -> int | float:
         """Radius dimension of the circle.
+        
         :getter: Returns the radius value.
         :setter: Updates the radius if the given value is >0.
         """
@@ -66,6 +68,7 @@ class Circle(AbstractGeometry):
     @property
     def uid(self) -> str:
         """Unique id of the circle.
+        
         :getter: returns the unique id.
         :setter: Updates the circle's and its center point's uids.
         """
