@@ -1,14 +1,19 @@
 import os
 import unittest
+from functools import partial
+from inspect import stack
 
 import PanCAD
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
 
-from PanCAD.geometry import CoordinateSystem, Sketch, Extrude, LineSegment
+from PanCAD.geometry import (
+    CoordinateSystem, Sketch, Extrude, LineSegment, Circle
+)
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance
+    Distance, HorizontalDistance, VerticalDistance,
+    Diameter, Radius,
 )
 from PanCAD.geometry.constants import ConstraintReference
 
@@ -43,7 +48,7 @@ class TestPartFile(unittest.TestCase):
              "units": "UnitSystem",
         }
     
-    def square_sketch(self, uid: str, cs: CoordinateSystem,
+    def square_sketch(self, uid: str,
                       plane_ref: ConstraintReference=ConstraintReference.XY):
         length = 1
         width = 2
@@ -75,8 +80,7 @@ class TestPartFile(unittest.TestCase):
                      geometry[3], ConstraintReference.CORE,
                      width, unit="mm"),
         ]
-        sketch = Sketch(cs,
-                        plane_reference=plane_ref,
+        sketch = Sketch(plane_reference=plane_ref,
                         geometry=geometry,
                         constraints=constraints,
                         uid=uid)
@@ -86,7 +90,27 @@ class TestPartFile(unittest.TestCase):
                        sketch.get_sketch_coordinate_system(),
                        ConstraintReference.ORIGIN)
         )
-        
+        return sketch
+    
+    def circle_sketch(self, uid: str,
+                      plane_ref: ConstraintReference=ConstraintReference.XY):
+        radius = 5
+        unit = "mm"
+        geometry = [
+            Circle((0, 0), radius),
+        ]
+        constraints = [
+            Diameter(geometry[0], ConstraintReference.CORE, radius, unit=unit),
+        ]
+        sketch = Sketch(plane_reference=plane_ref,
+                        geometry=geometry,
+                        constraints=constraints,
+                        uid=uid)
+        sketch.add_constraint(
+            Coincident(geometry[0], ConstraintReference.CENTER,
+                       sketch.get_sketch_coordinate_system(),
+                       ConstraintReference.ORIGIN)
+        )
         return sketch
 
 class TestPartFileInitialization(TestPartFile):
@@ -104,8 +128,7 @@ class TestAddGeometry(TestPartFile):
                              original_software=SoftwareName.FREECAD,
                              metadata=self.metadata,
                              metadata_map=self.metadata_map)
-        self.sketch = self.square_sketch("TestSquareSketch",
-                                         self.file.get_coordinate_system())
+        self.sketch = self.square_sketch("TestSquareSketch")
         self.height = 3
     
     def test_add_sketch(self):
@@ -117,12 +140,6 @@ class TestAddGeometry(TestPartFile):
         test_extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
         self.file.add_feature(test_extrude)
     
-    def test_add_sketch_missing_dependency(self):
-        sketch = self.square_sketch("TestSquareSketch",
-                                    CoordinateSystem((0, 0, 0)))
-        with self.assertRaises(LookupError):
-            self.file.add_feature(sketch)
-    
     def test_add_extrude_missing_dependency(self):
         test_extrude = Extrude.from_length(self.sketch, self.height,
                                            "test_extrude")
@@ -132,36 +149,52 @@ class TestAddGeometry(TestPartFile):
 class TestWritePartFileToFreeCAD(TestPartFile):
     def setUp(self):
         super().setUp()
-        self.file = PartFile(filename=self.filename,
-                             original_software=SoftwareName.FREECAD,
-                             metadata=self.metadata,
-                             metadata_map=self.metadata_map)
-        self.sketch = self.square_sketch("TestSquareSketch",
-                                         self.file.get_coordinate_system(),
-                                         ConstraintReference.XZ)
-        self.extrude = Extrude.from_length(self.sketch, 1, "test_extrude")
+        self.file_gen = partial(PartFile,
+                                original_software=SoftwareName.FREECAD,
+                                metadata=self.metadata,
+                                metadata_map=self.metadata_map)
+        self.sketch_uid = "TestSketch"
+        self.extrude_uid = "TestExtrude"
+        self.extrude_length = 1
         tests_folder = os.path.abspath(
             os.path.join(PanCAD.__file__, "..", "..", "..", "tests")
         )
         self.dump_folder = os.path.join(tests_folder, "test_output_dump")
-        self.filepath = os.path.join(self.dump_folder, self.filename)
     
     def tearDown(self):
-        if os.path.exists(self.filepath):
-            os.remove(self.filepath)
+        os.remove(self.filepath)
     
     def test_to_freecad_create_body(self):
+        # Name the file after the function its in
+        filename = stack()[0].function + ".FCStd"
+        self.file = self.file_gen(filename)
+        self.filepath = os.path.join(self.dump_folder, filename)
         to_freecad(self.filepath, self.file)
     
-    def test_to_freecad_create_body_and_sketch(self):
-        self.file.add_feature(self.sketch)
+    def test_to_freecad_create_cube(self):
+        filename = stack()[0].function + ".FCStd"
+        self.file = self.file_gen(filename)
+        sketch = self.square_sketch(self.sketch_uid, ConstraintReference.XZ)
+        extrude = Extrude.from_length(sketch,
+                                      self.extrude_length, self.extrude_uid)
+        self.file.add_feature(sketch)
+        self.file.add_feature(extrude)
+        self.filepath = os.path.join(self.dump_folder,
+                                     stack()[0].function + ".FCStd")
         to_freecad(self.filepath, self.file)
     
-    def test_to_freecad_create_body_and_pad(self):
-        self.file.add_feature(self.sketch)
-        self.file.add_feature(self.extrude)
+    def test_to_freecad_create_cylinder(self):
+        filename = stack()[0].function + ".FCStd"
+        self.file = self.file_gen(filename)
+        sketch = self.circle_sketch(self.sketch_uid, ConstraintReference.XZ)
+        extrude = Extrude.from_length(sketch,
+                                      self.extrude_length, self.extrude_uid)
+        self.file.add_feature(sketch)
+        self.file.add_feature(extrude)
+        self.filepath = os.path.join(self.dump_folder,
+                                     stack()[0].function + ".FCStd")
         to_freecad(self.filepath, self.file)
-    
+
 
 if __name__ == "__main__":
     unittest.main()

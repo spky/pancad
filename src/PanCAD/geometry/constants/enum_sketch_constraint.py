@@ -10,6 +10,8 @@ class SketchConstraint(Flag):
     DISTANCE = auto()
     DISTANCE_HORIZONTAL = auto()
     DISTANCE_VERTICAL = auto()
+    DISTANCE_RADIUS = auto()
+    DISTANCE_DIAMETER = auto()
     EQUAL = auto()
     HORIZONTAL = auto()
     PARALLEL = auto()

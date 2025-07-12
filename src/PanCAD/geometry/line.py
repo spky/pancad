@@ -4,8 +4,8 @@ segments, which is part of a line that is the shortest distance between two
 points.
 """
 from __future__ import annotations
-from functools import partial
 
+from functools import partial
 import math
 
 import numpy as np

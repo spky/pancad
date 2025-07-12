@@ -7,14 +7,17 @@ from __future__ import annotations
 from functools import reduce
 
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
-from PanCAD.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
+from PanCAD.geometry import (
+    Point, Line, LineSegment, Plane, CoordinateSystem, Circle
+)
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.geometry.spatial_relations import coincident
 
 class Coincident(AbstractConstraint):
     # Type Tuples for checking with isinstance()
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, Plane, CoordinateSystem)
-    GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment,
+                         Plane, CoordinateSystem, Circle)
+    GEOMETRY_TYPES = (Point, Line, LineSegment, Plane, Circle)
     
     # Type Hints
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)

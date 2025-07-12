@@ -5,11 +5,12 @@ from PanCAD.cad.freecad.constants import ObjectType, EdgeSubPart
 
 from PanCAD.filetypes import PartFile
 from PanCAD.geometry import (
-    CoordinateSystem, Sketch, LineSegment, Extrude
+    Circle, CoordinateSystem, Extrude, LineSegment, Sketch
 )
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance,
+    Radius, Diameter,
 )
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import file_handlers
@@ -107,13 +108,16 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
         if isinstance(geo, LineSegment):
             start = App.Vector(tuple(geo.point_a) + (0,))
             end = App.Vector(tuple(geo.point_b) + (0,))
-            new_line = Part.LineSegment(start, end)
-            freecad_sketch.addGeometry(new_line, cons)
-            feature_map.update(
-                {(sketch, "geometry", i): new_line}
-            )
+            new_geometry = Part.LineSegment(start, end)
+        elif isinstance(geo, Circle):
+            center = App.Vector(tuple(geo.center) + (0,))
+            normal = App.Vector((0, 0, 1))
+            new_geometry = Part.Circle(center, normal, geo.radius)
         else:
-            raise ValueError(f"Geometry class {g.__class__} not recognized")
+            raise ValueError(f"Geometry class {geo.__class__} not recognized")
+        
+        freecad_sketch.addGeometry(new_geometry, cons)
+        feature_map.update({(sketch, "geometry", i): new_geometry})
     
     for i, constraint in enumerate(sketch.constraints):
         # Add all sketch constraints
@@ -123,12 +127,13 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
         elif isinstance(constraint, (Horizontal, Vertical)):
             if len(constraint.get_constrained()) == 1:
                 # Horizontal/Vertical One Geometry Case
+                geometry_index, _ = geometry_inputs
                 if isinstance(constraint, Horizontal):
                     new_constraint = Sketcher.Constraint("Horizontal",
-                                                         geometry_inputs[0])
+                                                         geometry_index)
                 else:
                     new_constraint = Sketcher.Constraint("Vertical",
-                                                         geometry_inputs[0])
+                                                         geometry_index)
             else:
                 # Horizontal/Vertical Two Geometry Case
                 if isinstance(constraint, Horizontal):
@@ -137,6 +142,17 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
                 else:
                     new_constraint = Sketcher.Constraint("Vertical",
                                                          *geometry_inputs)
+        elif isinstance(constraint, (Radius, Diameter)):
+            if isinstance(constraint, Radius):
+                constraint_name = "Radius"
+            else:
+                constraint_name = "Diameter"
+            geometry_index, _ = geometry_inputs
+            freecad_value_str = f"{constraint.value} {constraint.unit}"
+            new_constraint = Sketcher.Constraint(
+                constraint_name, geometry_index,
+                App.Units.Quantity(freecad_value_str)
+            )
         elif isinstance(constraint, Distance):
             geometry_inputs = bug_fix_001_distance(sketch, constraint)
             freecad_value_str = f"{constraint.value} {constraint.unit}"
