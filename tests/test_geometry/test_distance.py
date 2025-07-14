@@ -3,9 +3,18 @@ import unittest
 from PanCAD.geometry import Point, Line, LineSegment, Plane, Circle
 from PanCAD.geometry.constraints import (
     HorizontalDistance, VerticalDistance, Distance,
-    Radius, Diameter
+    Radius, Diameter, Angle
 )
 from PanCAD.geometry.constants import ConstraintReference
+
+class TestAngleDistanceInit(unittest.TestCase):
+    def test_angle_nominal_init(self):
+        angle = Angle(LineSegment((0, 0), (1, 1)), ConstraintReference.CORE,
+                      LineSegment((1, 1), (1, 2)), ConstraintReference.CORE,
+                      value=45, quadrant=1, uid="test", is_radians=False)
+
+
+
 
 class TestLinearDistanceInit(unittest.TestCase):
     
@@ -99,19 +108,11 @@ class TestDunder(unittest.TestCase):
                                    self.b, ConstraintReference.CORE,
                                    self.distance, uid=uid)
     
-    def test_repr_horizontal_distance(self):
-        # Checks whether repr errors out
-        hd_repr = repr(self.hd)
-    
-    def test_str__horizontal_distance(self):
-        # Checks whether str errors out
-        hd_str = str(self.hd)
-    
-    def test_repr_vertical_distance(self):
+    def test_repr_angle(self):
         # Checks whether repr errors out
         vd_repr = repr(self.vd)
     
-    def test_str_vertical_distance(self):
+    def test_str_angle(self):
         # Checks whether str errors out
         vd_str = str(self.vd)
     
@@ -120,6 +121,34 @@ class TestDunder(unittest.TestCase):
                                      self.b, ConstraintReference.CORE,
                                      self.distance, uid="same")
         self.assertEqual(self.hd, hd_same)
+
+class DunderTest:
+    def test_repr(self):
+        result = repr(self.constraint)
+    
+    def test_str(self):
+        result = str(self.constraint)
+
+class TestHorizontalDistanceDunders(unittest.TestCase, DunderTest):
+    def setUp(self):
+        a, b = Point(0, 0), Point(10, 0)
+        self.constraint = HorizontalDistance(a, ConstraintReference.CORE,
+                                             b, ConstraintReference.CORE,
+                                             10, uid="test")
+
+class TestVerticalDistanceDunders(unittest.TestCase, DunderTest):
+    def setUp(self):
+        a, b = Point(0, 0), Point(10, 0)
+        self.constraint = VerticalDistance(a, ConstraintReference.CORE,
+                                           b, ConstraintReference.CORE,
+                                           10, uid="test")
+
+class TestAngleDunders(unittest.TestCase, DunderTest):
+    def setUp(self):
+        a, b = LineSegment((0, 0), (1, 1)), LineSegment((1, 1), (1, 2))
+        self.constraint = Angle(a, ConstraintReference.CORE,
+                                b, ConstraintReference.CORE,
+                                value=45, quadrant=1, uid="test")
 
 if __name__ == "__main__":
     unittest.main()

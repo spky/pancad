@@ -195,6 +195,16 @@ class TestWritePartFileToFreeCAD(TestPartFile):
                                      stack()[0].function + ".FCStd")
         to_freecad(self.filepath, self.file)
 
+class TestWriteAnglesToFreeCADSketches(unittest.TestCase):
+    
+    def setUp(self):
+        tests_folder = os.path.abspath(
+            os.path.join(PanCAD.__file__, "..", "..", "..", "tests")
+        )
+        self.dump_folder = os.path.join(tests_folder, "test_output_dump")
+    
+    def create_angle_sketch(angle_type: str, 
+
 
 if __name__ == "__main__":
     unittest.main()
