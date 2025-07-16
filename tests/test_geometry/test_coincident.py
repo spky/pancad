@@ -33,7 +33,7 @@ class TestValidation(unittest.TestCase):
             c = Coincident(a, ConstraintReference.CORE,
                            b, ConstraintReference.CORE)
     
-    def test_combination_validation_line_circle_edges_reverse(self):
+    def test_combination_validation_line_circle_edges_reversec(self):
         a = LineSegment((0, 0), (1, 1))
         b = Circle((0, 0), 1)
         with self.assertRaises(TypeError):

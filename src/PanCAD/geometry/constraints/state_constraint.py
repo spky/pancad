@@ -84,8 +84,10 @@ class AbstractStateConstraint(AbstractConstraint):
     # Abstract Shared Static Private Methods
     def _is_combination(
                 self, 
-                one_parent_type: Type, one_reference_geometry: Type,
-                other_parent_type: Type, other_reference_geometry: Type,
+                one_parent_type: Type | tuple[Type],
+                one_reference_geometry: Type | tuple[Type],
+                other_parent_type: Type | tuple[Type],
+                other_reference_geometry: Type | tuple[Type],
             ) -> bool:
         """Returns whether the combination of parents and references in the 
         constraint matches the given combination of types. The order of the 
@@ -167,10 +169,10 @@ class Coincident(AbstractStateConstraint):
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
     def _validate_combination(self):
-        if self._is_combination(LineSegment, LineSegment, Circle, Circle):
-            raise TypeError("Line segment edges cannot be made coincident with"
-                            " circle edges.")
-        elif self._is_combination(Line, Line, Circle, Circle):
+        if self._is_combination((CoordinateSystem, Line, LineSegment),
+                                (LineSegment, Line),
+                                Circle,
+                                Circle):
             raise TypeError("Line edges cannot be made coincident with"
                             " circle edges.")
 
@@ -183,26 +185,34 @@ class Equal(AbstractStateConstraint):
     GEOMETRY_TYPES = (LineSegment, Circle)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    # TODO: Add validation at this level to check that the combination of types 
-    # is valid
+    
+    def _validate_combination(self):
+        if self._is_combination(LineSegment, LineSegment, Circle, Circle):
+            raise TypeError("Line Segments cannot be made equal to circles.")
 
 class Parallel(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be side by side and 
     have the same distance continuously between them.
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane)
-    GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
+    
+    def _validate_combination(self):
+        """No known invalid combinations available for parallel."""
 
 class Perpendicular(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be angled 90 degrees 
     relative to each other.
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane)
-    GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
+    
+    def _validate_combination(self):
+        """No known invalid combinations available for perpendicular."""
 
 class Tangent(AbstractStateConstraint):
     """A constraint that forces a line to touch a curve at a point while not 
@@ -212,3 +222,18 @@ class Tangent(AbstractStateConstraint):
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
+    
+    def _validate_combination(self):
+        if self._is_combination((CoordinateSystem, Line, LineSegment, Plane),
+                                (LineSegment, Line, Plane),
+                                (CoordinateSystem, Line, LineSegment, Plane),
+                                (LineSegment, Line, Plane)):
+            # NOTE: CAD programs like FreeCAD do allow the line-line tangent 
+            # condition. This may have some limited use cases, but does not 
+            # match the mathematical definition of tangent. This case is 
+            # protected against to limit ambiguities between CAD programs, but 
+            # may still be translated to coincident in application specific 
+            # contexts.
+            raise TypeError("Lines/Planes cannot be made tangent with"
+                            " other Lines/Planes. Use coincident if you mean to"
+                            " make the elements occupy the same location")

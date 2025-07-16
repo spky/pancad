@@ -161,8 +161,8 @@ class TestWritePartFileToFreeCAD(TestPartFile):
         )
         self.dump_folder = os.path.join(tests_folder, "test_output_dump")
     
-    def tearDown(self):
-        os.remove(self.filepath)
+    # def tearDown(self):
+        # os.remove(self.filepath)
     
     def test_to_freecad_create_body(self):
         # Name the file after the function its in
