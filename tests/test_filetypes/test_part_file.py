@@ -13,11 +13,13 @@ from PanCAD.geometry import (
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance,
-    Diameter, Radius,
+    Diameter, Radius, Equal, Perpendicular, Parallel
 )
 from PanCAD.geometry.constants import ConstraintReference
 
 from PanCAD.cad.freecad import to_freecad
+
+
 
 class TestPartFile(unittest.TestCase):
     
@@ -146,7 +148,7 @@ class TestAddGeometry(TestPartFile):
         with self.assertRaises(LookupError):
             self.file.add_feature(test_extrude)
 
-class TestWritePartFileToFreeCAD(TestPartFile):
+class TestWritePartFileToFreeCADFeatures(TestPartFile):
     def setUp(self):
         super().setUp()
         self.file_gen = partial(PartFile,
@@ -161,8 +163,8 @@ class TestWritePartFileToFreeCAD(TestPartFile):
         )
         self.dump_folder = os.path.join(tests_folder, "test_output_dump")
     
-    # def tearDown(self):
-        # os.remove(self.filepath)
+    def tearDown(self):
+        os.remove(self.filepath)
     
     def test_to_freecad_create_body(self):
         # Name the file after the function its in
@@ -194,6 +196,137 @@ class TestWritePartFileToFreeCAD(TestPartFile):
         self.filepath = os.path.join(self.dump_folder,
                                      stack()[0].function + ".FCStd")
         to_freecad(self.filepath, self.file)
+
+class TestPartFileSketches(unittest.TestCase):
+    
+    def setUp(self):
+        self.dump_dir = os.path.join(os.path.dirname(__file__), "dump")
+    
+    def init_filename(self, function_name: str):
+        self.filename = function_name + ".FCStd"
+        self.filepath = os.path.join(self.dump_dir, self.filename)
+        self.file = PartFile(self.filename)
+    
+    def finish_to_freecad(self):
+        self.sketch.constraints = self.constraints
+        self.file.add_feature(self.sketch)
+        to_freecad(self.filepath, self.file)
+
+class TestPartFileSquareSketchVariations(TestPartFileSketches):
+    
+    def tearDown(self):
+        os.remove(self.filepath)
+    
+    def setUp(self):
+        super().setUp()
+        self.side = 2
+        self.unit = "in"
+        self.geometry = [
+            LineSegment((0, 0), (self.side, 0)),
+            LineSegment((self.side, 0), (self.side, self.side)),
+            LineSegment((self.side, self.side), (0, self.side)),
+            LineSegment((0, self.side), (0, 0)),
+        ]
+        self.constraints = [ # Constraints that are always there
+            Coincident(self.geometry[0], ConstraintReference.START,
+                       self.geometry[3], ConstraintReference.END),
+            Coincident(self.geometry[0], ConstraintReference.END,
+                       self.geometry[1], ConstraintReference.START),
+            Coincident(self.geometry[1], ConstraintReference.END,
+                       self.geometry[2], ConstraintReference.START),
+            Coincident(self.geometry[2], ConstraintReference.END,
+                       self.geometry[3], ConstraintReference.START),
+        ]
+        self.sketch = Sketch(geometry=self.geometry, uid="test_sketch")
+    
+    def test_two_equal_square_with_horizontal_vertical(self):
+        self.init_filename(stack()[0].function + ".FCStd")
+        self.constraints.extend(
+            [
+                Horizontal(self.geometry[0], ConstraintReference.CORE),
+                Vertical(self.geometry[1], ConstraintReference.CORE),
+                Horizontal(self.geometry[2], ConstraintReference.CORE),
+                Vertical(self.geometry[3], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[1], ConstraintReference.CORE),
+                Distance(self.geometry[0], ConstraintReference.START,
+                         self.geometry[0], ConstraintReference.END,
+                         value=self.side, unit=self.unit),
+                Coincident(self.geometry[0], ConstraintReference.START,
+                           self.sketch.get_sketch_coordinate_system(),
+                           ConstraintReference.ORIGIN)
+            ]
+        )
+        self.finish_to_freecad()
+    
+    def test_all_equal_square_with_horizontal_vertical(self):
+        self.init_filename(stack()[0].function)
+        self.constraints.extend(
+            [
+                Horizontal(self.geometry[0], ConstraintReference.CORE),
+                Vertical(self.geometry[3], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[1], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[2], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[3], ConstraintReference.CORE),
+                Distance(self.geometry[0], ConstraintReference.START,
+                         self.geometry[0], ConstraintReference.END,
+                         value=self.side, unit=self.unit),
+                Coincident(self.geometry[0], ConstraintReference.START,
+                           self.sketch.get_sketch_coordinate_system(),
+                           ConstraintReference.ORIGIN)
+            ]
+        )
+        self.finish_to_freecad()
+    
+    def test_all_equal_square_with_perpendicular(self):
+        self.init_filename(stack()[0].function)
+        self.constraints.extend(
+            [
+                Horizontal(self.geometry[0], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[1], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[2], ConstraintReference.CORE),
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[3], ConstraintReference.CORE),
+                Perpendicular(self.geometry[0], ConstraintReference.CORE,
+                              self.geometry[3], ConstraintReference.CORE),
+                Distance(self.geometry[0], ConstraintReference.START,
+                         self.geometry[0], ConstraintReference.END,
+                         value=self.side, unit=self.unit),
+                Coincident(self.geometry[0], ConstraintReference.START,
+                           self.sketch.get_sketch_coordinate_system(),
+                           ConstraintReference.ORIGIN)
+            ]
+        )
+        self.finish_to_freecad()
+    
+    def test_all_equal_square_with_perpendicular_and_parallel(self):
+        self.init_filename(stack()[0].function)
+        self.constraints.extend(
+            [
+                Horizontal(self.geometry[0], ConstraintReference.CORE),
+                
+                Equal(self.geometry[0], ConstraintReference.CORE,
+                      self.geometry[3], ConstraintReference.CORE),
+                Perpendicular(self.geometry[0], ConstraintReference.CORE,
+                              self.geometry[3], ConstraintReference.CORE),
+                Parallel(self.geometry[1], ConstraintReference.CORE,
+                         self.geometry[3], ConstraintReference.CORE),
+                Parallel(self.geometry[0], ConstraintReference.CORE,
+                         self.geometry[2], ConstraintReference.CORE),
+                Distance(self.geometry[0], ConstraintReference.START,
+                         self.geometry[0], ConstraintReference.END,
+                         value=self.side, unit=self.unit),
+                Coincident(self.geometry[0], ConstraintReference.START,
+                           self.sketch.get_sketch_coordinate_system(),
+                           ConstraintReference.ORIGIN)
+            ]
+        )
+        self.finish_to_freecad()
 
 
 if __name__ == "__main__":

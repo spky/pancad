@@ -10,7 +10,7 @@ from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance,
-    Radius, Diameter,
+    Radius, Diameter, Equal, Perpendicular, Parallel
 )
 from PanCAD.geometry.constants import ConstraintReference
 
@@ -77,6 +77,19 @@ def freecad_constraint_vertical(constraint: Vertical,
         return Sketcher.Constraint("Vertical", *args)
 
 @freecad_constraint.register
+def freecad_constraint_equal(constraint: Equal,
+                             args: tuple) -> Sketcher.Constraint:
+    return Sketcher.Constraint("Equal", *args[0::2])
+
+@freecad_constraint.register
+def freecad_constraint_perpendicular(constraint: Perpendicular,
+                                     args: tuple) -> Sketcher.Constraint:
+    return Sketcher.Constraint("Perpendicular", *args[0::2])
+
+@freecad_constraint.register
+def freecad_constraint_parallel(constraint: Parallel,
+                                args: tuple) -> Sketcher.Constraint:
+    return Sketcher.Constraint("Parallel", *args[0::2])
 
 # Utility Functions ############################################################
 def bug_fix_001_distance(sketch: Sketch, constraint: Distance) -> tuple[int]:
