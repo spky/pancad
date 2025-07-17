@@ -41,7 +41,7 @@ class PartFile:
     
     def __init__(self,
                  filename: str,
-                 original_software: SoftwareName,
+                 original_software: SoftwareName=None,
                  features: tuple=None,
                  *,
                  metadata: dict=None,
@@ -66,7 +66,10 @@ class PartFile:
         else:
             self._coordinate_system = coordinate_system
         
-        self._initialize_metadata(metadata, original_software, metadata_map)
+        if original_software is None:
+            self._metadata = None
+        else:
+            self._initialize_metadata(metadata, original_software, metadata_map)
     
     # Public Methods
     def add_feature(self, feature: Sketch | Extrude):
