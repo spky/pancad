@@ -357,8 +357,10 @@ class Distance(Abstract2GeometryDistance):
             # Distance can apply to 3D contexts, but a and b must match
             raise ValueError("Geometry a and b must have the same number"
                              " of dimensions")
-        elif self._a is self._b:
-            raise ValueError("geometry a/b cannot be the same geometry element")
+        elif (self._a.get_reference(self._a_reference)
+              is self._b.get_reference(self._b_reference)):
+            raise ValueError("subgeometry of a/b cannot be the same geometry"
+                             " element")
 
 # 2D Only Classes #
 ################################################################################
