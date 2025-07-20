@@ -10,9 +10,14 @@ from __future__ import annotations
 from collections import namedtuple
 from functools import reduce
 from itertools import compress
+import textwrap
 
 from PanCAD.geometry.abstract_feature import AbstractFeature
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
+from PanCAD.geometry.constraints.state_constraint import AbstractStateConstraint
+from PanCAD.geometry.constraints.distance import (
+    Abstract2GeometryDistance, Abstract1GeometryDistance, Angle
+)
 from PanCAD.geometry import (
     Circle, CoordinateSystem, Point, Line, LineSegment, Plane,
 )
@@ -359,6 +364,13 @@ class Sketch(AbstractFeature):
             return [item is c for c in self.constraints].index(True)
         elif any([item is g for g in self.externals]):
             return [item is g for g in self.externals].index(True)
+        
+        sketch_cs = self.get_sketch_coordinate_system()
+        cs_ref_geometry = [sketch_cs]
+        cs_ref_geometry.extend([sketch_cs.get_reference(r)
+                                for r in sketch_cs.get_all_references()])
+        if any([item is g for g in cs_ref_geometry]):
+            return item.__class__.__name__
         else:
             raise LookupError(f"Item {item} is not in sketch")
     
@@ -503,8 +515,174 @@ class Sketch(AbstractFeature):
         n_geo = len(self.geometry)
         n_cons = len(self.constraints)
         n_ext = len(self.externals)
-        return (
-            f"PanCAD Sketch '{self.uid}' with {n_geo} internal geometry"
-            f" element(s), {n_cons} constraint(s), and {n_ext} external geometry"
-            " element(s)"
-        )
+        
+        # Geometry Summary
+        # LineSegment: index, uid, start, end
+        # Point: index, uid, location
+        # Line: index, uid, x-intercept, y-intercept
+        # Circle: index, uid, center location, radius
+        
+        # Constraint Summary
+        # *Geometry names need to include the parent
+        # Snapto Constraints, one geometry: index, uid, geometry index, geometry
+        # Snapto Constraints, two geometry: index, uid, index a geometry a, index b, geometry b
+        # State Constraints: index, uid, index a, geometry a, index b, geometry b
+        # Distance Constraints: index, uid, index a, geometry a, index b, geometry b, value, unit
+        sketch_summary = []
+        
+        sketch_summary.append(f"Sketch '{self.uid}'")
+        
+        # Geometry Summary #
+        sketch_summary.append("Geometry")
+        geometry_summary = []
+        geometry_info = []
+        for g in filter(lambda g: isinstance(g, Circle), self.geometry):
+            geometry_info.append(
+                {"Index": self.get_index_of(g), "UID": g.uid,
+                 "Center": g.center.cartesian, "Radius": g.radius,
+                 "Construction": self.construction[self.get_index_of(g)],}
+            )
+        if len(geometry_info) > 0:
+            geometry_summary.append("Circles")
+            geometry_summary.append(get_table_string(geometry_info))
+        
+        geometry_info = []
+        for g in filter(lambda g: isinstance(g, LineSegment), self.geometry):
+            geometry_info.append(
+                {"Index": self.get_index_of(g), "UID": g.uid,
+                 "Start": g.point_a.cartesian, "End": g.point_b.cartesian,
+                 "Construction": self.construction[self.get_index_of(g)],}
+            )
+        if len(geometry_info) > 0:
+            geometry_summary.append("Line Segments")
+            geometry_summary.append(get_table_string(geometry_info))
+        
+        geometry_info = []
+        for g in filter(lambda g: isinstance(g, Line), self.geometry):
+            geometry_info.append(
+                {"Index": self.get_index_of(g), "UID": g.uid,
+                 "X-Intercept": (g.x_intercept, 0),
+                 "Y-Intercept": (0, g.y_intercept),
+                 "Construction": self.construction[self.get_index_of(g)],}
+            )
+        if len(geometry_info) > 0:
+            geometry_summary.append("Infinite Lines")
+            geometry_summary.append(get_table_string(geometry_info))
+        
+        geometry_info = []
+        for g in filter(lambda g: isinstance(g, Point), self.geometry):
+            geometry_info.append(
+                {"Index": self.get_index_of(g), "UID": g.uid,
+                 "Location": g.cartesian,
+                 "Construction": self.construction[self.get_index_of(g)],}
+            )
+        if len(geometry_info) > 0:
+            geometry_summary.append("Points")
+            geometry_summary.append(get_table_string(geometry_info))
+        
+        geometry_summary = "\n".join(geometry_summary)
+        geometry_summary = textwrap.indent(geometry_summary, "  ")
+        sketch_summary.append(geometry_summary)
+        
+        # Constraint Summary #
+        sketch_summary.append("Constraints")
+        constraint_summary = []
+        constraint_info = []
+        for c in filter(lambda c: isinstance(c, AbstractStateConstraint),
+                        self.constraints):
+            constraint_info.append(
+                {"Index": self.get_index_of(c), "Type": c.__class__.__name__,
+                 "a Index": self.get_index_of(c.get_constrained()[0]),
+                 "a UID": c.get_constrained()[0].uid,
+                 "a Type": (c.get_constrained()[0].__class__.__name__ 
+                            + "_" + c.get_references()[0].name.title()),
+                 "b Index": self.get_index_of(c.get_constrained()[1]),
+                 "b UID": c.get_constrained()[1].uid,
+                 "b Type": (c.get_constrained()[1].__class__.__name__ 
+                            + "_" + c.get_references()[1].name.title()),}
+            )
+        if len(constraint_info) > 0:
+            constraint_summary.append("State Constraints")
+            constraint_summary.append(get_table_string(constraint_info))
+        
+        constraint_info = []
+        for c in filter(lambda c: isinstance(c, Abstract2GeometryDistance),
+                        self.constraints):
+            constraint_info.append(
+                {"Index": self.get_index_of(c), "Type": c.__class__.__name__,
+                 "a Index": self.get_index_of(c.get_constrained()[0]),
+                 "a UID": c.get_constrained()[0].uid,
+                 "a Type": (c.get_constrained()[0].__class__.__name__ 
+                            + "_" + c.get_references()[0].name.title()),
+                 "b Index": self.get_index_of(c.get_constrained()[1]),
+                 "b UID": c.get_constrained()[1].uid,
+                 "b Type": (c.get_constrained()[1].__class__.__name__ 
+                            + "_" + c.get_references()[1].name.title()),
+                 "Value": c.get_value_string(),}
+            )
+        if len(constraint_info) > 0:
+            constraint_summary.append("Distance Constraints")
+            constraint_summary.append(get_table_string(constraint_info))
+        
+        constraint_info = []
+        for c in filter(lambda c: isinstance(c, Abstract1GeometryDistance),
+                        self.constraints):
+            constraint_info.append(
+                {"Index": self.get_index_of(c), "Type": c.__class__.__name__,
+                 "a Index": self.get_index_of(c.get_constrained()[0]),
+                 "a UID": c.get_constrained()[0].uid,
+                 "a Type": (c.get_constrained()[0].__class__.__name__ 
+                            + "_" + c.get_references()[0].name.title()),
+                 "Value": c.get_value_string(),}
+            )
+        if len(constraint_info) > 0:
+            constraint_summary.append("Radius and Diameter Constraints")
+            constraint_summary.append(get_table_string(constraint_info))
+        
+        constraint_info = []
+        for c in filter(lambda c: isinstance(c, Angle),
+                        self.constraints):
+            constraint_info.append(
+                {"Index": self.get_index_of(c), "Type": c.__class__.__name__,
+                 "a Index": self.get_index_of(c.get_constrained()[0]),
+                 "a UID": c.get_constrained()[0].uid,
+                 "a Type": (c.get_constrained()[0].__class__.__name__ 
+                            + "_" + c.get_references()[0].name.title()),
+                 "b Index": self.get_index_of(c.get_constrained()[1]),
+                 "b UID": c.get_constrained()[1].uid,
+                 "b Type": (c.get_constrained()[1].__class__.__name__ 
+                            + "_" + c.get_references()[1].name.title()),
+                 "Value": c.get_value_string(),
+                 "Quadrant": c.quadrant,}
+            )
+        if len(constraint_info) > 0:
+            constraint_summary.append("Angle Constraints")
+            constraint_summary.append(get_table_string(constraint_info))
+        
+        constraint_summary = "\n".join(constraint_summary)
+        constraint_summary = textwrap.indent(constraint_summary, "  ")
+        sketch_summary.append(constraint_summary)
+        
+        return "\n".join(sketch_summary)
+
+def get_table_string(data: list[dict], column_map: dict=None, delimiter: str="  ") -> str:
+    string_rows = []
+    if column_map is None:
+        
+        column_map = {key: key for key in data[0]}
+    
+    for column, key in column_map.items():
+        column_width = len(column)
+        rows = [column]
+        rows.extend([info[key] for info in data])
+        lengths = list(map(lambda s: len(str(s)), rows))
+        if max(lengths) > column_width:
+            column_width = max(lengths)
+        
+        rows = ["{0: <{1}}".format(str(s), column_width) for s in rows]
+        if len(string_rows) == 0:
+            string_rows = rows
+        else:
+            for i, row in enumerate(rows):
+                string_rows[i] = delimiter.join([string_rows[i], row])
+    return "\n".join(string_rows)

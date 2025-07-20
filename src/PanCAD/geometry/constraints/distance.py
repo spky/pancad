@@ -26,7 +26,8 @@ class AbstractValue(AbstractConstraint):
         associated unit.
         """
         if include_unit:
-            return VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
+            return self.VALUE_STR_FORMAT.format(value=self.value,
+                                                unit=self.unit)
         else:
             return str(self.value)
     
@@ -148,6 +149,7 @@ class Angle(AbstractValue):
         self._b = geometry_b
         self._b_reference = reference_b
         self.quadrant = quadrant
+        self.unit = "degrees"
         if is_radians:
             self.value = math.degrees(value)
         else:
