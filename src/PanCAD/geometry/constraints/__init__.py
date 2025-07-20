@@ -3,5 +3,5 @@ from PanCAD.geometry.constraints.state_constraint import (
 )
 from PanCAD.geometry.constraints.snapto import Horizontal, Vertical
 from PanCAD.geometry.constraints.distance import (
-    HorizontalDistance, VerticalDistance, Distance, Radius, Diameter,
+    HorizontalDistance, VerticalDistance, Distance, Radius, Diameter, Angle
 )

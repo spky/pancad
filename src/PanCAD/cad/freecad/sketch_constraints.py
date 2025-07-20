@@ -8,11 +8,13 @@ from PanCAD.cad.freecad.constants import EdgeSubPart
 from PanCAD.geometry import Sketch, LineSegment
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry.constraints import (
-    Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance,
-    Radius, Diameter, Equal, Perpendicular, Parallel
+    Vertical, Horizontal,
+    Angle, Distance, HorizontalDistance, VerticalDistance, 
+    Radius, Diameter,
+    Coincident, Equal, Perpendicular, Parallel
 )
 from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.utils.trigonometry import is_clockwise
 
 # Primary Translation Function #################################################
 def translate_constraint(sketch: Sketch,
@@ -30,6 +32,27 @@ def freecad_constraint(constraint: AbstractConstraint,
                        args: tuple) -> Sketcher.Constraint:
     """Returns a FreeCAD constraint that can be placed in a FreeCAD Sketch."""
     raise NotImplementedError(f"Unsupported 1st type {constraint.__class__}")
+
+@freecad_constraint.register
+def freecad_constraint_angle(constraint: Angle,
+                             args: tuple) -> Sketcher.Constraint:
+    match constraint.quadrant:
+        case 1:
+            iline1, iline2 = args[0::2]
+            pointpos1, pointpos2 = 1, 1
+        case 2:
+            iline2, iline1 = args[0::2]
+            pointpos1, pointpos2 = 1, 2
+        case 3:
+            iline1, iline2 = args[0::2]
+            pointpos1, pointpos2 = 2, 1
+        case 4:
+            iline2, iline1 = args[0::2]
+            pointpos1, pointpos2 = 1, 1
+    
+    angle_value_str = App.Units.Quantity(f"{constraint.value} deg")
+    return Sketcher.Constraint("Angle", iline1, pointpos1, iline2, pointpos2,
+                               angle_value_str)
 
 @freecad_constraint.register
 def freecad_constraint_coincident(constraint: Coincident,

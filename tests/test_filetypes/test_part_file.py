@@ -328,6 +328,5 @@ class TestPartFileSquareSketchVariations(TestPartFileSketches):
         )
         self.finish_to_freecad()
 
-
 if __name__ == "__main__":
     unittest.main()
