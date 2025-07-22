@@ -2,12 +2,17 @@
 # sometimes dependencies of the modules towards the bottom of the file
 
 # Import Geometry Types
+from PanCAD.geometry.abstract_geometry import AbstractGeometry
+
 from PanCAD.geometry.point import Point
 from PanCAD.geometry.line import Line
 from PanCAD.geometry.line_segment import LineSegment
 from PanCAD.geometry.plane import Plane
 from PanCAD.geometry.circle import Circle
 from PanCAD.geometry.coordinate_system import CoordinateSystem
+
+# Import Features
+from PanCAD.geometry.abstract_feature import AbstractFeature
 
 # Import 2D Geometry Aggregations - dependent on Geometry Types
 from PanCAD.geometry.sketch import Sketch
