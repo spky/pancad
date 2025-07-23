@@ -86,7 +86,7 @@ class TestSummary(unittest.TestCase):
     def test_square_sketch_summary(self):
         sketch = self.make_square_sketch()
         sketch_str = str(sketch)
-        print(); print(sketch_str)
+        # print(); print(sketch_str)
 
 
 class TestGeometrySetting(unittest.TestCase):
