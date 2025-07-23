@@ -1,14 +1,13 @@
 import unittest
 
 from PanCAD.geometry import (
-    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point
+    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle
 )
 from PanCAD.geometry.constraints import (
-    Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance
+    Coincident, Vertical, Horizontal, Equal, Angle,
+    Distance, HorizontalDistance, VerticalDistance, Diameter
 )
-from PanCAD.geometry.constants import (SketchConstraint,
-                                       ConstraintReference as CR)
+from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 
 class TestSketchInit(unittest.TestCase):
     
@@ -16,15 +15,15 @@ class TestSketchInit(unittest.TestCase):
         self.cs = CoordinateSystem((0, 0, 0))
     
     def test_plane_reference(self):
-        sketch = Sketch(self.cs, CR.XY)
-        self.assertEqual(sketch.plane_reference, CR.XY)
+        sketch = Sketch(self.cs, ConstraintReference.XY)
+        self.assertEqual(sketch.plane_reference, ConstraintReference.XY)
     
     def test_plane_reference_exception(self):
         with self.assertRaises(ValueError):
-            sketch = Sketch(self.cs, CR.CORE)
+            sketch = Sketch(self.cs, ConstraintReference.CORE)
     
     def test_get_plane(self):
-        sketch = Sketch(self.cs, CR.YZ)
+        sketch = Sketch(self.cs, ConstraintReference.YZ)
         plane = sketch.get_plane()
         self.assertEqual(plane, Plane((0, 0, 0), (1, 0, 0)))
 
@@ -32,17 +31,63 @@ class TestDunder(unittest.TestCase):
     def setUp(self):
         cs = CoordinateSystem((0, 0, 0))
         geom = [Point(1,1), LineSegment((-1,-1),(-1,1))]
-        cons = [Coincident(geom[0], CR.CORE, geom[1], CR.CORE)]
+        cons = [Coincident(geom[0], ConstraintReference.CORE, geom[1], ConstraintReference.CORE)]
         uid = "TestSketch"
         self.sketch = Sketch(cs, geometry=geom, constraints=cons, uid=uid)
     
     def test_repr(self):
         # Checks whether repr errors out
         sketch_repr = repr(self.sketch)
+
+class TestSummary(unittest.TestCase):
     
-    def test_str(self):
-        # Checks whether str errors out
-        sketch_str = str(self.sketch)
+    def make_square_sketch(self) -> Sketch:
+        side_length = 2
+        unit = "in"
+        geometry = [
+            LineSegment((0, 0), (side_length, 0)),
+            LineSegment((side_length, 0), (side_length, side_length)),
+            LineSegment((side_length, side_length), (0, side_length)),
+            LineSegment((0, side_length), (0, 0)),
+            Circle((1, 1), 1),
+            Line.from_two_points((0, 1), (1, 0)),
+            Point(.5, .5),
+        ]
+        sketch = Sketch(geometry=geometry, uid="test_sketch")
+        constraints = [
+            Coincident(geometry[0], ConstraintReference.START,
+                       geometry[3], ConstraintReference.END),
+            Coincident(geometry[0], ConstraintReference.END,
+                       geometry[1], ConstraintReference.START),
+            Coincident(geometry[1], ConstraintReference.END,
+                       geometry[2], ConstraintReference.START),
+            Coincident(geometry[2], ConstraintReference.END,
+                       geometry[3], ConstraintReference.START),
+            Horizontal(geometry[0], ConstraintReference.CORE),
+            Vertical(geometry[1], ConstraintReference.CORE),
+            Horizontal(geometry[2], ConstraintReference.CORE),
+            Vertical(geometry[3], ConstraintReference.CORE),
+            Equal(geometry[0], ConstraintReference.CORE,
+                  geometry[1], ConstraintReference.CORE),
+            Distance(geometry[0], ConstraintReference.START,
+                     geometry[0], ConstraintReference.END,
+                     value=side_length, unit=unit),
+            Coincident(geometry[0], ConstraintReference.START,
+                       sketch.get_sketch_coordinate_system(),
+                       ConstraintReference.ORIGIN),
+            Diameter(geometry[4], ConstraintReference.CORE, 1, unit=unit),
+            Angle(geometry[0], ConstraintReference.CORE,
+                  geometry[1], ConstraintReference.CORE,
+                  value=90, quadrant=2)
+        ]
+        sketch.constraints = constraints
+        return sketch
+    
+    def test_square_sketch_summary(self):
+        sketch = self.make_square_sketch()
+        sketch_str = str(sketch)
+        # print(); print(sketch_str)
+
 
 class TestGeometrySetting(unittest.TestCase):
     def setUp(self):
@@ -114,85 +159,85 @@ class TestConstraints(unittest.TestCase):
     
     def test_constraint_validation_success(self):
         constraints = [
-            Coincident(self.geo[0], CR.CORE, self.geo[1], CR.CORE)
+            Coincident(self.geo[0], ConstraintReference.CORE, self.geo[1], ConstraintReference.CORE)
         ]
         sketch = Sketch(self.cs, geometry=self.geo, constraints=constraints)
     
     def test_constraint_validation_failure(self):
         constraints = [
-            Coincident(self.geo[0], CR.CORE, Point(2, 2), CR.CORE)
+            Coincident(self.geo[0], ConstraintReference.CORE, Point(2, 2), ConstraintReference.CORE)
         ]
         with self.assertRaises(ValueError):
             sketch = Sketch(self.cs, geometry=self.geo, constraints=constraints)
     
     def test_add_constraint_by_uid(self):
         sketch = Sketch(self.cs, geometry=self.geo)
-        expected_constraint = Coincident(self.geo[0], CR.CORE,
-                                         self.geo[1], CR.CORE)
+        expected_constraint = Coincident(self.geo[0], ConstraintReference.CORE,
+                                         self.geo[1], ConstraintReference.CORE)
         sketch.add_constraint_by_uid(SketchConstraint.COINCIDENT,
-                                     self.geo[0].uid, CR.CORE,
-                                     self.geo[1].uid, CR.CORE)
+                                     self.geo[0].uid, ConstraintReference.CORE,
+                                     self.geo[1].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_uid_vertical(self):
         sketch = Sketch(self.cs, geometry=self.geo)
-        expected_constraint = Vertical(self.geo[2], CR.CORE,
+        expected_constraint = Vertical(self.geo[2], ConstraintReference.CORE,
                                        uid=self.geo[2].uid)
         sketch.add_constraint_by_uid(SketchConstraint.VERTICAL,
-                                     self.geo[2].uid, CR.CORE)
+                                     self.geo[2].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_uid_horizontal(self):
         sketch = Sketch(self.cs, geometry=self.geo)
-        expected_constraint = Horizontal(self.geo[2], CR.CORE,
+        expected_constraint = Horizontal(self.geo[2], ConstraintReference.CORE,
                                          uid=self.geo[2].uid)
         sketch.add_constraint_by_uid(SketchConstraint.HORIZONTAL,
-                                     self.geo[2].uid, CR.CORE)
+                                     self.geo[2].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_uid_distance(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         distance = 10
-        expected_constraint = Distance(self.geo[0], CR.CORE,
-                                       self.geo[1], CR.CORE,
+        expected_constraint = Distance(self.geo[0], ConstraintReference.CORE,
+                                       self.geo[1], ConstraintReference.CORE,
                                        uid="test_pt_distance",
                                        value=distance)
         sketch.add_constraint_by_uid(SketchConstraint.DISTANCE,
-                                     self.geo[0].uid, CR.CORE,
-                                     self.geo[1].uid, CR.CORE,
+                                     self.geo[0].uid, ConstraintReference.CORE,
+                                     self.geo[1].uid, ConstraintReference.CORE,
                                      value=distance)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_uid_horizontal_distance(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         distance = 10
-        expected_constraint = HorizontalDistance(self.geo[0], CR.CORE,
-                                                 self.geo[1], CR.CORE,
+        expected_constraint = HorizontalDistance(self.geo[0], ConstraintReference.CORE,
+                                                 self.geo[1], ConstraintReference.CORE,
                                                  uid="test_pt_distance",
                                                  value=distance)
         sketch.add_constraint_by_uid(SketchConstraint.DISTANCE_HORIZONTAL,
-                                     self.geo[0].uid, CR.CORE,
-                                     self.geo[1].uid, CR.CORE,
+                                     self.geo[0].uid, ConstraintReference.CORE,
+                                     self.geo[1].uid, ConstraintReference.CORE,
                                      value=distance)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_by_index(self):
         sketch = Sketch(self.cs, geometry=self.geo)
-        expected_constraint = Coincident(self.geo[0], CR.CORE,
-                                         self.geo[1], CR.CORE)
+        expected_constraint = Coincident(self.geo[0], ConstraintReference.CORE,
+                                         self.geo[1], ConstraintReference.CORE)
         sketch.add_constraint_by_index(SketchConstraint.COINCIDENT,
-                                       0, CR.CORE, 1, CR.CORE)
+                                       0, ConstraintReference.CORE, 1, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
     
     def test_add_constraint_to_sketch_cs(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         expected_constraint = Coincident(
-            sketch.get_sketch_coordinate_system(), CR.ORIGIN,
-            self.geo[0], CR.CORE
+            sketch.get_sketch_coordinate_system(), ConstraintReference.ORIGIN,
+            self.geo[0], ConstraintReference.CORE
         )
         sketch.add_constraint_by_uid(SketchConstraint.COINCIDENT,
-                                     CR.COORDINATE_SYSTEM, CR.ORIGIN,
-                                     self.geo[0].uid, CR.CORE)
+                                     ConstraintReference.COORDINATE_SYSTEM, ConstraintReference.ORIGIN,
+                                     self.geo[0].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
 
 class TestConstruction(unittest.TestCase):
