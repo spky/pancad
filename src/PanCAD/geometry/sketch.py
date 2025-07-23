@@ -26,6 +26,7 @@ from PanCAD.geometry.constraints import (
     HorizontalDistance, VerticalDistance,
     Diameter, Radius,
 )
+from PanCAD.utils.text_formatting import get_table_string
 
 class Sketch(AbstractFeature):
     """A class representing a set of 2D geometry on a coordinate system plane in 
@@ -432,7 +433,8 @@ class Sketch(AbstractFeature):
     def _generate_location_string(self) -> str:
         """Returns a string describing where the sketch is located."""
         location_str = (f"On the {self.plane_reference.name} plane"
-                        f" in coordinate system '{self.coordinate_system.uid}'")
+                        " in coordinate system  with uid"
+                        f" '{self.coordinate_system.uid}'")
         return location_str
     
     def _generate_quantity_string(self) -> str:
@@ -677,32 +679,3 @@ class Sketch(AbstractFeature):
         )
         sketch_summary.append(self._generate_quantity_string())
         return "\n".join(sketch_summary)
-
-def get_table_string(data: list[dict],
-                     column_map: dict=None,
-                     delimiter: str="  ") -> str:
-    """Returns the dictionary data in tabular format, using the keys as column
-    titles.
-    
-    :param data: A list of dictionaries, each with the same 
-    """
-    string_rows = []
-    if column_map is None:
-        
-        column_map = {key: key for key in data[0]}
-    
-    for column, key in column_map.items():
-        column_width = len(column)
-        rows = [column]
-        rows.extend([info[key] for info in data])
-        lengths = list(map(lambda s: len(str(s)), rows))
-        if max(lengths) > column_width:
-            column_width = max(lengths)
-        
-        rows = ["{0: <{1}}".format(str(s), column_width) for s in rows]
-        if len(string_rows) == 0:
-            string_rows = rows
-        else:
-            for i, row in enumerate(rows):
-                string_rows[i] = delimiter.join([string_rows[i], row])
-    return "\n".join(string_rows)
