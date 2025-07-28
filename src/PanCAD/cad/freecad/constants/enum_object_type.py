@@ -7,3 +7,4 @@ class ObjectType(StrEnum):
     BODY = "PartDesign::Body"
     SKETCH = "Sketcher::SketchObject"
     PAD = "PartDesign::Pad"
+    ORIGIN = "App::Origin"
