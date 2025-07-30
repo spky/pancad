@@ -1,8 +1,12 @@
 import unittest
 from math import radians
 
+import numpy as np
+import quaternion
+
 from PanCAD.geometry import CoordinateSystem, Point, Line, Plane
 from PanCAD.utils.verification import assertPanCADAlmostEqual
+from PanCAD.utils.trigonometry import rotation_x, rotation_y, rotation_z
 
 ROUNDING_PLACES = 10
 
@@ -90,6 +94,27 @@ class TestCSUpdate(unittest.TestCase):
         new = CoordinateSystem((2, 2, 2), radians(45), radians(45), radians(45))
         cs.update(new)
         assertPanCADAlmostEqual(self, cs, new, ROUNDING_PLACES)
+
+class TestCSWithQuaternions(unittest.TestCase):
+    
+    def setUp(self):
+        self.pt = Point(0, 0, 0)
+        self.angle = radians(90)
+        self.rotation_matrix = rotation_z(self.angle)
+        self.quat = quaternion.from_rotation_matrix(self.rotation_matrix)
+    
+    def test_from_quaternion(self):
+        cs = CoordinateSystem.from_quaternion(self.pt, self.quat)
+        expected = [[0, 1, 0],
+                    [-1, 0, 0],
+                    [0, 0, 1]]
+        print(self.quat)
+        np.testing.assert_allclose(cs.get_axis_vectors(), expected, atol=1e-10)
+    
+    def test_get_quaternion(self):
+        cs = CoordinateSystem.from_quaternion(self.pt, self.quat)
+        quat = cs.get_quaternion()
+        print(quat)
 
 if __name__ == "__main__":
     unittest.main()

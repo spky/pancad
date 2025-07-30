@@ -3,17 +3,21 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from functools import partial, partialmethod
+from functools import partial, singledispatchmethod
 import math
 
 import numpy as np
+import quaternion
 
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.geometry import Point, Line, Plane
 from PanCAD.geometry.constants import ConstraintReference
 
 from PanCAD.utils import comparison
-from PanCAD.utils.trigonometry import yaw_pitch_roll, rotation_2, to_1D_tuple
+from PanCAD.utils.trigonometry import (yaw_pitch_roll,
+                                       rotation_2,
+                                       to_1D_tuple,
+                                       cartesian_to_spherical)
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -42,9 +46,12 @@ class CoordinateSystem(AbstractGeometry):
     YZPLANE_UID = "yzplane"
     ORIGIN_UID = "origin"
     
-    def __init__(self, origin: Point|tuple|np.ndarray=None,
-                 alpha: float=0, beta: float=0, gamma: float=0, *,
-                 right_handed: bool=True, uid: str=None):
+    def __init__(self,
+                 origin: Point|tuple|np.ndarray=None,
+                 alpha: float=0, beta: float=0, gamma: float=0,
+                 *,
+                 right_handed: bool=True,
+                 uid: str=None):
         
         if origin is None:
             origin = (0, 0, 0)
@@ -58,47 +65,55 @@ class CoordinateSystem(AbstractGeometry):
         
         # Initialize reference geometry and then translate/rotate into place
         if len(origin) == 2:
-            self._origin = Point(0, 0)
-            self.origin = origin
             if beta != 0 or gamma != 0:
                 raise ValueError("beta and/or gamma angles cannot be set for a"
                                  " 2D coordinate system")
-            self._x_axis_line = Line(self.origin, (1, 0))
-            self._y_axis_line = Line(self.origin, (0, 1))
-            initial_axis_matrix = (
-                self._x_axis_line.direction, self._y_axis_line.direction,
-            )
-            self._references = (ConstraintReference.ORIGIN,
-                                ConstraintReference.X,
-                                ConstraintReference.Y)
-            rotation_matrix = rotation_2(alpha)
+            self._init_2d(origin, alpha)
         else:
-            self._origin = Point(0, 0, 0)
-            self.origin = origin
-            self._x_axis_line = Line(self.origin, (1, 0, 0))
-            self._y_axis_line = Line(self.origin, (0, 1, 0))
-            self._z_axis_line = Line(self.origin, (0, 0, 1))
-            self._xy_plane = Plane(self.origin, self._z_axis_line.direction)
-            self._xz_plane = Plane(self.origin, self._y_axis_line.direction)
-            self._yz_plane = Plane(self.origin, self._x_axis_line.direction)
-            
-            self._references =  (ConstraintReference.ORIGIN,
-                                 ConstraintReference.X,
-                                 ConstraintReference.Y,
-                                 ConstraintReference.Z,
-                                 ConstraintReference.XY,
-                                 ConstraintReference.XZ,
-                                 ConstraintReference.YZ)
-            
-            initial_axis_matrix = (
-                self._x_axis_line.direction,
-                self._y_axis_line.direction,
-                self._z_axis_line.direction,
-            )
-            rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
-        self._set_axes(initial_axis_matrix)
-        self._rotate_axes(rotation_matrix)
+            self._init_3d(origin, alpha, beta, gamma)
+        
         self.uid = uid
+    
+    def _init_2d(self, origin: Point, alpha: float) -> None:
+        self._origin = Point(0, 0)
+        self.origin = origin
+        
+        self._x_axis_line = Line(self.origin, (1, 0))
+        self._y_axis_line = Line(self.origin, (0, 1))
+        
+        self._references = (ConstraintReference.ORIGIN,
+                            ConstraintReference.X,
+                            ConstraintReference.Y)
+        initial_axis_matrix = (self._x_axis_line.direction,
+                               self._y_axis_line.direction)
+        self._set_axes(initial_axis_matrix)
+        rotation_matrix = rotation_2(alpha)
+        self._rotate_axes(rotation_matrix)
+    
+    def _init_3d(self, origin: Point,
+                 alpha: float, beta: float, gamma: float) -> None:
+        self._origin = Point(0, 0, 0)
+        self.origin = origin
+        self._x_axis_line = Line(self.origin, (1, 0, 0))
+        self._y_axis_line = Line(self.origin, (0, 1, 0))
+        self._z_axis_line = Line(self.origin, (0, 0, 1))
+        self._xy_plane = Plane(self.origin, self._z_axis_line.direction)
+        self._xz_plane = Plane(self.origin, self._y_axis_line.direction)
+        self._yz_plane = Plane(self.origin, self._x_axis_line.direction)
+        
+        self._references =  (ConstraintReference.ORIGIN,
+                             ConstraintReference.X,
+                             ConstraintReference.Y,
+                             ConstraintReference.Z,
+                             ConstraintReference.XY,
+                             ConstraintReference.XZ,
+                             ConstraintReference.YZ)
+        initial_axis_matrix = (self._x_axis_line.direction,
+                               self._y_axis_line.direction,
+                               self._z_axis_line.direction)
+        self._set_axes(initial_axis_matrix)
+        rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
+        self._rotate_axes(rotation_matrix)
     
     # Getters #
     @property
@@ -166,6 +181,9 @@ class CoordinateSystem(AbstractGeometry):
         self._uid = uid
     
     # Public Methods #
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        return self._references
+    
     def get_axis_line_x(self) -> Line:
         return self._x_axis_line
     
@@ -180,6 +198,34 @@ class CoordinateSystem(AbstractGeometry):
             return (self.x_vector, self.y_vector)
         else:
             return (self.x_vector, self.y_vector, self.z_vector)
+    
+    def get_quaternion(self) -> np.quaternion:
+        """Returns a quaternion that can be used to rotate other vectors from 
+        the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
+        (0, 0, 1) to this coordinate system. Just returns the closest one, not 
+        the conjugate.
+        """
+        canon_axis = (0, 0, 1)
+        if (np.allclose(canon_axis, self._z_vector)
+                or np.allclose(canon_axis, -self._z_vector)):
+            # Protect against the situation where the coordinate system is 
+            # rotated around the z axis by switching to x axis
+            canon_axis = (1, 0, 0)
+            current_axis = self._x_vector
+        else:
+            current_axis = self._z_vector
+        
+        euler_axis = np.cross(canon_axis, current_axis)
+        euler_axis = euler_axis / np.linalg.norm(euler_axis)
+        normed_dot = (
+            np.dot(canon_axis, current_axis)
+            / (np.linalg.norm(canon_axis) * np.linalg.norm(current_axis))
+        )
+        cos_half_theta = np.sqrt((1 + normed_dot)/2)
+        sin_half_theta = np.sqrt((1 - normed_dot)/2)
+        quat_vector = euler_axis * sin_half_theta
+        
+        return np.quaternion(cos_half_theta, *quat_vector)
     
     def get_reference(self,
                       reference: ConstraintReference) -> Point | Line | Plane:
@@ -214,9 +260,6 @@ class CoordinateSystem(AbstractGeometry):
                     raise ValueError(f"3D {self.__class__}s do not have any"
                                      f" {reference.name} reference geometry")
     
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        return self._references
-    
     def get_xy_plane(self) -> Plane:
         return self._xy_plane
     
@@ -231,9 +274,19 @@ class CoordinateSystem(AbstractGeometry):
         self._set_axes(other.get_axis_vectors())
     
     # Private Methods #
-    def _rotate_axes(self, rotation_matrix: np.ndarray) -> None:
-        """Applies the rotation matrix to all the coordinate system's axes
-        """
+    @singledispatchmethod
+    def _rotate_axes(self, rotation) -> None:
+        """Applies the rotation matrix to all the coordinate system's axes."""
+        raise TypeError(f"Invalid rotation type {rotation.__class__}")
+    
+    @_rotate_axes.register
+    def _with_quaternion(self, quat: quaternion.quaternion) -> None:
+        axis_array = np.array(self.get_axis_vectors())
+        rotated = quaternion.rotate_vectors(quat, axis_array)
+        self._set_axes(rotated)
+    
+    @_rotate_axes.register
+    def _with_matrix(self, rotation_matrix: np.ndarray) -> None:
         new_axis_matrix = [rotation_matrix @ axis
                            for axis in self.get_axis_vectors()]
         self._set_axes(new_axis_matrix)
@@ -267,9 +320,37 @@ class CoordinateSystem(AbstractGeometry):
             self._xz_plane.update(Plane(self.origin, self._y_vector))
             self._yz_plane.update(Plane(self.origin, self._x_vector))
     
+    # Class Methods #
+    @classmethod
+    def from_quaternion(cls,
+                        origin: Point|tuple|np.ndarray=None,
+                        quat: np.quaternion=None,
+                        *,
+                        right_handed: bool=True,
+                        uid: str=None) -> CoordinateSystem:
+        """Returns a coordinate system defined with a quaternion. Internally 
+        initializes a coordinate system at the origin point and then rotates 
+        the axes around that point using the quaternion.
+        """
+        if quat is None:
+            # Initialize a quaternion that won't rotate the coordinate system
+            quat = np.quaternion(0, 0, 0, 1)
+        
+        if len(origin) != 3:
+            raise ValueError("2D Coordinate Systems cannot be initialized"
+                             " with quaternions")
+        else:
+            # Initialize an unrotated coordinate system
+            coordinate_system = cls(origin,
+                                    0, 0, 0,
+                                    right_handed=right_handed,
+                                    uid=uid)
+        coordinate_system._rotate_axes(quat)
+        return coordinate_system
+    
     # Python Dunders #
     def __repr__(self) -> str:
-        """Returns the short string representation of the coordinate system"""
+        """Returns the short string representation of the coordinate system."""
         pt_strs, axis_strs = [], []
         for i in range(0, len(self.origin)):
             if isclose0(self.origin[i]):
@@ -295,7 +376,8 @@ class CoordinateSystem(AbstractGeometry):
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by returning 
-        the number of dimensions of the origin point"""
+        the number of dimensions of the origin point
+        """
         return len(self.origin)
     
     def __str__(self) -> str:
