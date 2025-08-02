@@ -1,7 +1,9 @@
 from collections import OrderedDict
 
 from PanCAD.cad.freecad import App, Sketcher, Part
+from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_constraints import translate_constraint
+from PanCAD.cad.freecad.sketch_geometry import get_freecad_sketch_geometry
 from PanCAD.cad.freecad.constants import ObjectType, EdgeSubPart
 
 from PanCAD.filetypes import PartFile
@@ -26,12 +28,10 @@ def to_freecad(filepath: str, pancad_file: PartFile) -> None:
         document = App.newDocument()
         document.FileName = file_handlers.filepath(filepath)
         
-        """
-        FreeCAD does not have a file that forces users to put only one part 
-        into a file, but most other cad programs do. The file created by 
-        PanCAD sets up a file structured to only have one body in it at the 
-        end of processing.
-        """
+        # FreeCAD does not have a file that forces users to put only one part 
+        # into a file, but most other cad programs do. The file created by 
+        # PanCAD sets up a file structured to only have one body in it at the 
+        # end of processing.
         
         # Add body and coordinate system
         root = document.addObject(ObjectType.BODY, "Body")
@@ -40,7 +40,7 @@ def to_freecad(filepath: str, pancad_file: PartFile) -> None:
         # Initialize feature map with part file coordinate system
         feature_map = OrderedDict()
         feature_map.update(
-            map_coordinate_system(file_cs, root.Origin)
+            map_freecad(file_cs, root.Origin)
         )
         for f in pancad_file.get_features():
             feature_map = add_feature_to_freecad(f, feature_map)
@@ -106,17 +106,7 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
     
     for i, (geo, cons) in enumerate(zip(sketch.geometry, sketch.construction)):
         # Add all sketch geometry
-        if isinstance(geo, LineSegment):
-            start = App.Vector(tuple(geo.point_a) + (0,))
-            end = App.Vector(tuple(geo.point_b) + (0,))
-            new_geometry = Part.LineSegment(start, end)
-        elif isinstance(geo, Circle):
-            center = App.Vector(tuple(geo.center) + (0,))
-            normal = App.Vector((0, 0, 1))
-            new_geometry = Part.Circle(center, normal, geo.radius)
-        else:
-            raise ValueError(f"Geometry class {geo.__class__} not recognized")
-        
+        new_geometry = get_freecad_sketch_geometry(geo)
         freecad_sketch.addGeometry(new_geometry, cons)
         feature_map.update({(sketch, "geometry", i): new_geometry})
     
@@ -129,23 +119,3 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
         )
     
     return feature_map
-
-def map_coordinate_system(coordinate_system: CoordinateSystem,
-                          origin: App.DocumentObject) -> dict:
-    """Returns a dict that maps pancad (coordinate system, reference) tuples to 
-    a freecad origin object.
-    
-    :param coordinate_system: A PanCAD coordinate system.
-    :param origin: A FreeCAD origin object.
-    :returns: A dict mapping the coordinate_system's subgeometry to the FreeCAD 
-        origin's OriginFeatures with ConstraintReferences.
-    """
-    return { # Assumes FreeCAD maintains the same order in the future
-        (coordinate_system, ConstraintReference.ORIGIN): origin,
-        (coordinate_system, ConstraintReference.X): origin.OriginFeatures[0],
-        (coordinate_system, ConstraintReference.Y): origin.OriginFeatures[1],
-        (coordinate_system, ConstraintReference.Z): origin.OriginFeatures[2],
-        (coordinate_system, ConstraintReference.XY): origin.OriginFeatures[3],
-        (coordinate_system, ConstraintReference.XZ): origin.OriginFeatures[4],
-        (coordinate_system, ConstraintReference.YZ): origin.OriginFeatures[5],
-    }

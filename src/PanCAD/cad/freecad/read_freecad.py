@@ -3,21 +3,27 @@ A module providing functions to read FreeCAD files formatted like part files
 into a PanCAD PartFile object.
 """
 import os
+import pathlib
 
-from PanCAD.cad.freecad import App, PartDesign
+import numpy as np
+import quaternion
+
+from PanCAD.cad.freecad import App, PartDesign, Sketcher
+from PanCAD.cad.freecad.feature_mappers import map_freecad
+from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
 from PanCAD.cad.freecad.constants import ObjectType
 from PanCAD.filetypes import PartFile
+from PanCAD.filetypes.constants import SoftwareName
 
-from PanCAD.geometry import CoordinateSystem
+from PanCAD.geometry import CoordinateSystem, Sketch
 
-def _from_freecad(filepath: str) -> PartFile:
-    
+def from_freecad(filepath: str) -> PartFile:
     freecad_file = FreeCADFile(filepath)
 
 class FreeCADFile:
     def __init__(self, path: str):
-        self._path = path
-        self._document = App.open(self._path)
+        self.path = path
+        self._document = App.open(self.path)
         no_bodies = len(self._get_bodies())
         if no_bodies == 0:
             raise NotImplementedError("Files without a body are not supported")
@@ -25,6 +31,27 @@ class FreeCADFile:
             self._init_part_file_like()
         else:
             raise NotImplementedError("Multiple bodies are not supported")
+    
+    @property
+    def path(self) -> str:
+        return self._path
+    
+    @property
+    def stem(self) -> str:
+        return self._stem
+    
+    @path.setter
+    def path(self, filepath: str):
+        pypath = pathlib.Path(filepath)
+        self._path = str(pypath)
+        self._stem = pypath.stem
+    
+    @stem.setter
+    def stem(self, new_stem: str):
+        self._stem = new_stem
+        pypath = pathlib.Path(self._path)
+        self._path = os.path.join(pypath.parent, new_stem + pypath.suffix)
+        
     
     def _get_bodies(self) -> list:
         """Returns a list of all body objects in the file."""
@@ -59,10 +86,69 @@ class FreeCADFile:
                         self._features.append(obj)
     
     def _get_part_file_coordinate_system(self) -> CoordinateSystem:
-        pass
+        """Returns the equivalent PanCAD coordinate system from the primary part 
+        file FreeCAD body origin.
+        """
+        position = list(self._body.Placement.Base)
+        quaternion = np.quaternion(
+            *list(
+                map(self._body.Placement.Rotation.Q.__getitem__, [3, 0, 1, 2])
+            )
+        )
+        uid = self._body.Label + "_coordinate_system"
+        
+        return CoordinateSystem.from_quaternion(position, quaternion, uid=uid)
+    
+    def _translate_sketch(self,
+                          sketch: Sketcher.Sketch,
+                          feature_map: dict) -> dict:
+        if len(sketch.AttachmentSupport) != 1:
+            raise ValueError(f"Expected length of AttachmentSupport = 1,"
+                             f" given: {sketch.AttachmentSupport}")
+        elif len(sketch.AttachmentSupport[0]) != 2:
+            raise ValueError("Expected length of AttachmentSupport[0] = 2,"
+                             f" given: {sketch.AttachmentSupport[0]}")
+        
+        attachment_support = sketch.AttachmentSupport[0][0]
+        base_geometry, base_reference = feature_map[attachment_support]
+        pancad_sketch = Sketch(coordinate_system=base_geometry,
+                               plane_reference=base_reference,
+                               uid=sketch.Label)
+        
+        for i, geometry in enumerate(sketch.Geometry):
+            pancad_geometry = get_pancad_sketch_geometry(geometry)
+            pancad_sketch.add_geometry(pancad_geometry,
+                                       sketch.getConstruction(i))
+            feature_map.update(
+                map_freecad(pancad_geometry,
+                            geometry,
+                            from_freecad=True,
+                            parent_sketch=pancad_sketch,
+                            index=i)
+            )
+        print(pancad_sketch)
+        return feature_map
     
     def to_pancad(self) -> PartFile:
-        pass
+        feature_map = dict()
+        coordinate_system = self._get_part_file_coordinate_system()
+        
+        filename = self.stem
+        feature_map.update(
+            map_freecad(coordinate_system, self._body.Origin, from_freecad=True)
+        )
+        
+        for feature in self._features:
+            match feature.TypeId:
+                case ObjectType.SKETCH:
+                    feature_map = self._translate_sketch(feature, feature_map)
+                case ObjectType.PAD:
+                    pass
+        
+        # import pprint; pprint.pprint(feature_map)
+        return PartFile(filename,
+                        coordinate_system=coordinate_system)
+    
     
     # Python Dunders #
     def __fs_path__(self):

@@ -1,4 +1,5 @@
-"""A module providing functions to generate FreeCAD sketch constraints"""
+"""A module providing functions to generate FreeCAD sketch constraints from 
+PanCAD constraints"""
 
 from functools import singledispatch
 

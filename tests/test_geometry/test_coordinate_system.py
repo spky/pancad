@@ -108,13 +108,11 @@ class TestCSWithQuaternions(unittest.TestCase):
         expected = [[0, 1, 0],
                     [-1, 0, 0],
                     [0, 0, 1]]
-        print(self.quat)
         np.testing.assert_allclose(cs.get_axis_vectors(), expected, atol=1e-10)
     
     def test_get_quaternion(self):
         cs = CoordinateSystem.from_quaternion(self.pt, self.quat)
         quat = cs.get_quaternion()
-        print(quat)
 
 if __name__ == "__main__":
     unittest.main()

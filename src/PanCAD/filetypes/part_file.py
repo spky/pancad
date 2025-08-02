@@ -114,7 +114,8 @@ class PartFile:
         return dict(data)
     
     # Private Methods
-    def _initialize_metadata(self, metadata: dict, software: SoftwareName,
+    def _initialize_metadata(self, metadata: dict,
+                             software: SoftwareName,
                              pancad_map: dict=None):
         """Takes metadata from CAD software and maps it into standard data.
         """

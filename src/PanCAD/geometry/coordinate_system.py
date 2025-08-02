@@ -403,4 +403,5 @@ class CoordinateSystem(AbstractGeometry):
             axis_strs.append(f"{axis_name.upper()}-Axis ({component_str})")
         axis_str = " ".join(axis_strs)
         point_str = ", ".join(pt_strs)
-        return f"PanCAD CoordinateSystem with origin ({point_str}) and axes {axis_str}"
+        return (f"PanCAD '{self.uid}' CoordinateSystem with origin"
+                f" ({point_str}) and axes {axis_str}")

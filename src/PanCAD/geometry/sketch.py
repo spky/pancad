@@ -321,6 +321,15 @@ class Sketch(AbstractFeature):
                                  geometry_c, reference_c,
                                  **kwargs)
     
+    def add_geometry(self,
+                     geometry: AbstractGeometry,
+                     construction: bool=False) -> None:
+        if len(geometry) != 2:
+            raise ValueError(f"2D Geometry only, given 3D: {geometry}")
+        self.geometry = self.geometry + (geometry,)
+        self.construction = self.construction + (construction,)
+        self._sync_geometry_uid()
+    
     def get_construction_geometry(self) -> tuple[GeometryType]:
         """Returns a tuple of the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))

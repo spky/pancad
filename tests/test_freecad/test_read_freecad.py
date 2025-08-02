@@ -2,7 +2,7 @@ import os
 import unittest
 
 import PanCAD
-from PanCAD.cad.freecad import read_freecad
+from PanCAD.cad.freecad import FreeCADFile
 
 class TestReadSample(unittest.TestCase):
     
@@ -19,7 +19,8 @@ class TestReadCube(TestReadSample):
         self.filepath = os.path.join(self.sample_freecad, "cube_1x1x1.FCStd")
     
     def test_read_cube(self):
-        file = read_freecad._from_freecad(self.filepath)
+        file = FreeCADFile(self.filepath)
+        part_file = file.to_pancad()
 
 if __name__ == "__main__":
     unittest.main()
