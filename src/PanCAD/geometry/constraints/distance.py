@@ -385,8 +385,6 @@ class AbstractDistance2D(Abstract2GeometryDistance):
             )
         elif not len(self._a) == len(self._b) == 2:
             raise ValueError("geometry must be 2D")
-        elif self._a is self._b:
-            raise ValueError("geometry a/b cannot be the same geometry element")
 
 class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements"""

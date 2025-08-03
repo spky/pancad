@@ -35,13 +35,17 @@ def add_pancad_sketch_constraint(constraint: Sketcher.Constraint,
             return _add_state(constraint, pancad_sketch,
                               SketchConstraint.COINCIDENT)
         case ConstraintType.DIAMETER:
-            pass
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_DIAMETER)
         case ConstraintType.DISTANCE:
-            pass
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE)
         case ConstraintType.DISTANCE_X:
-            pass
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_HORIZONTAL)
         case ConstraintType.DISTANCE_Y:
-            pass
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_VERTICAL)
         case ConstraintType.EQUAL:
             return _add_state(constraint, pancad_sketch,
                               SketchConstraint.EQUAL)
@@ -57,7 +61,8 @@ def add_pancad_sketch_constraint(constraint: Sketcher.Constraint,
         case ConstraintType.POINT_ON_OBJECT:
             pass
         case ConstraintType.RADIUS:
-            pass
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_RADIUS)
         case ConstraintType.VERTICAL:
             return _add_snapto(constraint, pancad_sketch,
                                SketchConstraint.VERTICAL)
@@ -90,6 +95,20 @@ def _add_snapto(constraint: Sketcher.Constraint,
     pancad_sketch.add_constraint_by_index(snap_type,
                                           index_a, reference_a,
                                           index_b, reference_b)
+    return pancad_sketch
+
+def _add_distance(constraint: Sketcher.Constraint,
+                  pancad_sketch: Sketch,
+                  distance_type: SketchConstraint) -> Sketch:
+    index_a, reference_a = _get_pancad_index_pair(constraint.First,
+                                                  constraint.FirstPos)
+    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
+                                                  constraint.SecondPos)
+    pancad_sketch.add_constraint_by_index(distance_type,
+                                          index_a, reference_a,
+                                          index_b, reference_b,
+                                          value=constraint.Value,
+                                          unit="mm")
     return pancad_sketch
 
 # Constraint Dispatch Functions ################################################
@@ -134,7 +153,7 @@ def freecad_constraint_diameter(constraint: Diameter,
                                App.Units.Quantity(value_str))
 
 @freecad_constraint.register
-def freecad_constraint_distance(constraint: Distance,   
+def freecad_constraint_distance(constraint: Distance,
                                 args: tuple) -> Sketcher.Constraint:
     value_str = f"{constraint.value} {constraint.unit}"
     return Sketcher.Constraint("Distance", *args, App.Units.Quantity(value_str))
