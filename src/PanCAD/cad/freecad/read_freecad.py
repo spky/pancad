@@ -11,6 +11,7 @@ import quaternion
 from PanCAD.cad.freecad import App, PartDesign, Sketcher
 from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
+from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
 from PanCAD.cad.freecad.constants import ObjectType
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
@@ -126,6 +127,11 @@ class FreeCADFile:
                             parent_sketch=pancad_sketch,
                             index=i)
             )
+        
+        for constraint in sketch.Constraints:
+            temp = add_pancad_sketch_constraint(constraint, pancad_sketch)
+            if temp is not None:
+                pancad_sketch = temp
         print(pancad_sketch)
         return feature_map
     
