@@ -196,6 +196,7 @@ class PartFile:
                 [
                     f"{feature.__class__.__name__} '{feature.uid}'",
                     textwrap.indent("\n".join(dependency_summary), INDENT),
+                    textwrap.indent(str(feature), INDENT),
                 ]
             )
             summary.append(
@@ -216,13 +217,12 @@ class PartFile:
                 [textwrap.indent(line, sw_indent) for line in data_iter]
             )
             metadata_lines.append("\n".join(software_summary))
+        if len(metadata_lines) == 0:
+            metadata_lines = ["No metadata available"]
         metadata_summary = "\n".join(
             [
                 "Metadata",
-                textwrap.indent(
-                    "\n".join(metadata_lines),
-                    INDENT
-                )
+                textwrap.indent("\n".join(metadata_lines), INDENT)
             ]
         )
         summary.append(

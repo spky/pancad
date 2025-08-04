@@ -8,7 +8,8 @@ from PanCAD.geometry import (AbstractGeometry,
                              Circle,
                              CoordinateSystem,
                              LineSegment,
-                             Sketch)
+                             Sketch,
+                             Extrude)
 
 SketchGeometry = LineSegment | Circle
 
@@ -50,10 +51,17 @@ def _coordinate_system(coordinate_system: CoordinateSystem,
     return _get_ordered_map(map_to_freecad, from_freecad)
 
 @map_freecad.register
+def _extrude(pancad_extrude: Extrude,
+             freecad_extrude: object,
+             from_freecad: bool=False) -> dict:
+    map_to_freecad = {pancad_extrude: freecad_extrude}
+    return _get_ordered_map(map_to_freecad, from_freecad)
+
+@map_freecad.register
 def _sketch(pancad_sketch: Sketch,
             freecad_sketch: Sketcher.Sketch,
             from_freecad: bool=False) -> dict:
-    map_to_freecad = {freecad_sketch: (pancad_sketch, ConstraintReference.CORE)}
+    map_to_freecad = {(pancad_sketch, ConstraintReference.CORE): freecad_sketch}
     return _get_ordered_map(map_to_freecad, from_freecad)
 
 @map_freecad.register
@@ -62,5 +70,5 @@ def _sketch_geometry(pancad_geometry: SketchGeometry,
                      from_freecad: bool,
                      parent_sketch: Sketch,
                      index: int) -> dict:
-    map_to_freecad = {freecad_geometry: (parent_sketch, "geometry", index)}
+    map_to_freecad = {(parent_sketch, "geometry", index): freecad_geometry}
     return _get_ordered_map(map_to_freecad, from_freecad)

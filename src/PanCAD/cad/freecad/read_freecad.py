@@ -12,11 +12,12 @@ from PanCAD.cad.freecad import App, PartDesign, Sketcher
 from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
 from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
-from PanCAD.cad.freecad.constants import ObjectType
+from PanCAD.cad.freecad.constants import ObjectType, PadType
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
+from PanCAD.geometry.constants import ConstraintReference, FeatureType
 
-from PanCAD.geometry import CoordinateSystem, Sketch
+from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 
 def from_freecad(filepath: str) -> PartFile:
     freecad_file = FreeCADFile(filepath)
@@ -104,6 +105,8 @@ class FreeCADFile:
                           sketch: Sketcher.Sketch,
                           feature_map: dict) -> dict:
         if len(sketch.AttachmentSupport) != 1:
+            # Check whether the sketch is attached in a way that PanCAD doesn't 
+            # support
             raise ValueError(f"Expected length of AttachmentSupport = 1,"
                              f" given: {sketch.AttachmentSupport}")
         elif len(sketch.AttachmentSupport[0]) != 2:
@@ -115,7 +118,9 @@ class FreeCADFile:
         pancad_sketch = Sketch(coordinate_system=base_geometry,
                                plane_reference=base_reference,
                                uid=sketch.Label)
-        
+        feature_map.update(
+            map_freecad(pancad_sketch, sketch, from_freecad=True)
+        )
         for i, geometry in enumerate(sketch.Geometry):
             pancad_geometry = get_pancad_sketch_geometry(geometry)
             pancad_sketch.add_geometry(pancad_geometry,
@@ -132,26 +137,45 @@ class FreeCADFile:
             temp = add_pancad_sketch_constraint(constraint, pancad_sketch)
             if temp is not None:
                 pancad_sketch = temp
-        print(pancad_sketch)
+        return feature_map
+    
+    def _translate_pad(self, pad: object, feature_map: dict) -> dict:
+        profile_sketch, *_ = pad.Profile
+        sketch, *_ = feature_map[profile_sketch]
+        feature_type = PadType(pad.Type).get_feature_type(pad.Midplane,
+                                                          pad.Reversed)
+        extrude = Extrude(sketch,
+                          uid=pad.Label,
+                          feature_type=feature_type,
+                          length=pad.Length.Value,
+                          opposite_length=pad.Length2.Value,
+                          is_midplane=pad.Midplane,
+                          is_reverse_direction=pad.Reversed)
+        feature_map.update(
+            map_freecad(extrude, pad, from_freecad=True)
+        )
         return feature_map
     
     def to_pancad(self) -> PartFile:
         feature_map = dict()
         coordinate_system = self._get_part_file_coordinate_system()
-        
         filename = self.stem
+        part_file = PartFile(filename, coordinate_system=coordinate_system)
+        
         feature_map.update(
             map_freecad(coordinate_system, self._body.Origin, from_freecad=True)
         )
-        
         for feature in self._features:
             match feature.TypeId:
                 case ObjectType.SKETCH:
                     feature_map = self._translate_sketch(feature, feature_map)
+                    sketch, *_ = feature_map[feature]
+                    part_file.add_feature(sketch)
                 case ObjectType.PAD:
-                    pass
-        
-        # import pprint; pprint.pprint(feature_map)
+                    feature_map = self._translate_pad(feature, feature_map)
+                    extrude = feature_map[feature]
+                    part_file.add_feature(extrude)
+        print(part_file)
         return PartFile(filename,
                         coordinate_system=coordinate_system)
     
