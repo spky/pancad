@@ -1,19 +1,20 @@
-"""A module providing functions to generate FreeCAD sketch constraints"""
+"""A module providing functions to generate FreeCAD sketch constraints from 
+PanCAD constraints"""
 
 from functools import singledispatch
 
 from PanCAD.cad.freecad import App, Sketcher
-from PanCAD.cad.freecad.constants import EdgeSubPart
+from PanCAD.cad.freecad.constants import EdgeSubPart, ConstraintType
 
 from PanCAD.geometry import Sketch, LineSegment
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry.constraints import (
+    AbstractConstraint,
     Vertical, Horizontal,
     Angle, Distance, HorizontalDistance, VerticalDistance, 
     Radius, Diameter,
     Coincident, Equal, Perpendicular, Parallel
 )
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
 from PanCAD.utils.trigonometry import is_clockwise
 
 # Primary Translation Function #################################################
@@ -22,9 +23,93 @@ def translate_constraint(sketch: Sketch,
     if isinstance(constraint, Distance):
         geometry_inputs = bug_fix_001_distance(sketch, constraint)
     else:
-        geometry_inputs = get_constraint_inputs(sketch, constraint)
-    
+        geometry_inputs = _get_freecad_inputs(sketch, constraint)
     return freecad_constraint(constraint, geometry_inputs)
+
+def add_pancad_sketch_constraint(constraint: Sketcher.Constraint,
+                                 pancad_sketch: Sketch) -> Sketch:
+    match constraint.Type:
+        case ConstraintType.ANGLE:
+            pass
+        case ConstraintType.COINCIDENT:
+            return _add_state(constraint, pancad_sketch,
+                              SketchConstraint.COINCIDENT)
+        case ConstraintType.DIAMETER:
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_DIAMETER)
+        case ConstraintType.DISTANCE:
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE)
+        case ConstraintType.DISTANCE_X:
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_HORIZONTAL)
+        case ConstraintType.DISTANCE_Y:
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_VERTICAL)
+        case ConstraintType.EQUAL:
+            return _add_state(constraint, pancad_sketch,
+                              SketchConstraint.EQUAL)
+        case ConstraintType.HORIZONTAL:
+            return _add_snapto(constraint, pancad_sketch,
+                               SketchConstraint.HORIZONTAL)
+        case ConstraintType.PARALLEL:
+            return _add_state(constraint, pancad_sketch,
+                              SketchConstraint.PARALLEL)
+        case ConstraintType.PERPENDICULAR:
+            return _add_state(constraint, pancad_sketch,
+                              SketchConstraint.PERPENDICULAR)
+        case ConstraintType.POINT_ON_OBJECT:
+            pass
+        case ConstraintType.RADIUS:
+            return _add_distance(constraint, pancad_sketch,
+                                 SketchConstraint.DISTANCE_RADIUS)
+        case ConstraintType.VERTICAL:
+            return _add_snapto(constraint, pancad_sketch,
+                               SketchConstraint.VERTICAL)
+        case ConstraintType.TANGENT:
+            pass
+        case _:
+            raise ValueError(f"Unsupported type {constraint.Type}")
+
+# PanCAD Constraint Functions ##################################################
+
+def _add_state(constraint: Sketcher.Constraint,
+               pancad_sketch: Sketch,
+               state_type: SketchConstraint) -> Sketch:
+    index_a, reference_a = _get_pancad_index_pair(constraint.First,
+                                                  constraint.FirstPos)
+    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
+                                                  constraint.SecondPos)
+    pancad_sketch.add_constraint_by_index(state_type,
+                                          index_a, reference_a,
+                                          index_b, reference_b)
+    return pancad_sketch
+
+def _add_snapto(constraint: Sketcher.Constraint,
+                pancad_sketch: Sketch,
+                snap_type: SketchConstraint) -> Sketch:
+    index_a, reference_a = _get_pancad_index_pair(constraint.First,
+                                                  constraint.FirstPos)
+    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
+                                                  constraint.SecondPos)
+    pancad_sketch.add_constraint_by_index(snap_type,
+                                          index_a, reference_a,
+                                          index_b, reference_b)
+    return pancad_sketch
+
+def _add_distance(constraint: Sketcher.Constraint,
+                  pancad_sketch: Sketch,
+                  distance_type: SketchConstraint) -> Sketch:
+    index_a, reference_a = _get_pancad_index_pair(constraint.First,
+                                                  constraint.FirstPos)
+    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
+                                                  constraint.SecondPos)
+    pancad_sketch.add_constraint_by_index(distance_type,
+                                          index_a, reference_a,
+                                          index_b, reference_b,
+                                          value=constraint.Value,
+                                          unit="mm")
+    return pancad_sketch
 
 # Constraint Dispatch Functions ################################################
 @singledispatch
@@ -68,7 +153,7 @@ def freecad_constraint_diameter(constraint: Diameter,
                                App.Units.Quantity(value_str))
 
 @freecad_constraint.register
-def freecad_constraint_distance(constraint: Distance,   
+def freecad_constraint_distance(constraint: Distance,
                                 args: tuple) -> Sketcher.Constraint:
     value_str = f"{constraint.value} {constraint.unit}"
     return Sketcher.Constraint("Distance", *args, App.Units.Quantity(value_str))
@@ -135,13 +220,13 @@ def bug_fix_001_distance(sketch: Sketch, constraint: Distance) -> tuple[int]:
                           constraint.get_references())
     if all([isinstance(g, LineSegment) and r == ConstraintReference.CORE
             for g, r in original_inputs]):
-        a_i, a_ref, b_i, b_ref = get_constraint_inputs(sketch, constraint)
+        a_i, a_ref, b_i, b_ref = _get_freecad_inputs(sketch, constraint)
         return (a_i, EdgeSubPart.START, b_i)
     else:
-        return get_constraint_inputs(sketch, constraint)
+        return _get_freecad_inputs(sketch, constraint)
 
-def get_constraint_inputs(sketch: Sketch,
-                          constraint: AbstractConstraint) -> tuple[int]:
+def _get_freecad_inputs(sketch: Sketch,
+                        constraint: AbstractConstraint) -> tuple[int]:
     """Returns the indices required to reference constraint geometry in FreeCAD. 
     FreeCAD references the sketch origin, x-axis, and y-axis with hidden 
     external geometry elements. The origin is the start point of the x-axis 
@@ -178,13 +263,39 @@ def get_constraint_inputs(sketch: Sketch,
         freecad_inputs = freecad_inputs + (index, subpart)
     return freecad_inputs
 
-def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
-    """Returns the EdgeSubPart that matches the PanCAD constraint reference.
+def _get_pancad_index_pair(index: int,
+                           sub_part: EdgeSubPart | int
+                           ) -> tuple[int | ConstraintReference]:
+    if index >= 0:
+        pancad_index = index
+        pancad_reference = subpart_to_reference(sub_part)
+    else:
+        if index in [-1, -2]:
+            pancad_index = ConstraintReference.COORDINATE_SYSTEM
+            if sub_part == EdgeSubPart.START:
+                pancad_reference = ConstraintReference.ORIGIN
+            elif index == -1 and sub_part == EdgeSubPart.EDGE:
+                pancad_reference = ConstraintReference.X
+            elif index == -2 and sub_part == EdgeSubPart.EDGE:
+                pancad_reference = ConstraintReference.Y
+            else:
+                raise ValueError("Unexpected coordinate system"
+                                 f" subpart {sub_part}")
+        elif index == -2000:
+            pancad_index = None
+            pancad_reference = None
+        else:
+            raise NotImplementedError("External references have not been"
+                                      " implemented yet, see issue #87")
+    return pancad_index, pancad_reference
+
+def map_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
+    """Returns the EdgeSubPart that matches the PanCAD ConstraintReference.
     
-    :param pancad_reference: A reference to a subpart of geometry.
-    :returns: The FreeCAD equivalent to the pancad_reference.
+    :param reference: A reference to a subpart of geometry.
+    :returns: The FreeCAD equivalent to the reference.
     """
-    match pancad_reference:
+    match reference:
         case ConstraintReference.CORE:
             return EdgeSubPart.EDGE
         case ConstraintReference.START:
@@ -193,3 +304,18 @@ def map_to_subpart(pancad_reference: ConstraintReference) -> EdgeSubPart:
             return EdgeSubPart.END
         case ConstraintReference.CENTER:
             return EdgeSubPart.CENTER
+        case _:
+            raise ValueError(f"Unsupported reference: {reference}")
+
+def subpart_to_reference(sub_part: EdgeSubPart) -> ConstraintReference:
+    match sub_part:
+        case EdgeSubPart.EDGE:
+            return ConstraintReference.CORE
+        case EdgeSubPart.START:
+            return ConstraintReference.START
+        case EdgeSubPart.END:
+            return ConstraintReference.END
+        case EdgeSubPart.CENTER:
+            return ConstraintReference.CENTER
+        case _:
+            raise ValueError(f"Unsupported subpart: {sub_part}")

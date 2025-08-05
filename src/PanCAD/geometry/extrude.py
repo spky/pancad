@@ -3,15 +3,18 @@ starting from a sketch profile.
 """
 from __future__ import annotations
 
-from PanCAD.geometry.abstract_feature import AbstractFeature
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import Sketch
+import textwrap
+
+from PanCAD.geometry import AbstractFeature, AbstractGeometry, Sketch
 from PanCAD.geometry.constants import FeatureType
+from PanCAD.utils.text_formatting import get_table_string
 
 class Extrude(AbstractFeature):
     """A class representing linear extrusions starting from a sketch profile in 
     3D space.
     """
+    
+    VALUE_STR_FORMAT = "{value}{unit}"
     
     # Feature Type Checking Class Constants #
     LENGTH_TYPE_ENUMS = (
@@ -28,7 +31,8 @@ class Extrude(AbstractFeature):
                  opposite_length: int | float=None,
                  is_midplane: bool=False,
                  is_reverse_direction: bool=False,
-                 end_feature: object=None):
+                 end_feature: object=None,
+                 unit: str=None):
         self.profile = profile
         self.feature_type = feature_type
         self.uid = uid
@@ -37,6 +41,7 @@ class Extrude(AbstractFeature):
         self.is_midplane = is_midplane
         self.is_reverse_direction = is_reverse_direction
         self.end_feature = end_feature
+        self.unit = unit
         if self.feature_type in self.LENGTH_TYPE_ENUMS:
             self._validate_length_extrude()
         elif self.feature_type in self.CONDITION_TYPE_ENUMS:
@@ -65,6 +70,14 @@ class Extrude(AbstractFeature):
             return (self.profile, self.end_feature)
         else:
             return (self.profile,)
+    
+    def get_length_string(self) -> str:
+        """Return length with the associated unit."""
+        return self._get_value_string(self.length)
+    
+    def get_opposite_length_string(self) -> str:
+        """Return length with the associated unit."""
+        return self._get_value_string(self.opposite_length)
     
     # Class Methods #
     @classmethod
@@ -115,6 +128,15 @@ class Extrude(AbstractFeature):
         raise NotImplementedError("End feature extrude not yet implemented")
     
     # Private Methods #
+    def _get_value_string(self, value: float | int | None) -> str:
+        if value is None:
+            return ""
+        elif self.unit is None:
+            return str(value)
+        else:
+            return self.VALUE_STR_FORMAT.format(value=value,
+                                                unit=self.unit)
+    
     def _validate_length_extrude(self):
         if self.is_midplane and self.opposite_length is not None:
             raise ValueError("Opposite length cannot be defined for midplane"
@@ -135,5 +157,20 @@ class Extrude(AbstractFeature):
         type_name = self.feature_type.name \
                                      .replace("_", " ") \
                                      .title()
-        return (f"PanCAD {type_name} Extrude '{self.uid}'"
-                f" with profile '{self.profile.uid}'")
+        if self.end_feature is None:
+            end_feature_uid = None
+        else:
+            end_feature_uid = self.end_feature.uid
+        summary = []
+        summary.append(f"Extrude '{self.uid}' of profile '{self.profile.uid}'")
+        summary_info = {
+            "Active Type": type_name,
+            "Length": self.get_length_string(),
+            "Opposite Length": self.get_opposite_length_string(),
+            "Midplane": self.is_midplane,
+            "Reversed": self.is_reverse_direction,
+        }
+        summary.append(
+            textwrap.indent(get_table_string(summary_info), "  ")
+        )
+        return "\n".join(summary)

@@ -2,18 +2,23 @@
 Originally intended for command line reports/summaries.
 """
 
-def get_table_string(data: list[dict],
+def get_table_string(data: list[dict] | dict,
                      column_map: dict=None,
                      column_delimiter: str="  ") -> str:
-    """Returns the dictionary data in tabular format, using the keys as column
-    titles.
+    """Returns the dictionary data in tabular format.
     
-    :param data: A list of dictionaries, each with the same set of keys.
+    :param data: A list of dictionaries, each with the same set of keys. Can 
+        also be one dictionary to act as one table row.
     :param column_map: A dictionary with renamed column labels as keys and the 
         original keys in data as their values. Example: 'index': 'Index'.
     :param column_delimiter: The string to place between columns.
+    :returns: String of the data in tabular format. The dictionary keys are used 
+        as column titles.
     """
     string_rows = []
+    if isinstance(data, dict):
+        # For the case where there is only one row represented as a dict
+        data = [data]
     if column_map is None:
         # If no column map is given, the data keys are used as the columns
         column_map = {key: key for key in data[0]}

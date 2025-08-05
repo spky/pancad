@@ -20,8 +20,8 @@ from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 from PanCAD.geometry.constraints import (
     AbstractConstraint,
     Abstract1GeometryDistance, Abstract2GeometryDistance,
-    AbstractStateConstraint,
-    Coincident, Vertical, Horizontal,
+    AbstractStateConstraint, AbstractSnapTo,
+    Coincident, Vertical, Horizontal, Equal, Parallel, Perpendicular,
     Angle, Distance,
     HorizontalDistance, VerticalDistance,
     Diameter, Radius,
@@ -321,6 +321,15 @@ class Sketch(AbstractFeature):
                                  geometry_c, reference_c,
                                  **kwargs)
     
+    def add_geometry(self,
+                     geometry: AbstractGeometry,
+                     construction: bool=False) -> None:
+        if len(geometry) != 2:
+            raise ValueError(f"2D Geometry only, given 3D: {geometry}")
+        self.geometry = self.geometry + (geometry,)
+        self.construction = self.construction + (construction,)
+        self._sync_geometry_uid()
+    
     def get_construction_geometry(self) -> tuple[GeometryType]:
         """Returns a tuple of the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
@@ -459,7 +468,7 @@ class Sketch(AbstractFeature):
         """Figures out and returns the next constraint uid"""
         constraint_uid = str(len(self.constraints))
         if self.uid is not None:
-            constraint_uid = self.UID_SEPARATOR.join(self.uid, constraint_uid)
+            constraint_uid = self.UID_SEPARATOR.join([self.uid, constraint_uid])
         return constraint_uid
     
     def _add_new_constraint(
@@ -476,37 +485,55 @@ class Sketch(AbstractFeature):
         constraint_uid = self._new_constraint_uid()
         
         match constraint_choice:
+            case SketchConstraint.ANGLE:
+                new_constraint = Angle(
+                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
+                )
             case SketchConstraint.COINCIDENT:
                 new_constraint = Coincident(a, reference_a, b, reference_b,
                                             uid=constraint_uid)
             case SketchConstraint.HORIZONTAL:
                 new_constraint = Horizontal(a, reference_a, b, reference_b,
                                             uid=constraint_uid)
-            case SketchConstraint.VERTICAL:
-                new_constraint = Vertical(a, reference_a, b, reference_b,
-                                          uid=constraint_uid)
             case SketchConstraint.DISTANCE:
                 new_constraint = Distance(
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
+            case SketchConstraint.DISTANCE_DIAMETER:
+                new_constraint = Diameter(
+                    a, reference_a, uid=constraint_uid, **kwargs
+                )
             case SketchConstraint.DISTANCE_HORIZONTAL:
                 new_constraint = HorizontalDistance(
-                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
-                )
-            case SketchConstraint.DISTANCE_VERTICAL:
-                new_constraint = VerticalDistance(
                     a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
             case SketchConstraint.DISTANCE_RADIUS:
                 new_constraint = Radius(
                     a, reference_a, uid=constraint_uid, **kwargs
                 )
-            case SketchConstraint.DISTANCE_DIAMETER:
-                new_constraint = Diameter(
-                    a, reference_a, uid=constraint_uid, **kwargs
+            case SketchConstraint.DISTANCE_VERTICAL:
+                new_constraint = VerticalDistance(
+                    a, reference_a, b, reference_b, uid=constraint_uid, **kwargs
                 )
+            case SketchConstraint.EQUAL:
+                new_constraint = Equal(a, reference_a, b, reference_b,
+                                       uid=constraint_uid)
+            case SketchConstraint.PARALLEL:
+                new_constraint = Parallel(a, reference_a, b, reference_b,
+                                          uid=constraint_uid)
+            case SketchConstraint.PERPENDICULAR:
+                new_constraint = Perpendicular(a, reference_a, b, reference_b,
+                                               uid=constraint_uid)
+            case SketchConstraint.SYMMETRIC:
+                raise NotImplementedError("Symmetric not yet implemented, #85")
+            case SketchConstraint.TANGENT:
+                raise NotImplementedError("Tangent not yet implemented, #82")
+            case SketchConstraint.VERTICAL:
+                new_constraint = Vertical(a, reference_a, b, reference_b,
+                                          uid=constraint_uid)
             case _:
-                raise ValueError("Constraint choice not recognized")
+                raise ValueError(f"Constraint choice {constraint_choice}"
+                                 " not recognized")
         self.constraints += (new_constraint,)
     
     def _sync_geometry_uid(self):
@@ -576,6 +603,37 @@ class Sketch(AbstractFeature):
                 "b UID": geometry_b.uid,
                 "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
                                           reference_b.name.title())}
+    
+    @_get_summary_info.register
+    def _state_constraint(self, constraint: AbstractSnapTo) -> dict:
+        geometry = constraint.get_constrained()
+        references = constraint.get_references()
+        TYPE_STR = "{0}_{1}"
+        if len(geometry) == 1:
+            geometry_a = geometry[0]
+            reference_a = references[0]
+            return {"Index": self.get_index_of(constraint),
+                    "Type": constraint.__class__.__name__,
+                    "a Index": self.get_index_of(geometry_a),
+                    "a UID": geometry_a.uid,
+                    "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
+                                              reference_a.name.title()),
+                    "b Index": None,
+                    "b UID": None,
+                    "b Type": None,}
+        else:
+            geometry_a, geometry_b = geometry
+            reference_a, reference_b = references
+            return {"Index": self.get_index_of(constraint),
+                    "Type": constraint.__class__.__name__,
+                    "a Index": self.get_index_of(geometry_a),
+                    "a UID": geometry_a.uid,
+                    "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
+                                              reference_a.name.title()),
+                    "b Index": self.get_index_of(geometry_b),
+                    "b UID": geometry_b.uid,
+                    "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
+                                              reference_b.name.title())}
     
     @_get_summary_info.register
     def _1_geo_distance(self, constraint: Abstract1GeometryDistance) -> dict:
@@ -670,6 +728,7 @@ class Sketch(AbstractFeature):
         sketch_summary.append("Constraints")
         summaries = {
             "State Constraints": AbstractStateConstraint,
+            "Snap To Constraints": AbstractSnapTo,
             "Distance Constraints": Abstract2GeometryDistance,
             "Radius and Diameter Constraints": Abstract1GeometryDistance,
             "Angle Constraints": Angle,
