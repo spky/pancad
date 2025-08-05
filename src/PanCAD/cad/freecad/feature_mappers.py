@@ -23,14 +23,26 @@ def map_freecad(pancad: AbstractGeometry,
     :param pancad: A PanCAD object.
     :param freecad: A FreeCAD object.
     :param from_freecad: Reverses the dictionary if True. Defaults to False.
+    :param parent_sketch: The sketch the pancad object is in. Only used for 
+        sketch geometry. Not to be used for other options.
+    :param index: The sketch index of the pancad object. Only used for sketch 
+        geometry.
     :returns: A dict mapping the geometry and its sub geometry to the freecad 
         object.
     """
     raise TypeError(f"Unsupported PanCAD element: {pancad}")
 
 def _get_ordered_map(feature_map: dict, from_freecad: bool) -> dict:
+    """Reverses or returns a mapping dictionary based on whether the map is to 
+    or from freecad.
+    
+    :param feature_map: A dictionary mapping PanCAD elements to FreeCAD
+        elements.
+    :param from_freecad: Whether the map is intended to go from FreeCAD or to 
+        FreeCAD. If True, the map is reversed.
+    :returns: The correctly ordered mapping dictionary.
+    """
     if from_freecad:
-        # Reverse the map
         return {freecad: pancad for pancad, freecad in feature_map.items()}
     else:
         return feature_map

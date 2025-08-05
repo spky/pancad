@@ -23,6 +23,13 @@ def from_freecad(filepath: str) -> PartFile:
     freecad_file = FreeCADFile(filepath)
 
 class FreeCADFile:
+    """A class representing FreeCAD files. Provides functionality to translate 
+    the file to a PanCAD filetype.
+    
+    :param path: The location of the FreeCAD file.
+    """
+    STORED_UNIT = "mm" # Values are always stored internally as this unit
+    
     def __init__(self, path: str):
         self.path = path
         self._document = App.open(self.path)
@@ -36,10 +43,20 @@ class FreeCADFile:
     
     @property
     def path(self) -> str:
+        """The filepath of the FreeCADFile.
+        
+        :getter: Returns the path
+        :setter: Sets the path and updates the stem accordingly.
+        """
         return self._path
     
     @property
     def stem(self) -> str:
+        """The name of the FreeCADFile without the extension or path.
+        
+        :getter: Returns the name of the file without the extension or path.
+        :setter: Sets the stem and updates the path accordingly.
+        """
         return self._stem
     
     @path.setter
@@ -53,7 +70,6 @@ class FreeCADFile:
         self._stem = new_stem
         pypath = pathlib.Path(self._path)
         self._path = os.path.join(pypath.parent, new_stem + pypath.suffix)
-        
     
     def _get_bodies(self) -> list:
         """Returns a list of all body objects in the file."""
@@ -63,6 +79,7 @@ class FreeCADFile:
         )
     
     def _init_part_file_like(self) -> None:
+        """Initializes a part-like file from FreeCAD."""
         # The body and origin of a part file is the context everything else is 
         # defined under, so they will be consistent between part files
         self._body = self._get_bodies()[0]
@@ -104,6 +121,7 @@ class FreeCADFile:
     def _translate_sketch(self,
                           sketch: Sketcher.Sketch,
                           feature_map: dict) -> dict:
+        """Adds the FreeCAD sketch and its geometry to the given feature map."""
         if len(sketch.AttachmentSupport) != 1:
             # Check whether the sketch is attached in a way that PanCAD doesn't 
             # support
@@ -140,6 +158,7 @@ class FreeCADFile:
         return feature_map
     
     def _translate_pad(self, pad: object, feature_map: dict) -> dict:
+        """Adds the FreeCAD pad to the given feature map."""
         profile_sketch, *_ = pad.Profile
         sketch, *_ = feature_map[profile_sketch]
         feature_type = PadType(pad.Type).get_feature_type(pad.Midplane,
@@ -150,13 +169,15 @@ class FreeCADFile:
                           length=pad.Length.Value,
                           opposite_length=pad.Length2.Value,
                           is_midplane=pad.Midplane,
-                          is_reverse_direction=pad.Reversed)
+                          is_reverse_direction=pad.Reversed,
+                          unit=self.STORED_UNIT)
         feature_map.update(
             map_freecad(extrude, pad, from_freecad=True)
         )
         return feature_map
     
     def to_pancad(self) -> PartFile:
+        """Returns a PanCAD filetype object from the FreeCAD file."""
         feature_map = dict()
         coordinate_system = self._get_part_file_coordinate_system()
         filename = self.stem
@@ -175,9 +196,7 @@ class FreeCADFile:
                     feature_map = self._translate_pad(feature, feature_map)
                     extrude = feature_map[feature]
                     part_file.add_feature(extrude)
-        print(part_file)
-        return PartFile(filename,
-                        coordinate_system=coordinate_system)
+        return part_file
     
     
     # Python Dunders #

@@ -11,8 +11,8 @@ all standard metadata is guaranteed to be filled out. Functions going from and
 to other applications need to map the standard metadata to the client 
 application's name for the data (Ex: "identifier" in PanCAD can map to "PartNo" 
 in another application).
-
 """
+from __future__ import annotations
 
 import os
 from collections import defaultdict
@@ -71,7 +71,7 @@ class PartFile:
         else:
             self._initialize_metadata(metadata, original_software, metadata_map)
     
-    # Public Methods
+    # Public Methods #
     def add_feature(self, feature: Sketch | Extrude):
         
         if (isinstance(feature, Sketch)
@@ -113,7 +113,22 @@ class PartFile:
                 data[software][data_name] = self._metadata[origin][name]
         return dict(data)
     
-    # Private Methods
+    # Class Methods #
+    @classmethod
+    def from_freecad(cls, filepath: str) -> PartFile:
+        """Reads a FreeCAD file and returns it as a PanCAD PartFile, if its 
+        structure allows it.
+        
+        :param filepath: The filepath to a FreeCAD file structured like a 
+            PartFile.
+        :returns: The PanCAD equivalent of the FreeCAD file.
+        """
+        # Local import here to avoid circular imports
+        from PanCAD.cad.freecad.read_freecad import FreeCADFile
+        file = FreeCADFile(filepath)
+        return file.to_pancad()
+    
+    # Private Methods #
     def _initialize_metadata(self, metadata: dict,
                              software: SoftwareName,
                              pancad_map: dict=None):
@@ -192,11 +207,12 @@ class PartFile:
             dependency_summary.extend(
                 [textwrap.indent(line, dep_indent) for line in dependency_iter]
             )
+            feature_str = "\n".join(str(feature).split("\n")[1:])
             feature_summary = "\n".join(
                 [
                     f"{feature.__class__.__name__} '{feature.uid}'",
                     textwrap.indent("\n".join(dependency_summary), INDENT),
-                    textwrap.indent(str(feature), INDENT),
+                    textwrap.indent(feature_str, INDENT),
                 ]
             )
             summary.append(
@@ -206,7 +222,7 @@ class PartFile:
         # Summarize Metadata
         metadata_summary = []
         metadata_lines = []
-         
+        
         for software, data in self.metadata_to_dict().items():
             data_lines = [f"{field}: '{val}'" for field, val in data.items()]
             data_iter = iter(data_lines)
