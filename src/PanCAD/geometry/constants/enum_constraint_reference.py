@@ -7,24 +7,34 @@ of the line is being constrained.
 from enum import Flag, auto
 
 class ConstraintReference(Flag):
-    # A core reference is used for cases where the geometry as a whole can be 
-    # constrained.
-    # Example: A line's core can be parallel to another line's core.
+    """An enumeration used by constraints to reference portions of geometry."""
     CORE = auto()
-    
-    # Point Reference
+    """The geometry as a whole. Example: A line's CORE can be parallel to 
+    another line's CORE.
+    """
     START = auto()
+    """The start of the geometry. Example: The start of a line segment."""
     END = auto()
+    """The end of the geometry. Example: The end of a line segment."""
     CENTER = auto()
+    """The center of the geometry. Example: The center point of a circle."""
     ORIGIN = CENTER
-    # Line Reference
+    """An alias for the center of the geometry. Example: The origin point of a 
+    coordinate system."""
     X = auto()
+    """The X-Axis of the geometry."""
     Y = auto()
+    """The Y-Axis of the geometry."""
     Z = auto()
-    # Plane Reference
+    """The Z-Axis of the geometry."""
     XY = auto()
+    """The XY-Plane of the geometry."""
     XZ = auto()
+    """The XZ-Plane of the geometry."""
     YZ = auto()
-    # Coordinate System Reference (usually for sketches)
+    """The YZ-Plane of the geometry."""
     CS = auto()
+    """The coordinate system of the geometry. Example: The coordinate system of 
+    a sketch."""
     COORDINATE_SYSTEM = CS
+    """An alias for CS."""

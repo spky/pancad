@@ -6,8 +6,11 @@ from __future__ import annotations
 import math
 from functools import partial, singledispatchmethod
 from numbers import Real
+from typing import overload, Union, NoReturn, Self
 
 import numpy as np
+
+VectorLike = Union[tuple, np.ndarray, list]
 
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.utils import trigonometry as trig, comparison
@@ -17,39 +20,71 @@ isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point(AbstractGeometry):
-    """A class representing points in 2D and 3D space. Point can freely 
-    translate its position between coordinate systems for easy position 
-    translation. Point's __init__ function can only take cartesian coordinates, 
-    so either use one of its class functions or initialize it with no 
-    arguments and modify one of its coordinate system specific properties if 
-    another coordinate system is desired.
+    """A class representing points in 2D and 3D space. Point can return its 
+    position in cartesian, spherical, or polar coordinates. Point's __init__ 
+    function can only take cartesian coordinates, so either use one of its class 
+    functions or initialize it with no arguments and modify one of its 
+    coordinate system specific properties if another coordinate system is 
+    desired. 
     
-    :param cartesian: The cartesian coordinate (x, y, z) of the point. If a
-                      float or int is given instead, y needs to also be 
-                      initialized.
+    :param cartesian: The cartesian coordinate (x, y, z) of the point. Treated 
+        as x if given as a real.
     :param y: The cartesian y coordinate of the point. Can only be given if 
-              cartesian is given as a float or int.
+        cartesian is given as a real.
     :param z: The cartesian z coordinate of the point. Can only be given if 
-              cartesian and y are given as floats or ints.
-    :param uid: The unique ID of the point for interoperable CAD 
-                identification.
+        cartesian and y are given as reals.
+    :param uid: The unique ID of the point for interoperable CAD identification.
     :param unit: The unit of the point's length values.
     """
     
-    def __init__(self, cartesian: (tuple[float, float, float]
-                                   | np.ndarray | float) = None,
-                 y: float = None, z: float = None,
-                 *, uid: str = None, unit: str = None):
-        """Constructor method"""
+    REFERENCES = (ConstraintReference.CORE,)
+    """All relevant ConstraintReferences for Point."""
+    
+    @overload
+    def __init__(self,
+                 cartesian: tuple[Real],
+                 *,
+                 uid: str=None,
+                 unit: str=None) -> None: ...
+    
+    @overload
+    def __init__(self,
+                 cartesian: np.ndarray,
+                 *,
+                 uid: str=None,
+                 unit: str=None) -> None: ...
+    
+    @overload
+    def __init__(self,
+                 cartesian: Real,
+                 y: Real,
+                 *,
+                 uid: str=None,
+                 unit: str=None) -> None: ...
+    
+    @overload
+    def __init__(self,
+                 cartesian: Real,
+                 y: Real,
+                 z:Real,
+                 *,
+                 uid: str=None,
+                 unit: str=None) -> None: ...
+    
+    @overload
+    def __init__(self,
+                 *,
+                 uid: str=None,
+                 unit: str=None) -> None: ...
+    
+    def __init__(self, cartesian=None, y=None, z=None, *, uid=None, unit=None):
         self.uid = uid
-        self._references = (ConstraintReference.CORE,)
+        # self._references = (ConstraintReference.CORE,)
         
-        if (isinstance(cartesian, (int, float))
-               and isinstance(y, (int, float))
-               and isinstance(z, (int, float))):
+        if all([isinstance(n, Real) for n in [cartesian, y, z]]):
             self.cartesian = (cartesian, y, z)
-        elif (isinstance(cartesian, (int, float))
-                 and isinstance(y, (int, float))
+        elif (isinstance(cartesian, Real)
+                 and isinstance(y, Real)
                  and z is None):
             self.cartesian = (cartesian, y)
         elif (isinstance(cartesian, (tuple, np.ndarray))
@@ -73,19 +108,90 @@ class Point(AbstractGeometry):
             self.cartesian = (None, None, None)
         self.unit = unit if unit else None
     
+    # Class Methods #
+    @singledispatchmethod
+    @classmethod
+    def from_polar(cls, arg, uid: str=None, unit: str=None) -> NoReturn:
+        """Initializes a point from polar coordinates.
+        
+        :param vector: A 2 long iterable of real numbers representing the radius 
+            and azimuth angle. Azimuth must be radians.
+        :param r: The radius of a polar coordinate.
+        :param phi: The azimuth angle of a polar coordinate in radians.
+        :param uid: Unique ID of the Point.
+        :param unit: The unit of the point's length values.
+        :returns: A new Point at the polar coordinate.
+        """
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_polar.register
+    @classmethod
+    def _from_polar_vector(cls,
+                           vector: VectorLike,
+                           uid: str=None,
+                           unit: str=None) -> Self:
+        return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_polar.register
+    @classmethod
+    def _from_polar_r_phi(cls,
+                          r: Real,
+                          phi: Real,
+                          uid: str=None,
+                          unit: str=None) -> Self:
+        return cls(trig.polar_to_cartesian((r, phi)), uid=uid, unit=unit)
+    
+    @singledispatchmethod
+    @classmethod
+    def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> NoReturn:
+        """Initializes a point from spherical coordinates.
+        
+        :param vector: A 3 long iterable of reals representing the radius, 
+            azimuth angle, and inclination angle. Azimuth and inclination must 
+            be in radians.
+        :param r: The radius of a spherical coordinate.
+        :param phi: The azimuth angle in radians.
+        :param theta: The inclination angle in radians.
+        :param uid: Unique ID of the Point.
+        :param unit: The unit of the point's length values.
+        :returns: A new Point at the spherical coordinate.
+        """
+        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
+    
+    @from_spherical.register
+    @classmethod
+    def _from_spherical_vector(cls,
+                               vector: VectorLike,
+                               *,
+                               uid: str=None,
+                               unit: str=None) -> Self:
+        return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
+    
+    @from_spherical.register
+    @classmethod
+    def _from_spherical_r_phi_theta(cls,
+                                    r: Real,
+                                    phi: Real,
+                                    theta: Real,
+                                    *,
+                                    uid: str=None,
+                                    unit: str=None) -> Self:
+        return cls(trig.spherical_to_cartesian((r, phi, theta)),
+                   uid=uid, unit=unit)
+    
     # Getters #
     @property
     def uid(self) -> str:
         """The unique id of the point.
         
-        :getter: Returns the unique id as a string.
+        :getter: Returns the unique id.
         :setter: Sets the unique id.
         """
         return self._uid
     
     # Cartesian Coordinates #
     @property
-    def cartesian(self) -> tuple[float, float] | tuple[float, float, float]:
+    def cartesian(self) -> tuple[Real]:
         """The cartesian coordinates (x, y) or(x, y, z) of the point.
         
         :getter: Returns the cartesian coordinate of the point as a 
@@ -96,7 +202,7 @@ class Point(AbstractGeometry):
         return self._cartesian
     
     @property
-    def x(self) -> float:
+    def x(self) -> Real:
         """The cartesian x-coordinate of the point.
         
         :getter: Gets the x value of the cartesian tuple.
@@ -105,7 +211,7 @@ class Point(AbstractGeometry):
         return self.cartesian[0]
     
     @property
-    def y(self) -> float:
+    def y(self) -> Real:
         """The cartesian y-coordinate of the point.
         
         :getter: Gets the y value of the cartesian tuple.
@@ -114,7 +220,7 @@ class Point(AbstractGeometry):
         return self.cartesian[1]
     
     @property
-    def z(self) -> float:
+    def z(self) -> Real:
         """The cartesian z-coordinate of the point.
         
         :getter: Gets the z value of the cartesian tuple. Will error if the 
@@ -126,70 +232,59 @@ class Point(AbstractGeometry):
     
     # Polar/Spherical Coordinates
     @property
-    def polar(self) -> tuple[float, float]:
-        """The polar coordinate of the point. Azimuth angle is in radians.
+    def polar(self) -> tuple[Real]:
+        """The polar coordinates of the point (r, phi). Azimuth angle is and 
+        must be in radians.
         
-        :getter: Returns the polar coordinate (r, phi). Will error if the 
-                 point is 3D.
-        :setter: Sets the polar coordinate (r, phi). Will error if the point 
-                 is 3D.
+        :getter: Returns the polar coordinates. Will raise a ValueError 
+            if the point is 3D.
+        :setter: Sets the polar coordinates. Will raise a ValueError if 
+            the point is 3D.
         """
         return trig.cartesian_to_polar(self.cartesian)
     
     @property
-    def spherical(self) -> tuple[float, float, float]:
-        """The spherical coordinate (r, phi, theta) of the point. Azimuth 
-        and inclination angles are in radians.
+    def spherical(self) -> tuple[Real]:
+        """The spherical coordinates (r, phi, theta) of the point. Azimuth 
+        and inclination angles are and must be in radians.
         
-        :getter: Returns the spherical coordinate (r, phi, theta). Will error 
-                 if the point is 2D.
-        :setter: Sets the spherical coordinate (r, phi, theta). Will error if 
-                 the point is 2D.
+        :getter: Returns the spherical coordinates. Will raise a ValueError if 
+            the point is 2D.
+        :setter: Sets the spherical coordinates. Will raise a ValueError if the 
+            point is 2D.
         """
         return trig.cartesian_to_spherical(self.cartesian)
     
     @property
-    def r(self) -> float:
-        """The polar/spherical radial coordinate of the point.
+    def r(self) -> Real:
+        """The polar/spherical radial distance coordinate of the point.
         
         :getter: Returns the radial coordinate of the point.
-        :setter: Sets the radial coordinate of the point. Checks the value 
-                 for polar or spherical coordinate validity and will error if it 
-                 is violated.
+        :setter: Sets the radial coordinate of the point.
         """
-        if len(self) == 2 or len(self) == 3:
-            return trig.r_of_cartesian(self.cartesian)
-        else:
-            raise ValueError(f"Point cartesian {self.cartesian} is already"
-                             + "invalid, must be 2D or 3D to function")
+        return trig.r_of_cartesian(self.cartesian)
     
     @property
-    def phi(self) -> float:
-        """The polar/spherical azimuth coordinate of the point in 
-        radians.
+    def phi(self) -> Real:
+        """The polar/spherical azimuth angle of the point in radians.
         
-        :getter: Returns the azimuth coordinate of the point.
-        :setter: Sets the azimuth coordinate of the point. Checks the value 
-                 for polar or spherical coordinate validity and will error if 
-                 it is violated.
+        :getter: Returns the azimuth angle of the point.
+        :setter: Sets the azimuth angle of the point.
         """
         return trig.phi_of_cartesian(self.cartesian)
     
     @property
-    def theta(self) -> float:
-        """The spherical inclination coordinate of the point in 
-        radians.
+    def theta(self) -> Real:
+        """The spherical inclination angle of the point in radians.
         
-        :getter: Returns the inclination coordinate of the point.
-        :setter: Sets the inclination coordinate of the point. Checks the value 
-                 for polar or spherical coordinate validity and will error if 
-                 it is violated.
+        :getter: Returns the inclination angle of the point.
+        :setter: Sets the inclination angle of the point.
         """
         return trig.theta_of_cartesian(self.cartesian)
     
     # Setters #
     @cartesian.setter
-    def cartesian(self, value: tuple[float, float, float]):
+    def cartesian(self, value: tuple[Real, Real, Real]) -> None:
         if len(value) == 2 or len(value) == 3:
             self._cartesian = value
         else:
@@ -200,25 +295,25 @@ class Point(AbstractGeometry):
         self._uid = uid
     
     @x.setter
-    def x(self, value: float) -> None:
+    def x(self, value: Real) -> None:
         if len(self) == 2:
             self.cartesian = (value, self.cartesian[1])
         else:
             self.cartesian = (value, self.cartesian[1], self.cartesian[2])
     
     @y.setter
-    def y(self, value: float) -> None:
+    def y(self, value: Real) -> None:
         if len(self) == 2:
             self.cartesian = (self.cartesian[0], value)
         else:
             self.cartesian = (self.cartesian[0], value, self.cartesian[2])
     
     @z.setter
-    def z(self, value: float) -> None:
+    def z(self, value: Real) -> None:
         self.cartesian = (self.cartesian[0], self.cartesian[1], value)
     
     @r.setter
-    def r(self, value: float) -> None:
+    def r(self, value: Real) -> None:
         if value < 0:
             raise ValueError(f"r cannot be less than zero: {value}")
         elif math.isnan(value):
@@ -244,11 +339,11 @@ class Point(AbstractGeometry):
                                  + " 3 simultaneously using spherical")
     
     @polar.setter
-    def polar(self, value: tuple[float, float]) -> None:
+    def polar(self, value: tuple[Real]) -> None:
         self.cartesian = trig.polar_to_cartesian(value)
     
     @phi.setter
-    def phi(self, value: float) -> None:
+    def phi(self, value: Real) -> None:
         if len(self) == 2: # Polar
             if self.r != 0 and math.isnan(value):
                 raise ValueError("Cannot set phi to NaN if r is non-zero")
@@ -256,7 +351,8 @@ class Point(AbstractGeometry):
                 raise ValueError("phi can only be NaN if r is zero")
             else:
                 self.polar = (self.r, value)
-        else: # Spherical (or invalid)
+        else: 
+            # Spherical (or invalid)
             if math.isnan(self.theta) and not math.isnan(value): # AKA r == 0
                 raise ValueError("Phi can only be NaN if theta is NaN, change"
                                  + " theta or phi and theta simultaneously"
@@ -265,11 +361,11 @@ class Point(AbstractGeometry):
                 self.spherical = (self.r, value, self.theta)
     
     @spherical.setter
-    def spherical(self, value: tuple[float, float, float]) -> None:
+    def spherical(self, value: tuple[Real]) -> None:
         self.cartesian = trig.spherical_to_cartesian(value)
     
     @theta.setter
-    def theta(self, value: float) -> None:
+    def theta(self, value: Real) -> None:
         if (math.isnan(self.phi)
                 and value != 0 and value != math.pi and not math.isnan(value)):
             raise ValueError("Cannot set theta to anything except NaN, 0, or pi"
@@ -277,48 +373,11 @@ class Point(AbstractGeometry):
         else:
             self.spherical = (self.r, self.phi, value)
     
-    # Class Methods #
-    
-    @singledispatchmethod
-    @classmethod
-    def from_polar(cls, arg, *, uid: str=None, unit: str=None) -> Point:
-        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
-    
-    @from_polar.register
-    @classmethod
-    def from_polar_vector(cls, vector: tuple | np.ndarray | list, *,
-                          uid: str=None, unit: str=None):
-        return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
-    
-    @from_polar.register
-    @classmethod
-    def from_polar_r_phi(cls, r: Real, phi: Real, *,
-                         uid: str=None, unit: str=None):
-        return cls(trig.polar_to_cartesian((r, phi)), uid=uid, unit=unit)
-    
-    @singledispatchmethod
-    @classmethod
-    def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> Point:
-        raise NotImplementedError(f"Unsupported 1st type {arg.__class__}")
-    
-    @from_spherical.register
-    @classmethod
-    def from_spherical_vector(cls, vector: tuple | np.ndarray | list, *,
-                              uid: str=None, unit: str=None):
-        return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
-    
-    @from_spherical.register
-    @classmethod
-    def from_spherical_r_phi_theta(cls, r: Real, phi: Real, theta: Real, *,
-                                   uid: str=None, unit: str=None):
-        return cls(trig.spherical_to_cartesian((r, phi, theta)),
-                   uid=uid, unit=unit)
-    
     # Public Methods #
     def copy(self) -> Point:
         return self.__copy__()
     
-    def get_reference(self, reference: ConstraintReference) -> Point:
+    def get_reference(self, reference: ConstraintReference) -> Self:
         """Returns reference geometry for use in external modules like 
         constraints.
         
@@ -334,53 +393,61 @@ class Point(AbstractGeometry):
                                  f" {reference.name} reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        return self._references
+        """Returns all ConstraintReferences applicable to Points.
+        
+        :returns: All ConstraintReferences applicable to Points.
+        """
+        return self.REFERENCES
     
-    def phi_degrees(self) -> float:
-        """Returns the polar/spherical azimuth coordinate of the point in 
-        degrees.
+    def phi_degrees(self) -> Real:
+        """Returns the polar/spherical azimuth angle of the Point in degrees.
         
         :returns: The azimuth coordinate in degrees.
         """
         return math.degrees(self.phi)
     
-    def theta_degrees(self) -> float:
-        """Returns the spherical inclination coordinate of the point in 
-        degrees.
+    def theta_degrees(self) -> Real:
+        """Returns the spherical inclination angle of the point in degrees.
         
         :returns: The inclination coordinate in degrees.
         """
         return math.degrees(self.theta)
     
-    def set_phi_degrees(self, value: float) -> None:
+    def set_phi_degrees(self, value: Real) -> Self:
         """Sets the polar/spherical azimuth coordinate of the point using a 
         value in degrees.
         
         :param value: The azimuth coordinate in degrees.
+        :returns: A reference to the updated Point.
         """
         self.phi = math.radians(value)
+        return self
     
-    def set_theta_degrees(self, value: float) -> None:
-        """Sets the spherical inclindation coordinate of the point using a 
+    def set_theta_degrees(self, value: Real) -> Self:
+        """Sets the spherical inclination coordinate of the point using a 
         value in degrees.
         
         :param value: The inclination coordinate in degrees.
+        :returns: A reference to the updated Point.
         """
-        self.phi = math.radians(value)
+        self.theta = math.radians(value)
+        return self
     
-    def update(self, other: Point) -> None:
+    def update(self, other: Point) -> Self:
         """Updates the point to match the position of another point.
         
-        :param other: The point to update to
+        :param other: The point to update the calling Point's position to.
+        :returns: A reference to the updated Point.
         """
         self.cartesian = other.cartesian
+        return self
     
-    def vector(self, vertical = True) -> np.ndarray:
+    def vector(self, vertical: bool=True) -> np.ndarray:
         """Returns a numpy vector of the point's cartesian.
         
         :param vertical: Sets whether the vector returns as a vertical or 
-                         horizontal vector. Defaults to returning as a 
-                         vertical vector.
+            horizontal vector. Defaults to True so that the function returns a 
+            vertical vector.
         :returns: The cartesian position vector of the point.
         """
         array = np.array(self)
@@ -390,9 +457,10 @@ class Point(AbstractGeometry):
             return array
     
     # Python Dunders #
-    def __add__(self, other) -> tuple:
+    def __add__(self, other) -> tuple[Real]:
         """Returns the addition of two point's cartesian position vectors as a 
-        tuple"""
+        tuple.
+        """
         if isinstance(other, (np.ndarray, tuple)):
             if len(self) == len(other):
                 print(self)
@@ -410,7 +478,7 @@ class Point(AbstractGeometry):
         else:
             return NotImplemented
     
-    def __sub__(self, other) -> tuple:
+    def __sub__(self, other) -> tuple[Real]:
         """Returns the subtraction of two point's cartesian position vectors as
         a tuple"""
         if isinstance(other, Point):
@@ -424,12 +492,14 @@ class Point(AbstractGeometry):
     
     def __copy__(self) -> Point:
         """Returns a copy of the point that has the same coordinates, but no 
-        assigned uid. Can be used with the python copy module"""
+        assigned uid. Can be used with the python copy module.
+        """
         return Point(self.cartesian)
     
-    def __getitem__(self, item: int):
+    def __getitem__(self, item: int) -> Real:
         """Returns the cartesian coordinates when subscripted. 0 returns x, 1 
-        returns y, 2 returns z"""
+        returns y, 2 returns z.
+        """
         return self.cartesian[item]
     
     def __eq__(self, other: Point) -> bool:
@@ -438,7 +508,7 @@ class Point(AbstractGeometry):
         will not be found equal since the first's z coordinate is not defined.
         
         :param other: The point to compare self to.
-        :returns: Whether the tuples of the points are equal.
+        :returns: Whether the cartesian tuples of the points are equal.
         """
         if isinstance(other, Point):
             if len(self) == len(other):
@@ -450,19 +520,22 @@ class Point(AbstractGeometry):
             return NotImplemented
     
     def __len__(self) -> int:
-        """Returns the length of the cartesian tuple, which is equivalent to the
-        point's number of dimnesions."""
+        """Returns the length of the cartesian tuple, indicating the point's 
+        number of dimnesions.
+        """
         return len(self.cartesian)
     
     def __iter__(self):
         """Iterator function to allow the point's cartesian position to be 
-        output when the point is fed to a list or tuple like function."""
+        output when the point is fed to a list or tuple like function.
+        """
         self.dimension = 0
         return self
     
     def __next__(self) -> float:
         """Next function to allow the point's cartesian position to be 
-        output when the point is fed to a list or tuple like function."""
+        output when the point is fed to a list or tuple like function.
+        """
         if self.dimension < len(self.cartesian):
             i = self.dimension
             self.dimension += 1
@@ -471,7 +544,7 @@ class Point(AbstractGeometry):
             raise StopIteration
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the point"""
+        """Returns the short string representation of the point."""
         pt_strs = []
         for i in range(0, len(self.cartesian)):
             if isclose0(self.cartesian[i]):
@@ -482,16 +555,14 @@ class Point(AbstractGeometry):
         return f"<PanCADPoint'{self.uid}'({point_str})>"
     
     def __str__(self) -> str:
-        """String function to output the point's description and cartesian 
-        position when the point is fed to the str() function"""
         pt_strs = []
         for i in range(0, len(self.cartesian)):
             if isclose0(self.cartesian[i]):
                 pt_strs.append("0")
             else:
                 pt_strs.append("{:g}".format(self.cartesian[i]))
-        point_str = ", ".join(pt_strs)
-        return f"PanCAD Point '{self.uid}' at cartesian ({point_str})"
+        point_str = ",".join(pt_strs)
+        return f"<PanCADPoint'{self.uid}'({point_str})>"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

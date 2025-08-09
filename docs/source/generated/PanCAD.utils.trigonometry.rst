@@ -24,12 +24,14 @@
       elliptical_arc_endpoint_to_center
       elliptical_arc_fit_box
       get_unit_vector
+      get_vector_angle
+      is_clockwise
       is_geometry_vector
       is_iterable
-      isclose_tuple
       line_fit_box
       midpoint_2d
       multi_fit_box
+      multi_rotation
       phi_of_cartesian
       point_2d
       point_line_angle
@@ -37,7 +39,7 @@
       positive_angle
       pt2list
       r_of_cartesian
-      rotation_2d
+      rotation
       round_array
       spherical_to_cartesian
       theta_of_cartesian

@@ -28,4 +28,5 @@
       path_data_to_dicts
       relative_moveto_to_dict
       split_path_data
+      to_number
    
