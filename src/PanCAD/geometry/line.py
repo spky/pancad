@@ -7,13 +7,15 @@ from __future__ import annotations
 
 from functools import partial
 import math
+from numbers import Real
 
 import numpy as np
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import Point
+from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison, trigonometry as trig
+from PanCAD.utils.pancad_types import VectorLike
+from typing import Self
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -22,21 +24,26 @@ class Line(AbstractGeometry):
     """A class representing infinite lines in 2D and 3D space. A Line 
     instance can be uniquely identified and compared for equality/inequality 
     with other lines by using its direction and reference_point. The 
-    direction is explained below. The reference_point is the point on the 
-    line closest to the origin.
+    reference_point is the point on the line closest to the origin and should 
+    not be changed directly. The 'direction' of the line is found from the given 
+    vector and changed to make sure that each infinite line has a unique 
+    direction.
     
     :param point: A point on the line.
     :param direction: A vector in the direction of the line. Vector can be 
-                      positive or negative, it will not impact the result.
-    :param uid: The unique ID of the line for interoperable CAD 
-                identification.
+        positive or negative, it will not impact the result.
+    :param uid: The unique ID of the line.
     """
     
-    def __init__(self, point: Point=None, direction:tuple | np.ndarray = None,
-                 uid:str = None):
+    REFERENCES = (ConstraintReference.CORE,)
+    """All relevant ConstraintReferences for Line."""
+    
+    def __init__(self,
+                 point: Point=None,
+                 direction: VectorLike=None,
+                 uid: str=None) -> None:
         self.uid = uid
         self.direction = direction
-        self._references = (ConstraintReference.CORE,)
         
         if isinstance(point, Point):
             self._point_closest_to_origin = Line.closest_to_origin(
@@ -48,28 +55,152 @@ class Line(AbstractGeometry):
         else:
             self._point_closest_to_origin = None
     
+    # Class Methods #
+    @classmethod
+    def from_two_points(cls,
+                        a: Point | VectorLike,
+                        b: Point | VectorLike,
+                        uid: str=None) -> Self:
+        """Returns a Line instance defined by points a and b.
+        
+        :param a: A PanCAD Point on the line.
+        :param b: A PanCAD Point on the line that is not the same as point a.
+        :param uid: The unique ID of the line.
+        :returns: A Line that is coincident with points a and b.
+        """
+        if isinstance(a, VectorLike) and len(a) in (2, 3):
+            a = Point(a)
+        if isinstance(b, VectorLike) and len(b) in (2, 3):
+            b = Point(b)
+        
+        if not isinstance(a, Point) or not isinstance(b, Point):
+            raise ValueError(f"a and b must be VectorLikes or PanCAD Points."
+                             + f" Classes - a: {a.__class__}, b:{b.__class__}")
+        
+        if a != b:
+            a_vector, b_vector = np.array(a), np.array(b)
+            ab_vector = b_vector - a_vector
+            return cls(Point(a_vector), ab_vector, uid)
+        else:
+            raise ValueError(f"A line cannot be defined by 2 points at the same"
+                             f" location. Point a: {tuple(a)}, Point b:"
+                             f" {tuple(b)}")
+    
+    @classmethod
+    def from_slope_and_y_intercept(cls,
+                                   slope: Real,
+                                   intercept: Real,
+                                   uid: str=None) -> Self:
+        """Returns a 2D line described by y = mx + b, where m is the slope 
+        and b is the y intercept.
+        
+        :param slope: The slope of the line.
+        :param intercept: The y-intercept of the line.
+        :param uid: The unique id of the line.
+        :returns: A Line with the provided slope and intercept.
+        """
+        if slope == 0: # Horizontal
+            point_a = Point((0, intercept))
+            point_b = Point((1, intercept))
+        else:
+            point_a = Point((0, intercept))
+            point_b = Point((1, slope + intercept))
+        
+        return Line.from_two_points(point_a, point_b, uid)
+    
+    @classmethod
+    def from_parametric(cls,
+                        x_intercept: Real, x_slope: Real,
+                        y_intercept: Real, y_slope: Real,
+                        z_intercept: Real=None, z_slope: Real=None) -> Self:
+        raise NotImplementedError
+    
+    @classmethod
+    def from_point_and_angle(cls,
+                             point: Point | VectorLike,
+                             phi: Real,
+                             theta: Real=None,
+                             uid: str=None) -> Self:
+        """Return a line from a given point and phi or phi and theta.
+        
+        :param point: A point on the line.
+        :param phi: The azimuth angle of the line around the point.
+        :param theta: The inclination angle of a 3D line around the point.
+        :returns: A Line that runs through the point in a direction with the 
+            provided angles.
+        """
+        if isinstance(point, VectorLike): point = Point(point)
+        if len(point) == 2 and theta is None:
+            direction_end_pt = Point(1, 0)
+            direction_end_pt.phi = phi
+        elif len(point) == 3 and theta is not None:
+            direction_end_pt = Point(1, 0, 0)
+            direction_end_pt.spherical = (1, phi, theta)
+        elif len(point) == 3 and theta is None:
+            raise ValueError("If a 3D point is given, theta must also be given")
+        elif len(point) == 2 and theta is not None:
+            raise ValueError("Theta can only be specified for 3D points")
+        
+        direction = tuple(direction_end_pt)
+        return cls(point, direction, uid)
+    
+    @classmethod
+    def from_x_intercept(cls, x_intercept: Real, uid: str=None) -> Self:
+        """Returns a 2D vertical line the passes through the x intercept.
+        
+        :param x_intercept: The value of x where the line crosses the x-axis.
+        :param uid: The unique ID of the line.
+        :returns: A vertical line coincident with the x-intercept.
+        """
+        return cls(Point(x_intercept, 0), (0, 1), uid)
+    
+    @classmethod
+    def from_y_intercept(cls, y_intercept: Real, uid: str=None) -> Self:
+        """Returns a 2D horizontal line the passes through the y intercept.
+        
+        :param y_intercept: The value of y where the line crosses the x-axis.
+        :param uid: The unique ID of the line.
+        :returns: A horizontal line coincident with the y-intercept.
+        """
+        return cls(Point(0, y_intercept), (1, 0), uid)
+    
     # Getters #
     @property
-    def direction(self) -> tuple:
+    def direction(self) -> tuple[Real]:
         """The unique direction of the line represented as a vector with 
         cartesian components. Independent of line definition method.
         
-        :getter: Returns the direction of the line as a tuple
+        :getter: Returns the direction of the line as a tuple.
         :setter: Takes a vector, finds its unique direction unit vector, and 
-                 sets that as the direction of the line.
+            sets that as the direction of the line.
         """
         return self._direction
     
     @property
-    def direction_polar(self) -> tuple:
+    def direction_polar(self) -> tuple[Real]:
+        """The unique direction of the line in polar components.
+        
+        :getter: Returns the direction of the line as a (r, phi) tuple. Phi is 
+            the azimuth angle in radians.
+        :setter: Takes a polar vector, finds its unique direction unit vector, 
+            and sets that as the direction of the line.
+        """
         return trig.cartesian_to_polar(self.direction)
     
     @property
-    def direction_spherical(self) -> tuple:
+    def direction_spherical(self) -> tuple[Real]:
+        """The unique direction of the line in spherical components.
+        
+        :getter: Returns the direction of the line as a (r, phi, theta) tuple. 
+            phi and theta are the azimuth and inclination angles in radians 
+            respectively.
+        :setter: Takes a spherical vector, finds its unique direction unit 
+            vector, and sets that as the direction of the line.
+        """
         return trig.cartesian_to_spherical(self.direction)
     
     @property
-    def phi(self) -> float:
+    def phi(self) -> Real:
         """The polar/spherical azimuth component of the line's direction in 
         radians.
         
@@ -83,19 +214,20 @@ class Line(AbstractGeometry):
         """The closest point to the origin of the line.
         
         :getter: Returns the Point instance representing the point closest to 
-                 the origin on the line.
-        :setter: None, read-only. Use a public method to change the line position
+            the origin on the line.
+        :setter: None, read-only. Use a public method to change the line
+            position
         """
         return self._point_closest_to_origin.copy()
     
     @property
-    def slope(self) -> float:
+    def slope(self) -> Real:
         """The slope of the line (m in y = mx + b), only available if the 
         line is 2D.
         
         :getter: Returns the slope of the line.
         :setter: Sets the slope of the line while keeping the y intercept (b 
-                 in y = mx + b) the same.
+            in y = mx + b) the same.
         """
         if len(self) == 2:
             if self.direction[0] == 0:
@@ -106,7 +238,7 @@ class Line(AbstractGeometry):
             raise ValueError("slope is not defined for a 3D line")
     
     @property
-    def theta(self) -> float:
+    def theta(self) -> Real:
         """The spherical inclination component of the line's direction in 
         radians.
         
@@ -126,7 +258,7 @@ class Line(AbstractGeometry):
         return self._uid
     
     @property
-    def x_intercept(self) -> float:
+    def x_intercept(self) -> Real:
         """The x-intercept of the line (x when y = 0 in y = mx + b), only 
         available if the line is 2D.
         
@@ -146,7 +278,7 @@ class Line(AbstractGeometry):
             raise ValueError("x-intercept is not defined for a 3D line")
     
     @property
-    def y_intercept(self) -> float:
+    def y_intercept(self) -> Real:
         """The y-intercept of the line (b in y = mx + b), only available if 
         the line is 2D.
         
@@ -165,7 +297,7 @@ class Line(AbstractGeometry):
     
     # Setters #
     @direction.setter
-    def direction(self, vector: list | tuple | np.ndarray):
+    def direction(self, vector: VectorLike) -> None:
         if vector is not None:
             vector = trig.to_1D_np(vector)
             self._direction = Line._unique_direction(vector)
@@ -173,20 +305,12 @@ class Line(AbstractGeometry):
             self._direction = None
     
     @direction_polar.setter
-    def direction_polar(self, vector: list | tuple | np.ndarray):
+    def direction_polar(self, vector: VectorLike) -> None:
         self.direction = trig.polar_to_cartesian(vector)
     
     @direction_spherical.setter
-    def direction_spherical(self, vector: list | tuple | np.ndarray):
+    def direction_spherical(self, vector: VectorLike) -> None:
         self.direction = trig.spherical_to_cartesian(vector)
-    
-    @phi.setter
-    def phi(self, value: float):
-        raise NotImplementedError
-    
-    @theta.setter
-    def theta(self, value: float):
-        raise NotImplementedError
     
     @uid.setter
     def uid(self, uid: str) -> None:
@@ -194,34 +318,39 @@ class Line(AbstractGeometry):
     
     # Public Methods #
     def copy(self) -> Line:
+        """Returns a copy of the Line.
+        
+        :returns: A new Line with the same position and direction as this Line.
+        """
         return self.__copy__()
     
-    def get_parametric_point(self, t: float) -> Point:
+    def get_parametric_point(self, t: Real) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by 
         the unique unit vector direction of the line and initialized at the 
         point closest to the origin.
         
-        :param t: The value of the line parameter
-        :returns: The point on the line corresponding to the parameter's value
+        :param t: The value of the line parameter.
+        :returns: The Point on the line corresponding to the parameter's value.
         """
-        return Point(
-            np.array(self.reference_point) + trig.to_1D_np(self.direction)*t
-        )
+        return Point(np.array(self.reference_point)
+                     + trig.to_1D_np(self.direction)*t)
     
-    def get_parametric_constants(self) -> tuple[float]:
-        """Returns a tuple containing parameters (x0, y0, z0, a, b, c) for the 
-        line. The reference point is used for the initial position and the 
-        line's direction vector is used for a, b, and c.
+    def get_parametric_constants(self) -> tuple[Real]:
+        """Returns a tuple containing parameters for the line. The reference 
+        point is used for the initial position and the line's direction vector 
+        is used for a, b, and c.
+        
+        :returns: Line parameters (x0, y0, z0, a, b, c)
         """
         return (*tuple(self.reference_point), *self.direction)
     
-    def get_reference(self, reference: ConstraintReference) -> Line:
+    def get_reference(self, reference: ConstraintReference) -> Self:
         """Returns reference geometry for use in external modules like 
         constraints.
         
         :param reference: A ConstraintReference enumeration value. Lines only 
             have a core reference, so any other value will cause an error.
-        :returns: The Line itself or an error.
+        :returns: The geometry corresponding to the reference.
         """
         match reference:
             case ConstraintReference.CORE:
@@ -231,20 +360,27 @@ class Line(AbstractGeometry):
                                  f" {reference.name} reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        return self._references
+        """Returns all ConstraintReferences applicable to Lines.
+        
+        :returns: All ConstraintReferences applicable to Lines.
+        """
+        return self.REFERENCES
     
-    def move_to_point(self, point: Point,
-                      phi: float=None, theta: float=None) -> Line:
+    def move_to_point(self,
+                      point: Point,
+                      phi: Real=None,
+                      theta: Real=None) -> Self:
         """Moves the line to go through a point and changes the line's 
         direction's phi (polar azimuth angle) and/or theta (polar elevation 
         angle) around that point. If phi or theta are set to None then they 
-        stay constant unless 
+        stay constant.
         
         :param point: A point the user wants to be on the line
-        :param phi: The line's new phi around the point in radians
-        :param theta: The line's new theta around the point in radians
+        :param phi: The line's new azimuth angle around the point in radians.
+        :param theta: The line's new inclination angle around the point in 
+            radians.
         :returns: The line with an updated reference_point that goes through the 
-                  point
+            point.
         """
         if phi is not None or theta is not None:
             direction_end_pt = Point(self.direction)
@@ -263,107 +399,26 @@ class Line(AbstractGeometry):
         )
         return self
     
-    def update(self, other: Line) -> None:
+    def update(self, other: Line) -> Self:
         """Updates the line to match the position and direction of another line.
         
-        :param other: The line to update to
+        :param other: The line to update to.
+        :returns: The updated Line.
         """
         self._point_closest_to_origin = other.reference_point
         self.direction = other.direction
-    
-    # Class Methods #
-    @classmethod
-    def from_two_points(cls, a:Point | tuple, b:Point | tuple,
-                        uid:str = None) -> Line:
-        """Returns a Line instance defined by points a and b. Point order 
-        does not matter since lines are infinite. If direction matters, use 
-        LineSegment.
-        
-        :param a: A PanCAD Point on the line
-        :param b: A PanCAD Point on the line that is not the same as point a
-        """
-        if isinstance(a, tuple) and len(a) in (2, 3): a = Point(a)
-        if isinstance(b, tuple) and len(b) in (2, 3): b = Point(b)
-        
-        if not isinstance(a, Point) or not isinstance(b, Point):
-            raise ValueError(f"Points a and b must be tuples or PanCAD Points."
-                             + f" Classes - a: {a.__class__}, b:{b.__class__}")
-        
-        if a != b:
-            a_vector, b_vector = np.array(a), np.array(b)
-            ab_vector = b_vector - a_vector
-            return cls(Point(a_vector), ab_vector, uid)
-        else:
-            raise ValueError(f"A line cannot be defined by 2 points at the same"
-                             f" location. Point a: {tuple(a)}, Point b:"
-                             f" {tuple(b)}")
-    
-    @classmethod
-    def from_slope_and_y_intercept(cls, slope: float, intercept: float,
-                                   uid: str = None) -> Line:
-        """Returns a 2D line described by y = mx + b, where m is the slope 
-        and b is the y intercept."""
-        if slope == 0: # Horizontal
-            point_a = Point((0, intercept))
-            point_b = Point((1, intercept))
-        else:
-            point_a = Point((0, intercept))
-            point_b = Point((1, slope + intercept))
-        
-        return Line.from_two_points(point_a, point_b)
-    
-    @classmethod
-    def from_parametric(cls, x_intercept: float, x_slope: float,
-                        y_intercept: float, y_slope: float,
-                        z_intercept: float = None, z_slope: float = None) -> Line:
-        raise NotImplementedError
-    
-    @classmethod
-    def from_point_and_angle(cls, point: Point | tuple | np.ndarray, phi: float,
-                             theta: float = None, uid: str = None) -> Line:
-        """Return a line from a given point and phi or phi and theta.
-        
-        :param point: A point on the line
-        :param phi: The phi angle of the line around the point
-        :param theta: The theta angle of the line around the point, if 3D
-        :returns: A Line object that runs through the point in a direction 
-            with the provided angles
-        """
-        if isinstance(point, (tuple, np.ndarray)): point = Point(point)
-        if len(point) == 2 and theta is None:
-            direction_end_pt = Point(1, 0)
-            direction_end_pt.phi = phi
-        elif len(point) == 3 and theta is not None:
-            direction_end_pt = Point(1, 0, 0)
-            direction_end_pt.spherical = (1, phi, theta)
-        elif len(point) == 3 and theta is None:
-            raise ValueError("If a 3D point is given, theta must also be given")
-        elif len(point) == 2 and theta is not None:
-            raise ValueError("Theta can only be specified for 3D points")
-        
-        direction = tuple(direction_end_pt)
-        return cls(point, direction, uid)
-    
-    @classmethod
-    def from_x_intercept(cls, x_intercept: float, uid: str = None) -> Line:
-        """Returns a 2D vertical line the passes through the x intercept"""
-        return cls(Point(x_intercept, 0), (0, 1), uid)
-    
-    @classmethod
-    def from_y_intercept(cls, y_intercept: float, uid: str = None) -> Line:
-        """Returns a 2D horizontal line the passes through the y intercept"""
-        return cls(Point(0, y_intercept), (1, 0), uid)
+        return self
     
     # Static Methods #
     @staticmethod
-    def closest_to_origin(point: Point, vector: list | tuple | np.ndarray) -> Point:
+    def closest_to_origin(point: Point, vector: VectorLike) -> Point:
         """Returns the point on the line created by the point and vector 
         closest to the origin.
         
-        :param point: a Point on the line
-        :param vector: a vector in the direction of the line
+        :param point: A Point on the line.
+        :param vector: A vector in the direction of the line.
         :returns: The point on the line created by the given point and vector 
-            closest to the origin
+            closest to the origin.
         """
         point_vector = np.array(point)
         vector = trig.to_1D_np(vector)
@@ -390,12 +445,12 @@ class Line(AbstractGeometry):
         return point_closest_to_origin
     
     @staticmethod
-    def _unique_direction(vector:np.ndarray) -> np.ndarray:
+    def _unique_direction(vector: np.ndarray) -> np.ndarray:
         """Returns a unit vector that can uniquely identify the direction of 
         the given vector. Does so flipping the unit vector if necessary to 
         ensure there can only ever be one vector for every direction.
         
-        :param vector: A 1D vector of cartesian coordinates as a numpy array
+        :param vector: A 1D vector of cartesian coordinates.
         :returns: The unique unit vector to represent the vector's direction.
         """
         unit_vector = trig.get_unit_vector(vector)
@@ -421,7 +476,8 @@ class Line(AbstractGeometry):
     def __copy__(self) -> Line:
         """Returns a copy of the line that has the same closest to origin 
         point and direction, but no assigned uid. Can be used with the python 
-        copy module"""
+        copy module.
+        """
         return Line(self.reference_point, self.direction)
     
     def __eq__(self, other: Line) -> bool:
@@ -430,7 +486,7 @@ class Line(AbstractGeometry):
         
         :param other: The line to compare self to.
         :returns: Whether the tuples of the lines' reference_points and 
-                  directions are equal
+            directions are equal.
         """
         if isinstance(other, Line):
             return (
@@ -443,11 +499,12 @@ class Line(AbstractGeometry):
     
     def __len__(self) -> int:
         """Returns the number of elements in the line's direction tuple, 
-        which is equivalent to the line's number of dimnesions."""
+        which is equivalent to the line's number of dimnesions.
+        """
         return len(self.direction)
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the line"""
+        """Returns the short string representation of the line."""
         pt_strs, direction_strs = [], []
         for i in range(0, len(self.direction)):
             if isclose0(self._point_closest_to_origin[i]):
@@ -465,7 +522,8 @@ class Line(AbstractGeometry):
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 
-        unit vector"""
+        unit vector.
+        """
         pt_strs, direction_strs = [], []
         for i in range(0, len(self.direction)):
             if isclose0(self._point_closest_to_origin[i]):

@@ -2,7 +2,6 @@
 constraint is referencing. For example, a constraint can be defined between a 
 point and a line's end point, so constraints need a way to track what part 
 of the line is being constrained.
-
 """
 from enum import Flag, auto
 

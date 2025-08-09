@@ -6,14 +6,13 @@ from __future__ import annotations
 import math
 from functools import partial, singledispatchmethod
 from numbers import Real
-from typing import overload, Union, NoReturn, Self
+from typing import overload, NoReturn, Self
 
 import numpy as np
 
-VectorLike = Union[tuple, np.ndarray, list]
-
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
 from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.utils.pancad_types import VectorLike
 from PanCAD.geometry.constants import ConstraintReference
 
 isclose = partial(comparison.isclose, nan_equal=False)
@@ -375,6 +374,10 @@ class Point(AbstractGeometry):
     
     # Public Methods #
     def copy(self) -> Point:
+        """Returns a copy of the Point.
+        
+        :returns: A new Point at the same position as this point.
+        """
         return self.__copy__()
     
     def get_reference(self, reference: ConstraintReference) -> Self:
