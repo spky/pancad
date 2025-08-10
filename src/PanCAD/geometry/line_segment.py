@@ -19,6 +19,10 @@ isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class LineSegment(AbstractGeometry):
     """A class representing finite lines in 2D and 3D space.
+    
+    :param point_a: The start point of the line segment.
+    :param point_b: The end point of the line segment.
+    :param uid: The unique id of the line segment.
     """
     
     REFERENCES = (ConstraintReference.CORE,
@@ -39,7 +43,6 @@ class LineSegment(AbstractGeometry):
         self.uid = uid
     
     # Class Methods #
-    
     @overload
     @classmethod
     def from_point_length_angle(cls,
