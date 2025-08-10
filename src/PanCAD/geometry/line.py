@@ -352,8 +352,8 @@ class Line(AbstractGeometry):
         constraints. Raises a ValueError if the ConstraintReference is not 
         relevant for Lines.
         
-        :param reference: A ConstraintReference enumeration value. Lines only 
-            have a core reference.
+        :param reference: A ConstraintReference enumeration value applicable to 
+            Lines. See :attr:`Line.REFERENCES`.
         :returns: The geometry corresponding to the reference.
         """
         match reference:
@@ -364,9 +364,8 @@ class Line(AbstractGeometry):
                                  f" {reference.name} reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Lines.
-        
-        :returns: All ConstraintReferences applicable to Lines.
+        """Returns all ConstraintReferences applicable to Lines. See 
+        :attr:`Line.REFERENCES`.
         """
         return self.REFERENCES
     

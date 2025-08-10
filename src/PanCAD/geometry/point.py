@@ -10,7 +10,7 @@ from typing import overload, NoReturn, Self
 
 import numpy as np
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
+from PanCAD.geometry import AbstractGeometry
 from PanCAD.utils import trigonometry as trig, comparison
 from PanCAD.utils.pancad_types import VectorLike
 from PanCAD.geometry.constants import ConstraintReference
@@ -384,9 +384,9 @@ class Point(AbstractGeometry):
         """Returns reference geometry for use in external modules like 
         constraints.
         
-        :param reference: A ConstraintReference enumeration value. Points only 
-            have a core reference, so any other value will cause an error.
-        :returns: The Point itself or an error.
+        :param reference: A ConstraintReference enumeration value applicable to 
+            Points. See :attr:`Point.REFERENCES`.
+        :returns: The geometry corresponding to the reference.
         """
         match reference:
             case ConstraintReference.CORE:
@@ -396,9 +396,8 @@ class Point(AbstractGeometry):
                                  f" {reference.name} reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Points.
-        
-        :returns: All ConstraintReferences applicable to Points.
+        """Returns all ConstraintReferences applicable to Points. See 
+        :attr:`Point.REFERENCES`.
         """
         return self.REFERENCES
     

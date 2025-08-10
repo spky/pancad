@@ -7,6 +7,9 @@ Geometry
 .. autoclass:: PanCAD.geometry.Line
     :members:
 
+.. autoclass:: PanCAD.geometry.LineSegment
+    :members:
+
 Geometry Enumerations
 =====================
 
