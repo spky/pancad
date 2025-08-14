@@ -3,6 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 import math
 from functools import partial, singledispatchmethod
 from numbers import Real
@@ -11,9 +12,9 @@ from typing import overload, NoReturn, Self
 import numpy as np
 
 from PanCAD.geometry import AbstractGeometry
+from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import trigonometry as trig, comparison
 from PanCAD.utils.pancad_types import VectorLike
-from PanCAD.geometry.constants import ConstraintReference
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -27,11 +28,11 @@ class Point(AbstractGeometry):
     desired. 
     
     :param cartesian: The cartesian coordinate (x, y, z) of the point. Treated 
-        as x if given as a real.
+        as x if given as a Real.
     :param y: The cartesian y coordinate of the point. Can only be given if 
-        cartesian is given as a real.
+        cartesian is given as a Real.
     :param z: The cartesian z coordinate of the point. Can only be given if 
-        cartesian and y are given as reals.
+        cartesian and y are given as Reals.
     :param uid: The unique ID of the point for interoperable CAD identification.
     :param unit: The unit of the point's length values.
     """
@@ -41,7 +42,7 @@ class Point(AbstractGeometry):
     
     @overload
     def __init__(self,
-                 cartesian: tuple[Real],
+                 cartesian: Sequence[Real],
                  *,
                  uid: str=None,
                  unit: str=None) -> None: ...
@@ -78,7 +79,6 @@ class Point(AbstractGeometry):
     
     def __init__(self, cartesian=None, y=None, z=None, *, uid=None, unit=None):
         self.uid = uid
-        # self._references = (ConstraintReference.CORE,)
         
         if all([isinstance(n, Real) for n in [cartesian, y, z]]):
             self.cartesian = (cartesian, y, z)
@@ -86,13 +86,11 @@ class Point(AbstractGeometry):
                  and isinstance(y, Real)
                  and z is None):
             self.cartesian = (cartesian, y)
-        elif (isinstance(cartesian, (tuple, np.ndarray))
+        elif (not isinstance(cartesian, Real)
                  and (y is not None or z is not None)):
             raise ValueError(f"Cartesian {cartesian} can not be given as a"
-                             + f" non-float/int if y and z are not None."
+                             + " non-float/int if y and z are not None."
                              + f" y value: {y}, z value: {z}")
-        elif isinstance(cartesian, tuple):
-            self.cartesian = cartesian
         elif isinstance(cartesian, np.ndarray):
             # Converts numpy array to a tuple of floats
             if trig.is_geometry_vector(cartesian):
@@ -103,6 +101,8 @@ class Point(AbstractGeometry):
             else:
                 raise ValueError("NumPy arrays must be 2 or 3 elements in a"
                                  + " single dimension to initialize a point")
+        elif isinstance(cartesian, Sequence):
+            self.cartesian = tuple(cartesian)
         else:
             self.cartesian = (None, None, None)
         self.unit = unit if unit else None

@@ -14,6 +14,7 @@ PanCAD documentation
    usage
    api
    geometry/geometry
+   geometry/features
 
 .. note::
     

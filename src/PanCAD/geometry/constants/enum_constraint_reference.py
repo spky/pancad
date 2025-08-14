@@ -37,3 +37,6 @@ class ConstraintReference(Flag):
     a sketch."""
     COORDINATE_SYSTEM = CS
     """An alias for CS."""
+    
+    def __repr__(self) -> str:
+        return f"{self.name}"

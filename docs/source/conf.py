@@ -49,14 +49,20 @@ extensions = [
 
 templates_path = ['_templates']
 exclude_patterns = []
-# autodoc_typehints = "description"
+autodoc_typehints = "description"
 autodoc_member_order = "bysource"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'haiku'
+html_theme = 'classic'
 html_static_path = ['_static']
+# html_sidebars = {
+    # "**": ['globaltoc.html', 'sourcelink.html', 'searchbox.html'],
+# }
 html_theme_options = {
     "body_max_width": "none",
+    "stickysidebar": False,
+    "sidebarwidth": "375px",
+    "collapsiblesidebar": True,
 }

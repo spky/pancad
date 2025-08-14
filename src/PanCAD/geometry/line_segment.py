@@ -276,7 +276,7 @@ class LineSegment(AbstractGeometry):
                                  f" {reference.name} reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to LineSegments.See 
+        """Returns all ConstraintReferences applicable to LineSegments. See 
         :attr:`LineSegment.REFERENCES`.
         """
         return self.REFERENCES

@@ -9,8 +9,7 @@ from typing import Self
 
 import numpy as np
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import Point
+from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import get_unit_vector

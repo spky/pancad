@@ -4,6 +4,9 @@ Geometry
 .. autoclass:: PanCAD.geometry.Circle
     :members:
 
+.. autoclass:: PanCAD.geometry.CoordinateSystem
+    :members:
+
 .. autoclass:: PanCAD.geometry.Line
     :members:
 
