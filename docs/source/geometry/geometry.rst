@@ -1,6 +1,9 @@
 Geometry
 ========
 
+.. autoclass:: PanCAD.geometry.AbstractGeometry
+    :members:
+
 .. autoclass:: PanCAD.geometry.Circle
     :members:
 
