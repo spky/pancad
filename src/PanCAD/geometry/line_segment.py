@@ -416,8 +416,7 @@ class LineSegment(AbstractGeometry):
         :param value: The new distance along the axis.
         :param axis: 0 for x, 1 for y, and 2 for z.
         :param from_point_a: Whether to update the length from point a or b.
-        :returns: The updated LineSegment with a length along the axis relative 
-            to a if from_point_a is True or b is from_point_a is False.
+        :returns: The updated LineSegment.
         """
         new_vector_ab = self.get_vector_ab()
         new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])
@@ -432,7 +431,7 @@ class LineSegment(AbstractGeometry):
     # Python Dunders #
     def __copy__(self) -> LineSegment:
         """Returns a copy of the LineSegment that has the same points and line, 
-        but no assigned uid. Can be used with the python copy module.
+        but no assigned uid.
         """
         return LineSegment(self.point_a.copy(), self.point_b.copy())
     
@@ -459,8 +458,6 @@ class LineSegment(AbstractGeometry):
         return len(self.point_a)
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the line.
-        """
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
             if isclose0(self.point_a[i]):
@@ -476,9 +473,6 @@ class LineSegment(AbstractGeometry):
         return f"<PanCADLineSegment'{self.uid}'({pt_a_str})({pt_b_str})>"
     
     def __str__(self) -> str:
-        """String function to output the line's description, closest cartesian 
-        point to the origin, and unique cartesian direction unit vector.
-        """
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
             if isclose0(self.point_a[i]):

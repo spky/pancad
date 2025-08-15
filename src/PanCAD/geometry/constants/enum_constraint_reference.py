@@ -19,7 +19,8 @@ class ConstraintReference(Flag):
     """The center of the geometry. Example: The center point of a circle."""
     ORIGIN = CENTER
     """An alias for the center of the geometry. Example: The origin point of a 
-    coordinate system."""
+    coordinate system.
+    """
     X = auto()
     """The X-Axis of the geometry."""
     Y = auto()
@@ -34,7 +35,8 @@ class ConstraintReference(Flag):
     """The YZ-Plane of the geometry."""
     CS = auto()
     """The coordinate system of the geometry. Example: The coordinate system of 
-    a sketch."""
+    a sketch.
+    """
     COORDINATE_SYSTEM = CS
     """An alias for CS."""
     

@@ -7,7 +7,7 @@ that is application specific.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Sequence
 from functools import reduce, singledispatchmethod
 from itertools import compress
 import textwrap
@@ -59,7 +59,7 @@ class Sketch(AbstractFeature):
     """Allowable ConstraintReferences for the sketch's plane_reference."""
     
     # Type Tuples for checking with isinstance()
-    GEOMETRY_TYPES = (Circle, Circle, Line, LineSegment, Point)
+    GEOMETRY_TYPES = (Circle, Line, LineSegment, Point)
     EXTERNAL_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Point, Plane)
     CONSTRAINT_TYPES = (Coincident, Vertical, Horizontal,
                         Equal, Parallel, Perpendicular,
@@ -77,10 +77,10 @@ class Sketch(AbstractFeature):
     def __init__(self,
                  coordinate_system: CoordinateSystem=None,
                  plane_reference: ConstraintReference=ConstraintReference.XY,
-                 geometry: Collection[GeometryType]=None,
-                 construction: Collection[bool]=None,
-                 constraints: Collection[ConstraintType]=None,
-                 externals: Collection[ExternalType]=None,
+                 geometry: Sequence[GeometryType]=None,
+                 construction: Sequence[bool]=None,
+                 constraints: Sequence[ConstraintType]=None,
+                 externals: Sequence[ExternalType]=None,
                  uid: str=None):
         # Initialize private uid since uid and geometry sync with each other
         self._uid = None
@@ -120,8 +120,8 @@ class Sketch(AbstractFeature):
     
     @property
     def construction(self) -> tuple[bool]:
-        """The tuple of booleans indicating whether each index of the geometry 
-        tuple is construction geometry.
+        """The booleans indicating whether each index of the geometry tuple is 
+        construction geometry.
         
         :getter: Returns the tuple of construction booleans.
         :setter: Sets the construction tuple after checking that it is the same 
@@ -141,7 +141,7 @@ class Sketch(AbstractFeature):
     
     @property
     def externals(self) -> tuple[ExternalType]:
-        """The tuple of 3D external geometry referenced by the sketch.
+        """The 3D external geometry referenced by the sketch.
         
         :getter: Returns the tuple of external geometry references.
         :setter: Sets the externals tuple after checking that all of the tuple 
@@ -151,7 +151,7 @@ class Sketch(AbstractFeature):
     
     @property
     def geometry(self) -> tuple[GeometryType]:
-        """The tuple of 2D geometry in the sketch.
+        """The 2D geometry in the sketch.
         
         :getter: Returns the tuple of geometry in the sketch.
         :setter: Sets the tuple of geometry in the sketch after checking the new
@@ -186,13 +186,13 @@ class Sketch(AbstractFeature):
         self._coordinate_system = coordinate_system
     
     @constraints.setter
-    def constraints(self, constraints: Collection[ConstraintType]) -> None:
+    def constraints(self, constraints: Sequence[ConstraintType]) -> None:
         for c in constraints:
             self._validate_constraint_references(c)
         self._constraints = tuple(constraints)
     
     @construction.setter
-    def construction(self, construction: Collection[bool]) -> None:
+    def construction(self, construction: Sequence[bool]) -> None:
         if construction is None and self.geometry is not None:
             self._construction = tuple([False] * len(self.geometry))
         elif construction is None and self.geometry is None:
@@ -204,7 +204,7 @@ class Sketch(AbstractFeature):
             self._construction = tuple(construction)
     
     @externals.setter
-    def externals(self, externals: Collection[ExternalType]) -> None:
+    def externals(self, externals: Sequence[ExternalType]) -> None:
         non_3d_externals = list(
             filter(lambda g: len(g) != 3, externals)
         )
@@ -214,7 +214,7 @@ class Sketch(AbstractFeature):
             self._externals = tuple(externals)
     
     @geometry.setter
-    def geometry(self, geometry: Collection[GeometryType]) -> None:
+    def geometry(self, geometry: Sequence[GeometryType]) -> None:
         non_2d_geometry = list(
             filter(lambda g: len(g) != 2, geometry)
         )
@@ -419,11 +419,11 @@ class Sketch(AbstractFeature):
         return self
     
     def get_construction_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the sketch's construction geometry."""
+        """Returns the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
     
     def get_dependencies(self) -> tuple[ExternalType]:
-        """Returns a tuple of the sketch's external dependencies."""
+        """Returns the sketch's external dependencies."""
         return (self.coordinate_system,) + self.externals
     
     def get_geometry_by_uid(self,
@@ -637,9 +637,9 @@ class Sketch(AbstractFeature):
     
     # Private Dispatch Methods
     @singledispatchmethod
-    def _get_summary_info(self,
-                          geometry: AbstractGeometry | AbstractConstraint
-                          ) -> NoReturn:
+    def _get_summary_info(
+                self, geometry: AbstractGeometry | AbstractConstraint
+            ) -> NoReturn:
         """Returns the summary info for a given geometry type."""
         raise TypeError(f"{geometry.__class__} not recognized")
     

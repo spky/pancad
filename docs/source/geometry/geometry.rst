@@ -25,8 +25,8 @@ Geometry
     :show-inheritance:
     :members:
 
-Geometry Enumerations
-=====================
+Enumerations
+------------
 
 .. autoclass:: PanCAD.geometry.constants.ConstraintReference
     :show-inheritance:

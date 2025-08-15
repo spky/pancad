@@ -1,4 +1,4 @@
-﻿PanCAD.geometry.line\_segment
+PanCAD.geometry.line\_segment
 =============================
 
 .. automodule:: PanCAD.geometry.line_segment

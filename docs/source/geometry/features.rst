@@ -9,8 +9,8 @@ Features
     :show-inheritance:
     :members:
 
-Feature Enumerations
-====================
+Enumerations
+------------
 
 .. autoclass:: PanCAD.geometry.constants.SketchConstraint
     :show-inheritance:

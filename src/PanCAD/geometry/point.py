@@ -113,6 +113,11 @@ class Point(AbstractGeometry):
     def from_polar(cls, arg, uid: str=None, unit: str=None) -> NoReturn:
         """Initializes a point from polar coordinates.
         
+        :warning: The PanCAD Sphinx documentation has a bug that causes the type 
+            hint annotations of singledispatchmethods to fail and the function 
+            definition to multiply. Point.from_polar accepts a single VectorLike 
+            for vector or 2 Reals for r and phi. See issue #104.
+        
         :param vector: A 2 long iterable of real numbers representing the radius 
             and azimuth angle. Azimuth must be radians.
         :param r: The radius of a polar coordinate.
@@ -145,9 +150,14 @@ class Point(AbstractGeometry):
     def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> NoReturn:
         """Initializes a point from spherical coordinates.
         
+        :warning: The PanCAD Sphinx documentation has a bug that causes the type 
+            hint annotations of singledispatchmethods to fail and the function 
+            definition to multiply. Point.from_spherical accepts a single 
+            VectorLike for vector or 3 Reals for r, phi, and theta.
+        
         :param vector: A 3 long iterable of reals representing the radius, 
             azimuth angle, and inclination angle. Azimuth and inclination must 
-            be in radians.
+            be in radians. See issue #104.
         :param r: The radius of a spherical coordinate.
         :param phi: The azimuth angle in radians.
         :param theta: The inclination angle in radians.

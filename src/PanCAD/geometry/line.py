@@ -211,7 +211,7 @@ class Line(AbstractGeometry):
         radians.
         
         :getter: Returns the azimuth component of the line's direction.
-        :setter: None, read-only. Use a public method to change the direction.
+        :setter: Read-only.
         """
         return trig.phi_of_cartesian(self.direction)
     
@@ -220,7 +220,7 @@ class Line(AbstractGeometry):
         """The closest point to the origin on the line.
         
         :getter: Returns a copy of the Point closest to the origin on the line.
-        :setter: None, read-only. Use a public method to change line positions.
+        :setter: Read-only.
         """
         return self._point_closest_to_origin.copy()
     
@@ -247,7 +247,7 @@ class Line(AbstractGeometry):
         radians.
         
         :getter: Returns the inclination angle of the line's direction
-        :setter: None, read-only. Use a public method to change the direction
+        :setter: Read-only.
         """
         return trig.theta_of_cartesian(self.direction)
     
