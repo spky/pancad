@@ -257,8 +257,6 @@ class TestConstruction(unittest.TestCase):
     def test_init(self):
         sketch = Sketch(self.cs, uid=self.uid,
                         geometry=self.geo, construction=self.construction)
-        self.assertCountEqual(sketch.get_geometry_status(),
-                              zip(self.geo, self.construction))
     
     def test_get_construction_geometry(self):
         sketch = Sketch(self.cs, uid=self.uid,

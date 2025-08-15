@@ -1,3 +1,5 @@
+"""A collection of modules representing 2D and 3D geometry."""
+
 # Warning: Import order matters, the modules at the top of the file are 
 # sometimes dependencies of the modules towards the bottom of the file
 

@@ -4,14 +4,16 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial
+from numbers import Real
+from typing import Self
 
 import numpy as np
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import Point
+from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils.trigonometry import get_unit_vector
 from PanCAD.utils import comparison
+from PanCAD.utils.trigonometry import get_unit_vector
+from PanCAD.utils.pancad_types import VectorLike
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -21,24 +23,25 @@ class Circle(AbstractGeometry):
     
     :param center: The center point of the circle.
     :param radius: The radius dimension of the circle.
-    :param x_vector: The direction vector of the x-axis of the circle.
-    :param y_vector: The direction vector of the y-axis of the circle.
-    :param uid: The unique ID of the circle for interoperable CAD
-        identification.
+    :param x_vector: The direction vector of the x-axis of the circle. Defaults 
+        to None, but is required for a 3D circle.
+    :param y_vector: The direction vector of the y-axis of the circle. Defaults 
+        to None, but is required for a 3D circle.
+    :param uid: The unique ID of the circle.
     """
     CENTER_UID_FORMAT = "{uid}_center"
+    REFERENCES = (ConstraintReference.CORE, ConstraintReference.CENTER)
+    """All relevant ConstraintReferences for Circles."""
     
     def __init__(self,
-                 center: tuple | np.ndarray | Point,
-                 radius: int | float,
-                 x_vector: tuple[int | float]=None,
-                 y_vector: tuple[int | float]=None,
-                 uid: str=None):
-        if isinstance(center, (tuple, np.ndarray)):
+                 center: Point | VectorLike,
+                 radius: Real,
+                 x_vector: tuple[Real]=None,
+                 y_vector: tuple[Real]=None,
+                 uid: str=None) -> None:
+        if isinstance(center, VectorLike):
             center = Point(center)
         
-        self._references = (ConstraintReference.CORE,
-                            ConstraintReference.CENTER)
         self._center = center
         self._radius = radius
         self._x_vector = x_vector
@@ -52,16 +55,17 @@ class Circle(AbstractGeometry):
         """Center point of the circle.
         
         :getter: Returns the point.
-        :setter: Updates the internal point with the values of a new point.
+        :setter: Updates the internal center point with values from a new point.
         """
         return self._center
     
     @property
-    def radius(self) -> int | float:
-        """Radius dimension of the circle.
+    def radius(self) -> Real:
+        """Radius of the circle.
         
-        :getter: Returns the radius value.
-        :setter: Updates the radius if the given value is >0.
+        :getter: Returns the circle's radius value.
+        :setter: Updates the circle's radius if the given value is greater than 
+            or equal to 0. Raises a ValueError if the radius is less than 0.
         """
         return self._radius
     
@@ -69,8 +73,8 @@ class Circle(AbstractGeometry):
     def uid(self) -> str:
         """Unique id of the circle.
         
-        :getter: returns the unique id.
-        :setter: Updates the circle's and its center point's uids.
+        :getter: Returns the unique id.
+        :setter: Updates the circle and its center point's unique ids.
         """
         return self._uid
     
@@ -99,12 +103,13 @@ class Circle(AbstractGeometry):
             self.center.uid = self.CENTER_UID_FORMAT.format(uid=self._uid)
     
     # Public Methods #
-    def get_reference(self, reference: ConstraintReference) -> Point | Circle:
-        """Returns the subgeometry associated with the reference.
+    def get_reference(self, reference: ConstraintReference) -> Point | Self:
+        """Returns reference geometry for use in external modules like 
+        constraints.
         
-        :param reference: A ConstraintReference. Circles can only return CORE 
-            (its edge) and CENTER (its center point).
-        :returns: The associated subgeometry.
+        :param reference: A ConstraintReference enumeration value applicable to 
+            Circles. See :attr:`Circle.REFERENCES`.
+        :returns: The geometry corresponding to the reference.
         """
         match reference:
             case ConstraintReference.CORE:
@@ -116,40 +121,50 @@ class Circle(AbstractGeometry):
                                  " reference geometry")
     
     def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constraint references available for the 
-        geometry.
-        
-        :returns: A tuple of ConstraintReferences that can be called for
-            Circles.
+        """Returns all ConstraintReferences applicable to Circles. See 
+        :attr:`Circle.REFERENCES`.
         """
-        return self._references
+        return self.REFERENCES
     
-    def get_orientation_vectors(self) -> tuple[tuple[int], tuple[int]]:
+    def get_orientation_vectors(self) -> tuple[tuple[Real], tuple[Real]]:
+        """Returns the orientation vectors for a 3D circle.
+        
+        :returns: A tuple of the x and y orientation vectors of the circle.
+        """
         return self._x_vector, self._y_vector
     
     def set_orientation_vectors(self,
-                                x_vector: tuple[int | float],
-                                y_vector: tuple[int | float]) -> None:
+                                x_vector: tuple[Real],
+                                y_vector: tuple[Real]) -> Self:
+        """Sets the orientation vectors for a 3D circle.
+        
+        :param x_vector: The direction vector of the x-axis of the circle.
+        :param y_vector: The direction vector of the y-axis of the circle.
+        :returns: The updated Circle.
+        """
         if len(x_vector) == len(y_vector) == len(self) == 3:
             self._x_vector = get_unit_vector(x_vector)
             self._y_vector = get_unit_vector(y_vector)
+            return self
         elif len(self) != 3:
             raise ValueError("Orientation vectors cannot be set on 2D circles")
         else:
             raise ValueError("Orientation vectors must be 3D, given:"
                              f" {x_vector} and {y_vector}")
     
-    def update(self, other: Circle) -> None:
+    def update(self, other: Circle) -> Self:
         """Updates the center point, radius, and orientation vectors to match 
         the other circle.
         
-        :param other: A circle to update this circle to.
+        :param other: A Circle to update this Circle to.
+        :returns: The updated Circle.
         """
         if len(self) == len(other):
             self.center.update(other.center)
             self.radius = other.radius
             if len(self) == 3:
                 self.set_orientation_vectors(other._x_vector, other._y_vector)
+            return self
         else:
             raise ValueError("Cannot update a 2D circle to 3D")
     
@@ -182,7 +197,7 @@ class Circle(AbstractGeometry):
         
         :param other: The circle to compare this circle to.
         :returns: Whether the tuples of the circle's center points, radii and 
-            orientations directions are equal
+            orientations directions are equal.
         """
         if isinstance(other, Circle) and len(self) == len(other) == 2:
             return (
@@ -208,7 +223,6 @@ class Circle(AbstractGeometry):
         return len(self.center)
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the circle."""
         center_str = str(self.center.cartesian).replace(" ","")
         string = f"<PanCADCircle'{self.uid}'{center_str}r{self.radius}"
         if len(self) == 3:

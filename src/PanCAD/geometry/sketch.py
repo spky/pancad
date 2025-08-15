@@ -7,10 +7,11 @@ that is application specific.
 
 from __future__ import annotations
 
-from collections import namedtuple
+from collections.abc import Sequence
 from functools import reduce, singledispatchmethod
 from itertools import compress
 import textwrap
+from typing import overload, Self, NoReturn
 
 from PanCAD.geometry import (
     AbstractFeature, AbstractGeometry,
@@ -29,49 +30,57 @@ from PanCAD.geometry.constraints import (
 from PanCAD.utils.text_formatting import get_table_string
 
 class Sketch(AbstractFeature):
-    """A class representing a set of 2D geometry on a coordinate system plane in 
-    3D space.
+    """A class representing a set of 2D geometry placed onto a coordinate system 
+    plane in 3D space.
     
-    :param coordinate_system: A coordinate system defining where the sketch's 
-        location and orientation. If no coordinate system is provided, the 
-        sketch will be placed at the default (0, 0, 0) coordinate system.
-    :param plane_reference: A string specifying which plane of the coordinate 
-        system to place the geometry on. Options include: XY, XZ, YZ. Defaults
-        to XY.
-    :param geometry: 2D PanCAD geometry tuple. Defaults to an empty tuple.
-    :param construction: Construction boolean tuple where each value determines 
-        whether the corresponding geometry element index is construction 
-        geometry. Defaults to an empty tuple. Must be the same length as the 
-        geometry tuple, but if it is not given then all initially provided 
-        geometry is assumed to be non-construction (all False).
-    :param constraints: PanCAD constraints tuple. Defaults to an empty tuple.
-    :param externals: 3D PanCAD geometry tuple that can be referenced by the 
-        constraints. Defaults to an empty tuple.
+    :param coordinate_system: A coordinate system defining the sketch's position 
+        and orientation. Defaults to an unrotated coordinate system centered at 
+        (0, 0, 0).
+    :param plane_reference: The ConstraintReference to one of the 
+        coordinate_system's planes. Defaults to
+        :attr:`~PanCAD.geometry.constants.ConstraintReference.XY`.
+    :param geometry: A sequence of 2D PanCAD geometry. Defaults to an empty 
+        tuple.
+    :param construction: A sequence of booleans that determines whether the 
+        corresponding geometry index is construction. Defaults to a tuple 
+        of all 'False' that is the same length as geometry.
+    :param constraints: A sequence of constraints on sketch geometry. Defaults 
+        to an empty tuple.
+    :param externals: A sequence of geometry external to this sketch that can be 
+        referenced by the constraints. Defaults to an empty tuple.
     :param uid: The unique id of the Sketch. Defaults to None.
     """
     # Class Constants
     UID_SEPARATOR = "_"
     CS_2D_UID = "sketchcs"
+    REFERENCE_PLANES = (ConstraintReference.XY,
+                        ConstraintReference.XZ,
+                        ConstraintReference.YZ)
+    """Allowable ConstraintReferences for the sketch's plane_reference."""
     
     # Type Tuples for checking with isinstance()
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Point)
     EXTERNAL_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Point, Plane)
+    CONSTRAINT_TYPES = (Coincident, Vertical, Horizontal,
+                        Equal, Parallel, Perpendicular,
+                        Angle, Distance, Diameter, Radius,
+                        HorizontalDistance, VerticalDistance)
     
     # Type Hints
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
+    """Allowed sketch geometry types."""
     ExternalType = reduce(lambda x, y: x | y, EXTERNAL_TYPES)
-    ConstraintType = Coincident
-    
-    # Collections
-    GeometryStatus = namedtuple("GeometryStatus", ["geometry", "construction"])
+    """Allowed external geometry types."""
+    ConstraintType = reduce(lambda x, y: x | y, CONSTRAINT_TYPES)
+    """Allowed constraint types."""
     
     def __init__(self,
                  coordinate_system: CoordinateSystem=None,
                  plane_reference: ConstraintReference=ConstraintReference.XY,
-                 geometry: tuple[GeometryType]=None,
-                 construction: tuple[bool]=None,
-                 constraints: tuple[ConstraintType]=None,
-                 externals: tuple[ExternalType]=None,
+                 geometry: Sequence[GeometryType]=None,
+                 construction: Sequence[bool]=None,
+                 constraints: Sequence[ConstraintType]=None,
+                 externals: Sequence[ExternalType]=None,
                  uid: str=None):
         # Initialize private uid since uid and geometry sync with each other
         self._uid = None
@@ -100,38 +109,49 @@ class Sketch(AbstractFeature):
     # Getters #
     @property
     def constraints(self) -> tuple[ConstraintType]:
+        """The tuple of constraints on sketch geometry.
+        
+        :getter: Returns a tuple of the sketch's constraints.
+        :setter: Sets the sketch's constraints after checking that the 
+            constraints refer to geometry that is already available in the 
+            sketch.
+        """
         return self._constraints
     
     @property
     def construction(self) -> tuple[bool]:
-        """The tuple of booleans indicating whether each index of the geometry 
-        tuple is construction geometry.
+        """The booleans indicating whether each index of the geometry tuple is 
+        construction geometry.
+        
+        :getter: Returns the tuple of construction booleans.
+        :setter: Sets the construction tuple after checking that it is the same 
+            length as the geometry tuple.
         """
         return self._construction
     
     @property
     def coordinate_system(self) -> CoordinateSystem:
         """The contextual coordinate system that positions and rotates the 
-        sketch.
+        2D sketch geometry.
         
         :getter: Returns the CoordinateSystem object.
-        :setter: Sets the sketch coordinate system and syncs the rest of the 
-            sketch to the new coordinate system.
+        :setter: Sets the coordinate system.
         """
         return self._coordinate_system
     
     @property
     def externals(self) -> tuple[ExternalType]:
-        """The tuple of 3D external geometry referenced by the sketch.
+        """The 3D external geometry referenced by the sketch.
         
         :getter: Returns the tuple of external geometry references.
-        :setter: Checks that all the external geometry is 3D and sets the tuple.
+        :setter: Sets the externals tuple after checking that all of the tuple 
+            is 3D.
         """
         return self._externals
     
     @property
     def geometry(self) -> tuple[GeometryType]:
-        """The tuple of 2D geometry in the sketch.
+        """The 2D geometry in the sketch.
         
         :getter: Returns the tuple of geometry in the sketch.
         :setter: Sets the tuple of geometry in the sketch after checking the new
@@ -141,9 +161,9 @@ class Sketch(AbstractFeature):
     
     @property
     def plane_reference(self) -> ConstraintReference:
-        """The reference of the CoordinateSystem's plane that contains the 
-        sketch's geometry. Must be one of the enumeration values in 
-        PanCAD.geometry.constants.ConstraintReference.
+        """The ConstraintReference for the CoordinateSystem plane that contains 
+        the sketch's geometry. Must be one of the enumeration values in 
+        :class:`~PanCAD.geometry.constants.ConstraintReference`.
         
         :getter: Returns the reference of the plane.
         :setter: Checks reference validity and then sets the plane reference.
@@ -155,67 +175,62 @@ class Sketch(AbstractFeature):
         """The unique id of the sketch.
         
         :getter: Returns the unique id of the sketch.
-        :setter: Sets the uid of the sketch and syncs all the sketch's contained
-            geometry to the sketch's uid.
+        :setter: Sets the uid of the sketch and syncs all sketch geometry's uids
+            to with the new sketch's uid.
         """
         return self._uid
     
     # Setters #
     @coordinate_system.setter
-    def coordinate_system(self, coordinate_system: CoordinateSystem):
+    def coordinate_system(self, coordinate_system: CoordinateSystem) -> None:
         self._coordinate_system = coordinate_system
     
     @constraints.setter
-    def constraints(self, constraints: list[ConstraintType]):
+    def constraints(self, constraints: Sequence[ConstraintType]) -> None:
         for c in constraints:
             self._validate_constraint_references(c)
         self._constraints = tuple(constraints)
     
     @construction.setter
-    def construction(self, construction: tuple[bool]):
+    def construction(self, construction: Sequence[bool]) -> None:
         if construction is None and self.geometry is not None:
-            self._construction = tuple(
-                [False] * len(self.geometry)
-            )
+            self._construction = tuple([False] * len(self.geometry))
         elif construction is None and self.geometry is None:
             self._construction = tuple()
         elif len(construction) != len(self.geometry):
-            raise ValueError("geometry and construction tuple must be the same"
-                             " length, given:"
-                             f"\n{self.geometry}\n{construction}")
+            raise ValueError("geometry and construction must be equal length,"
+                             f" given:\n{self.geometry}\n{construction}")
         else:
-            self._construction = construction
+            self._construction = tuple(construction)
     
     @externals.setter
-    def externals(self, externals: list):
+    def externals(self, externals: Sequence[ExternalType]) -> None:
         non_3d_externals = list(
             filter(lambda g: len(g) != 3, externals)
         )
         if non_3d_externals != []:
             raise ValueError(f"3D Geometry only, 2D: {non_3d_externals}")
-        self._externals = tuple(externals)
+        else:
+            self._externals = tuple(externals)
     
     @geometry.setter
-    def geometry(self, geometry: list | tuple):
+    def geometry(self, geometry: Sequence[GeometryType]) -> None:
         non_2d_geometry = list(
             filter(lambda g: len(g) != 2, geometry)
         )
         if non_2d_geometry != []:
             raise ValueError(f"2D Geometry only, given 3D: {non_2d_geometry}")
-        
-        self._geometry = tuple(geometry)
-        self._sync_geometry_uid()
+        else:
+            self._geometry = tuple(geometry)
+            self._sync_geometry_uid()
     
     @plane_reference.setter
     def plane_reference(self, reference: ConstraintReference):
-        reference_planes = (ConstraintReference.XY
-                            | ConstraintReference.XZ
-                            | ConstraintReference.YZ)
-        if reference in reference_planes:
+        if reference in self.REFERENCE_PLANES:
             self._plane_reference = reference
         else:
             raise ValueError(f"{reference} not recognized as a plane reference,"
-                             f"must be one of {list(reference_planes)}")
+                             f"must be one of {list(self.REFERENCE_PLANES)}")
     
     @uid.setter
     def uid(self, uid: str):
@@ -243,117 +258,182 @@ class Sketch(AbstractFeature):
             )
     
     # Public Functions #
-    def add_constraint(self, constraint) -> None:
+    def add_constraint(self, constraint: ConstraintType) -> Self:
+        """Adds an already generated constraint to the sketch.
+        
+        :param constraint: A constraint referring to geometry that is already in 
+            the sketch.
+        :returns: The updated sketch.
+        """
         dependencies = constraint.get_constrained()
         if all([d in self for d in dependencies]):
             self.constraints = self.constraints + (constraint,)
+            return self
         else:
             missing = filter(lambda d: d not in self, dependencies)
             raise LookupError(f"Dependencies for {repr(constraint)} are missing"
                              f" from part: {list(missing)}")
     
+    @overload
+    def add_constraint_by_uid(self,
+                              sketch_constraint: SketchConstraint,
+                              uid_a: str | ConstraintReference,
+                              reference_a: ConstraintReference,
+                              **kwargs) -> Self: ...
+    
+    @overload
+    def add_constraint_by_uid(self,
+                              sketch_constraint: SketchConstraint,
+                              uid_a: str | ConstraintReference,
+                              reference_a: ConstraintReference,
+                              uid_b: str | ConstraintReference=None,
+                              reference_b: ConstraintReference=None,
+                              **kwargs) -> Self: ...
+    
+    @overload
+    def add_constraint_by_uid(self,
+                              sketch_constraint: SketchConstraint,
+                              uid_a: str | ConstraintReference,
+                              reference_a: ConstraintReference,
+                              uid_b: str | ConstraintReference=None,
+                              reference_b: ConstraintReference=None,
+                              uid_c: str | ConstraintReference=None,
+                              reference_c: ConstraintReference=None,
+                              **kwargs) -> Self: ...
+    
     def add_constraint_by_uid(
-                self, constraint_choice: SketchConstraint,
-                uid_a: str, reference_a: ConstraintReference,
-                uid_b: str=None, reference_b: ConstraintReference=None,
-                uid_c: str=None, reference_c: ConstraintReference=None,
+                self, sketch_constraint, uid_a, reference_a,
+                uid_b=None, reference_b=None, uid_c=None, reference_c=None,
                 **kwargs
-            ) -> None:
+            ) -> Self:
         """Adds a sketch constraint between two geometry elements selected by 
         their uids. Prefixes the new constraint's uid with the sketch's uid. All 
-        geometry must already be in the sketch's geometry. ConstraintReference 
-        CS can be used instead of any of the geometry inputs to refer to the 
-        sketch's coordinate system.
+        geometry must already be in the sketch's geometry.
+        :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` can be used 
+        instead of any of the uid inputs to refer to the sketch's coordinate 
+        system.
         
-        :param constraint_choice: The SketchConstraint of the constraint choice
+        :param sketch_constraint: The SketchConstraint for the type of 
+            constraint to be added.
         :param uid_a: The uid of geometry a.
-        :param reference_a: The ConstraintReference to part of geometry a
+        :param reference_a: The ConstraintReference to part of geometry a.
         :param uid_b: The uid of geometry b. Only supplied for constraints 
-            that require 2 or 3 geometry elements (e.g. coincident, parallel), 
-            otherwise ignored.
+            that require 2 or 3 geometry elements (e.g. coincident, parallel).
         :param reference_b: The ConstraintReference to part of geometry b
         :param uid_c: The uid of geometry c. Only supplied for constraints 
-            requiring 3 geometry elements (i.e. symmetry), otherwise ignored.
+            requiring 3 geometry elements (i.e. symmetry).
         :param reference_c: The ConstraintReference to part of geometry c. The 
             uid of geometry c. Only supplied for constraints requiring 3 
-            geometry elements (i.e. symmetry), otherwise ignored.
+            geometry elements (i.e. symmetry).
+        :returns: The updated sketch.
         """
         geometry_a = self.get_geometry_by_uid(uid_a)
         geometry_b = self.get_geometry_by_uid(uid_b)
         geometry_c = self.get_geometry_by_uid(uid_c)
-        self._add_new_constraint(constraint_choice,
+        self._add_new_constraint(sketch_constraint,
                                  geometry_a, reference_a,
                                  geometry_b, reference_b,
                                  geometry_c, reference_c,
                                  **kwargs)
+        return self
+    
+    @overload
+    def add_constraint_by_index(self,
+                                sketch_constraint: SketchConstraint,
+                                index_a: int | ConstraintReference,
+                                reference_a: ConstraintReference,
+                                **kwargs) -> Self: ...
+    
+    @overload
+    def add_constraint_by_index(self,
+                                sketch_constraint: SketchConstraint,
+                                index_a: int | ConstraintReference,
+                                reference_a: ConstraintReference,
+                                index_b: int | ConstraintReference=None,
+                                reference_b: ConstraintReference=None,
+                                **kwargs) -> Self: ...
+    
+    @overload
+    def add_constraint_by_index(self,
+                                sketch_constraint: SketchConstraint,
+                                index_a: int | ConstraintReference,
+                                reference_a: ConstraintReference,
+                                index_b: int | ConstraintReference=None,
+                                reference_b: ConstraintReference=None,
+                                index_c: int | ConstraintReference=None,
+                                reference_c: ConstraintReference=None,
+                                **kwargs) -> Self: ...
     
     def add_constraint_by_index(
-                self, constraint_choice: SketchConstraint,
-                index_a: int, reference_a: ConstraintReference,
-                index_b: int=None, reference_b: ConstraintReference=None,
-                index_c: int=None, reference_c: ConstraintReference=None,
+                self, sketch_constraint, index_a, reference_a,
+                index_b=None, reference_b=None, index_c=None, reference_c=None,
                 **kwargs
-            ) -> None:
+            ) -> Self:
         """Adds a sketch constraint between two geometry elements selected by 
         their indices. Prefixes the new constraint's uid with the sketch's uid. 
         All geometry must already be in the sketch's geometry.
-        ConstraintReference CS can be used instead of any of the geometry inputs 
-        to refer to the sketch's coordinate system.
+        :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` can be used 
+        instead of any of the index inputs to refer to the sketch's coordinate 
+        system.
         
-        :param constraint_choice: The SketchConstraint of the constraint choice
+        :param sketch_constraint: The SketchConstraint of the new constraint 
+            type.
         :param index_a: The index of geometry a.
-        :param reference_a: The ConstraintReference to part of geometry a
-        :param index_b: The index of geometry b. Only supplied for constraints 
-            that require 2 or 3 geometry elements (e.g. coincident, parallel), 
-            otherwise ignored.
-        :param reference_b: The ConstraintReference to part of geometry b
-        :param index_c: The index of geometry c. Only supplied for constraints 
-            requiring 3 geometry elements (i.e. symmetry), otherwise ignored.
-        :param reference_c: The ConstraintReference to part of geometry c.
+        :param reference_a: The ConstraintReference to part of geometry a.
+        :param index_b: The index of geometry b. Only required for constraints 
+            that require 2 or 3 geometry elements (e.g. coincident, parallel).
+        :param reference_b: The ConstraintReference to part of geometry b. 
+            Required if index_b is provided.
+        :param index_c: The index of geometry c. Only required for constraints 
+            requiring 3 geometry elements (i.e. symmetry).
+        :param reference_c: The ConstraintReference to part of geometry c. 
+            Required if index_c is provided.
+        :returns: The updated sketch.
         """
         geometry_a = self._get_geometry_by_index(index_a)
         geometry_b = self._get_geometry_by_index(index_b)
         geometry_c = self._get_geometry_by_index(index_c)
         
-        self._add_new_constraint(constraint_choice,
+        self._add_new_constraint(sketch_constraint,
                                  geometry_a, reference_a,
                                  geometry_b, reference_b,
                                  geometry_c, reference_c,
                                  **kwargs)
+        return self
     
     def add_geometry(self,
-                     geometry: AbstractGeometry,
-                     construction: bool=False) -> None:
+                     geometry: GeometryType,
+                     construction: bool=False) -> Self:
+        """Adds an already generated geometry element to the sketch.
+        
+        :param geometry: A 2D geometry element.
+        :param construction: Whether the geometry is construction. Defaults to 
+            'False'.
+        :returns: The updated sketch.
+        """
         if len(geometry) != 2:
             raise ValueError(f"2D Geometry only, given 3D: {geometry}")
         self.geometry = self.geometry + (geometry,)
         self.construction = self.construction + (construction,)
         self._sync_geometry_uid()
+        return self
     
     def get_construction_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the sketch's construction geometry."""
+        """Returns the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
     
     def get_dependencies(self) -> tuple[ExternalType]:
-        """Returns a tuple of the sketch's external dependencies"""
+        """Returns the sketch's external dependencies."""
         return (self.coordinate_system,) + self.externals
     
-    def get_geometry_status(self) -> iter[GeometryStatus]:
-        """Returns an iterator of GeometryStatus namedtuples that contains the 
-        geometry and whether the geometry is construction geometry
-        """
-        for geometry, construction in zip(self.geometry, self.construction):
-            yield self.GeometryStatus(geometry, construction)
-    
-    def get_geometry_by_uid(self, uid: str|ConstraintReference) -> GeometryType:
-        """Returns an element of geometry if a geometry with that uid matches 
-        the one given.
+    def get_geometry_by_uid(self,
+                            uid: str | ConstraintReference) -> GeometryType:
+        """Returns a sketch geometry element based on its uid.
         
-        :param uid: The uid of the geometry. Can also be ConstraintReference.CS 
-            to the sketch's 2D coordinate system since the 2D coordinate system 
-            is not in the sketch's geometry tuple.
-        :returns: A geometry element with uid or the sketch's 2D coordinate 
-            system.
+        :param uid: The uid of the geometry or
+            :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` to 
+            reference the sketch's 2D coordinate system.
+        :returns: The geometry element with the specified uid.
         """
         geometry_uids = [g.uid for g in self.geometry]
         if uid in geometry_uids:
@@ -365,9 +445,11 @@ class Sketch(AbstractFeature):
         else:
             raise ValueError(f"uid '{uid}' was not found in sketch's geometry")
     
-    def get_index_of(self, item: object) -> int:
-        """Returns the index of a geometry, constraint, or external item in 
-        their respective lists. Raises an error if its not in any of them."""
+    def get_index_of(self,
+                     item: GeometryType | ExternalType | ConstraintType) -> int:
+        """Returns the index of a geometry, external, or constraint item in 
+        their respective lists. Raises an LookupError if its not in any of them.
+        """
         if any([item is g for g in self.geometry]):
             return [item is g for g in self.geometry].index(True)
         elif any([item is c for c in self.constraints]):
@@ -389,11 +471,8 @@ class Sketch(AbstractFeature):
         non_construction = [not c for c in self.construction]
         return tuple(compress(self.geometry, non_construction))
     
-    def get_plane(self):
-        """Returns the plane that contains the sketch geometry.
-        
-        :returns: The sketch's plane.
-        """
+    def get_plane(self) -> Plane:
+        """Returns the plane that contains the sketch geometry."""
         return self.coordinate_system.get_reference(self.plane_reference)
     
     def get_sketch_coordinate_system(self) -> CoordinateSystem:
@@ -402,7 +481,11 @@ class Sketch(AbstractFeature):
     
     def has_geometry(self, geometry: GeometryType) -> bool:
         """Checks whether the given geometry is in the sketch's geometry 
-        tuple. Compares memory locations, not just equality."""
+        tuple. Compares memory locations, not just equality.
+        
+        :param geometry: The geometry element to check for.
+        :returns: Whether the element is in the sketch geometry.
+        """
         constrainable_geometry = (self._sketch_cs,) + self.geometry
         return any(geometry is cg for cg in constrainable_geometry)
     
@@ -424,7 +507,8 @@ class Sketch(AbstractFeature):
     
     def _generate_summary(self, title_to_type: dict, element_list: list) -> str:
         """Returns a string summarizing a list of classes of geometry or 
-        constraints in table format"""
+        constraints in table format.
+        """
         summary_strings = []
         for title, type_ in title_to_type.items():
             info = []
@@ -538,7 +622,8 @@ class Sketch(AbstractFeature):
     
     def _sync_geometry_uid(self):
         """Prepends the geometry uids with the sketch's uid unless it was 
-        specially overridden."""
+        specially overridden.
+        """
         if self.uid is not None:
             for i, g in enumerate(self.geometry):
                 if g.uid is None or g.uid == "" or g.uid.isnumeric():
@@ -552,8 +637,9 @@ class Sketch(AbstractFeature):
     
     # Private Dispatch Methods
     @singledispatchmethod
-    def _get_summary_info(self,
-                          geometry: AbstractGeometry | AbstractConstraint):
+    def _get_summary_info(
+                self, geometry: AbstractGeometry | AbstractConstraint
+            ) -> NoReturn:
         """Returns the summary info for a given geometry type."""
         raise TypeError(f"{geometry.__class__} not recognized")
     

@@ -8,11 +8,14 @@ PanCAD documentation
 
 **PanCAD** is a Python library for makers to generate CAD from text and back again.
 
-.. toctree::
-   
-   usage
-   api
-
 .. note::
     
     This project is under active development.
+
+.. toctree::
+   :maxdepth: 2
+   
+   usage
+   geometry/geometry
+   geometry/features
+   api

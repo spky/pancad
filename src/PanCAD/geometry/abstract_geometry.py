@@ -4,10 +4,12 @@ PanCAD geometry classes.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Self
 
 from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractGeometry(ABC):
+    """A class defining the interfaces provided by PanCAD Geometry Elements."""
     
     # Properties #
     @property
@@ -22,12 +24,10 @@ class AbstractGeometry(ABC):
     
     @abstractmethod
     def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constraint references available for the 
-        geometry.
-        """
+        """Returns the constraint references available for the geometry."""
     
     @abstractmethod
-    def update(self, other: AbstractGeometry) -> AbstractGeometry:
+    def update(self, other: AbstractGeometry) -> Self:
         """Takes geometry of the same type as the calling geometry and updates 
         the calling geometry to match the new geometry while maintaining its 
         memory location (Python id). Should return itself afterwards.

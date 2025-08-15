@@ -1,12 +1,12 @@
-PanCAD.geometry.line
+PanCAD.geometry.body
 ====================
 
-.. automodule:: PanCAD.geometry.line
+.. automodule:: PanCAD.geometry.body
 
    
    .. rubric:: Classes
 
    .. autosummary::
    
-      Line
+      Body
    

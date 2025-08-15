@@ -1,12 +1,12 @@
-PanCAD.geometry.point
+PanCAD.geometry.plane
 =====================
 
-.. automodule:: PanCAD.geometry.point
+.. automodule:: PanCAD.geometry.plane
 
    
    .. rubric:: Classes
 
    .. autosummary::
    
-      Point
+      Plane
    

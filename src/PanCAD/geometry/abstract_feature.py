@@ -14,9 +14,9 @@ class AbstractFeature(ABC):
     @property
     @abstractmethod
     def uid(self) -> str:
-        """The unique id of the geometry, usually used as its name."""
+        """The unique id of the feature, usually used as its name."""
     
     # Public Methods #
     @abstractmethod
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
-        """Returns a tuple of the feature's external dependencies"""
+        """Returns the feature's external dependencies."""
