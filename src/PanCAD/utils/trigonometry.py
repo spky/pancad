@@ -5,154 +5,90 @@ between formats.
 from functools import partial
 import math
 from math import degrees
-import json
+from numbers import Real
+from typing import Any
 
 import numpy as np
 from numpy.linalg import norm
 
-from PanCAD.utils import comparison
 from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.utils import comparison
 from PanCAD.utils.comparison import isclose
+from PanCAD.utils.pancad_types import VectorLike
 
-def point_2d(point: list[float | int]) -> np.ndarray:
-    """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
-    Can also be used to make 2x1 vectors. Will not do anything if it is 
-    passed a numpy array that is already 2 elements.
+def angle_mod(angle: Real) -> float:
+    """Returns the angle bounded from -2pi to +2pi since python's modulo 
+    operator by default always returns the divisor's sign, which is 
+    different than other programming languages like C and C++.
     
-    :param point: Coordinate list of format [x, y]
-    :returns: A 2x1 numpy representation
+    :param angle: The angle in radians.
+    :returns: The equivalent angle bounded between -2pi and +2pi.
     """
-    if isinstance(point, list):
-        point_length = len(point)
-        if point_length == 2:
-            return np.array([[point[0]],[point[1]]])
+    if angle >= 0:
+        return angle % (2*np.pi)
+    else:
+        return angle % (-2*np.pi)
+
+def get_unit_vector(vector: VectorLike) -> np.ndarray:
+    """Returns the unit vector of the given vector. If the vector is a zero 
+    vector, returns the zero vector.
+    """
+    if isinstance(vector, np.ndarray):
+        shape = vector.shape
+    else:
+        shape = (len(vector),)
+    vector = to_1D_np(vector)
+    length = np.linalg.norm(vector)
+    if is_geometry_vector(vector):
+        if length == 0:
+            unit_vector = vector
         else:
-            raise ValueError(f"Must be 2 elements long, given: {point_length}")
-    elif isinstance(point, np.ndarray):
-        if point.size == 2:
-            return point
-        else:
-            raise ValueError(f"Must be 2 long, given {point.size}")
+            unit_vector = vector / length
     else:
-        raise ValueError("Unrecognized instance type")
-
-def pt2list(point: np.ndarray) -> list:
-    """Returns a 2 element list from a 2x1 numpy array made of xy 
-    coordinates. Will not do anything if passed a list that is already 
-    just 2 elements.
+        raise ValueError("Unit vectors will only be found for 2 and 3 element"
+                         f" vectors. Vector '{vector}' has shape {shape}")
     
-    :param point: A 2x1 numpy array
-    :returns: A 2 element list
+    return unit_vector.reshape(shape)
+
+def is_iterable(value: Any) -> bool:
+    """Returns whether a value is iterable."""
+    return hasattr(value, "__iter__")
+
+def multi_rotation(permutation: str, *angles: Real) -> np.ndarray:
+    """Returns a rotation matrix of multiple rotations around the x, y, and z 
+    axes.
+    
+    :param permutation: An arbitrary length string of letters x, y, and z in the 
+        order the rotations should be performed.
+    :param angles: The rotation angle corresponding to the rotation at the same 
+        index in permutation. The number of angles must be the same as the 
+        number of permutations.
+    :returns: A rotation matrix to perform the series of rotations.
     """
-    if isinstance(point, list):
-        point_length = len(point)
-        if point_length == 2:
-            return point
-        else:
-            raise ValueError(f"Must be 2 long, given {point_length}")
-    elif isinstance(point, np.ndarray):
-        if point.size == 2:
-            return [float(point[0][0]), float(point[1][0])]
-        else:
-            raise ValueError(f"Must be 2 long, given {point.size}")
+    if len(angles) != len(permutation):
+        raise ValueError("Length of permutation must be the same as the number"
+                         f" of angles ({len(permutation)}!={len(angles)})")
     else:
-        raise ValueError("Unrecognized instance type")
+        rotation_funcs = {
+            "x": rotation_x,
+            "y": rotation_y,
+            "z": rotation_z,
+        }
+        permutation = permutation.casefold()
+        matrix = np.identity(3)
+        for angle, axis in zip(angles, list(permutation)):
+            matrix = matrix @ rotation_funcs[axis](angle)
+        return matrix
 
-def point_line_angle(point_a: np.ndarray, point_b: np.ndarray,
-                     decimals: int = 6, radians: bool = True):
-    """Returns the angle of the line created between two 2D [x, y] points.
-    
-    :param point_a: First point's x and y coordinates
-    :param point_b: Second point's x and y coordinates
-    :param decimals: The number of decimals to round to, defaults to 6
-    :param radians: Returns in radians if left true, degrees if false
-    :returns: The angle of the line between points a and b
-    """
-    difference = point_b - point_a
-    angle = math.atan2(difference[1][0], difference[0][0])
-    
-    if radians:
-        return round(angle, decimals)
-    else:
-        return math.degrees(angle)
-
-def three_point_angle(point_1: np.ndarray, point_2: np.ndarray,
-                      root_point: np.ndarray, decimals: int = 6) -> float:
-    """Returns the angle between the lines created by the root<->1 and root<->2.
-    
-    :param point_1: First point's coordinate
-    :param point_2: Second point's coordinate
-    :param root_point: The line intersection point
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The angle between the two lines in radians
-    """
-    u = point_1 - root_point
-    v = point_2 - root_point
-    return angle_between_vectors_2d(u, v, decimals)
-
-def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
-                             decimals: int = 6, radians: bool = True) -> float:
-    """Returns the angle between two 2d vectors represented as numpy 
-    arrays. WARNING: Degrees return option rounding hardcoded to 2 decimals.
-    
-    :param u: A 1-D 2x1 vector u
-    :param v: A 1-D 2x1 vector v
-    :param decimals: The number of decimals to round to, defaults to 6
-    :param radians: Determines return type degrees or radians, defaults radians
-    :returns: The angle between vectors a and b
-    """
-    u = u.reshape(2)
-    v = v.reshape(2)
-    normalized_dot = np.dot(u, v)/(np.linalg.norm(u)*np.linalg.norm(v))
-    
-    if (u[0]*v[1] - u[1]*v[0]) >= 0:
-        # A zero result is assumed to have an implicit positive sign
-        angle = math.acos(normalized_dot)
-    else:
-        angle = -math.acos(normalized_dot)
-    
-    if radians:
-        return round(angle, decimals)
-    else:
-        # WARNING: degrees hardcoded to 2 decimals
-        return round(math.degrees(angle), 2)
-
-def distance_2d(point_a: np.ndarray, point_b: np.ndarray,
-                decimals: int = 6) -> float:
-    """Returns the distance between two 2D [x, y] points.
-    
-    :param point_a: First point's x and y coordinates
-    :param point_b: Second point's x and y coordinates
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The distance between points a and b
-    """
-    x0 = point_a[0][0]
-    y0 = point_a[1][0]
-    x1 = point_b[0][0]
-    y1 = point_b[1][0]
-    distance = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
-    return round(distance, decimals)
-
-def round_array(array: np.ndarray, decimals: int) -> np.ndarray:
-    """Returns a numpy array with each element rounded to the 
-    specified number of decimals.
-    
-    :param array: The array to be rounded
-    :param decimals: The number of decimals to round to
-    :returns: The array with each element rounded to the number of decimals
-    """
-    rounder = lambda x: np.round(x, decimals)
-    return rounder(array)
-
-def rotation(angle: float, around: str|tuple[float,float,float]) -> np.ndarray:
+def rotation(angle: Real, around: str | tuple[Real, Real, Real]) -> np.ndarray:
     """Returns a rotation matrix that rotates around the given axis/vector by the 
     angle. Assumes a right-handed coordinate system.
     
-    :param angle: The counter-clockwise rotation angle in radians
+    :param angle: The counter-clockwise rotation angle in radians.
     :param around: The axis to rotate around. Options x, y, z, 2, and a 
-        tuple. 2 produces a 2D rotation matrix. If given tuple of 3 floats, the 
-        rotation matrix will be for rotating around that vector
-    :returns: A numpy rotation matrix
+        tuple. 2 produces a 2D rotation matrix. If given tuple of 3 Reals, the 
+        rotation matrix will be for rotating around that vector.
+    :returns: A numpy rotation matrix.
     """
     cost = math.cos(angle)
     sint = math.sin(angle)
@@ -199,49 +135,347 @@ rotation_x = partial(rotation, around="x")
 rotation_y = partial(rotation, around="y")
 rotation_z = partial(rotation, around="z")
 rotation_2 = partial(rotation, around="2")
-
-def multi_rotation(permutation: str, *angles: float):
-    if len(angles) != len(permutation):
-        raise ValueError("Length of permutation must be the same as the number"
-                         f" of angles ({len(permutation)}!={len(angles)})")
-    
-    rotation_funcs = {
-        "x": rotation_x,
-        "y": rotation_y,
-        "z": rotation_z,
-    }
-    permutation = permutation.casefold()
-    matrix = np.identity(3)
-    for angle, axis in zip(angles, list(permutation)):
-        matrix = matrix @ rotation_funcs[axis](angle)
-    return matrix
-
 # Special Case Multi-Rotations
 yaw_pitch_roll = partial(multi_rotation, "zyx")
 
+def positive_angle(angle: Real) -> float:
+    """Returns the positive representation of an angle in radians, bounded from 
+    0 to 2pi.
+    """
+    if angle >= 0:
+        return angle_mod(angle)
+    else:
+        return angle_mod(angle) + 2*np.pi
+
+def to_1D_tuple(value: VectorLike) -> tuple:
+    """Returns a 1D tuple from a given value."""
+    if isinstance(value, tuple) and not all(map(is_iterable, value)):
+        return value
+    elif isinstance(value, list) and not all(map(is_iterable, value)):
+        return tuple(value)
+    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
+        return tuple([float(coordinate.squeeze()) for coordinate in value])
+    else:
+        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
+                         + f"a 1D tuple")
+
+def to_1D_np(value: VectorLike) -> np.ndarray:
+    """Returns a 1D numpy array from a given value."""
+    if isinstance(value, tuple) and not all(map(is_iterable, value)):
+        return np.array(value)
+    elif isinstance(value, list) and not all(map(is_iterable, value)):
+        return np.array(value)
+    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
+        return value.squeeze()
+    else:
+        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
+                         "a 1D numpy.ndarray")
+
+def r_of_cartesian(cartesian: VectorLike) -> float:
+    """Returns the r component of a polar or spherical vector from a 
+    given cartesian vector.
+    
+    :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
+    :returns: The radius component of the equivalent polar/spherical vector.
+    """
+    if len(cartesian) in (2, 3):
+        return math.hypot(*cartesian)
+    else:
+        ValueError("Can only return r if the cartesian vector is 2 or 3"
+                   + f" elements long, given: {cartesian}")
+
+def phi_of_cartesian(cartesian: VectorLike) -> float:
+    """Returns the polar/spherical azimuth component of the equivalent 
+    polar/spherical vector in radians. Bounded from -pi to pi.
+    
+    :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
+    :returns: The azimuth component of the equivalent polar/spherical vector.
+    """
+    if cartesian[0] == 0 and cartesian[1] == 0:
+        return math.nan
+    else:
+        return math.atan2(cartesian[1], cartesian[0])
+
+def theta_of_cartesian(cartesian: VectorLike) -> float:
+    """Returns the spherical inclination component of the equivalent spherical 
+    vector in radians.
+    
+    :param cartesian: A 3D vector with cartesian components (x, y, z).
+    :returns: The inclination coordinate of the equivalent polar/spherical 
+        coordinate.
+    """
+    x, y, z = cartesian
+    if z == 0 and math.hypot(x, y) != 0:
+        return math.pi/2
+    elif x == y == z == 0:
+        return math.nan
+    elif z > 0:
+        return math.atan(math.hypot(x, y) / z)
+    elif z < 0:
+        return math.pi + math.atan(math.hypot(x, y) / z)
+    else:
+        raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
+
+def cartesian_to_polar(cartesian: VectorLike) -> tuple[float, float]:
+    """Returns the polar version of the given cartesian vector.
+    
+    :param cartesian: A 2D vector with cartesian components x and y.
+    :returns: An equivalent 2D vector with polar components r (radial distance) 
+              and phi (azimuth) in radians.
+    """
+    if len(cartesian) == 2:
+            return (r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
+    elif len(cartesian) == 3:
+        raise ValueError("The cartesian vector must be 2D to return a"
+                         + " polar coordinate, use cartesian_to_spherical"
+                         + " for 3D points")
+    else:
+        raise ValueError("Invalid cartesian vector, must be 2 long to return"
+                         + f" a polar coordinate, given: {cartesian}")
+
+def polar_to_cartesian(polar: VectorLike) -> tuple[float, float]:
+    """Returns the cartesian version of the given polar vector.
+    
+    :param polar: A 2D vector with polar components r (radial distance) and phi 
+        (azimuth angle) in radians.
+    :returns: An equivalent 2D vector with cartesian components x and y.
+    """
+    if len(polar) == 2:
+        r, phi = polar
+        if r == 0 and math.isnan(phi):
+            return (0, 0)
+        elif r < 0:
+            raise ValueError(f"r cannot be less than zero: {r}")
+        elif math.isnan(phi):
+            raise ValueError("phi cannot be NaN if r is non-zero")
+        else:
+            return (r * math.cos(phi), r * math.sin(phi))
+    else:
+        raise ValueError("Vector must be 2D to return a polar coordinate, "
+                         + "use spherical_to_cartesian for 3D points")
+
+def spherical_to_cartesian(spherical: VectorLike) -> tuple[float, float, float]:
+    """Returns the cartesian version of the given spherical vector.
+    
+    :param spherical: A 3D vector with spherical components r (radial distance), 
+        phi (azimuth in radians), and theta (inclination in radians).
+    :returns: An equivalent 3D vector with cartesian components x, y, and z.
+    """
+    if len(spherical) == 3:
+        r, phi, theta = spherical
+        if r == 0 and math.isnan(phi) and math.isnan(theta):
+            return (0, 0, 0)
+        elif r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
+            return (
+                r * math.sin(theta) * math.cos(phi),
+                r * math.sin(theta) * math.sin(phi),
+                r * math.cos(theta)
+            )
+        elif r > 0 and math.isnan(phi) and theta == 0:
+            return (0, 0, r)
+        elif r > 0 and math.isnan(phi) and theta == math.pi:
+            return (0, 0, -r)
+        elif r < 0:
+            raise ValueError(f"r cannot be less than zero: {r}")
+        elif not math.isnan(theta) and (not 0 <= theta <= math.pi):
+            raise ValueError(f"theta must be between 0 and pi, value: {theta}")
+        elif math.isnan(phi) and math.isnan(theta):
+            raise ValueError(f"r value {r} cannot be non-zero if phi and "
+                             + "theta are NaN.")
+        elif math.isnan(theta):
+            raise ValueError("Theta cannot be NaN if r is non-zero")
+        elif math.isnan(phi) and (theta != 0 or theta != math.pi):
+            raise ValueError("If phi is NaN, theta must be pi/2")
+    elif len(spherical) == 2:
+        raise ValueError("Vector must be 3D to set a spherical coordinate, "
+                         + "use polar_to_cartesian for 2D points")
+    else:
+        raise ValueError(f"Invalid tuple length {len(spherical)}, must be 3 to"
+                         + "return a spherical vector")
+
+def cartesian_to_spherical(cartesian: VectorLike) -> tuple[float, float, float]:
+    """Returns the spherical version of the given cartesian vector.
+    
+    :param cartesian: A 3D vector with cartesian components x, y, z.
+    :returns: A 3D vector with spherical components r (radial distance), phi 
+        (azimuth in radians), and theta (inclination in radians).
+    """
+    if len(cartesian) == 3:
+            return (r_of_cartesian(cartesian),
+                    phi_of_cartesian(cartesian),
+                    theta_of_cartesian(cartesian))
+    elif len(cartesian) == 2:
+        raise ValueError("The cartesian vector must be 3D to return a"
+                         + " spherical coordinate, use cartesian_to_polar"
+                         + " for 2D points")
+    else:
+        raise ValueError(f"Invalid cartesian vector, must be 3 long to return"
+                         + f" a polar coordinate, given: {cartesian}")
+
+def is_clockwise(vector1: VectorLike, vector2: VectorLike) -> bool:
+    """Returns whether 2D vector2 is clockwise of 2D vector1.
+    
+    :param vector1: A 2D vector with cartesian components.
+    :param vector2: Another 2D vector with cartesian components.
+    :returns: 'True' vector2 is clockwise of vector1, otherwise 'False'.
+    """
+    if len(vector1) == len(vector2) == 2:
+        x1, y1 = vector1
+        vector1_90_ccw = (-y1, x1)
+        return np.dot(vector1_90_ccw, vector2) < 0
+    else:
+        raise ValueError("Given vectors must both have 2 components")
+
+def get_vector_angle(vector1: VectorLike,
+                     vector2: VectorLike,
+                     *,
+                     opposite: bool=False,
+                     convention: AC=AC.PLUS_PI) -> float:
+    """Returns the angle between vector1 and vector2 based on the given angle 
+    convention.
+    
+    :param vector1: A vector with cartesian components.
+    :param vector2: Another vector with cartesian components.
+    :param opposite: Sets whether to return the supplement/explement of the angle 
+        between vector1 and vector2.
+    :param convention: The angle convention the output will follow. See 
+        PanCAD.constants.angle_convention.AngleConvention for available options.
+    :returns: The angle between vector1 and vector2.
+    """
+    dimensions = len(vector1)
+    if dimensions != len(vector2):
+        raise ValueError("Vectors must be the same length")
+    elif dimensions == 2:
+        match convention:
+            case AC.PLUS_PI | AC.PLUS_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, False)
+            case AC.SIGN_PI | AC.SIGN_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, True)
+            case AC.PLUS_TAU | AC.PLUS_360:
+                angle = _get_angle_between_2d_vectors_2pi(vector1, vector2,
+                                                          opposite)
+            case _:
+                raise ValueError(f"Convention {convention} not recognized")
+    elif dimensions == 3:
+        angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
+    
+    if convention in (AC.PLUS_180, AC.PLUS_360, AC.SIGN_180):
+        return degrees(angle)
+    else:
+        return angle
+
+def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
+                                      vector2: VectorLike,
+                                      explementary: bool=False) -> float:
+    """Returns the counter-clockwise angle between vector1 and vector2 in radians 
+    bounded between 0 and 2*pi. Returns the clockwise angle if explementary is 
+    set to True.
+    
+    :param vector1: A 2D vector with cartesian components.
+    :param vector2: Another 2D vector with cartesian components.
+    :param explementary: Sets whether to return the explement of the angle 
+        between vector1 and vector2.
+    :returns: The angle between vector1 and vector2.
+    """
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
+    
+    if is_clockwise(vector1, vector2):
+        angle = math.tau - angle
+    
+    if explementary:
+        return math.tau - angle
+    else:
+        return angle
+
+def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
+                                     vector2: VectorLike,
+                                     supplementary: bool=False,
+                                     signed: bool=False) -> float:
+    """Returns the angle between vector1 and vector2 in radians between 0 and 
+    pi.
+    
+    :param vector1: A 2D vector with cartesian components.
+    :param vector2: Another 2D vector with cartesian components.
+    :param supplementary: Sets whether to return the supplement of the angle 
+        between vector1 and vector2.
+    :param signed: Sets whether to return a negative angle if the angle is 
+        oriented clockwise.
+    :returns: The angle between vector1 and vector2.
+    """
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
+    
+    if supplementary:
+        angle = math.pi - angle
+    
+    if signed and (is_clockwise(vector1, vector2) ^ supplementary):
+        return -angle
+    else:
+        return angle
+
+def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
+                                     vector2: VectorLike,
+                                     supplementary: bool=False) -> float:
+    """Returns the angle between vector1 and vector2 in radians between 0 and 
+    pi.
+    
+    :param vector1: A 3D vector with cartesian components.
+    :param vector2: Another 3D vector with cartesian components.
+    :param supplementary: Sets whether to return the supplement of the angle 
+        between vector1 and vector2.
+    :returns: The angle between vector1 and vector2.
+    """
+    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
+    if isclose(abs(unit_dot), 1):
+        angle = math.acos(round(unit_dot))
+    else:
+        angle = math.acos(unit_dot)
+    
+    if supplementary:
+        return math.pi - angle
+    else:
+        return angle
+
+################################################################################
+# Deprecated Functions Below This Point!
+################################################################################
+
+# TODO: From before General Geometry, Remove
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     """Returns the midpoint between two points as a 2x1 numpy array.
     
-    :param point_1: The first point as an [x, y] numpy array
-    :param point_2: The second point as an [x, y] numpy array
-    :returns: The midpoint between points 1 and 2
+    :param point_1: The first point as an [x, y] numpy array.
+    :param point_2: The second point as an [x, y] numpy array.
+    :returns: The midpoint between points 1 and 2.
     """
     return (point_1 + point_2)/2
 
+# TODO: Rewrite to work with Point, keep for new Ellipse class
 def ellipse_point(center_point: np.ndarray,
-                  major_radius: float, minor_radius: float,
-                  major_axis_angle: float, angle: float,
-                  decimals: int = 6) -> np.ndarray:
+                  major_radius: Real,
+                  minor_radius: Real,
+                  major_axis_angle: Real,
+                  angle: Real,
+                  decimals: int=6) -> np.ndarray:
     """Returns the point at the specified angle centered at the ellipse 
     center and wrt the x-axis on the given ellipse.
     
-    :param center_point: The center point of the ellipse
-    :param major_radius: The major axis radius of the ellipse
-    :param minor_radius: The minor axis radius of the ellipse
-    :param major_axis_angle: The ellipse's major axis angle wrt the 
-                             x-axis in radians
-    :param angle: The angle that the desired point is at on the 
-                  ellipse in radians
+    :param center_point: The center point of the ellipse.
+    :param major_radius: The major axis radius of the ellipse.
+    :param minor_radius: The minor axis radius of the ellipse.
+    :param major_axis_angle: The ellipse's major axis angle wrt the x-axis in 
+        radians.
+    :param angle: The angle that the desired point is at on the ellipse in 
+        radians
     :param decimals: The number of decimals to round to, defaults to 6
     :returns: The coordinate of the ellipse point
     """
@@ -258,8 +492,11 @@ def ellipse_point(center_point: np.ndarray,
     ellipse_pt = major_axis_rotation @ unrotated_ellipse_pt + center_point
     return round_array(ellipse_pt, decimals)
 
-def circle_point(center_point: np.ndarray, radius: float, angle: float,
-                 decimals: int = 6) -> np.ndarray:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def circle_point(center_point: np.ndarray,
+                 radius: Real,
+                 angle: Real,
+                 decimals: int=6) -> np.ndarray:
     """Returns the point at the specified angle centered at the 
     circle center and wrt the x-axis on the given circle.
     
@@ -272,12 +509,16 @@ def circle_point(center_point: np.ndarray, radius: float, angle: float,
     """
     return ellipse_point(center_point, radius, radius, 0, angle, decimals)
 
-def elliptical_arc_endpoint_to_center(
-        start: np.ndarray, end: np.ndarray,
-        large_arc_flag: bool, sweep_flag: bool,
-        major_radius: float, minor_radius: float, major_axis_angle: float,
-        decimals: int = 6
-    ) -> list[np.ndarray, float, float]:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def elliptical_arc_endpoint_to_center(start: np.ndarray,
+                                      end: np.ndarray,
+                                      large_arc_flag: bool,
+                                      sweep_flag: bool,
+                                      major_radius: Real,
+                                      minor_radius: Real,
+                                      major_axis_angle: Real,
+                                      decimals: int=6
+                                      ) -> list[np.ndarray, float, float]:
     """Returns the center coordinate and angles [cx, cy, theta_1, 
     delta_theta] of an arc. Method based on  of section F.6.5 of the 
     SVG 1.1 specification. Keep in mind that SVGs are effectively 
@@ -341,11 +582,14 @@ def elliptical_arc_endpoint_to_center(
             round(theta_1, decimals),
             round(delta_theta, decimals)]
 
-def circle_arc_endpoint_to_center(
-        point_1: np.ndarray, point_2: np.ndarray,
-        large_arc_flag: bool, sweep_flag: bool, radius: float,
-        decimals: int = 6
-    ) -> list[np.ndarray, float, float]:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def circle_arc_endpoint_to_center(point_1: np.ndarray,
+                                  point_2: np.ndarray,
+                                  large_arc_flag: bool,
+                                  sweep_flag: bool,
+                                  radius: Real,
+                                  decimals: int = 6
+                                  ) -> list[np.ndarray, float, float]:
     """Returns the center coordinate and angles [cx, cy, theta_1, 
     delta_theta] of an arc. Uses the elliptical_arc_endpoint_to_center 
     function with the inputs set for a circle.
@@ -365,11 +609,14 @@ def circle_arc_endpoint_to_center(
                                              large_arc_flag, sweep_flag,
                                              radius, radius, 0, decimals)
 
-def elliptical_arc_center_to_endpoint(
-        center_point: np.ndarray, major_radius: float, minor_radius: float,
-        major_axis_angle: float, point_1_angle: float, sweep_angle: float,
-        decimals: int = 6
-    ) -> list:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def elliptical_arc_center_to_endpoint(center_point: np.ndarray,
+                                      major_radius: Real,
+                                      minor_radius: Real,
+                                      major_axis_angle: Real,
+                                      point_1_angle: Real,
+                                      sweep_angle: Real,
+                                      decimals: int=6) -> list:
     """Returns a list of arc end points and flag values. Method based 
     on section F.6.4 of the SVG 1.1 specification. The SVG 1.1 
     equation F.6.4.1 is incorrect (or at least unclear) since they 
@@ -399,11 +646,12 @@ def elliptical_arc_center_to_endpoint(
     fs = True if sweep_angle > 0 else False
     return [pt1, pt2, fa, fs]
 
-def circle_arc_center_to_endpoint(
-        center_point: np.ndarray, radius: float,
-        point_1_angle: float, sweep_angle: float,
-        decimals: int = 6
-    ) -> list:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def circle_arc_center_to_endpoint(center_point: np.ndarray,
+                                  radius: Real,
+                                  point_1_angle: Real,
+                                  sweep_angle: Real,
+                                  decimals: int=6) -> list:
     """Returns a list of arc end points and flag values. Uses the 
     elliptical_arc_center_to_endpoint function with the inputs set 
     for a circle.
@@ -423,6 +671,7 @@ def circle_arc_center_to_endpoint(
         point_1_angle, sweep_angle, decimals
     )
 
+# TODO: From before General Geometry, Remove
 def line_fit_box(start: np.ndarray,
                  end: np.ndarray) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the line would 
@@ -439,8 +688,9 @@ def line_fit_box(start: np.ndarray,
     max_y = max(start[1][0], end[1][0])
     return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
 
+# TODO: From before General Geometry, Add to Circle and then Remove
 def circle_fit_box(center_point: np.ndarray,
-                   radius: float) -> list[np.ndarray, np.ndarray]:
+                   radius: Real) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the circle would fit into.
     Useful for sizing graphics.
     
@@ -459,10 +709,11 @@ def circle_fit_box(center_point: np.ndarray,
     max_y = max(v[0][1], v[1][1], v[2][1], v[3][1])
     return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
 
-def ellipse_fit_box(
-        center_point: np.ndarray, major_radius: float, minor_radius: float,
-        major_axis_angle: float
-    ) -> list[np.ndarray, np.ndarray]:
+# TODO: Rewrite to work with Point, keep for new Ellipse class
+def ellipse_fit_box(center_point: np.ndarray,
+                    major_radius: Real,
+                    minor_radius: Real,
+                    major_axis_angle: Real) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the ellipse would fit into. 
     Useful for sizing graphics.
     
@@ -491,34 +742,13 @@ def ellipse_fit_box(
     max_y = max(v[0][1], v[1][1], v[2][1], v[3][1])
     return [point_2d([min_x, min_y]), point_2d([max_x, max_y])]
 
-def angle_mod(angle: float) -> float:
-    """Returns the angle bounded from -2pi to +2pi since python's modulo 
-    operator by default always returns the divisor's sign, which is 
-    different than other programming languages like C and C++.
-    
-    :param angle: The angle in radians
-    :returns: The equivalent angle bounded between -2pi and +2pi
-    """
-    if angle >= 0:
-        return angle % (2*np.pi)
-    else:
-        return angle % (-2*np.pi)
-
-def positive_angle(angle: float) -> float:
-    """Returns the positive representation of an angle
-    
-    :param angle: The angle in radians
-    :returns: The angle bounded from 0 to 2pi
-    """
-    if angle >= 0:
-        return angle_mod(angle)
-    else:
-        return angle_mod(angle) + 2*np.pi
-
-def elliptical_arc_fit_box(
-        center_point: np.ndarray, major_radius: float, minor_radius: float,
-        major_axis_angle: float, point_1_angle: float, sweep_angle: float
-    ) -> list[np.ndarray, np.ndarray]:
+# TODO: Rewrite to work with Point, keep for new Elliptical Arc class
+def elliptical_arc_fit_box(center_point: np.ndarray,
+                           major_radius: Real,
+                           minor_radius: Real,
+                           major_axis_angle: Real,
+                           point_1_angle: Real,
+                           sweep_angle: Real) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the elliptical arc 
     would fit into. Useful for sizing graphics.
     
@@ -584,10 +814,11 @@ def elliptical_arc_fit_box(
     return [point_2d([min(x_extremes), min(y_extremes)]),
             point_2d([max(x_extremes), max(y_extremes)])]
 
-def circle_arc_fit_box(
-        center_point: np.ndarray, radius: float,
-        point_1_angle: float, sweep_angle: float
-    ) -> list[np.ndarray, np.ndarray]:
+# TODO: Rewrite to work with Point, keep for new Circular Arc class
+def circle_arc_fit_box(center_point: np.ndarray,
+                       radius: Real,
+                       point_1_angle: Real,
+                       sweep_angle: Real) -> list[np.ndarray, np.ndarray]:
     """Returns the corners of the smallest box that the circular arc 
     would fit into. Used for sizing graphics. Uses the elliptical_arc_fit_box 
     function with its inputs set up for a circle.
@@ -607,9 +838,9 @@ def circle_arc_fit_box(
         major_axis_angle, point_1_angle, sweep_angle
     )
 
-def multi_fit_box(
-        geometry: list[dict]
-    ) -> list[list[float, float] , list[float, float]]:
+# TODO: Rewrite to work with Point, keep for SVG specific class
+def multi_fit_box(geometry: list[dict]) -> list[list[Real, Real],
+                                                list[Real, Real]]:
     """Returns the corners of the smallest box that fits all the geometry 
     in the given list. Used for sizing graphics. Does not return numpy 
     arrays, unlike the rest of trigonometry since this is intended to 
@@ -670,6 +901,7 @@ def multi_fit_box(
     return [[min(x_values), min(y_values)],
             [max(x_values), max(y_values)]]
 
+# TODO: From before General Geometry, Remove
 def is_geometry_vector(vector: np.ndarray) -> bool:
     """Returns whether the NumPy vector is a valid 2D or 3D vector
     
@@ -681,338 +913,146 @@ def is_geometry_vector(vector: np.ndarray) -> bool:
     else:
         return False
 
-def is_iterable(value) -> bool:
-    """Returns whether a value is iterable.
-    
-    :param value: Any value in Python
-    :returns: Whether the value is iterable.
-    """
-    return hasattr(value, "__iter__")
 
-def to_1D_tuple(value: list | tuple | np.ndarray) -> tuple:
-    """Returns a 1D tuple from a given value, if possible. Usually used to 
-    prepare vector-like data for further processing.
-    
-    :param value: A datatype that needs to be converted to a 1D tuple.
-    :returns: A 1D tuple of minimum length to represent the value
-    """
-    if isinstance(value, tuple) and not all(map(is_iterable, value)):
-        return value
-    elif isinstance(value, list) and not all(map(is_iterable, value)):
-        return tuple(value)
-    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
-        return tuple([float(coordinate.squeeze()) for coordinate in value])
-    else:
-        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
-                         + f"a 1D tuple")
 
-def to_1D_np(value: list | tuple | np.ndarray) -> tuple:
-    """Returns a 1D numpy array from a given value, if possible. Usually used to 
-    prepare vector-like data for further processing.
-    
-    :param value: A datatype that needs to be converted to a 1D numpy array.
-    :returns: A 1D numpy of minimum length to represent the value
-    """
-    if isinstance(value, tuple) and not all(map(is_iterable, value)):
-        return np.array(value)
-    elif isinstance(value, list) and not all(map(is_iterable, value)):
-        return np.array(value)
-    elif isinstance(value, np.ndarray) and is_geometry_vector(value):
-        return value.squeeze()
-    else:
-        raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
-                         f"a 1D numpy.ndarray")
 
-def get_unit_vector(vector: list | tuple | np.ndarray) -> np.ndarray:
-    """Returns the unit vector of the given vector. If the vector is a zero 
-    vector, returns the zero vector.
+# TODO: From before General Geometry, Remove
+def point_2d(point: list[Real]) -> np.ndarray:
+    """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
+    Can also be used to make 2x1 vectors. Will not do anything if it is 
+    passed a numpy array that is already 2 elements.
     
-    :param vector: A 1D vector
-    :returns: A 1D numpy array with a length of 1 in the same direction as 
-        vector
+    :param point: Coordinate list of format [x, y]
+    :returns: A 2x1 numpy representation
     """
-    if isinstance(vector, np.ndarray):
-        shape = vector.shape
-    else:
-        shape = (len(vector),)
-    vector = to_1D_np(vector)
-    length = np.linalg.norm(vector)
-    if is_geometry_vector(vector):
-        if length == 0:
-            unit_vector = vector
+    if isinstance(point, list):
+        point_length = len(point)
+        if point_length == 2:
+            return np.array([[point[0]],[point[1]]])
         else:
-            unit_vector = vector / length
-    else:
-        raise ValueError("Unit vectors will only be found for 2 and 3 element"
-                         f" vectors. Vector '{vector}' has shape {shape}")
-    
-    return unit_vector.reshape(shape)
-
-def r_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
-    """Returns the r component of a polar or spherical vector from a 
-    given cartesian vector.
-    
-    :param cartesian: A 2D or 3D vector with cartesian components (x, y, z)
-    :returns: The radius component of the equivalent polar/spherical vector
-    """
-    if len(cartesian) in (2, 3):
-        return math.hypot(*cartesian)
-    else:
-        ValueError("Can only return r if the cartesian vector is 2 or 3"
-                   + f" elements long, given: {cartesian}")
-
-def phi_of_cartesian(cartesian: list | tuple | np.ndarray) -> float:
-    """Returns the polar/spherical azimuth component of the equivalent 
-    polar/spherical vector in radians. Bounded from -pi to pi.
-    
-    :param cartesian: A 3D vector with cartesian components x, y, z
-    :returns: The azimuth component of the equivalent polar/spherical vector
-    """
-    if cartesian[0] == 0 and cartesian[1] == 0:
-        return math.nan
-    else:
-        return math.atan2(cartesian[1], cartesian[0])
-
-def theta_of_cartesian(cartesian: list | tuple |np.ndarray) -> float:
-    """Returns the spherical inclination component of the equivalent spherical 
-    vector in radians.
-    
-    :param cartesian: A 3D vector with cartesian components x, y, z
-    :returns: The inclination coordinate of the equivalent polar/spherical 
-              coordinate
-    """
-    x, y, z = cartesian
-    if z == 0 and math.hypot(x, y) != 0:
-        return math.pi/2
-    elif x == y == z == 0:
-        return math.nan
-    elif z > 0:
-        return math.atan(math.hypot(x, y) / z)
-    elif z < 0:
-        return math.pi + math.atan(math.hypot(x, y) / z)
-    else:
-        raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
-
-def cartesian_to_polar(cartesian: list|tuple|np.ndarray) -> tuple[float, float]:
-    """Returns the polar version of the given cartesian vector.
-    
-    :param cartesian: A 2D vector with cartesian components x and y
-    :returns: An equivalent 2D vector with polar components r (radial distance) 
-              and phi (azimuth) in radians
-    """
-    if len(cartesian) == 2:
-            return (r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
-    elif len(cartesian) == 3:
-        raise ValueError("The cartesian vector must be 2D to return a"
-                         + " polar coordinate, use cartesian_to_spherical"
-                         + " for 3D points")
-    else:
-        raise ValueError(f"Invalid cartesian vector, must be 2 long to return"
-                         + f" a polar coordinate, given: {cartesian}")
-
-def polar_to_cartesian(polar: list|tuple|np.ndarray) -> tuple[float, float]:
-    """Returns the cartesian version of the given polar vector.
-    
-    :param polar: A 2D vector with polar components r (radial distance) and phi 
-                  (azimuth) in radians
-    :returns: An equivalent 2D vector with cartesian components x and y
-    """
-    if len(polar) == 2:
-        r, phi = polar
-        if r == 0 and math.isnan(phi):
-            return (0, 0)
-        elif r < 0:
-            raise ValueError(f"r cannot be less than zero: {r}")
-        elif math.isnan(phi):
-            raise ValueError("phi cannot be NaN if r is non-zero")
+            raise ValueError(f"Must be 2 elements long, given: {point_length}")
+    elif isinstance(point, np.ndarray):
+        if point.size == 2:
+            return point
         else:
-            return (r * math.cos(phi), r * math.sin(phi))
+            raise ValueError(f"Must be 2 long, given {point.size}")
     else:
-        raise ValueError("Vector must be 2D to return a polar coordinate, "
-                         + "use spherical_to_cartesian for 3D points")
+        raise ValueError("Unrecognized instance type")
 
-def spherical_to_cartesian(
-            spherical: list|tuple|np.ndarray
-        ) -> tuple[float, float, float]:
-    """Returns the cartesian version of the given spherical vector.
+# TODO: From before General Geometry, Remove
+def pt2list(point: np.ndarray) -> list:
+    """Returns a 2 element list from a 2x1 numpy array made of xy 
+    coordinates. Will not do anything if passed a list that is already 
+    just 2 elements.
     
-    :param spherical: A 3D vector with spherical components r (radial distance), 
-                      phi (azimuth angle in radians), and theta (inclination 
-                      angle in radians)
-    :returns: An equivalent 3D vector with cartesian components x, y, and z
+    :param point: A 2x1 numpy array
+    :returns: A 2 element list
     """
-    if len(spherical) == 3:
-        r, phi, theta = spherical
-        if r == 0 and math.isnan(phi) and math.isnan(theta):
-            return (0, 0, 0)
-        elif r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
-            return (
-                r * math.sin(theta) * math.cos(phi),
-                r * math.sin(theta) * math.sin(phi),
-                r * math.cos(theta)
-            )
-        elif r > 0 and math.isnan(phi) and theta == 0:
-            return (0, 0, r)
-        elif r > 0 and math.isnan(phi) and theta == math.pi:
-            return (0, 0, -r)
-        elif r < 0:
-            raise ValueError(f"r cannot be less than zero: {r}")
-        elif not math.isnan(theta) and (not 0 <= theta <= math.pi):
-            raise ValueError(f"theta must be between 0 and pi, value: {theta}")
-        elif math.isnan(phi) and math.isnan(theta):
-            raise ValueError(f"r value {r} cannot be non-zero if phi and "
-                             + "theta are NaN.")
-        elif math.isnan(theta):
-            raise ValueError("Theta cannot be NaN if r is non-zero")
-        elif math.isnan(phi) and (theta != 0 or theta != math.pi):
-            raise ValueError("If phi is NaN, theta must be pi/2")
-    elif len(spherical) == 2:
-        raise ValueError("Vector must be 3D to set a spherical coordinate, "
-                         + "use polar_to_cartesian for 2D points")
+    if isinstance(point, list):
+        point_length = len(point)
+        if point_length == 2:
+            return point
+        else:
+            raise ValueError(f"Must be 2 long, given {point_length}")
+    elif isinstance(point, np.ndarray):
+        if point.size == 2:
+            return [float(point[0][0]), float(point[1][0])]
+        else:
+            raise ValueError(f"Must be 2 long, given {point.size}")
     else:
-        raise ValueError(f"Invalid tuple length {len(spherical)}, must be 3 to"
-                         + "return a spherical vector")
+        raise ValueError("Unrecognized instance type")
 
-def cartesian_to_spherical(cartesian: list|tuple|np.ndarray
-                           ) -> tuple[float, float, float]:
-    """Returns the spherical version of the given cartesian vector.
+# TODO: From before General Geometry, Remove
+def point_line_angle(point_a: np.ndarray,
+                     point_b: np.ndarray,
+                     decimals: int=6,
+                     radians: bool=True):
+    """Returns the angle of the line created between two 2D [x, y] points.
     
-    :param cartesian: A 3D vector with cartesian components x, y, z
-    :returns: A 3D vector with spherical components r (radial distance), phi 
-              (azimuth angle in radians), and theta (inclination angle in radians)
+    :param point_a: First point's x and y coordinates
+    :param point_b: Second point's x and y coordinates
+    :param decimals: The number of decimals to round to, defaults to 6
+    :param radians: Returns in radians if left true, degrees if false
+    :returns: The angle of the line between points a and b
     """
-    if len(cartesian) == 3:
-            return (r_of_cartesian(cartesian),
-                    phi_of_cartesian(cartesian),
-                    theta_of_cartesian(cartesian))
-    elif len(cartesian) == 2:
-        raise ValueError("The cartesian vector must be 3D to return a"
-                         + " spherical coordinate, use cartesian_to_polar"
-                         + " for 2D points")
-    else:
-        raise ValueError(f"Invalid cartesian vector, must be 3 long to return"
-                         + f" a polar coordinate, given: {cartesian}")
-
-def is_clockwise(vector1: list|tuple|np.ndarray,
-                 vector2: list|tuple|np.ndarray) -> bool:
-    """Returns whether vector2 is clockwise of vector1.
+    difference = point_b - point_a
+    angle = math.atan2(difference[1][0], difference[0][0])
     
-    :param vector1: A vector with cartesian components
-    :param vector2: Another vector with the same number of cartesian components 
-        as vector1
-    :returns: Whether vector2 is clockwise of vector1
+    if radians:
+        return round(angle, decimals)
+    else:
+        return math.degrees(angle)
+
+# TODO: From before General Geometry, Remove
+def three_point_angle(point_1: np.ndarray,
+                      point_2: np.ndarray,
+                      root_point: np.ndarray,
+                      decimals: int=6) -> float:
+    """Returns the angle between the lines created by the root<->1 and root<->2.
+    
+    :param point_1: First point's coordinate
+    :param point_2: Second point's coordinate
+    :param root_point: The line intersection point
+    :param decimals: The number of decimals to round to, defaults to 6
+    :returns: The angle between the two lines in radians
     """
-    if len(vector1) == len(vector2) == 2:
-        x1, y1 = vector1
-        vector1_90_ccw = (-y1, x1)
-        return np.dot(vector1_90_ccw, vector2) < 0
-    else:
-        raise ValueError("Given vectors must both have 2 components")
+    u = point_1 - root_point
+    v = point_2 - root_point
+    return angle_between_vectors_2d(u, v, decimals)
 
-def get_vector_angle(vector1: list|tuple|np.ndarray,
-                     vector2: list|tuple|np.ndarray, *,
-                     opposite: bool=False, convention: AC=AC.PLUS_PI) -> float:
-    """Returns the angle between vector1 and vector2 based on the given angle 
-    convention.
+# TODO: From before General Geometry, Remove
+def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
+                             decimals: int=6, radians: bool=True) -> float:
+    """Returns the angle between two 2d vectors represented as numpy 
+    arrays. WARNING: Degrees return option rounding hardcoded to 2 decimals.
     
-    :param vector1: A vector with cartesian components
-    :param vector2: Another vector with cartesian components
-    :param opposite: Sets whether to return the supplement/explement of the angle 
-        between vector1 and vector2.
-    :param convention: The angle convention the output will follow. See 
-        PanCAD.constants.angle_convention.AngleConvention for available options.
-    :returns: The angle between vector1 and vector2
+    :param u: A 1-D 2x1 vector u
+    :param v: A 1-D 2x1 vector v
+    :param decimals: The number of decimals to round to, defaults to 6
+    :param radians: Determines return type degrees or radians, defaults radians
+    :returns: The angle between vectors a and b
     """
-    dimensions = len(vector1)
-    if dimensions != len(vector2):
-        raise ValueError("Vectors must be the same length")
-    elif dimensions == 2:
-        match convention:
-            case AC.PLUS_PI | AC.PLUS_180:
-                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
-                                                         opposite, False)
-            case AC.SIGN_PI | AC.SIGN_180:
-                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
-                                                         opposite, True)
-            case AC.PLUS_TAU | AC.PLUS_360:
-                angle = _get_angle_between_2d_vectors_2pi(vector1, vector2,
-                                                          opposite)
-            case _:
-                raise ValueError(f"Convention {convention} not recognized")
-    elif dimensions == 3:
-        angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
+    u = u.reshape(2)
+    v = v.reshape(2)
+    normalized_dot = np.dot(u, v)/(np.linalg.norm(u)*np.linalg.norm(v))
     
-    if convention in (AC.PLUS_180, AC.PLUS_360, AC.SIGN_180):
-        return degrees(angle)
+    if (u[0]*v[1] - u[1]*v[0]) >= 0:
+        # A zero result is assumed to have an implicit positive sign
+        angle = math.acos(normalized_dot)
     else:
-        return angle
-
-def _get_angle_between_2d_vectors_2pi(vector1: list|tuple|np.ndarray,
-                                      vector2: list|tuple|np.ndarray,
-                                      explementary: bool=False) -> float:
-    """Returns the counter-clockwise angle between vector1 and vector2 in radians 
-    bounded between 0 and 2*pi. Returns the clockwise angle if explementary is 
-    set to True.
+        angle = -math.acos(normalized_dot)
     
-    :param vector1: A 2D vector with cartesian components
-    :param vector2: Another 2D vector with cartesian components
-    :param explementary: Sets whether to return the explement of the angle 
-        between vector1 and vector2
-    :returns: The angle between vector1 and vector2
+    if radians:
+        return round(angle, decimals)
+    else:
+        # WARNING: degrees hardcoded to 2 decimals
+        return round(math.degrees(angle), 2)
+
+# TODO: From before General Geometry, Remove
+def distance_2d(point_a: np.ndarray, point_b: np.ndarray,
+                decimals: int = 6) -> float:
+    """Returns the distance between two 2D [x, y] points.
+    
+    :param point_a: First point's x and y coordinates
+    :param point_b: Second point's x and y coordinates
+    :param decimals: The number of decimals to round to, defaults to 6
+    :returns: The distance between points a and b
     """
-    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
-        angle = math.acos(round(unit_dot))
-    else:
-        angle = math.acos(unit_dot)
-    
-    if is_clockwise(vector1, vector2):
-        angle = math.tau - angle
-    
-    if explementary:
-        return math.tau - angle
-    else:
-        return angle
+    x0 = point_a[0][0]
+    y0 = point_a[1][0]
+    x1 = point_b[0][0]
+    y1 = point_b[1][0]
+    distance = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)
+    return round(distance, decimals)
 
-def _get_angle_between_2d_vectors_pi(vector1: list|tuple|np.ndarray,
-                                     vector2: list|tuple|np.ndarray,
-                                     supplementary: bool=False,
-                                     signed: bool=False) -> float:
-    """Returns the angle between vector1 and vector2 in radians between 0 and 
-    pi.
+# TODO: From before General Geometry, Remove
+def round_array(array: np.ndarray, decimals: int) -> np.ndarray:
+    """Returns a numpy array with each element rounded to the 
+    specified number of decimals.
     
-    :param vector1: A 2D vector with cartesian components
-    :param vector2: Another 2D vector with cartesian components
-    :param supplementary: Sets whether to return the supplement of the angle 
-        between vector1 and vector2
-    :param signed: Sets whether to return a negative angle if the angle is 
-        oriented clockwise
-    :returns: The angle between vector1 and vector2
+    :param array: The array to be rounded
+    :param decimals: The number of decimals to round to
+    :returns: The array with each element rounded to the number of decimals
     """
-    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
-        angle = math.acos(round(unit_dot))
-    else:
-        angle = math.acos(unit_dot)
-    
-    if supplementary:
-        angle = math.pi - angle
-    
-    if signed and (is_clockwise(vector1, vector2) ^ supplementary):
-        return -angle
-    else:
-        return angle
-
-def _get_angle_between_3d_vectors_pi(vector1: list|tuple|np.ndarray,
-                                     vector2: list|tuple|np.ndarray,
-                                     supplementary: bool=False) -> float:
-    unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
-        angle = math.acos(round(unit_dot))
-    else:
-        angle = math.acos(unit_dot)
-    
-    if supplementary:
-        return math.pi - angle
-    else:
-        return angle
+    rounder = lambda x: np.round(x, decimals)
+    return rounder(array)
