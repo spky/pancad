@@ -11,13 +11,13 @@ from typing import Any
 import numpy as np
 from numpy.linalg import norm
 
-from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.constants import AngleConvention
 from PanCAD.utils import comparison
 from PanCAD.utils.comparison import isclose
 from PanCAD.utils.pancad_types import VectorLike
 
 def angle_mod(angle: Real) -> float:
-    """Returns the angle bounded from -2pi to +2pi since python's modulo 
+    """Returns the angle bounded from -2π to +2π since python's modulo 
     operator by default always returns the divisor's sign, which is 
     different than other programming languages like C and C++.
     
@@ -50,6 +50,64 @@ def get_unit_vector(vector: VectorLike) -> np.ndarray:
     
     return unit_vector.reshape(shape)
 
+def get_vector_angle(vector1: VectorLike,
+                     vector2: VectorLike,
+                     *,
+                     opposite: bool=False,
+                     convention: AngleConvention=AngleConvention.PLUS_PI
+                     ) -> float:
+    """Returns the angle between vector1 and vector2 based on the given angle 
+    convention.
+    
+    :param vector1: A vector with cartesian components.
+    :param vector2: Another vector with cartesian components.
+    :param opposite: Sets whether to return the supplement/explement of the angle 
+        between vector1 and vector2.
+    :param convention: The angle convention the output will follow. See 
+        :class:`~PanCAD.constants.AngleConvention` for 
+        available options.
+    :returns: The angle between vector1 and vector2.
+    """
+    dimensions = len(vector1)
+    if dimensions != len(vector2):
+        raise ValueError("Vectors must be the same length")
+    elif dimensions == 2:
+        match convention:
+            case AngleConvention.PLUS_PI | AngleConvention.PLUS_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, False)
+            case AngleConvention.SIGN_PI | AngleConvention.SIGN_180:
+                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
+                                                         opposite, True)
+            case AngleConvention.PLUS_TAU | AngleConvention.PLUS_360:
+                angle = _get_angle_between_2d_vectors_2pi(vector1, vector2,
+                                                          opposite)
+            case _:
+                raise ValueError(f"Convention {convention} not recognized")
+    elif dimensions == 3:
+        angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
+    
+    if convention in (AngleConvention.PLUS_180,
+                      AngleConvention.PLUS_360,
+                      AngleConvention.SIGN_180):
+        return degrees(angle)
+    else:
+        return angle
+
+def is_clockwise(vector1: VectorLike, vector2: VectorLike) -> bool:
+    """Returns whether 2D vector2 is clockwise of 2D vector1.
+    
+    :param vector1: A 2D vector with cartesian components.
+    :param vector2: Another 2D vector with cartesian components.
+    :returns: 'True' if vector2 is clockwise of vector1, otherwise 'False'.
+    """
+    if len(vector1) == len(vector2) == 2:
+        x1, y1 = vector1
+        vector1_90_ccw = (-y1, x1)
+        return np.dot(vector1_90_ccw, vector2) < 0
+    else:
+        raise ValueError("Given vectors must both have 2 components")
+
 def is_iterable(value: Any) -> bool:
     """Returns whether a value is iterable."""
     return hasattr(value, "__iter__")
@@ -59,7 +117,7 @@ def multi_rotation(permutation: str, *angles: Real) -> np.ndarray:
     axes.
     
     :param permutation: An arbitrary length string of letters x, y, and z in the 
-        order the rotations should be performed.
+        order the rotations should be performed. Example: 'xyzzyx'.
     :param angles: The rotation angle corresponding to the rotation at the same 
         index in permutation. The number of angles must be the same as the 
         number of permutations.
@@ -132,15 +190,30 @@ def rotation(angle: Real, around: str | tuple[Real, Real, Real]) -> np.ndarray:
 
 # Special Case Rotation Matrices
 rotation_x = partial(rotation, around="x")
+"""Returns a rotation matrix for rotation about the x axis. Requires only 1 
+angle argument.
+"""
 rotation_y = partial(rotation, around="y")
+"""Returns a rotation matrix for rotation about the y axis. Requires only 1 
+angle.
+"""
 rotation_z = partial(rotation, around="z")
+"""Returns a rotation matrix for rotation about the z axis. Requires only 1 
+angle argument.
+"""
 rotation_2 = partial(rotation, around="2")
+"""Returns a rotation matrix for rotation in 2D. Requires only 1 angle 
+argument.
+"""
 # Special Case Multi-Rotations
 yaw_pitch_roll = partial(multi_rotation, "zyx")
+"""Returns a rotation matrix for rotation about the z axis, then the y axis, and 
+finally the x axis. Requires 3 input angles.
+"""
 
 def positive_angle(angle: Real) -> float:
     """Returns the positive representation of an angle in radians, bounded from 
-    0 to 2pi.
+    0 to 2π.
     """
     if angle >= 0:
         return angle_mod(angle)
@@ -186,7 +259,7 @@ def r_of_cartesian(cartesian: VectorLike) -> float:
 
 def phi_of_cartesian(cartesian: VectorLike) -> float:
     """Returns the polar/spherical azimuth component of the equivalent 
-    polar/spherical vector in radians. Bounded from -pi to pi.
+    polar/spherical vector in radians. Bounded from -π to π.
     
     :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
     :returns: The azimuth component of the equivalent polar/spherical vector.
@@ -312,65 +385,11 @@ def cartesian_to_spherical(cartesian: VectorLike) -> tuple[float, float, float]:
         raise ValueError(f"Invalid cartesian vector, must be 3 long to return"
                          + f" a polar coordinate, given: {cartesian}")
 
-def is_clockwise(vector1: VectorLike, vector2: VectorLike) -> bool:
-    """Returns whether 2D vector2 is clockwise of 2D vector1.
-    
-    :param vector1: A 2D vector with cartesian components.
-    :param vector2: Another 2D vector with cartesian components.
-    :returns: 'True' vector2 is clockwise of vector1, otherwise 'False'.
-    """
-    if len(vector1) == len(vector2) == 2:
-        x1, y1 = vector1
-        vector1_90_ccw = (-y1, x1)
-        return np.dot(vector1_90_ccw, vector2) < 0
-    else:
-        raise ValueError("Given vectors must both have 2 components")
-
-def get_vector_angle(vector1: VectorLike,
-                     vector2: VectorLike,
-                     *,
-                     opposite: bool=False,
-                     convention: AC=AC.PLUS_PI) -> float:
-    """Returns the angle between vector1 and vector2 based on the given angle 
-    convention.
-    
-    :param vector1: A vector with cartesian components.
-    :param vector2: Another vector with cartesian components.
-    :param opposite: Sets whether to return the supplement/explement of the angle 
-        between vector1 and vector2.
-    :param convention: The angle convention the output will follow. See 
-        PanCAD.constants.angle_convention.AngleConvention for available options.
-    :returns: The angle between vector1 and vector2.
-    """
-    dimensions = len(vector1)
-    if dimensions != len(vector2):
-        raise ValueError("Vectors must be the same length")
-    elif dimensions == 2:
-        match convention:
-            case AC.PLUS_PI | AC.PLUS_180:
-                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
-                                                         opposite, False)
-            case AC.SIGN_PI | AC.SIGN_180:
-                angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
-                                                         opposite, True)
-            case AC.PLUS_TAU | AC.PLUS_360:
-                angle = _get_angle_between_2d_vectors_2pi(vector1, vector2,
-                                                          opposite)
-            case _:
-                raise ValueError(f"Convention {convention} not recognized")
-    elif dimensions == 3:
-        angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
-    
-    if convention in (AC.PLUS_180, AC.PLUS_360, AC.SIGN_180):
-        return degrees(angle)
-    else:
-        return angle
-
 def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
                                       vector2: VectorLike,
                                       explementary: bool=False) -> float:
     """Returns the counter-clockwise angle between vector1 and vector2 in radians 
-    bounded between 0 and 2*pi. Returns the clockwise angle if explementary is 
+    bounded between 0 and 2π. Returns the clockwise angle if explementary is 
     set to True.
     
     :param vector1: A 2D vector with cartesian components.
@@ -397,8 +416,7 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
                                      vector2: VectorLike,
                                      supplementary: bool=False,
                                      signed: bool=False) -> float:
-    """Returns the angle between vector1 and vector2 in radians between 0 and 
-    pi.
+    """Returns the angle between vector1 and vector2 in radians between 0 and π.
     
     :param vector1: A 2D vector with cartesian components.
     :param vector2: Another 2D vector with cartesian components.
@@ -425,8 +443,7 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
 def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
                                      vector2: VectorLike,
                                      supplementary: bool=False) -> float:
-    """Returns the angle between vector1 and vector2 in radians between 0 and 
-    pi.
+    """Returns the angle between vector1 and vector2 in radians between 0 and π.
     
     :param vector1: A 3D vector with cartesian components.
     :param vector2: Another 3D vector with cartesian components.
@@ -451,12 +468,12 @@ def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
 
 # TODO: From before General Geometry, Remove
 def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
-    """Returns the midpoint between two points as a 2x1 numpy array.
+    # """Returns the midpoint between two points as a 2x1 numpy array.
     
-    :param point_1: The first point as an [x, y] numpy array.
-    :param point_2: The second point as an [x, y] numpy array.
-    :returns: The midpoint between points 1 and 2.
-    """
+    # :param point_1: The first point as an [x, y] numpy array.
+    # :param point_2: The second point as an [x, y] numpy array.
+    # :returns: The midpoint between points 1 and 2.
+    # """
     return (point_1 + point_2)/2
 
 # TODO: Rewrite to work with Point, keep for new Ellipse class
@@ -466,19 +483,19 @@ def ellipse_point(center_point: np.ndarray,
                   major_axis_angle: Real,
                   angle: Real,
                   decimals: int=6) -> np.ndarray:
-    """Returns the point at the specified angle centered at the ellipse 
-    center and wrt the x-axis on the given ellipse.
+    # """Returns the point at the specified angle centered at the ellipse 
+    # center and wrt the x-axis on the given ellipse.
     
-    :param center_point: The center point of the ellipse.
-    :param major_radius: The major axis radius of the ellipse.
-    :param minor_radius: The minor axis radius of the ellipse.
-    :param major_axis_angle: The ellipse's major axis angle wrt the x-axis in 
-        radians.
-    :param angle: The angle that the desired point is at on the ellipse in 
-        radians
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The coordinate of the ellipse point
-    """
+    # :param center_point: The center point of the ellipse.
+    # :param major_radius: The major axis radius of the ellipse.
+    # :param minor_radius: The minor axis radius of the ellipse.
+    # :param major_axis_angle: The ellipse's major axis angle wrt the x-axis in 
+        # radians.
+    # :param angle: The angle that the desired point is at on the ellipse in 
+        # radians
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The coordinate of the ellipse point
+    # """
     a = major_radius
     b = minor_radius
     angle = angle_mod(angle) if abs(angle) > (2*np.pi) else angle
@@ -497,16 +514,16 @@ def circle_point(center_point: np.ndarray,
                  radius: Real,
                  angle: Real,
                  decimals: int=6) -> np.ndarray:
-    """Returns the point at the specified angle centered at the 
-    circle center and wrt the x-axis on the given circle.
+    # """Returns the point at the specified angle centered at the 
+    # circle center and wrt the x-axis on the given circle.
     
-    :param center_point: The center point of the circle
-    :param radius: The radius of the circle
-    :param angle: The angle that the desired point is at on the 
-                  circle in radians
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The coordinate of the circle point
-    """
+    # :param center_point: The center point of the circle
+    # :param radius: The radius of the circle
+    # :param angle: The angle that the desired point is at on the 
+                  # circle in radians
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The coordinate of the circle point
+    # """
     return ellipse_point(center_point, radius, radius, 0, angle, decimals)
 
 # TODO: Rewrite to work with Point, keep for new Ellipse class
@@ -519,26 +536,26 @@ def elliptical_arc_endpoint_to_center(start: np.ndarray,
                                       major_axis_angle: Real,
                                       decimals: int=6
                                       ) -> list[np.ndarray, float, float]:
-    """Returns the center coordinate and angles [cx, cy, theta_1, 
-    delta_theta] of an arc. Method based on  of section F.6.5 of the 
-    SVG 1.1 specification. Keep in mind that SVGs are effectively 
-    'upside down' since the origin is in the top left with positive y 
-    down and angles are positive in the clockwise direction!
+    # """Returns the center coordinate and angles [cx, cy, theta_1, 
+    # delta_theta] of an arc. Method based on  of section F.6.5 of the 
+    # SVG 1.1 specification. Keep in mind that SVGs are effectively 
+    # 'upside down' since the origin is in the top left with positive y 
+    # down and angles are positive in the clockwise direction!
     
-    :param start: The first arc point coordinate [x1, y1]
-    :param end: The second arc point coordinate [x2, y2]
-    :param large_arc_flag: If true the arc sweep greater than or 
-                           equal to 180 degrees is chosen
-    :param sweep_flag: If true than the positive angle direction arc 
-                       is chosen
-    :param major_radius: The semi-major axis radius
-    :param minor_radius: The semi-minor axis radius
-    :param major_axis_angle: angle from the x-axis to the major axis 
-                             in radians
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The arc's center point [cx, cy], the first point's 
-              angle, and the arc's sweep angle
-    """
+    # :param start: The first arc point coordinate [x1, y1]
+    # :param end: The second arc point coordinate [x2, y2]
+    # :param large_arc_flag: If true the arc sweep greater than or 
+                           # equal to 180 degrees is chosen
+    # :param sweep_flag: If true than the positive angle direction arc 
+                       # is chosen
+    # :param major_radius: The semi-major axis radius
+    # :param minor_radius: The semi-minor axis radius
+    # :param major_axis_angle: angle from the x-axis to the major axis 
+                             # in radians
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The arc's center point [cx, cy], the first point's 
+              # angle, and the arc's sweep angle
+    # """
     fa = large_arc_flag
     fs = sweep_flag 
     rx = major_radius
@@ -590,21 +607,21 @@ def circle_arc_endpoint_to_center(point_1: np.ndarray,
                                   radius: Real,
                                   decimals: int = 6
                                   ) -> list[np.ndarray, float, float]:
-    """Returns the center coordinate and angles [cx, cy, theta_1, 
-    delta_theta] of an arc. Uses the elliptical_arc_endpoint_to_center 
-    function with the inputs set for a circle.
+    # """Returns the center coordinate and angles [cx, cy, theta_1, 
+    # delta_theta] of an arc. Uses the elliptical_arc_endpoint_to_center 
+    # function with the inputs set for a circle.
     
-    :param point_1: The first arc point coordinate [x1, y1]
-    :param point_2: The second arc point coordinate [x2, y2]
-    :param large_arc_flag: If true the arc sweep greater than or 
-                           equal to 180 degrees is chosen
-    :param sweep_flag: If true than the positive angle direction arc 
-                       is chosen
-    :param radius: the arc's radius
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The arc's center point [cx, cy], the first point's 
-              angle, and the arc's extent angle
-    """
+    # :param point_1: The first arc point coordinate [x1, y1]
+    # :param point_2: The second arc point coordinate [x2, y2]
+    # :param large_arc_flag: If true the arc sweep greater than or 
+                           # equal to 180 degrees is chosen
+    # :param sweep_flag: If true than the positive angle direction arc 
+                       # is chosen
+    # :param radius: the arc's radius
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The arc's center point [cx, cy], the first point's 
+              # angle, and the arc's extent angle
+    # """
     return elliptical_arc_endpoint_to_center(point_1, point_2,
                                              large_arc_flag, sweep_flag,
                                              radius, radius, 0, decimals)
@@ -617,25 +634,25 @@ def elliptical_arc_center_to_endpoint(center_point: np.ndarray,
                                       point_1_angle: Real,
                                       sweep_angle: Real,
                                       decimals: int=6) -> list:
-    """Returns a list of arc end points and flag values. Method based 
-    on section F.6.4 of the SVG 1.1 specification. The SVG 1.1 
-    equation F.6.4.1 is incorrect (or at least unclear) since they 
-    are assuming you have access to the eccentric anomaly, so the 
-    ellipse_point function uses a separately derived equation to 
-    determine the point coordinates.
+    # """Returns a list of arc end points and flag values. Method based 
+    # on section F.6.4 of the SVG 1.1 specification. The SVG 1.1 
+    # equation F.6.4.1 is incorrect (or at least unclear) since they 
+    # are assuming you have access to the eccentric anomaly, so the 
+    # ellipse_point function uses a separately derived equation to 
+    # determine the point coordinates.
     
-    :param center_point: Center point of the arc's ellipse
-    :param major_radius: the semi-major axis radius
-    :param minor_radius: the semi-minor axis radius
-    :param major_axis_angle: angle from the x-axis to the major axis 
-                             in radians
-    :param point_1_angle: the angle that the first arc point is at on the 
-                          ellipse in radians
-    :param sweep_angle: the between the start and end points of the arc
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The start point coordinate, end point coordinate, the 
-              svg 1.1 large arc flag, and the svg 1.1 sweep flag
-    """
+    # :param center_point: Center point of the arc's ellipse
+    # :param major_radius: the semi-major axis radius
+    # :param minor_radius: the semi-minor axis radius
+    # :param major_axis_angle: angle from the x-axis to the major axis 
+                             # in radians
+    # :param point_1_angle: the angle that the first arc point is at on the 
+                          # ellipse in radians
+    # :param sweep_angle: the between the start and end points of the arc
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The start point coordinate, end point coordinate, the 
+              # svg 1.1 large arc flag, and the svg 1.1 sweep flag
+    # """
     pt1 = ellipse_point(center_point, major_radius, minor_radius,
                         major_axis_angle, point_1_angle,
                         decimals)
@@ -652,19 +669,19 @@ def circle_arc_center_to_endpoint(center_point: np.ndarray,
                                   point_1_angle: Real,
                                   sweep_angle: Real,
                                   decimals: int=6) -> list:
-    """Returns a list of arc end points and flag values. Uses the 
-    elliptical_arc_center_to_endpoint function with the inputs set 
-    for a circle.
+    # """Returns a list of arc end points and flag values. Uses the 
+    # elliptical_arc_center_to_endpoint function with the inputs set 
+    # for a circle.
     
-    :param center_point: Center point of the arc's circle
-    :param radius: the semi-major axis radius
-    :param point_1_angle: the angle that the first arc point is at on the 
-                          circle in radians
-    :param sweep_angle: the between the start and end points of the arc
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The start point coordinate, end point coordinate, the 
-              svg 1.1 large arc flag, and the svg 1.1 sweep flag
-    """
+    # :param center_point: Center point of the arc's circle
+    # :param radius: the semi-major axis radius
+    # :param point_1_angle: the angle that the first arc point is at on the 
+                          # circle in radians
+    # :param sweep_angle: the between the start and end points of the arc
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The start point coordinate, end point coordinate, the 
+              # svg 1.1 large arc flag, and the svg 1.1 sweep flag
+    # """
     major_axis_angle = 0
     return elliptical_arc_center_to_endpoint(
         center_point, radius, radius, major_axis_angle,
@@ -674,14 +691,14 @@ def circle_arc_center_to_endpoint(center_point: np.ndarray,
 # TODO: From before General Geometry, Remove
 def line_fit_box(start: np.ndarray,
                  end: np.ndarray) -> list[np.ndarray, np.ndarray]:
-    """Returns the corners of the smallest box that the line would 
-    fit into. Useful for sizing graphics.
+    # """Returns the corners of the smallest box that the line would 
+    # fit into. Useful for sizing graphics.
     
-    :param start: The start point of the line
-    :param end: The end point of the line
-    :returns: a list of the minimum corner and the maximum corner 
-              points of the smallest box that would fit the line
-    """
+    # :param start: The start point of the line
+    # :param end: The end point of the line
+    # :returns: a list of the minimum corner and the maximum corner 
+              # points of the smallest box that would fit the line
+    # """
     min_x = min(start[0][0], end[0][0])
     min_y = min(start[1][0], end[1][0])
     max_x = max(start[0][0], end[0][0])
@@ -691,14 +708,14 @@ def line_fit_box(start: np.ndarray,
 # TODO: From before General Geometry, Add to Circle and then Remove
 def circle_fit_box(center_point: np.ndarray,
                    radius: Real) -> list[np.ndarray, np.ndarray]:
-    """Returns the corners of the smallest box that the circle would fit into.
-    Useful for sizing graphics.
+    # """Returns the corners of the smallest box that the circle would fit into.
+    # Useful for sizing graphics.
     
-    :param center_point: The center point of the circle
-    :param radius: The radius of the circle
-    :returns: a list of the minimum corner and the maximum corner 
-              points of the smallest box that would fit the circle
-    """
+    # :param center_point: The center point of the circle
+    # :param radius: The radius of the circle
+    # :returns: a list of the minimum corner and the maximum corner 
+              # points of the smallest box that would fit the circle
+    # """
     v = [(center_point + point_2d([0, radius])).reshape(2),
          (center_point + point_2d([0, -radius])).reshape(2),
          (center_point + point_2d([radius, 0])).reshape(2),
@@ -714,17 +731,17 @@ def ellipse_fit_box(center_point: np.ndarray,
                     major_radius: Real,
                     minor_radius: Real,
                     major_axis_angle: Real) -> list[np.ndarray, np.ndarray]:
-    """Returns the corners of the smallest box that the ellipse would fit into. 
-    Useful for sizing graphics.
+    # """Returns the corners of the smallest box that the ellipse would fit into. 
+    # Useful for sizing graphics.
     
-    :param center_point: The center point of the circle
-    :param major_radius: The major axis radius of the ellipse
-    :param minor_radius: The minor axis radius of the ellipse
-    :param major_axis_angle: The angle between the coordinate system's 
-                             x axis and the ellipse's major_axis
-    :returns: A list of the minimum corner and the maximum corner 
-              points of the smallest box that would fit the circle
-    """
+    # :param center_point: The center point of the circle
+    # :param major_radius: The major axis radius of the ellipse
+    # :param minor_radius: The minor axis radius of the ellipse
+    # :param major_axis_angle: The angle between the coordinate system's 
+                             # x axis and the ellipse's major_axis
+    # :returns: A list of the minimum corner and the maximum corner 
+              # points of the smallest box that would fit the circle
+    # """
     left_right_offset = math.sqrt(
         major_radius**2 * math.cos(major_axis_angle)**2
         + minor_radius**2 * math.sin(major_axis_angle)**2)
@@ -749,21 +766,21 @@ def elliptical_arc_fit_box(center_point: np.ndarray,
                            major_axis_angle: Real,
                            point_1_angle: Real,
                            sweep_angle: Real) -> list[np.ndarray, np.ndarray]:
-    """Returns the corners of the smallest box that the elliptical arc 
-    would fit into. Useful for sizing graphics.
+    # """Returns the corners of the smallest box that the elliptical arc 
+    # would fit into. Useful for sizing graphics.
     
-    :param center_point: The center point of the ellipse
-    :param major_radius: The major axis radius of the ellipse
-    :param minor_radius: The minor axis radius of the ellipse
-    :param major_axis_angle: The angle between the coordinate system's 
-                             x axis and the ellipse's major_axis
-    :param point_1_angle: The angle from the major axis of the ellipse to 
-                          the arc's first point, in radians
-    :param sweep_angle: The angle from the first point to the second point in 
-                        radians
-    :returns: Min and max corner points of the smallest box that would fit the 
-              elliptical arc
-    """
+    # :param center_point: The center point of the ellipse
+    # :param major_radius: The major axis radius of the ellipse
+    # :param minor_radius: The minor axis radius of the ellipse
+    # :param major_axis_angle: The angle between the coordinate system's 
+                             # x axis and the ellipse's major_axis
+    # :param point_1_angle: The angle from the major axis of the ellipse to 
+                          # the arc's first point, in radians
+    # :param sweep_angle: The angle from the first point to the second point in 
+                        # radians
+    # :returns: Min and max corner points of the smallest box that would fit the 
+              # elliptical arc
+    # """
     start_angle = positive_angle(point_1_angle)
     end_angle = positive_angle(start_angle + angle_mod(sweep_angle))
     
@@ -819,19 +836,19 @@ def circle_arc_fit_box(center_point: np.ndarray,
                        radius: Real,
                        point_1_angle: Real,
                        sweep_angle: Real) -> list[np.ndarray, np.ndarray]:
-    """Returns the corners of the smallest box that the circular arc 
-    would fit into. Used for sizing graphics. Uses the elliptical_arc_fit_box 
-    function with its inputs set up for a circle.
+    # """Returns the corners of the smallest box that the circular arc 
+    # would fit into. Used for sizing graphics. Uses the elliptical_arc_fit_box 
+    # function with its inputs set up for a circle.
     
-    :param center_point: The center point of the circle
-    :param radius: The major axis radius of the ellipse
-    :param point_1_angle: The angle from the x-axis to the arc's first 
-                          point in radians
-    :param sweep_angle: The angle from the first point to the second 
-                        point in radians
-    :returns: A list of the minimum corner and the maximum corner 
-              points of the smallest box that would fit the circle
-    """
+    # :param center_point: The center point of the circle
+    # :param radius: The major axis radius of the ellipse
+    # :param point_1_angle: The angle from the x-axis to the arc's first 
+                          # point in radians
+    # :param sweep_angle: The angle from the first point to the second 
+                        # point in radians
+    # :returns: A list of the minimum corner and the maximum corner 
+              # points of the smallest box that would fit the circle
+    # """
     major_axis_angle = 0
     return elliptical_arc_fit_box(
         center_point, radius, radius,
@@ -841,16 +858,16 @@ def circle_arc_fit_box(center_point: np.ndarray,
 # TODO: Rewrite to work with Point, keep for SVG specific class
 def multi_fit_box(geometry: list[dict]) -> list[list[Real, Real],
                                                 list[Real, Real]]:
-    """Returns the corners of the smallest box that fits all the geometry 
-    in the given list. Used for sizing graphics. Does not return numpy 
-    arrays, unlike the rest of trigonometry since this is intended to 
-    be used outside of this module.
+    # """Returns the corners of the smallest box that fits all the geometry 
+    # in the given list. Used for sizing graphics. Does not return numpy 
+    # arrays, unlike the rest of trigonometry since this is intended to 
+    # be used outside of this module.
     
-    :param geometry: A list of geometry dictionaries
-    :returns: A list of the minimum corner and the maximum corner 
-              points of the smallest box that would fit all the shapes.
-              [[min x, min y], [max x, max y]].
-    """
+    # :param geometry: A list of geometry dictionaries
+    # :returns: A list of the minimum corner and the maximum corner 
+              # points of the smallest box that would fit all the shapes.
+              # [[min x, min y], [max x, max y]].
+    # """
     x_values, y_values = [], []
     for g in geometry:
         match g["geometry_type"]:
@@ -903,28 +920,25 @@ def multi_fit_box(geometry: list[dict]) -> list[list[Real, Real],
 
 # TODO: From before General Geometry, Remove
 def is_geometry_vector(vector: np.ndarray) -> bool:
-    """Returns whether the NumPy vector is a valid 2D or 3D vector
+    # """Returns whether the NumPy vector is a valid 2D or 3D vector
     
-    :param vector: A NumPy vector to be checked
-    :returns: True if the vector is a valid 2D or 3D vector
-    """
+    # :param vector: A NumPy vector to be checked
+    # :returns: True if the vector is a valid 2D or 3D vector
+    # """
     if vector.shape in [(2,), (3,), (2,1), (3,1)]:
         return True
     else:
         return False
 
-
-
-
 # TODO: From before General Geometry, Remove
 def point_2d(point: list[Real]) -> np.ndarray:
-    """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
-    Can also be used to make 2x1 vectors. Will not do anything if it is 
-    passed a numpy array that is already 2 elements.
+    # """Returns a 2x1 numpy array made from an [x, y] list coordinate. 
+    # Can also be used to make 2x1 vectors. Will not do anything if it is 
+    # passed a numpy array that is already 2 elements.
     
-    :param point: Coordinate list of format [x, y]
-    :returns: A 2x1 numpy representation
-    """
+    # :param point: Coordinate list of format [x, y]
+    # :returns: A 2x1 numpy representation
+    # """
     if isinstance(point, list):
         point_length = len(point)
         if point_length == 2:
@@ -941,13 +955,13 @@ def point_2d(point: list[Real]) -> np.ndarray:
 
 # TODO: From before General Geometry, Remove
 def pt2list(point: np.ndarray) -> list:
-    """Returns a 2 element list from a 2x1 numpy array made of xy 
-    coordinates. Will not do anything if passed a list that is already 
-    just 2 elements.
+    # """Returns a 2 element list from a 2x1 numpy array made of xy 
+    # coordinates. Will not do anything if passed a list that is already 
+    # just 2 elements.
     
-    :param point: A 2x1 numpy array
-    :returns: A 2 element list
-    """
+    # :param point: A 2x1 numpy array
+    # :returns: A 2 element list
+    # """
     if isinstance(point, list):
         point_length = len(point)
         if point_length == 2:
@@ -967,14 +981,14 @@ def point_line_angle(point_a: np.ndarray,
                      point_b: np.ndarray,
                      decimals: int=6,
                      radians: bool=True):
-    """Returns the angle of the line created between two 2D [x, y] points.
+    # """Returns the angle of the line created between two 2D [x, y] points.
     
-    :param point_a: First point's x and y coordinates
-    :param point_b: Second point's x and y coordinates
-    :param decimals: The number of decimals to round to, defaults to 6
-    :param radians: Returns in radians if left true, degrees if false
-    :returns: The angle of the line between points a and b
-    """
+    # :param point_a: First point's x and y coordinates
+    # :param point_b: Second point's x and y coordinates
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :param radians: Returns in radians if left true, degrees if false
+    # :returns: The angle of the line between points a and b
+    # """
     difference = point_b - point_a
     angle = math.atan2(difference[1][0], difference[0][0])
     
@@ -988,14 +1002,14 @@ def three_point_angle(point_1: np.ndarray,
                       point_2: np.ndarray,
                       root_point: np.ndarray,
                       decimals: int=6) -> float:
-    """Returns the angle between the lines created by the root<->1 and root<->2.
+    # """Returns the angle between the lines created by the root<->1 and root<->2.
     
-    :param point_1: First point's coordinate
-    :param point_2: Second point's coordinate
-    :param root_point: The line intersection point
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The angle between the two lines in radians
-    """
+    # :param point_1: First point's coordinate
+    # :param point_2: Second point's coordinate
+    # :param root_point: The line intersection point
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The angle between the two lines in radians
+    # """
     u = point_1 - root_point
     v = point_2 - root_point
     return angle_between_vectors_2d(u, v, decimals)
@@ -1003,15 +1017,15 @@ def three_point_angle(point_1: np.ndarray,
 # TODO: From before General Geometry, Remove
 def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
                              decimals: int=6, radians: bool=True) -> float:
-    """Returns the angle between two 2d vectors represented as numpy 
-    arrays. WARNING: Degrees return option rounding hardcoded to 2 decimals.
+    # """Returns the angle between two 2d vectors represented as numpy 
+    # arrays. WARNING: Degrees return option rounding hardcoded to 2 decimals.
     
-    :param u: A 1-D 2x1 vector u
-    :param v: A 1-D 2x1 vector v
-    :param decimals: The number of decimals to round to, defaults to 6
-    :param radians: Determines return type degrees or radians, defaults radians
-    :returns: The angle between vectors a and b
-    """
+    # :param u: A 1-D 2x1 vector u
+    # :param v: A 1-D 2x1 vector v
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :param radians: Determines return type degrees or radians, defaults radians
+    # :returns: The angle between vectors a and b
+    # """
     u = u.reshape(2)
     v = v.reshape(2)
     normalized_dot = np.dot(u, v)/(np.linalg.norm(u)*np.linalg.norm(v))
@@ -1031,13 +1045,13 @@ def angle_between_vectors_2d(u: np.ndarray, v: np.ndarray,
 # TODO: From before General Geometry, Remove
 def distance_2d(point_a: np.ndarray, point_b: np.ndarray,
                 decimals: int = 6) -> float:
-    """Returns the distance between two 2D [x, y] points.
+    # """Returns the distance between two 2D [x, y] points.
     
-    :param point_a: First point's x and y coordinates
-    :param point_b: Second point's x and y coordinates
-    :param decimals: The number of decimals to round to, defaults to 6
-    :returns: The distance between points a and b
-    """
+    # :param point_a: First point's x and y coordinates
+    # :param point_b: Second point's x and y coordinates
+    # :param decimals: The number of decimals to round to, defaults to 6
+    # :returns: The distance between points a and b
+    # """
     x0 = point_a[0][0]
     y0 = point_a[1][0]
     x1 = point_b[0][0]
@@ -1047,12 +1061,12 @@ def distance_2d(point_a: np.ndarray, point_b: np.ndarray,
 
 # TODO: From before General Geometry, Remove
 def round_array(array: np.ndarray, decimals: int) -> np.ndarray:
-    """Returns a numpy array with each element rounded to the 
-    specified number of decimals.
+    # """Returns a numpy array with each element rounded to the 
+    # specified number of decimals.
     
-    :param array: The array to be rounded
-    :param decimals: The number of decimals to round to
-    :returns: The array with each element rounded to the number of decimals
-    """
+    # :param array: The array to be rounded
+    # :param decimals: The number of decimals to round to
+    # :returns: The array with each element rounded to the number of decimals
+    # """
     rounder = lambda x: np.round(x, decimals)
     return rounder(array)

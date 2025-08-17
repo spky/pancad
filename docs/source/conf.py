@@ -11,8 +11,10 @@ copyright = '2024, spky'
 author = 'spky'
 release = '0.0.0'
 
+import PanCAD.constants
 import PanCAD.geometry
 import PanCAD.geometry.constants
+import PanCAD.utils
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
