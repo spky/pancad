@@ -13,9 +13,10 @@ PanCAD documentation
     This project is under active development.
 
 .. toctree::
-   :maxdepth: 2
-   
-   usage
-   geometry/geometry
-   geometry/features
-   api
+    :caption: Table of Contents
+    :maxdepth: 2
+    :glob:
+    
+    usage
+    geometry/*
+    utilities/*
