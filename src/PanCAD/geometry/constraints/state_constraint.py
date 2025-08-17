@@ -40,18 +40,18 @@ class AbstractStateConstraint(AbstractConstraint):
     
     # Public Methods
     def get_constrained(self) -> tuple[ConstrainedType]:
-        """Returns a tuple of the constrained geometry elements"""
+        """Returns the two geometries being constrained."""
         return (self._a, self._b)
     
     def get_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the specific geometry elements inside of the 
-        constrained elements"""
+        """Returns the two portions of geometry being constrained."""
         return (self._a.get_reference(self._a_reference),
                 self._b.get_reference(self._b_reference))
     
     def get_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constrained geometry's references to the 
-        specific geometry inside the constrained element"""
+        """Returns the two constraint references in the same order as
+        :meth:`get_constrained`.
+        """
         return (self._a_reference, self._b_reference)
     
     # Private Methods #

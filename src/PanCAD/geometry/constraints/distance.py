@@ -31,20 +31,6 @@ class AbstractValue(AbstractConstraint):
         else:
             return str(self.value)
     
-    # Abstract Public Methods #
-    @abstractmethod
-    def get_constrained(self) -> tuple[GeometryType]:
-        """Returns a tuple of the constrained geometry parents"""
-    
-    @abstractmethod
-    def get_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the specific geometry elements inside of the 
-        constrained elements"""
-    
-    @abstractmethod
-    def get_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constrained geometry's references"""
-    
     # Shared Private Methods #
     def _validate_constrained_geometry(self):
         """Raises an error if the constrained geometries are not one of the 

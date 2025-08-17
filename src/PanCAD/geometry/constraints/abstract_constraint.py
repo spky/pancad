@@ -1,7 +1,6 @@
 """A module providing a class defining the required properties and interfaces of 
 PanCAD constraint classes.
 """
-# from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
@@ -13,17 +12,18 @@ class AbstractConstraint(ABC):
     # Public Methods #
     @abstractmethod
     def get_constrained(self) -> tuple[AbstractGeometry]:
-        """Returns a tuple of the constrained geometries."""
+        """Returns the geometry or geometries being constrained."""
     
     @abstractmethod
     def get_geometry(self) -> tuple[AbstractGeometry]:
-        """Returns a tuple of the specific geometry inside the constrained 
-        geometries (e.g. the X-axis of a CoordinateSystem or the start point 
-        of a LineSegment).
+        """Returns the portions of the constrained geometry being constrained. 
+        
+        Examples: The x axis of a :class:`~PanCAD.geometry.CoordinateSystem` or 
+        the start point of a :class:`~PanCAD.geometry.LineSegment`.
         """
     
     @abstractmethod
     def get_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constrained geometrys'
-        ConstraintReferences.
+        """Returns a tuple of the constrained geometrys' ConstraintReferences in 
+        the same order as the tuple returned by :meth:`get_constrained`.
         """
