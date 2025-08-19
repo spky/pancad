@@ -14,8 +14,8 @@ from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
-    """An abstract class of constraints that can be applied to a set of one or 2 
-    geometries without any further definition.
+    """An abstract class of constraints that can be applied to a set of **one 
+    or two** geometries without any further definition.
     
     :param constrain_a: The first geometry to be constrained.
     :param reference_a: The ConstraintReference of the portion of constrain_a to 
@@ -34,13 +34,15 @@ class AbstractSnapTo(AbstractConstraint):
     
     # Type Hints
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    """All constrainable geometry types."""
-    OneConstrainedType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
-    """Geometry that can be constrained by itself."""
-    TwoConstrainedType = TWO_GEOMETRY_TYPES
-    """Geometry that can be constrained relative to another geometry element."""
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    """Portions of geometry that can be constrained."""
+    OneConstrainedType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
+    """The types of geometry constrainable by this constraint without a second 
+    geometry element.
+    """
+    TwoConstrainedType = reduce(lambda x, y: x | y, TWO_GEOMETRY_TYPES)
+    """The types of geometry that can be constrained by this constraint relative 
+    to second geometry element.
+    """
     
     def __init__(self,
                  constrain_a: ConstrainedType,
@@ -63,18 +65,12 @@ class AbstractSnapTo(AbstractConstraint):
     
     # Public Methods
     def get_constrained(self) -> tuple[ConstrainedType]:
-        """Returns the single geometry or the two geometries being 
-        constrained.
-        """
         if self._b is None:
             return (self._a,)
         else:
             return (self._a, self._b)
     
     def get_geometry(self) -> tuple[GeometryType]:
-        """Returns the portion(s) of the single geometry or the two geometries 
-        being constrained.
-        """
         if self._b is None:
             return (self._a.get_reference(self._a_reference),)
         else:
@@ -82,9 +78,6 @@ class AbstractSnapTo(AbstractConstraint):
                     self._b.get_reference(self._b_reference))
     
     def get_references(self) -> tuple[ConstraintReference]:
-        """Returns the single or the two ConstraintReference in the same order 
-        as :meth:`get_constrained`.
-        """
         if self._b is None:
             return (self._a_reference,)
         else:
@@ -92,8 +85,9 @@ class AbstractSnapTo(AbstractConstraint):
     
     # Private Methods #
     def _validate_constrained(self):
-        """Raises an error if the geometries are not one of the allowed 
-        types"""
+        """Raises an error if the constrained geometries are not one of the 
+        allowed types.
+        """
         if self._b is None:
             if not isinstance(self._a, self.CONSTRAINED_TYPES):
                 raise ValueError(
@@ -113,8 +107,9 @@ class AbstractSnapTo(AbstractConstraint):
             raise ValueError("geometry a/b cannot be the same geometry element")
     
     def _validate_geometry(self) -> None:
-        """Raises an error if the constrained geometries are not one of the 
-        allowed types"""
+        """Raises an error if the portions of the constrained geometries are not 
+        one of the allowed types.
+        """
         if self._b is None and not isinstance(self._a,
                                               self.ONE_GEOMETRY_TYPES):
             name = self.__class__.__name__
@@ -123,10 +118,9 @@ class AbstractSnapTo(AbstractConstraint):
                 f" constrain:\n{self.ONE_GEOMETRY_TYPES}\nGiven: {self._a}"
             )
         elif (self._b is not None
-                and not any(
-                    [isinstance(g, self.TWO_GEOMETRY_TYPES)
-                     for g in self.get_geometry()]
-                )):
+                and not any([isinstance(g, self.TWO_GEOMETRY_TYPES)
+                            for g in self.get_geometry()])
+                ):
             classes = [g.__class__ for g in self.get_geometry()]
             raise ValueError(
                 f"A two geometry {self.__class__.__name__} relation can only"
@@ -138,7 +132,7 @@ class AbstractSnapTo(AbstractConstraint):
         """Checks whether two snapto relations are functionally the same by 
         comparing the memory ids of their constrained geometries.
         
-        :param other: Another snapto relationship of the same type.
+        :param other: Another SnapTo relationship of the same type.
         :returns: Whether the relations are the same.
         """
         geometry_zip = zip(self.get_geometry(), other.get_geometry())
@@ -167,28 +161,22 @@ class AbstractSnapTo(AbstractConstraint):
 
 class Horizontal(AbstractSnapTo):
     """A constraint that sets either a single geometry horizontal or a pair of 
-    geometries horizontal relative to each other in a 2D coordinate system.
+    geometries horizontal relative to each other in a 2D coordinate system. Can 
+    constrain:
     
-    :param constrain_a: The first geometry to be constrained.
-    :param reference_a: The ConstraintReference of the portion of constrain_a to 
-        be constrained.
-    :param constrain_b: The second geometry to be constrained. Does not need to 
-        be provided if only constraining constrain_a.
-    :param reference_b: The ConstraintReference of the portion of constrain_b to 
-        be constrained.
-    :param uid: The unique id of the constraint.
+    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.Line`
+    - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
     """
 
 class Vertical(AbstractSnapTo):
     """A constraint that sets either a single geometry vertical or a pair of 
-    geometries vertical relative to each other in a 2D coordinate system.
+    geometries vertical relative to each other in a 2D coordinate system. Can 
+    constrain:
     
-    :param constrain_a: The first geometry to be constrained.
-    :param reference_a: The ConstraintReference of the portion of constrain_a to 
-        be constrained.
-    :param constrain_b: The second geometry to be constrained. Does not need to 
-        be provided if only constraining constrain_a.
-    :param reference_b: The ConstraintReference of the portion of constrain_b to 
-        be constrained.
-    :param uid: The unique id of the constraint.
+    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.Line`
+    - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
     """
