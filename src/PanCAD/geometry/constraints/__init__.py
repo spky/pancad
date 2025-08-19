@@ -15,8 +15,10 @@ from PanCAD.geometry.constraints.snapto import (
 )
 
 from PanCAD.geometry.constraints.distance import (
+    AbstractValue,
     Abstract1GeometryDistance,
     Abstract2GeometryDistance,
+    AbstractDistance2D,
     Angle,
     Diameter,
     Distance,

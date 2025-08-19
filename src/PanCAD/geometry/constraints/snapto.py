@@ -2,27 +2,31 @@
 geometry contexts. PanCAD defines a snapto constraint as one that can be applied 
 to geometry with no additional arguments but still meaningfully constrain the 
 geometry.
-
-Horizontal can be used to force a Line/LineSegment to be held horizontal 
-(parallel to x-axis in 2D) or it can be used to force 2 points to be 
-collinear with a theoretical horizontal line.
-
-Vertical can be used to force a Line/LineSegment to be held vertical 
-(parallel to y-axis in 2D) or it can be used to force 2 points to be collinear 
-with a theoretical vertical line.
-
 """
 
 from __future__ import annotations
 
 from functools import reduce
 from abc import abstractmethod
+from typing import NoReturn
 
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
 from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
+    """An abstract class of constraints that can be applied to a set of **one 
+    or two** geometries without any further definition.
+    
+    :param constrain_a: The first geometry to be constrained.
+    :param reference_a: The ConstraintReference of the portion of constrain_a to 
+        be constrained.
+    :param constrain_b: The second geometry to be constrained. Does not need to 
+        be provided if only constraining constrain_a.
+    :param reference_b: The ConstraintReference of the portion of constrain_b to 
+        be constrained.
+    :param uid: The unique id of the constraint.
+    """
     # Type Tuples for checking with isinstance()
     CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
@@ -31,16 +35,22 @@ class AbstractSnapTo(AbstractConstraint):
     
     # Type Hints
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    OneConstrainedType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
-    TwoConstrainedType = TWO_GEOMETRY_TYPES
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
+    OneConstrainedType = reduce(lambda x, y: x | y, ONE_GEOMETRY_TYPES)
+    """The types of geometry constrainable by this constraint without a second 
+    geometry element.
+    """
+    TwoConstrainedType = reduce(lambda x, y: x | y, TWO_GEOMETRY_TYPES)
+    """The types of geometry that can be constrained by this constraint relative 
+    to second geometry element.
+    """
     
     def __init__(self,
                  constrain_a: ConstrainedType,
                  reference_a: ConstraintReference,
                  constrain_b: ConstrainedType=None,
                  reference_b: ConstraintReference=None,
-                 uid: str=None):
+                 uid: str=None) -> None:
         self.uid = uid
         if constrain_b is None or len(constrain_a) == len(constrain_b):
             # One geometry case (e.g. Line or LineSegment)
@@ -54,10 +64,31 @@ class AbstractSnapTo(AbstractConstraint):
         self._validate_constrained()
         self._validate_geometry()
     
+    # Public Methods
+    def get_constrained(self) -> tuple[ConstrainedType]:
+        if self._b is None:
+            return (self._a,)
+        else:
+            return (self._a, self._b)
+    
+    def get_geometry(self) -> tuple[GeometryType]:
+        if self._b is None:
+            return (self._a.get_reference(self._a_reference),)
+        else:
+            return (self._a.get_reference(self._a_reference),
+                    self._b.get_reference(self._b_reference))
+    
+    def get_references(self) -> tuple[ConstraintReference]:
+        if self._b is None:
+            return (self._a_reference,)
+        else:
+            return (self._a_reference, self._b_reference)
+    
     # Private Methods #
-    def _validate_constrained(self):
-        """Raises an error if the geometries are not one of the allowed 
-        types"""
+    def _validate_constrained(self) -> NoReturn:
+        """Raises an error if the constrained geometries are not one of the 
+        allowed types.
+        """
         if self._b is None:
             if not isinstance(self._a, self.CONSTRAINED_TYPES):
                 raise ValueError(
@@ -76,9 +107,10 @@ class AbstractSnapTo(AbstractConstraint):
         elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
-    def _validate_geometry(self) -> None:
-        """Raises an error if the constrained geometries are not one of the 
-        allowed types"""
+    def _validate_geometry(self) -> NoReturn:
+        """Raises an error if the portions of the constrained geometries are not 
+        one of the allowed types.
+        """
         if self._b is None and not isinstance(self._a,
                                               self.ONE_GEOMETRY_TYPES):
             name = self.__class__.__name__
@@ -87,46 +119,21 @@ class AbstractSnapTo(AbstractConstraint):
                 f" constrain:\n{self.ONE_GEOMETRY_TYPES}\nGiven: {self._a}"
             )
         elif (self._b is not None
-                and not any(
-                    [isinstance(g, self.TWO_GEOMETRY_TYPES)
-                     for g in self.get_geometry()]
-                )):
+                and not any([isinstance(g, self.TWO_GEOMETRY_TYPES)
+                            for g in self.get_geometry()])
+                ):
             classes = [g.__class__ for g in self.get_geometry()]
             raise ValueError(
                 f"A two geometry {self.__class__.__name__} relation can only"
                 f" constrain:\n{self.TWO_GEOMETRY_TYPES}\nGiven: {classes}"
             )
     
-    # Public Methods
-    def get_constrained(self) -> tuple[ConstrainedType]:
-        """Returns a tuple of the constrained geometry parents"""
-        if self._b is None:
-            return (self._a,)
-        else:
-            return (self._a, self._b)
-    
-    def get_geometry(self) -> tuple[GeometryType]:
-        """Returns a tuple of the specific geometry elements inside of the 
-        constrained elements"""
-        if self._b is None:
-            return (self._a.get_reference(self._a_reference),)
-        else:
-            return (self._a.get_reference(self._a_reference),
-                    self._b.get_reference(self._b_reference))
-    
-    def get_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constrained geometry's references"""
-        if self._b is None:
-            return (self._a_reference,)
-        else:
-            return (self._a_reference, self._b_reference)
-    
     # Python Dunders #
     def __eq__(self, other: AbstractSnapTo) -> bool:
         """Checks whether two snapto relations are functionally the same by 
         comparing the memory ids of their constrained geometries.
         
-        :param other: Another snapto relationship of the same type.
+        :param other: Another SnapTo relationship of the same type.
         :returns: Whether the relations are the same.
         """
         geometry_zip = zip(self.get_geometry(), other.get_geometry())
@@ -136,7 +143,6 @@ class AbstractSnapTo(AbstractConstraint):
             return NotImplemented
     
     def __repr__(self) -> str:
-        """Returns the short string representation of the snapto relation"""
         name = self.__class__.__name__
         if self._b is None:
             return (f"<{name}'{self.uid}'"
@@ -145,7 +151,6 @@ class AbstractSnapTo(AbstractConstraint):
             return f"<{name}'{self.uid}'{repr(self._a)}{repr(self._b)}>"
     
     def __str__(self) -> str:
-        """Returns the longer string representation of the snapto relation"""
         name = self.__class__.__name__
         if self._b is None:
             return (f"PanCAD {name} Constraint '{self.uid}' constraining"
@@ -154,18 +159,25 @@ class AbstractSnapTo(AbstractConstraint):
             return (f"PanCAD {name} Constraint '{self.uid}' with"
                     f" {repr(self._a)} as constrained a and {repr(self._b)}"
                     " as constrained b")
-    
-    # Abstract Methods #
-    @abstractmethod
-    def check(self) -> bool:
-        """Returns whether the constraint is met by the geometry."""
 
 class Horizontal(AbstractSnapTo):
-    def check(self) -> bool:
-        """Returns whether the constraint is met by the geometry."""
-        raise NotImplementedError("Horizontal check not implemented yet")
+    """A constraint that sets either a single geometry horizontal or a pair of 
+    geometries horizontal relative to each other in a 2D coordinate system. Can 
+    constrain:
+    
+    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.Line`
+    - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    """
 
 class Vertical(AbstractSnapTo):
-    def check(self) -> bool:
-        """Returns whether the constraint is met by the geometry."""
-        raise NotImplementedError("Vertical check not implemented yet")
+    """A constraint that sets either a single geometry vertical or a pair of 
+    geometries vertical relative to each other in a 2D coordinate system. Can 
+    constrain:
+    
+    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.Line`
+    - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    """
