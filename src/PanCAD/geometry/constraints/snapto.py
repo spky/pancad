@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from functools import reduce
 from abc import abstractmethod
+from typing import NoReturn
 
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
@@ -49,7 +50,7 @@ class AbstractSnapTo(AbstractConstraint):
                  reference_a: ConstraintReference,
                  constrain_b: ConstrainedType=None,
                  reference_b: ConstraintReference=None,
-                 uid: str=None):
+                 uid: str=None) -> None:
         self.uid = uid
         if constrain_b is None or len(constrain_a) == len(constrain_b):
             # One geometry case (e.g. Line or LineSegment)
@@ -84,7 +85,7 @@ class AbstractSnapTo(AbstractConstraint):
             return (self._a_reference, self._b_reference)
     
     # Private Methods #
-    def _validate_constrained(self):
+    def _validate_constrained(self) -> NoReturn:
         """Raises an error if the constrained geometries are not one of the 
         allowed types.
         """
@@ -106,7 +107,7 @@ class AbstractSnapTo(AbstractConstraint):
         elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
     
-    def _validate_geometry(self) -> None:
+    def _validate_geometry(self) -> NoReturn:
         """Raises an error if the portions of the constrained geometries are not 
         one of the allowed types.
         """

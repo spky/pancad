@@ -46,7 +46,7 @@ class AbstractValue(AbstractConstraint):
             return str(self.value)
     
     # Shared Private Methods #
-    def _validate_constrained_geometry(self):
+    def _validate_constrained_geometry(self) -> NoReturn:
         """Raises an error if the constrained geometries are not one of the 
         allowed types.
         """
@@ -234,7 +234,7 @@ class AbstractDistance(AbstractValue):
     # Shared Private Methods #
     def _validate_value(self) -> NoReturn:
         """Raises an error if the value of the constraint cannot be used."""
-        if not isinstance(self.value, (int, float)):
+        if not isinstance(self.value, Real):
             raise ValueError("Value must be an int or float,"
                              f" given: {value.__class__}")
         elif self.value < 0:
@@ -318,7 +318,7 @@ class Abstract1GeometryDistance(AbstractDistance):
                  reference_a: ConstraintReference,
                  value: Real,
                  uid: str=None,
-                 unit: str=None):
+                 unit: str=None) -> None:
         self.uid = uid
         self._a = geometry_a
         self._a_reference = reference_a
