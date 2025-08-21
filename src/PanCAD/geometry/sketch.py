@@ -423,7 +423,6 @@ class Sketch(AbstractFeature):
         return tuple(compress(self.geometry, self.construction))
     
     def get_dependencies(self) -> tuple[ExternalType]:
-        """Returns the sketch's external dependencies."""
         return (self.coordinate_system,) + self.externals
     
     def get_geometry_by_uid(self,
@@ -448,7 +447,10 @@ class Sketch(AbstractFeature):
     def get_index_of(self,
                      item: GeometryType | ExternalType | ConstraintType) -> int:
         """Returns the index of a geometry, external, or constraint item in 
-        their respective lists. Raises an LookupError if its not in any of them.
+        their respective tuples.
+        
+        :raises LookupError: Raised if the item is not in the sketch geometry, 
+            externals, or constraints.
         """
         if any([item is g for g in self.geometry]):
             return [item is g for g in self.geometry].index(True)
