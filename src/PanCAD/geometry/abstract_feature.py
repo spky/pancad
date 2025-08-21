@@ -19,4 +19,7 @@ class AbstractFeature(ABC):
     # Public Methods #
     @abstractmethod
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
-        """Returns the feature's external dependencies."""
+        """Returns the feature's external dependencies. Example: A 
+        :class:`~PanCAD.geometry.Sketch` returns the sketch's coordinate 
+        system and its external geometry references.
+        """
