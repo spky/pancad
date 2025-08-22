@@ -15,6 +15,7 @@ import PanCAD.constants
 import PanCAD.geometry
 import PanCAD.geometry.constants
 import PanCAD.geometry.constraints
+import PanCAD.filetypes
 import PanCAD.utils
 
 # -- General configuration ---------------------------------------------------
