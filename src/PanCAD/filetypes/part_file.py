@@ -17,16 +17,37 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 import textwrap
+from typing import Sequence, Self
 from pprint import pformat
 
-from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
+from PanCAD.geometry import CoordinateSystem, Sketch, AbstractFeature
 from PanCAD.filetypes.constants import SoftwareName
 
-
 class PartFile:
+    """A class representing a part file in CAD applications. PanCAD defines a 
+    part file that contains geometry definition for one object and different 
+    geometry configurations of that object.
     
-    # dcterms defined here:
-    # https://www.dublincore.org/specifications/dublin-core/dcmi-terms/
+    :param filename: The name of the file. Any extension at the end of the file 
+        will be removed.
+    :param original_software: A SoftwareName enumeration value defining where 
+        the PartFile was originally designed. Defaults to None, resulting in no 
+        metadata storage.
+    :param features: The Features to be added to the PartFile. Defaults to an 
+        empty tuple.
+    :param metadata: The metadata to be added to the file. Cross references the 
+        PanCAD metadata keys with the known original_software metadata keys. 
+        Defaults to None.
+    :param coordinate_system: The CoordinateSystem that all of the PartFile's 
+        features depend on. Defaults to a coordinate system with an origin at 
+        (0, 0, 0) and with axes in the canonical cartesian xyz directions.
+    :param metadata_map: The mapping between synchronized software metadata 
+        fields. Its keys must be SoftwareName values, and each value must have a 
+        subdictionary with field names for keys and a tuple of (SoftwareName, 
+        field name). The mapping allows different software metadata fields to be 
+        synchronized together as necessary.
+    """
+    
     PANCAD_METADATA = [
         "dcterms:identifier",
         "dcterms:title",
@@ -38,15 +59,24 @@ class PartFile:
         "dcterms:modified",
         "units",
     ]
+    """The default available PartFile metadata. An standard xml namespace is 
+    defined where available to improve the interoperability of the 
+    metadata. See `DCMI Metadata Terms 
+    <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>`_ 
+    for definitions of the 'dcterms' fields.
+    """
     
     def __init__(self,
                  filename: str,
                  original_software: SoftwareName=None,
-                 features: tuple=None,
+                 features: Sequence=None,
                  *,
                  metadata: dict=None,
                  coordinate_system: CoordinateSystem=None,
-                 metadata_map: dict=None):
+                 metadata_map: dict[SoftwareName,
+                                    dict[str,
+                                         tuple[SoftwareName, str]]]=None
+                 ) -> None:
         self._set_filename(filename)
         self._metadata = defaultdict(dict)
         self._metadata_map = defaultdict(dict)
@@ -71,9 +101,29 @@ class PartFile:
         else:
             self._initialize_metadata(metadata, original_software, metadata_map)
     
-    # Public Methods #
-    def add_feature(self, feature: Sketch | Extrude):
+    # Class Methods #
+    @classmethod
+    def from_freecad(cls, filepath: str) -> Self:
+        """Reads a FreeCAD file and returns it as a PanCAD PartFile.
         
+        :param filepath: The filepath to a FreeCAD file structured like a 
+            PartFile.
+        :returns: The PanCAD equivalent of the FreeCAD file.
+        """
+        # Local import here to avoid circular imports
+        from PanCAD.cad.freecad.read_freecad import FreeCADFile
+        file = FreeCADFile(filepath)
+        return file.to_pancad()
+    
+    # Public Methods #
+    def add_feature(self, feature: AbstractFeature) -> Self:
+        """Adds a feature to the PartFile.
+        
+        :param feature: The feature to add.
+        :returns: The updated PartFile.
+        :raises LookupError: Raised if the feature's dependencies are not 
+            already in the PartFile.
+        """
         if (isinstance(feature, Sketch)
             and feature.coordinate_system is not self.get_coordinate_system()):
             # Replace the sketch's locating coordinate system with the part 
@@ -87,63 +137,79 @@ class PartFile:
             missed = filter(lambda d: d not in self, feature.get_dependencies())
             raise LookupError(f"Dependencies for {repr(feature)} are missing"
                              f" from part: {list(missed)}")
+        return self
     
-    def get_coordinate_system(self):
+    def get_coordinate_system(self) -> CoordinateSystem:
+        """Returns the PartFile's defining coordinate_system."""
         return self._coordinate_system
     
-    def get_features(self):
+    def get_features(self) -> tuple[AbstractFeature]:
+        """Returns all of the PartFile's stored features."""
         return self._features
     
-    def get_metadata_value(self, software: SoftwareName, metadata_name: str):
+    def get_metadata_value(self,
+                           software: SoftwareName,
+                           metadata_name: str) -> object | None:
+        """Returns a software's metadata field.
+        
+        :param software: The SoftwareName for the software that defined the 
+            metadata field.
+        :param metadata_name: The name of the metadata field in the software.
+        :returns: The value of the metadata field if it exists, otherwise None.
+        """
         try:
             origin_software, name = self._metadata_map[software][metadata_name]
             return self._metadata[origin_software][name]
         except KeyError:
             return None
     
-    def update_metadata_value(self, software: SoftwareName,
-                              metadata_name: str, value: object):
-        origin_software, name = self._metadata_map[software][metadata_name]
-        self._metadata[origin_software][name] = value
-    
-    def metadata_to_dict(self):
+    def metadata_to_dict(self) -> dict[str, dict[str, object]]:
+        """Returns the metadata as a simplified dictionary without automated 
+        synchronization.
+        """
         data = defaultdict(dict)
         for software, data_map in self._metadata_map.items():
             for data_name, (origin, name) in data_map.items():
                 data[software][data_name] = self._metadata[origin][name]
         return dict(data)
     
-    # Class Methods #
-    @classmethod
-    def from_freecad(cls, filepath: str) -> PartFile:
-        """Reads a FreeCAD file and returns it as a PanCAD PartFile, if its 
-        structure allows it.
+    def update_metadata_value(self,
+                              software: SoftwareName,
+                              metadata_name: str,
+                              value: object) -> Self:
+        """Updates a metadata field for a specific software.
         
-        :param filepath: The filepath to a FreeCAD file structured like a 
-            PartFile.
-        :returns: The PanCAD equivalent of the FreeCAD file.
+        :param software: The SoftwareName for the software that defined the 
+            metadata field.
+        :param metadata_name: The name of the metadata field in the software.
+        :param value: The value of the metadata field.
+        :returns: The updated PartFile.
         """
-        # Local import here to avoid circular imports
-        from PanCAD.cad.freecad.read_freecad import FreeCADFile
-        file = FreeCADFile(filepath)
-        return file.to_pancad()
+        origin_software, name = self._metadata_map[software][metadata_name]
+        self._metadata[origin_software][name] = value
+        return self
     
     # Private Methods #
-    def _initialize_metadata(self, metadata: dict,
+    def _initialize_metadata(self,
+                             metadata: dict,
                              software: SoftwareName,
-                             pancad_map: dict=None):
+                             metadata_map: dict=None) -> None:
         """Takes metadata from CAD software and maps it into standard data.
+        
+        :metadata: The original software's metadata.
+        :software: The original software's SoftwareName.
+        :metadata_map: The metadata mapping described in the init method.
         """
         self._metadata[software] = metadata
         
         for key in metadata:
             self._metadata_map[software][key] = (software, key)
         
-        for key, value in pancad_map.items():
+        for key, value in metadata_map.items():
             if key in self.PANCAD_METADATA and value in metadata:
                 self._metadata_map[SoftwareName.PANCAD][key] = (software, value)
             elif key not in self.PANCAD_METADATA:
-                raise KeyError(f"pancad_map key '{key}' not found in pancad"
+                raise KeyError(f"metadata_map key '{key}' not found in pancad"
                                " metadata. Dict must be formatted"
                                " {pancad_data_name: software_data_name}."
                                f"\npancad_data_names: {self.PANCAD_METADATA}")
@@ -153,15 +219,15 @@ class PartFile:
             else:
                 self._metadata_map[SoftwareName.PANCAD][key] = (software, None)
     
-    def _set_filename(self, string: str):
-        """Strips the filename of an extension if it has one and then sets the 
-        PartFile's filename"""
+    def _set_filename(self, string: str) -> None:
+        """Sets the PartFile filename. Strips the filename of an extension if it 
+        has one.
+        """
         name, extension = os.path.splitext(string)
         self.filename = name
     
     # Python Dunders #
-    
-    def __contains__(self, item):
+    def __contains__(self, item) -> bool:
         contents = (self._coordinate_system,) + self._features
         return any([item is c for c in contents])
     
@@ -170,7 +236,7 @@ class PartFile:
         return f"<PanCADPartFile'{self.filename}'({n_features}feats)>"
     
     def __str__(self) -> str:
-        """Prints a summary of the part file's contents"""
+        """Prints a summary of the part file's contents."""
         INDENT = "    "
         summary = [f"PartFile '{self.filename}'"]
         

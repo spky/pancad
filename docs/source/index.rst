@@ -6,7 +6,8 @@
 PanCAD documentation
 ==========================
 
-**PanCAD** is a Python library for makers to generate CAD from text and back again.
+**PanCAD** is a Python library for makers to generate, read, and convert CAD 
+files and their associated information to any other file format.
 
 .. note::
     
@@ -18,5 +19,6 @@ PanCAD documentation
     :glob:
     
     usage
+    filetypes/*
     geometry/*
     utilities/*
