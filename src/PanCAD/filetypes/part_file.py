@@ -14,8 +14,8 @@ in another application).
 """
 from __future__ import annotations
 
-import os
 from collections import defaultdict
+from pathlib import Path
 import textwrap
 from typing import Sequence, Self
 from pprint import pformat
@@ -77,7 +77,8 @@ class PartFile:
                                     dict[str,
                                          tuple[SoftwareName, str]]]=None
                  ) -> None:
-        self._set_filename(filename)
+        self.filename = filename
+        # self._set_filename(filename)
         self._metadata = defaultdict(dict)
         self._metadata_map = defaultdict(dict)
         
@@ -114,6 +115,17 @@ class PartFile:
         from PanCAD.cad.freecad.read_freecad import FreeCADFile
         file = FreeCADFile(filepath)
         return file.to_pancad()
+    
+    # Properties #
+    @property
+    def filename(self) -> str:
+        """The filename of the PartFile. Does not contain a path or extension.
+        """
+        return self._filename
+    
+    @filename.setter
+    def filename(self, name: str) -> None:
+        self._filename = Path(name).stem
     
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:
@@ -218,13 +230,6 @@ class PartFile:
                                " metadata")
             else:
                 self._metadata_map[SoftwareName.PANCAD][key] = (software, None)
-    
-    def _set_filename(self, string: str) -> None:
-        """Sets the PartFile filename. Strips the filename of an extension if it 
-        has one.
-        """
-        name, extension = os.path.splitext(string)
-        self.filename = name
     
     # Python Dunders #
     def __contains__(self, item) -> bool:

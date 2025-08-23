@@ -6,23 +6,43 @@ from inspect import stack
 import PanCAD
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
-
-from PanCAD.geometry import (
-    CoordinateSystem, Sketch, Extrude, LineSegment, Circle
-)
-from PanCAD.geometry.constraints import (
-    Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance,
-    Diameter, Radius, Equal, Perpendicular, Parallel
-)
+from PanCAD.geometry import (Circle,
+                             CoordinateSystem,
+                             Extrude,
+                             LineSegment,
+                             Sketch,)
+from PanCAD.geometry.constraints import (Coincident,
+                                         Equal,
+                                         Diameter,
+                                         Distance,
+                                         Horizontal,
+                                         HorizontalDistance,
+                                         Parallel,
+                                         Perpendicular,
+                                         Radius,
+                                         Vertical,
+                                         VerticalDistance,)
 from PanCAD.geometry.constants import ConstraintReference
-
 from PanCAD.cad.freecad import to_freecad
 
-
+class TestPartFileFilename(unittest.TestCase):
+    
+    def check_name(self, filepath: str, expected: str):
+        file = PartFile(filepath)
+        self.assertEqual(file.filename, expected)
+    
+    def test_from_path(self):
+        self.check_name(r"C:\Users\George\Documents\trunk\fake_part.FCStd",
+                        "fake_part")
+    
+    def test_from_name(self):
+        self.check_name(r"fake_part", "fake_part")
+    
+    def test_from_name_with_extension(self):
+        self.check_name(r"fake_part.FCStd", "fake_part")
+    
 
 class TestPartFile(unittest.TestCase):
-    
     def setUp(self):
         self.filename = "fake_part.FCStd"
         self.metadata = {
