@@ -191,7 +191,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         filename = stack()[0].function + ".FCStd"
         self.file = self.file_gen(filename)
         self.filepath = os.path.join(self.dump_folder, filename)
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.dump_folder)
     
     def test_to_freecad_create_cube(self):
         filename = stack()[0].function + ".FCStd"
@@ -203,7 +203,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         self.file.add_feature(extrude)
         self.filepath = os.path.join(self.dump_folder,
                                      stack()[0].function + ".FCStd")
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.dump_folder)
     
     def test_to_freecad_create_cylinder(self):
         filename = stack()[0].function + ".FCStd"
@@ -215,7 +215,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         self.file.add_feature(extrude)
         self.filepath = os.path.join(self.dump_folder,
                                      stack()[0].function + ".FCStd")
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.dump_folder)
 
 class TestPartFileSketches(unittest.TestCase):
     

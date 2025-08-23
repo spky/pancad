@@ -2,6 +2,7 @@
 A module providing functions to read FreeCAD files formatted like part files 
 into a PanCAD PartFile object.
 """
+from collections import OrderedDict
 import os
 import pathlib
 from typing import Self
@@ -10,14 +11,17 @@ import numpy as np
 import quaternion
 
 from PanCAD.cad.freecad import App, PartDesign, Sketcher
+from PanCAD.cad.freecad.constants import ObjectType, PadType
 from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
 from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
-from PanCAD.cad.freecad.constants import ObjectType, PadType
+from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
+
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
 from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 from PanCAD.geometry.constants import ConstraintReference, FeatureType
+from PanCAD.utils import file_handlers
 
 class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
@@ -26,8 +30,9 @@ class FreeCADFile:
     :param path: The location of the FreeCAD file.
     """
     STORED_UNIT = "mm" # Values are always stored internally as this unit
+    EXTENSION = ".FCStd"
     
-    def __init__(self, path: str):
+    def __init__(self, path: str=None):
         self.path = path
         self._document = App.open(self.path)
         no_bodies = len(self._get_bodies())
@@ -40,16 +45,37 @@ class FreeCADFile:
     
     # Class Methods #
     @classmethod
-    def from_partfile(cls, file: PartFile, directory: str) -> Self:
+    def from_partfile(cls, part_file: PartFile, directory: str) -> Self:
         """Creates a FreeCAD file from a PanCAD PartFile.
         
-        :param file: The PanCAD PartFile to make a FreeCAD file from.
-        :param directory: The 
+        :param part_file: The PanCAD PartFile to make a FreeCAD file from.
+        :param directory: The directory path to save the new FreeCAD file into.
         """
-        if isinstance(pancad_file, PartFile):
-            self._document = App.newDocument()
+        if isinstance(part_file, PartFile):
+            new_file = cls.__new__(cls)
+            new_file._document = App.newDocument()
+            filepath = os.path.join(directory,
+                                    part_file.filename + cls.EXTENSION)
+            new_file._document.FileName = file_handlers.filepath(filepath)
+            
+            # Add body and coordinate system
+            root = new_file._document.addObject(ObjectType.BODY, "Body")
+            part_file_cs = part_file.get_coordinate_system()
+            
+            # Initialize feature map with part_file coordinate system
+            feature_map = OrderedDict()
+            feature_map.update(
+                map_freecad(part_file_cs, root.Origin)
+            )
+            
+            # Add all other PartFile features.
+            for feature in part_file.get_features():
+                feature_map = add_feature_to_freecad(feature, feature_map)
+            
+            new_file.save()
+            return new_file
         else:
-            raise ValueError(f"File type {pancad_file.__class__} not recognized")
+            raise ValueError(f"Filetype {file.__class__} not recognized")
     
     # Properties #
     @property
@@ -83,6 +109,15 @@ class FreeCADFile:
         self._path = os.path.join(pypath.parent, new_stem + pypath.suffix)
     
     # Public Methods
+    def save(self) -> Self:
+        """Recomputes and saves the FreeCAD file to its path.
+        
+        :returns: The FreeCADFile object to enable method chaining.
+        """
+        self._document.recompute()
+        self._document.save()
+        return self
+    
     def to_pancad(self) -> PartFile:
         """Returns a PanCAD filetype object from the FreeCAD file."""
         feature_map = dict()
@@ -104,7 +139,6 @@ class FreeCADFile:
                     extrude = feature_map[feature]
                     part_file.add_feature(extrude)
         return part_file
-    
     
     # Private Methods #
     def _get_bodies(self) -> list:

@@ -185,6 +185,15 @@ class PartFile:
                 data[software][data_name] = self._metadata[origin][name]
         return dict(data)
     
+    def to_freecad(self, directory: str) -> None:
+        """Writes the PartFile to a FreeCAD file.
+        
+        :param directory: The directory to save the new FreeCAD file into.
+        """
+        # Local import here to avoid circular imports
+        from PanCAD.cad.freecad.read_freecad import FreeCADFile
+        file = FreeCADFile.from_partfile(self, directory)
+    
     def update_metadata_value(self,
                               software: SoftwareName,
                               metadata_name: str,
