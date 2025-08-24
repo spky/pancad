@@ -23,7 +23,6 @@ from PanCAD.geometry.constraints import (Coincident,
                                          Vertical,
                                          VerticalDistance,)
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.cad.freecad import to_freecad
 
 class TestPartFileFilename(unittest.TestCase):
     

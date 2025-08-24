@@ -8,8 +8,7 @@ from PanCAD.filetypes import PartFile
 from PanCAD.geometry import Sketch, LineSegment, Point
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.geometry.constraints import Angle, Coincident, Distance, Equal
-from PanCAD.cad.freecad import to_freecad
-
+from PanCAD.cad.freecad import FreeCADFile
 
 class TestSketches(unittest.TestCase):
     
@@ -82,4 +81,4 @@ class TestSketches(unittest.TestCase):
         for quadrant, angle, start_to_end in quadrant_angle:
             sketch = self.line_angled_to_x_axis(quadrant, angle, start_to_end)
             self.file.add_feature(sketch)
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.filepath)

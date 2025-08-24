@@ -112,7 +112,7 @@ class PartFile:
         :returns: The PanCAD equivalent of the FreeCAD file.
         """
         # Local import here to avoid circular imports
-        from PanCAD.cad.freecad.read_freecad import FreeCADFile
+        from PanCAD.cad.freecad import FreeCADFile
         file = FreeCADFile(filepath)
         return file.to_pancad()
     
@@ -191,7 +191,7 @@ class PartFile:
         :param filepath: The filepath to save the new FreeCAD file into.
         """
         # Local import here to avoid circular imports
-        from PanCAD.cad.freecad.read_freecad import FreeCADFile
+        from PanCAD.cad.freecad import FreeCADFile
         file = FreeCADFile.from_partfile(self, filepath)
     
     def update_metadata_value(self,
