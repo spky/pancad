@@ -21,7 +21,6 @@ from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
 from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 from PanCAD.geometry.constants import ConstraintReference, FeatureType
-from PanCAD.utils import file_handlers
 
 class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
@@ -111,9 +110,15 @@ class FreeCADFile:
     
     @stem.setter
     def stem(self, new_stem: str):
-        self._stem = new_stem
-        pypath = pathlib.Path(self._filepath)
-        self._filepath = os.path.join(pypath.parent, new_stem + pypath.suffix)
+        stem_path = pathlib.Path(new_stem)
+        if stem_path.suffix in ["", ".FCStd"]:
+            self._stem = stem_path.stem
+            pypath = pathlib.Path(self._filepath)
+            self._filepath = str(pypath.with_name(new_stem) \
+                                       .with_suffix(self.EXTENSION))
+        else:
+            raise ValueError("Stem must either not have extension or end with"
+                             f" '.FCStd', given: {new_stem}")
     
     # Public Methods
     def save(self) -> Self:

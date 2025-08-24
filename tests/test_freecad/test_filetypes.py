@@ -30,11 +30,31 @@ class TestReadFile(TestReadSample):
     def test_set_path_with_fcstd(self):
         file = FreeCADFile(self.filepath)
         self.assertEqual(file.filepath, self.filepath)
+        self.assertEqual(file.stem, Path(self.filepath).stem)
     
     def test_set_path_without_fcstd(self):
         file = FreeCADFile(self.filepath)
         with self.assertRaises(ValueError):
             file.filepath = Path(self.filepath).with_suffix(".pdf")
+    
+    def test_set_stem_with_fcstd(self):
+        file = FreeCADFile(self.filepath)
+        file.stem = "fake.FCStd"
+        self.assertEqual(file.stem, "fake")
+        self.assertEqual(file.filepath,
+                         str(Path(self.filepath).with_name("fake.FCStd")))
+    
+    def test_set_stem_without_fcstd(self):
+        file = FreeCADFile(self.filepath)
+        file.stem = "fake"
+        self.assertEqual(file.stem, "fake")
+        self.assertEqual(file.filepath,
+                         str(Path(self.filepath).with_name("fake.FCStd")))
+    
+    def test_set_stem_without_fcstd(self):
+        file = FreeCADFile(self.filepath)
+        with self.assertRaises(ValueError):
+            file.stem = "fake.pdf"
 
 if __name__ == "__main__":
     unittest.main()
