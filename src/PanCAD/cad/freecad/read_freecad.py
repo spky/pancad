@@ -27,14 +27,14 @@ class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
     the file to a PanCAD filetype.
     
-    :param path: The location of the FreeCAD file.
+    :param filepath: The location of the FreeCAD file.
     """
     STORED_UNIT = "mm" # Values are always stored internally as this unit
     EXTENSION = ".FCStd"
     
-    def __init__(self, path: str=None):
-        self.path = path
-        self._document = App.open(self.path)
+    def __init__(self, filepath: str=None):
+        self.filepath = filepath
+        self._document = App.open(self.filepath)
         no_bodies = len(self._get_bodies())
         if no_bodies == 0:
             raise NotImplementedError("Files without a body are not supported")
@@ -45,18 +45,20 @@ class FreeCADFile:
     
     # Class Methods #
     @classmethod
-    def from_partfile(cls, part_file: PartFile, directory: str) -> Self:
-        """Creates a FreeCAD file from a PanCAD PartFile.
+    def from_partfile(cls, part_file: PartFile, filepath: str) -> Self:
+        """Creates and saves a FreeCAD file from a PanCAD PartFile.
         
-        :param part_file: The PanCAD PartFile to make a FreeCAD file from.
-        :param directory: The directory path to save the new FreeCAD file into.
+        :param part_file: A PanCAD PartFile.
+        :param filepath: The filepath to save the new FreeCAD file to.
+        :returns: The new FreeCADFile.
+        :raises ValueError: When part_file is not a PartFile.
         """
         if isinstance(part_file, PartFile):
+            # Use __new__ to bypass the init function
             new_file = cls.__new__(cls)
             new_file._document = App.newDocument()
-            filepath = os.path.join(directory,
-                                    part_file.filename + cls.EXTENSION)
-            new_file._document.FileName = file_handlers.filepath(filepath)
+            new_file.filepath = filepath
+            new_file._document.FileName = new_file.filepath
             
             # Add body and coordinate system
             root = new_file._document.addObject(ObjectType.BODY, "Body")
@@ -79,13 +81,14 @@ class FreeCADFile:
     
     # Properties #
     @property
-    def path(self) -> str:
+    def filepath(self) -> str:
         """The filepath of the FreeCADFile.
         
         :getter: Returns the filepath.
         :setter: Sets the path and updates the stem accordingly.
+        :raises ValueError: When path does not end with '.FCStd'.
         """
-        return self._path
+        return self._filepath
     
     @property
     def stem(self) -> str:
@@ -96,17 +99,21 @@ class FreeCADFile:
         """
         return self._stem
     
-    @path.setter
-    def path(self, filepath: str):
+    @filepath.setter
+    def filepath(self, filepath: str):
         pypath = pathlib.Path(filepath)
-        self._path = str(pypath)
-        self._stem = pypath.stem
+        if pypath.suffix == self.EXTENSION:
+            self._filepath = str(pypath)
+            self._stem = pypath.stem
+        else:
+            raise ValueError(f"Path must end with '{self.EXTENSION}',"
+                             f" given: {filepath}")
     
     @stem.setter
     def stem(self, new_stem: str):
         self._stem = new_stem
-        pypath = pathlib.Path(self._path)
-        self._path = os.path.join(pypath.parent, new_stem + pypath.suffix)
+        pypath = pathlib.Path(self._filepath)
+        self._filepath = os.path.join(pypath.parent, new_stem + pypath.suffix)
     
     # Public Methods
     def save(self) -> Self:
@@ -260,4 +267,4 @@ class FreeCADFile:
     
     # Python Dunders #
     def __fs_path__(self):
-        return self._path
+        return self.filepath

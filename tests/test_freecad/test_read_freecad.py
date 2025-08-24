@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import unittest
 
 import PanCAD
@@ -13,7 +14,7 @@ class TestReadSample(unittest.TestCase):
         )
         self.sample_freecad = os.path.join(self.tests, "sample_freecad")
 
-class TestReadCube(TestReadSample):
+class TestReadFile(TestReadSample):
     
     def setUp(self):
         super().setUp()
@@ -25,6 +26,15 @@ class TestReadCube(TestReadSample):
     
     def test_read_cube_direct(self):
         part_file = PartFile.from_freecad(self.filepath)
+    
+    def test_set_path_with_fcstd(self):
+        file = FreeCADFile(self.filepath)
+        self.assertEqual(file.filepath, self.filepath)
+    
+    def test_set_path_without_fcstd(self):
+        file = FreeCADFile(self.filepath)
+        with self.assertRaises(ValueError):
+            file.filepath = Path(self.filepath).with_suffix(".pdf")
 
 if __name__ == "__main__":
     unittest.main()
