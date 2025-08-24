@@ -19,7 +19,13 @@ from PanCAD.utils.trigonometry import is_clockwise
 
 # Primary Translation Function #################################################
 def translate_constraint(sketch: Sketch,
-                         constraint: AbstractConstraint):
+                         constraint: AbstractConstraint) -> Sketcher.Constraint:
+    """Returns a FreeCAD constraint from a PanCAD constraint.
+    
+    :param sketch: A PanCAD Sketch.
+    :param constraint: A constraint in the sketch.
+    :returns: The equivalent FreeCAD constraint.
+    """
     if isinstance(constraint, Distance):
         geometry_inputs = bug_fix_001_distance(sketch, constraint)
     else:
@@ -28,6 +34,12 @@ def translate_constraint(sketch: Sketch,
 
 def add_pancad_sketch_constraint(constraint: Sketcher.Constraint,
                                  pancad_sketch: Sketch) -> Sketch:
+    """Adds a FreeCAD constraint to a PanCAD Sketch.
+    
+    :param constraint: A FreeCAD Sketcher Constraint read from a FreeCAD model.
+    :param pancad_sketch: A PanCAD sketch.
+    :returns: The updated PanCAD sketch.
+    """
     match constraint.Type:
         case ConstraintType.ANGLE:
             pass
@@ -115,7 +127,12 @@ def _add_distance(constraint: Sketcher.Constraint,
 @singledispatch
 def freecad_constraint(constraint: AbstractConstraint,
                        args: tuple) -> Sketcher.Constraint:
-    """Returns a FreeCAD constraint that can be placed in a FreeCAD Sketch."""
+    """Returns a FreeCAD constraint that can be placed in a FreeCAD Sketch.
+    
+    :param constraint: A PanCAD constraint.
+    :param args: The FreeCAD subpart arguments obtained from 
+        :func:`_get_freecad_inputs` or an equivalent method.
+    """
     raise NotImplementedError(f"Unsupported 1st type {constraint.__class__}")
 
 @freecad_constraint.register
@@ -308,6 +325,12 @@ def map_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
             raise ValueError(f"Unsupported reference: {reference}")
 
 def subpart_to_reference(sub_part: EdgeSubPart) -> ConstraintReference:
+    """Returns the PanCAD ConstraintReference that matches the FreeCAD 
+    EdgeSubPart.
+    
+    :param reference: A reference to a subpart of geometry.
+    :returns: The FreeCAD equivalent to the reference.
+    """
     match sub_part:
         case EdgeSubPart.EDGE:
             return ConstraintReference.CORE

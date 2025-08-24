@@ -16,6 +16,9 @@ class PadType(StrEnum):
     def get_feature_type(self,
                          midplane: bool,
                          reversed_pad: bool) -> FeatureType:
+        """Returns the equivalent FeatureType based upon the settings of a 
+        FreeCAD Pad.
+        """
         match self.name:
             case "LENGTH":
                 if midplane:

@@ -6,23 +6,42 @@ from inspect import stack
 import PanCAD
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
-
-from PanCAD.geometry import (
-    CoordinateSystem, Sketch, Extrude, LineSegment, Circle
-)
-from PanCAD.geometry.constraints import (
-    Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance,
-    Diameter, Radius, Equal, Perpendicular, Parallel
-)
+from PanCAD.geometry import (Circle,
+                             CoordinateSystem,
+                             Extrude,
+                             LineSegment,
+                             Sketch,)
+from PanCAD.geometry.constraints import (Coincident,
+                                         Equal,
+                                         Diameter,
+                                         Distance,
+                                         Horizontal,
+                                         HorizontalDistance,
+                                         Parallel,
+                                         Perpendicular,
+                                         Radius,
+                                         Vertical,
+                                         VerticalDistance,)
 from PanCAD.geometry.constants import ConstraintReference
 
-from PanCAD.cad.freecad import to_freecad
-
-
+class TestPartFileFilename(unittest.TestCase):
+    
+    def check_name(self, filepath: str, expected: str):
+        file = PartFile(filepath)
+        self.assertEqual(file.filename, expected)
+    
+    def test_from_path(self):
+        self.check_name(r"C:\Users\Username\Documents\trunk\fake_part.FCStd",
+                        "fake_part")
+    
+    def test_from_name(self):
+        self.check_name(r"fake_part", "fake_part")
+    
+    def test_from_name_with_extension(self):
+        self.check_name(r"fake_part.FCStd", "fake_part")
+    
 
 class TestPartFile(unittest.TestCase):
-    
     def setUp(self):
         self.filename = "fake_part.FCStd"
         self.metadata = {
@@ -171,7 +190,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         filename = stack()[0].function + ".FCStd"
         self.file = self.file_gen(filename)
         self.filepath = os.path.join(self.dump_folder, filename)
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.filepath)
     
     def test_to_freecad_create_cube(self):
         filename = stack()[0].function + ".FCStd"
@@ -183,7 +202,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         self.file.add_feature(extrude)
         self.filepath = os.path.join(self.dump_folder,
                                      stack()[0].function + ".FCStd")
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.filepath)
     
     def test_to_freecad_create_cylinder(self):
         filename = stack()[0].function + ".FCStd"
@@ -195,7 +214,7 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         self.file.add_feature(extrude)
         self.filepath = os.path.join(self.dump_folder,
                                      stack()[0].function + ".FCStd")
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.filepath)
 
 class TestPartFileSketches(unittest.TestCase):
     
@@ -210,7 +229,7 @@ class TestPartFileSketches(unittest.TestCase):
     def finish_to_freecad(self):
         self.sketch.constraints = self.constraints
         self.file.add_feature(self.sketch)
-        to_freecad(self.filepath, self.file)
+        self.file.to_freecad(self.filepath)
 
 class TestPartFileSquareSketchVariations(TestPartFileSketches):
     
