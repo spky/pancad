@@ -120,6 +120,10 @@ class PartFile:
     @property
     def filename(self) -> str:
         """The filename of the PartFile. Does not contain a path or extension.
+        
+        :getter: Returns the filename of the PartFile.
+        :setter: Sets the filename of the PartFile. Removes any extensions from 
+            the input string.
         """
         return self._filename
     

@@ -10,7 +10,7 @@ from typing import Self
 import numpy as np
 import quaternion
 
-from PanCAD.cad.freecad import App, PartDesign, Sketcher
+from PanCAD.cad.freecad import App, PartDesign, Sketcher, Part
 from PanCAD.cad.freecad.constants import ObjectType, PadType
 from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
@@ -18,7 +18,6 @@ from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
 from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
 
 from PanCAD.filetypes import PartFile
-from PanCAD.filetypes.constants import SoftwareName
 from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
 from PanCAD.geometry.constants import ConstraintReference, FeatureType
 
@@ -31,7 +30,7 @@ class FreeCADFile:
     STORED_UNIT = "mm" # Values are always stored internally as this unit
     EXTENSION = ".FCStd"
     
-    def __init__(self, filepath: str=None):
+    def __init__(self, filepath: str) -> None:
         self.filepath = filepath
         self._document = App.open(self.filepath)
         no_bodies = len(self._get_bodies())
@@ -153,7 +152,7 @@ class FreeCADFile:
         return part_file
     
     # Private Methods #
-    def _get_bodies(self) -> list:
+    def _get_bodies(self) -> list[Part.BodyBase]:
         """Returns a list of all body objects in the file."""
         return list(
             filter(lambda obj: obj.TypeId == ObjectType.BODY,
@@ -200,7 +199,7 @@ class FreeCADFile:
                     case _:
                         self._features.append(obj)
     
-    def _translate_pad(self, pad: object, feature_map: dict) -> dict:
+    def _translate_pad(self, pad: Part.Feature, feature_map: dict) -> dict:
         """Adds the FreeCAD pad to the given feature map.
         
         :param pad: A FreeCAD Pad object.

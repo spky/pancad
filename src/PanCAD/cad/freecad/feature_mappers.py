@@ -2,9 +2,10 @@
 
 from functools import singledispatch
 
-from PanCAD.cad.freecad import App, Sketcher
+from PanCAD.cad.freecad import App, Sketcher, Part
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.geometry import (AbstractGeometry,
+                             AbstractFeature,
                              Circle,
                              CoordinateSystem,
                              LineSegment,
@@ -12,11 +13,21 @@ from PanCAD.geometry import (AbstractGeometry,
                              Extrude)
 
 SketchGeometry = LineSegment | Circle
+ToFreeCADLike = dict[AbstractGeometry
+                     | AbstractFeature
+                     | tuple[AbstractFeature | AbstractGeometry,
+                             ConstraintReference],
+                     object]
+FromFreeCADLike = dict[object,
+                       AbstractGeometry
+                       | AbstractFeature
+                       | tuple[AbstractFeature | AbstractGeometry,
+                               ConstraintReference]]
 
 @singledispatch
 def map_freecad(pancad: AbstractGeometry,
-                freecad: object,
-                from_freecad=False) -> dict:
+                freecad: Part.Feature | App.DocumentObject | Sketcher.Sketch,
+                from_freecad=False) -> ToFreeCADLike | FromFreeCADLike:
     """Returns a dict that maps pancad (geometry or feature, reference) tuples 
     to a freecad object.
     
@@ -64,7 +75,7 @@ def _coordinate_system(coordinate_system: CoordinateSystem,
 
 @map_freecad.register
 def _extrude(pancad_extrude: Extrude,
-             freecad_extrude: object,
+             freecad_extrude: Part.Feature,
              from_freecad: bool=False) -> dict:
     map_to_freecad = {pancad_extrude: freecad_extrude}
     return _get_ordered_map(map_to_freecad, from_freecad)

@@ -17,7 +17,7 @@ class PadType(StrEnum):
                          midplane: bool,
                          reversed_pad: bool) -> FeatureType:
         """Returns the equivalent FeatureType based upon the settings of a 
-        FreeCAD Pad
+        FreeCAD Pad.
         """
         match self.name:
             case "LENGTH":
