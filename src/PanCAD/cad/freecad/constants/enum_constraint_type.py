@@ -4,6 +4,7 @@ FreeCAD constraint types like Coincident, Vertical and other features."""
 from enum import StrEnum
 
 class ConstraintType(StrEnum):
+    """An enumeration used to define which FreeCAD constraints are supported."""
     ANGLE = "Angle"
     COINCIDENT = "Coincident"
     DIAMETER = "Diameter"
