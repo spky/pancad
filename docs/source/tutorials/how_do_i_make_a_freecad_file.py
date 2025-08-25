@@ -36,7 +36,7 @@ sketch.constraints = [
     Coincident(bottom, CR.START, left, CR.END),
     Coincident(bottom, CR.END, right, CR.START),
     Coincident(right, CR.END, top, CR.START),
-    Coincident(bottom, CR.START, left, CR.END),
+    Coincident(left, CR.START, top, CR.END),
     
     # Constrain one corner to the origin
     Coincident(bottom, CR.START,
@@ -52,3 +52,6 @@ file = PartFile("tutorial_cube")
 file.add_feature(sketch)
 file.add_feature(extrude)
 file.to_freecad(file.filename + ".FCStd")
+
+import os
+os.remove(file.filename + ".FCStd")
