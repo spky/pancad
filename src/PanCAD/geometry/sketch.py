@@ -84,6 +84,7 @@ class Sketch(AbstractFeature):
                  uid: str=None):
         # Initialize private uid since uid and geometry sync with each other
         self._uid = None
+        self._constraints = tuple()
         
         if geometry is None:
             geometry = tuple()
@@ -188,8 +189,7 @@ class Sketch(AbstractFeature):
     @constraints.setter
     def constraints(self, constraints: Sequence[ConstraintType]) -> None:
         for c in constraints:
-            self._validate_constraint_references(c)
-        self._constraints = tuple(constraints)
+            self.add_constraint(c)
     
     @construction.setter
     def construction(self, construction: Sequence[bool]) -> None:
@@ -267,7 +267,7 @@ class Sketch(AbstractFeature):
         """
         dependencies = constraint.get_constrained()
         if all([d in self for d in dependencies]):
-            self.constraints = self.constraints + (constraint,)
+            self._constraints = self._constraints + (constraint,)
             return self
         else:
             missing = filter(lambda d: d not in self, dependencies)
@@ -620,7 +620,7 @@ class Sketch(AbstractFeature):
             case _:
                 raise ValueError(f"Constraint choice {constraint_choice}"
                                  " not recognized")
-        self.constraints += (new_constraint,)
+        self.add_constraint(new_constraint)
     
     def _sync_geometry_uid(self):
         """Prepends the geometry uids with the sketch's uid unless it was 

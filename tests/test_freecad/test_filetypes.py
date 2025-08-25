@@ -19,13 +19,41 @@ class TestReadFile(TestReadSample):
     def setUp(self):
         super().setUp()
         self.filepath = os.path.join(self.sample_freecad, "cube_1x1x1.FCStd")
+        self.filename = "cube_1x1x1"
+        self.sketch_label = "cube_profile"
+        
+        self.feature_count = 2
+        # Sketch and Pad
+        
+        self.sketch_geometry_count = 4
+        # 4 Lines
+        
+        self.sketch_constraint_count = 11
+        # 5 Coincident, 2 Vertical, 2 Horizontal,
+        # 1 HorizontalDistance, 1 VerticalDistance
     
     def test_read_cube(self):
         file = FreeCADFile(self.filepath)
         part_file = file.to_pancad()
+        
     
     def test_read_cube_direct(self):
-        part_file = PartFile.from_freecad(self.filepath)
+        file = PartFile.from_freecad(self.filepath)
+        with self.subTest("Filename mismatch"):
+            self.assertEqual(file.filename, self.filename)
+        
+        with self.subTest("Feature Count !=", geometry=file.get_features()):
+            self.assertEqual(len(file.get_features()), self.feature_count)
+        
+        sketch = file.get_feature(self.sketch_label)
+        
+        with self.subTest("Sketch Geometry Count !=", geometry=sketch.geometry):
+            self.assertEqual(len(sketch.geometry), self.sketch_geometry_count)
+        
+        with self.subTest("Sketch Constraint Count !=",
+                          geometry=sketch.constraints):
+            self.assertEqual(len(sketch.constraints),
+                             self.sketch_constraint_count)
     
     def test_set_path_with_fcstd(self):
         file = FreeCADFile(self.filepath)
