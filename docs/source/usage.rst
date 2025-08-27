@@ -40,8 +40,8 @@ The PartFile will have a tabular summary output to the command line:
 How do I make a FreeCAD file?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A :class:`~PanCAD.filetypes.PartFile` can generate a FreeCAD file, allowing CAD to be finely version controlled.
-
+A :class:`~PanCAD.filetypes.PartFile` can generate a FreeCAD file, allowing CAD 
+to be finely version controlled.
 
 Let's make a 1 mm cube as a first step. We'll start by defining the corners of 
 the a square:
@@ -139,7 +139,7 @@ the FreeCAD '.FCStd' file in the same directory that you ran the script in.
     that the geometry doesn't appear in the window. Don't worry, it's there 
     but invisible! (no, really)
     
-    The PanCAD interface to FreeCAD does not yet support initializing the 
+    The PanCAD-to-FreeCAD interface does not yet support initializing the 
     visualization of the model, so you need to go into Model tab and click 
     the eye symbols next to the pad and body features to see the geometry.
 
