@@ -159,6 +159,17 @@ class PartFile:
         """Returns the PartFile's defining coordinate_system."""
         return self._coordinate_system
     
+    def get_feature(self, uid: str) -> AbstractFeature:
+        """Returns the feature with the given uid.
+        
+        :raises LookupError: When no feature with the uid is in the file.
+        """
+        for feature in self.get_features():
+            if uid == feature.uid:
+                return feature
+        
+        raise LookupError(f"File has no feature with uid '{uid}'")
+    
     def get_features(self) -> tuple[AbstractFeature]:
         """Returns all of the PartFile's stored features."""
         return self._features

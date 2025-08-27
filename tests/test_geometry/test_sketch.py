@@ -167,7 +167,7 @@ class TestConstraints(unittest.TestCase):
         constraints = [
             Coincident(self.geo[0], ConstraintReference.CORE, Point(2, 2), ConstraintReference.CORE)
         ]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(LookupError):
             sketch = Sketch(self.cs, geometry=self.geo, constraints=constraints)
     
     def test_add_constraint_by_uid(self):

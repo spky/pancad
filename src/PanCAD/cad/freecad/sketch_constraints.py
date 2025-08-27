@@ -17,7 +17,7 @@ from PanCAD.geometry.constraints import (
 from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
 from PanCAD.utils.trigonometry import is_clockwise
 
-# Primary Translation Function #################################################
+# Primary Translation Functions ################################################
 def translate_constraint(sketch: Sketch,
                          constraint: AbstractConstraint) -> Sketcher.Constraint:
     """Returns a FreeCAD constraint from a PanCAD constraint.
