@@ -407,7 +407,7 @@ class Line(AbstractGeometry):
         :param other: The line to update to.
         :returns: The updated Line.
         """
-        self._point_closest_to_origin = other.reference_point
+        self._point_closest_to_origin.update(other.reference_point)
         self.direction = other.direction
         return self
     

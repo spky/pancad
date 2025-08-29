@@ -80,7 +80,7 @@ class Circle(AbstractGeometry):
     
     # Setters #
     @center.setter
-    def center(self, point: Point):
+    def center(self, point: Point) -> None:
         if len(point) == len(self):
             self._center.update(point)
         else:
@@ -88,14 +88,14 @@ class Circle(AbstractGeometry):
                              f" {len(point)}D, Circle is {len(self)}D")
     
     @radius.setter
-    def radius(self, value: int | float):
+    def radius(self, value: Real) -> None:
         if value >= 0:
             self._radius = value
         else:
             raise ValueError(f"Radius cannot be < 0. Given: {value}")
     
     @uid.setter
-    def uid(self, value: str):
+    def uid(self, value: str) -> None:
         self._uid = value
         if self._uid is None:
             self.center.uid = None

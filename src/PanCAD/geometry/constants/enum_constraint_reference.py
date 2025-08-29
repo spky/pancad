@@ -22,9 +22,17 @@ class ConstraintReference(Flag):
     coordinate system.
     """
     X = auto()
-    """The X-Axis of the geometry."""
+    """The X-Axis of the geometry. Examples: The X axis of a coordinate system 
+    or the major axis of an ellipse.
+    """
+    MAJOR_AXIS = X
+    """An alias for X"""
     Y = auto()
-    """The Y-Axis of the geometry."""
+    """The Y-Axis of the geometry. Examples: The Y axis of a coordinate system 
+    or the minor axis of an ellipse.
+    """
+    MINOR_AXIS = Y
+    """An alias for Y"""
     Z = auto()
     """The Z-Axis of the geometry."""
     XY = auto()
