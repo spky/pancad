@@ -476,7 +476,8 @@ def midpoint_2d(point_1: np.ndarray, point_2: np.ndarray) -> np.ndarray:
     # """
     return (point_1 + point_2)/2
 
-# TODO: Rewrite to work with Point, keep for new Ellipse class
+# TODO: Rewrite to work with Point, keep for new Ellipse class. UPDATE: Added to 
+# Ellipse class, but now need to keep this until Elliptical Arc is implemented.
 def ellipse_point(center_point: np.ndarray,
                   major_radius: Real,
                   minor_radius: Real,

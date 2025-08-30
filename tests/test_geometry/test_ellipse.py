@@ -1,3 +1,4 @@
+import math
 from numbers import Real
 import unittest
 
@@ -81,12 +82,12 @@ class TestInit(unittest.TestCase):
                           got=test.minor_axis_line.uid):
             self.assertEqual(test.minor_axis_line.uid, minor_axis_uid)
 
-class Test2DEllipse(TestInit):
+class Test2DEllipseInitialization(TestInit):
     
     def setUp(self):
         self.uid = "test_ellipse"
     
-    def test_for_nominal_error(self):
+    def test_for_nominal_init(self):
         center = (0, 0)
         a = 2
         b = 1
@@ -95,3 +96,109 @@ class Test2DEllipse(TestInit):
         center_pt = Point(center)
         major_line = Line(center_pt, major_direction)
         self.check_values(ellipse, center_pt, a, b, major_line, uid=self.uid)
+    
+    def test_for_from_angle_init(self):
+        center = (0, 0)
+        a = 2
+        b = 1
+        center_pt = Point(center)
+        major_angles = [0, 45]
+        for degrees, angle in zip(major_angles, map(math.radians, major_angles)):
+            with self.subTest(degree_definition=degrees):
+                ellipse = Ellipse.from_angle(center, a, b, angle,
+                                             uid=self.uid)
+                major_line = Line.from_point_and_angle(center, angle)
+                self.check_values(ellipse, center_pt, a, b, major_line,
+                                  uid=self.uid)
+
+class TestEllipseDunders(unittest.TestCase):
+    
+    def test_rich_equal_true(self):
+        center = (0, 0)
+        a = 2
+        b = 1
+        major_direction = (1, 0)
+        ellipse_a = Ellipse(center, a, b, major_direction)
+        ellipse_b = Ellipse(center, a, b, major_direction)
+        self.assertTrue(ellipse_a == ellipse_b)
+    
+    def test_rich_equal_false(self):
+        center = (0, 0)
+        a = 2
+        b = 1
+        b_mismatch = 1.5
+        major_direction = (1, 0)
+        ellipse_a = Ellipse(center, a, b, major_direction)
+        ellipse_b = Ellipse(center, a, b_mismatch, major_direction)
+        self.assertFalse(ellipse_a == ellipse_b)
+    
+    def test_copy(self):
+        center = (0, 0)
+        a = 2
+        b = 1
+        major_direction = (1, 0)
+        ellipse_a = Ellipse(center, a, b, major_direction)
+        ellipse_b = ellipse_a.copy()
+        self.assertTrue(ellipse_a == ellipse_b)
+
+class Test2DEllipseChanges(TestInit):
+    
+    def setUp(self):
+        self.center = (0, 0)
+        self.center_pt = Point(self.center)
+        self.a = 2
+        self.b = 1
+        self.major_direction = (1, 0)
+        self.uid = "test_ellipse"
+        self.ellipse = Ellipse(self.center,
+                               self.a,
+                               self.b,
+                               self.major_direction,
+                               uid=self.uid)
+    
+    def test_center_change(self):
+        new_center = (1, 1)
+        self.ellipse.center = new_center
+        new_center_pt = Point(new_center)
+        new_major_line = Line(new_center_pt, self.major_direction)
+        self.check_values(self.ellipse,
+                          new_center_pt,
+                          self.a,
+                          self.b,
+                          new_major_line,
+                          uid=self.uid)
+    
+    def test_major_axis_direction_change(self):
+        new_direction = (1, 1)
+        self.ellipse.major_axis_direction = new_direction
+        new_major_line = Line(self.center_pt, new_direction)
+        self.check_values(self.ellipse,
+                          self.center_pt,
+                          self.a,
+                          self.b,
+                          new_major_line,
+                          uid=self.uid)
+    
+    def test_major_axis_angle_change(self):
+        new_angle = math.radians(45)
+        self.ellipse.major_axis_angle = new_angle
+        new_major_line = Line.from_point_and_angle(self.center_pt, new_angle)
+        self.check_values(self.ellipse,
+                          self.center_pt,
+                          self.a,
+                          self.b,
+                          new_major_line,
+                          uid=self.uid)
+    
+    def test_minor_axis_angle_change(self):
+        new_minor_angle = 135
+        new_major_angle = math.radians(new_minor_angle - 90)
+        self.ellipse.minor_axis_angle = math.radians(new_minor_angle)
+        new_major_line = Line.from_point_and_angle(self.center_pt,
+                                                   new_major_angle)
+        self.check_values(self.ellipse,
+                          self.center_pt,
+                          self.a,
+                          self.b,
+                          new_major_line,
+                          uid=self.uid)
