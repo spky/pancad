@@ -4,7 +4,7 @@ FreeCAD/PanCAD sketch geometry.
 from functools import singledispatch
 
 from PanCAD.cad.freecad import App, Part
-from PanCAD.geometry import AbstractGeometry, Circle, LineSegment
+from PanCAD.geometry import AbstractGeometry, Circle, LineSegment, Ellipse
 
 @singledispatch
 def get_freecad_sketch_geometry(pancad: AbstractGeometry) -> object:
@@ -19,6 +19,13 @@ def _line_segment(line_segment: LineSegment) -> Part.LineSegment:
     start = App.Vector(tuple(line_segment.point_a) + (0,))
     end = App.Vector(tuple(line_segment.point_b) + (0,))
     return Part.LineSegment(start, end)
+
+@get_freecad_sketch_geometry.register
+def _ellipse(ellipse: Ellipse) -> Part.Ellipse:
+    major_axis_point = App.Vector(tuple(ellipse.get_major_axis_point()) + (0,))
+    minor_axis_point = App.Vector(tuple(ellipse.get_minor_axis_point()) + (0,))
+    center = App.Vector(tuple(ellipse.center) + (0,))
+    return Part.Ellipse(major_axis_point, minor_axis_point, center)
 
 @get_pancad_sketch_geometry.register
 def _line_segment(line_segment: Part.LineSegment) -> LineSegment:

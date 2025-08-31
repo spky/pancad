@@ -11,6 +11,18 @@ ROUNDING_PLACES = 10
 
 class TestInit(unittest.TestCase):
     
+    @staticmethod
+    def focal_point(center: Point,
+                    a: Real,
+                    b: Real,
+                    major_direction: tuple[Real],
+                    plus: bool) -> Point:
+        c = math.sqrt(a**2 - b**2)
+        if plus:
+            return Point(center + c*np.array(major_direction))
+        else:
+            return Point(center - c*np.array(major_direction))
+    
     def check_values(self,
                      test: Ellipse,
                      center: Point,
@@ -34,6 +46,18 @@ class TestInit(unittest.TestCase):
                 center,
                 major_axis_line.direction  @ np.array([[0, 1], [-1, 0]])
             )
+        
+        plus_focal = self.focal_point(center,
+                                      semi_major_axis,
+                                      semi_minor_axis,
+                                      major_axis_line.direction,
+                                      True)
+        
+        minus_focal = self.focal_point(center,
+                                       semi_major_axis,
+                                       semi_minor_axis,
+                                       major_axis_line.direction,
+                                       False)
         
         # Real and geometry Sub-tests
         with self.subTest("center !=", expected=center, got=test.center):
@@ -64,6 +88,13 @@ class TestInit(unittest.TestCase):
             self.assertAlmostEqual(test.semi_minor_axis,
                                    semi_minor_axis,
                                    ROUNDING_PLACES)
+        with self.subTest("plus_focal_point !=",
+                          expected=plus_focal,
+                          got=test.focal_point_plus):
+            np.testing.assert_allclose(test.focal_point_plus.cartesian,
+                                       plus_focal.cartesian)
+            
+        
         
         # uid Sub-tests
         with self.subTest("ellipse uid !=", expected=uid, got=test.uid):

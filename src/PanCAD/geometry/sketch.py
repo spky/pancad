@@ -10,12 +10,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import reduce, singledispatchmethod
 from itertools import compress
+from math import degrees
 import textwrap
 from typing import overload, Self, NoReturn
 
 from PanCAD.geometry import (
     AbstractFeature, AbstractGeometry,
-    Circle, CoordinateSystem, Point, Line, LineSegment, Plane,
+    Circle, CoordinateSystem, Ellipse, Point, Line, LineSegment, Plane,
 )
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 from PanCAD.geometry.constraints import (
@@ -59,8 +60,9 @@ class Sketch(AbstractFeature):
     """Allowable ConstraintReferences for the sketch's plane_reference."""
     
     # Type Tuples for checking with isinstance()
-    GEOMETRY_TYPES = (Circle, Line, LineSegment, Point)
-    EXTERNAL_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Point, Plane)
+    GEOMETRY_TYPES = (Circle, Ellipse, Line, LineSegment, Point)
+    EXTERNAL_TYPES = (Circle, CoordinateSystem, Ellipse,
+                      Line, LineSegment, Point, Plane)
     CONSTRAINT_TYPES = (Coincident, Vertical, Horizontal,
                         Equal, Parallel, Perpendicular,
                         Angle, Distance, Diameter, Radius,
@@ -654,6 +656,16 @@ class Sketch(AbstractFeature):
                 "Construction": self.construction[self.get_index_of(geometry)]}
     
     @_get_summary_info.register
+    def _ellipse(self, geometry: Ellipse) -> dict:
+        return {"Index": self.get_index_of(geometry),
+                "UID": geometry.uid,
+                "Center": geometry.center.cartesian,
+                "Semi-Major Axis Length": geometry.semi_major_axis,
+                "Semi-Minor Axis Length": geometry.semi_minor_axis,
+                "Semi-Major Axis Angle": degrees(geometry.major_axis_angle),
+                "Construction": self.construction[self.get_index_of(geometry)]}
+    
+    @_get_summary_info.register
     def _line(self, geometry: Line) -> dict:
         return {"Index": self.get_index_of(geometry),
                 "UID": geometry.uid,
@@ -804,6 +816,7 @@ class Sketch(AbstractFeature):
         sketch_summary.append("Geometry")
         summaries = {
             "Circles": Circle,
+            "Ellipses": Ellipse,
             "Line Segments": LineSegment,
             "Infinite Lines": Line,
             "Points": Point,

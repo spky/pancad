@@ -475,7 +475,6 @@ class Point(AbstractGeometry):
         """
         if isinstance(other, (np.ndarray, tuple)):
             if len(self) == len(other):
-                print(self)
                 numpy_array = np.array(self) + np.array(other)
                 return tuple(map(lambda x: x.item(), numpy_array))
             else:

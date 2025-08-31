@@ -1,7 +1,8 @@
 import unittest
+from math import radians
 
 from PanCAD.geometry import (
-    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle
+    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle, Ellipse,
 )
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal, Equal, Angle,
@@ -83,8 +84,20 @@ class TestSummary(unittest.TestCase):
         sketch.constraints = constraints
         return sketch
     
+    def make_ellipse_sketch(self) -> Sketch:
+        geometry = [
+            Ellipse.from_angle((0, 0), 2, 1, radians(45))
+        ]
+        sketch = Sketch(geometry=geometry, uid="test_sketch")
+        return sketch
+    
     def test_square_sketch_summary(self):
         sketch = self.make_square_sketch()
+        sketch_str = str(sketch)
+        # print(); print(sketch_str)
+    
+    def test_ellipse_sketch_summary(self):
+        sketch = self.make_ellipse_sketch()
         sketch_str = str(sketch)
         # print(); print(sketch_str)
 

@@ -4,7 +4,7 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial
-from math import cos, sin, atan2
+from math import atan2, cos, radians, sin, sqrt
 from numbers import Real
 from typing import overload, Self
 
@@ -47,7 +47,9 @@ class Ellipse(AbstractGeometry):
     REFERENCES = (ConstraintReference.CORE,
                   ConstraintReference.CENTER,
                   ConstraintReference.X,
-                  ConstraintReference.Y,)
+                  ConstraintReference.Y,
+                  ConstraintReference.FOCAL_PLUS,
+                  ConstraintReference.FOCAL_MINUS,)
     """All relevant ConstraintReferences for Ellipses."""
     
     @overload
@@ -133,6 +135,26 @@ class Ellipse(AbstractGeometry):
             match the Ellipse's current number of dimensions.
         """
         return self._center
+    
+    @property
+    def focal_point_minus(self) -> Point:
+        """The focal point in the negative direction of the Ellipse major axis.
+        
+        :getter: Returns the point.
+        :setter: Read-only. Would cause undefined center point or axis behavior 
+            if changed by itself.
+        """
+        return self._focal_point_minus
+    
+    @property
+    def focal_point_plus(self) -> Point:
+        """The focal point in the positive direction of the Ellipse major axis.
+        
+        :getter: Returns the point.
+        :setter: Read-only. Would cause undefined center point or axis behavior 
+            if changed by itself.
+        """
+        return self._focal_point_plus
     
     @property
     def major_axis_angle(self) -> Real:
@@ -248,10 +270,17 @@ class Ellipse(AbstractGeometry):
                 self._center.update(point)
                 self._major_axis_line.move_to_point(self._center)
                 self._minor_axis_line.move_to_point(self._center)
+                self._focal_point_plus.cartesian = self._get_focal_location(
+                    True
+                )
+                self._focal_point_minus.cartesian = self._get_focal_location(
+                    False
+                )
             else:
                 raise ValueError(f"Dimension mismatch: Provided center point is"
                                  f" {len(point)}D, Ellipse is {len(self)}D")
         else:
+            # Initialize center
             self._center = point
     
     @major_axis_angle.setter
@@ -261,6 +290,8 @@ class Ellipse(AbstractGeometry):
             minor_direction = (self.major_axis_line.direction
                                @ np.array([[0, 1], [-1, 0]]))
             self.minor_axis_line.update(Line(self.center, minor_direction))
+            self._focal_point_plus.cartesian = self._get_focal_location(True)
+            self._focal_point_minus.cartesian = self._get_focal_location(False)
         else:
             raise ValueError("3D ellipses cannot modify their angle in a well"
                              " defined way")
@@ -270,12 +301,16 @@ class Ellipse(AbstractGeometry):
         self.major_axis_line.update(Line(self.center, direction))
         minor_direction = direction @ np.array([[0, 1], [-1, 0]])
         self.minor_axis_line.update(Line(self.center, minor_direction))
+        self._focal_point_plus.cartesian = self._get_focal_location(True)
+        self._focal_point_minus.cartesian = self._get_focal_location(False)
     
     @minor_axis_direction.setter
     def minor_axis_direction(self, direction: VectorLike) -> None:
         self.minor_axis_line.update(Line(self.center, direction))
         major_direction = direction @ np.array([[0, -1], [1, 0]])
         self.major_axis_line.update(Line(self.center, major_direction))
+        self._focal_point_plus.cartesian = self._get_focal_location(True)
+        self._focal_point_minus.cartesian = self._get_focal_location(False)
     
     @minor_axis_angle.setter
     def minor_axis_angle(self, angle: Real) -> None:
@@ -284,6 +319,8 @@ class Ellipse(AbstractGeometry):
             major_direction = (self.minor_axis_line.direction
                                @ np.array([[0, -1], [1, 0]]))
             self.major_axis_line.update(Line(self.center, major_direction))
+            self._focal_point_plus.cartesian = self._get_focal_location(True)
+            self._focal_point_minus.cartesian = self._get_focal_location(False)
         else:
             raise ValueError("3D ellipses cannot modify their angle in a well"
                              " defined way")
@@ -321,6 +358,21 @@ class Ellipse(AbstractGeometry):
         """
         return self.__copy__()
     
+    def get_linear_eccentricity(self) -> float:
+        return sqrt(self.semi_major_axis**2 - self.semi_minor_axis**2)
+    
+    def get_major_axis_point(self) -> Point:
+        """Returns the point on the ellipse at the extreme of the positive major 
+        axis.
+        """
+        return self._get_point_at_angle(0)
+    
+    def get_minor_axis_point(self) -> Point:
+        """Returns the point on the ellipse at the extreme of the positive major 
+        axis.
+        """
+        return self._get_point_at_angle(radians(90))
+    
     def get_reference(reference: ConstraintReference) -> Self | Point | Line:
         match reference:
             case ConstraintReference.CORE:
@@ -331,6 +383,10 @@ class Ellipse(AbstractGeometry):
                 return self.major_axis_line
             case ConstraintReference.Y:
                 return self.minor_axis_line
+            case ConstraintReference.FOCAL_PLUS:
+                return self.focal_point_plus
+            case ConstraintReference.FOCAL_MINUS:
+                return self.focal_point_minus
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
@@ -342,20 +398,36 @@ class Ellipse(AbstractGeometry):
         self.center.update(other.center)
     
     # Private Methods #
+    def _get_focal_location(self, plus: bool) -> np.ndarray:
+        """Returns the coordinates of an ellipse focal point.
+        
+        :param plus: Whether to return the focal point in the positive or 
+            negative direction of the major axis.
+        :returns: The focal point in the positive direction of the major axis if 
+            plus is 'True', otherwise the focal point in the negative direction.
+        """
+        c = self.get_linear_eccentricity()
+        if plus:
+            return self.center.cartesian + c*np.array(self.major_axis_direction)
+        else:
+            return self.center.cartesian - c*np.array(self.major_axis_direction)
+    
     def _get_point_at_angle(self, angle: Real) -> Point:
         """Returns a Point on the 2D ellipse that is at the angle, in radians, 
         relative to the x-axis of the Ellipse.
         """
+        if len(self) != 2:
+            raise ValueError("Not supported for 3D ellipses")
         angle = angle_mod(angle)
         major_axis_rotation = rotation_2(self.major_axis_angle)
         eccentric_anomaly = atan2(self.semi_major_axis * sin(angle),
                                   self.semi_minor_axis * cos(angle))
-        # 'canonical' meaning if the ellipse was centered at the origin with its 
+        # 'canon' meaning if the ellipse was centered at the origin with its 
         # major axis pointing in the X direction and its minor axis pointing 
-        # in the Y direction
-        canonical_coordinates = (self.semi_major_axis * cos(eccentric_anomaly),
-                                 self.semi_minor_axis * sin(eccentric_anomaly))
-        coordinates = major_axis_rotation @ canonical_coordinates + self.center
+        # in the Y direction.
+        canon_location = (self.semi_major_axis * cos(eccentric_anomaly),
+                          self.semi_minor_axis * sin(eccentric_anomaly))
+        coordinates = major_axis_rotation @ canon_location + self.center
         return Point(coordinates)
     
     def _init_2d(self, major_direction: VectorLike) -> None:
@@ -369,12 +441,14 @@ class Ellipse(AbstractGeometry):
         # from using the trig.rotation_2 function
         minor_direction = major_direction @ np.array([[0, 1], [-1, 0]])
         self._minor_axis_line = Line(self.center, minor_direction)
+        self._focal_point_plus = Point(self._get_focal_location(True))
+        self._focal_point_minus = Point(self._get_focal_location(False))
     
     def _init_3d(self,
                  major_direction: VectorLike,
                  minor_direction: VectorLike) -> None:
         """Finishes up initialization for 3D ellipses."""
-        raise NotImplementedError("3D ellipses not yet implemented")
+        raise NotImplementedError("3D ellipses not yet implemented, Issue #117")
     
     # Python Dunders #
     def __copy__(self) -> Ellipse:

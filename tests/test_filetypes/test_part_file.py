@@ -2,12 +2,14 @@ import os
 import unittest
 from functools import partial
 from inspect import stack
+from math import radians
 
 import PanCAD
 from PanCAD.filetypes import PartFile
 from PanCAD.filetypes.constants import SoftwareName
 from PanCAD.geometry import (Circle,
                              CoordinateSystem,
+                             Ellipse,
                              Extrude,
                              LineSegment,
                              Sketch,)
@@ -133,6 +135,18 @@ class TestPartFile(unittest.TestCase):
                        ConstraintReference.ORIGIN)
         )
         return sketch
+    
+    def ellipse_sketch(self,
+                       uid: str,
+                       plane_ref: ConstraintReference=ConstraintReference.XY
+                       ) -> Sketch:
+        geometry = [
+            Ellipse.from_angle((0, 0), 2, 1, radians(45))
+        ]
+        sketch = Sketch(plane_reference=plane_ref,
+                        geometry=geometry,
+                        uid=uid)
+        return sketch
 
 class TestPartFileInitialization(TestPartFile):
     def test_init(self):
@@ -182,8 +196,8 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         )
         self.dump_folder = os.path.join(tests_folder, "test_output_dump")
     
-    def tearDown(self):
-        os.remove(self.filepath)
+    # def tearDown(self):
+        # os.remove(self.filepath)
     
     def test_to_freecad_create_body(self):
         # Name the file after the function its in
@@ -208,6 +222,18 @@ class TestWritePartFileToFreeCADFeatures(TestPartFile):
         filename = stack()[0].function + ".FCStd"
         self.file = self.file_gen(filename)
         sketch = self.circle_sketch(self.sketch_uid, ConstraintReference.XZ)
+        extrude = Extrude.from_length(sketch,
+                                      self.extrude_length, self.extrude_uid)
+        self.file.add_feature(sketch)
+        self.file.add_feature(extrude)
+        self.filepath = os.path.join(self.dump_folder,
+                                     stack()[0].function + ".FCStd")
+        self.file.to_freecad(self.filepath)
+    
+    def test_to_freecad_create_ellipse_extrude(self):
+        filename = stack()[0].function + ".FCStd"
+        self.file = self.file_gen(filename)
+        sketch = self.ellipse_sketch(self.sketch_uid)
         extrude = Extrude.from_length(sketch,
                                       self.extrude_length, self.extrude_uid)
         self.file.add_feature(sketch)

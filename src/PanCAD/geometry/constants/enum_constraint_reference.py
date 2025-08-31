@@ -17,6 +17,14 @@ class ConstraintReference(Flag):
     """The end of the geometry. Example: The end of a line segment."""
     CENTER = auto()
     """The center of the geometry. Example: The center point of a circle."""
+    FOCAL_PLUS = auto()
+    """The focal point of an ellipse in the positive direction of its major
+    axis.
+    """
+    FOCAL_MINUS = auto()
+    """The focal point of an ellipse in the negative direction of its major
+    axis.
+    """
     ORIGIN = CENTER
     """An alias for the center of the geometry. Example: The origin point of a 
     coordinate system.
