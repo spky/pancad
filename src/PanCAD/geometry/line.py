@@ -9,6 +9,7 @@ from functools import partial
 import math
 from numbers import Real
 from typing import Self
+from uuid import uuid4
 
 import numpy as np
 
@@ -252,15 +253,6 @@ class Line(AbstractGeometry):
         return trig.theta_of_cartesian(self.direction)
     
     @property
-    def uid(self) -> str:
-        """The unique id of the line.
-        
-        :getter: Returns the unique id as a string.
-        :setter: Sets the unique id.
-        """
-        return self._uid
-    
-    @property
     def x_intercept(self) -> Real:
         """The x-intercept of the 2D line (x when y = 0 in y = mx + b), raises
         a ValueError if the line is 3D.
@@ -314,10 +306,6 @@ class Line(AbstractGeometry):
     @direction_spherical.setter
     def direction_spherical(self, vector: VectorLike) -> None:
         self.direction = trig.spherical_to_cartesian(vector)
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        self._uid = uid
     
     # Public Methods #
     def copy(self) -> Line:

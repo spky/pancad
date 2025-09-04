@@ -2,15 +2,14 @@
 PanCAD constraint classes.
 """
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
+from PanCAD.geometry import PanCADThing, AbstractGeometry
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractConstraint(ABC):
+class AbstractConstraint(PanCADThing):
     
-    # Properties #
-    
+    # Abstract Properties #
     @property
     @abstractmethod
     def ConstrainedType(self) -> tuple[AbstractGeometry]:
@@ -28,7 +27,9 @@ class AbstractConstraint(ABC):
         the start point of a :class:`~PanCAD.geometry.LineSegment`.
         """
     
-    # Public Methods #
+    
+    
+    # Abstract Public Methods #
     @abstractmethod
     def get_constrained(self) -> tuple[AbstractGeometry]:
         """Returns the geometry or geometries being constrained."""

@@ -50,6 +50,8 @@ class Sketch(AbstractFeature):
     :param externals: A sequence of geometry external to this sketch that can be 
         referenced by the constraints. Defaults to an empty tuple.
     :param uid: The unique id of the Sketch. Defaults to None.
+    :param name: The name of the Sketch that will be used wherever a CAD 
+        application requires a human-readable name for the sketch element.
     """
     # Class Constants
     UID_SEPARATOR = "_"
@@ -83,7 +85,8 @@ class Sketch(AbstractFeature):
                  construction: Sequence[bool]=None,
                  constraints: Sequence[ConstraintType]=None,
                  externals: Sequence[ExternalType]=None,
-                 uid: str=None):
+                 uid: str=None,
+                 name: str=None):
         # Initialize private uid since uid and geometry sync with each other
         self._uid = None
         self._constraints = tuple()
@@ -108,6 +111,7 @@ class Sketch(AbstractFeature):
         self.plane_reference = plane_reference
         self.constraints = constraints
         self.uid = uid
+        self.name = name
     
     # Getters #
     @property
@@ -178,8 +182,7 @@ class Sketch(AbstractFeature):
         """The unique id of the sketch.
         
         :getter: Returns the unique id of the sketch.
-        :setter: Sets the uid of the sketch and syncs all sketch geometry's uids
-            to with the new sketch's uid.
+        :setter: Sets the uid of the sketch.
         """
         return self._uid
     
@@ -224,7 +227,6 @@ class Sketch(AbstractFeature):
             raise ValueError(f"2D Geometry only, given 3D: {non_2d_geometry}")
         else:
             self._geometry = tuple(geometry)
-            self._sync_geometry_uid()
     
     @plane_reference.setter
     def plane_reference(self, reference: ConstraintReference):
@@ -236,28 +238,7 @@ class Sketch(AbstractFeature):
     
     @uid.setter
     def uid(self, uid: str):
-        original = self.uid
-        if original is not None:
-            original_prefix = original + self.UID_SEPARATOR
         self._uid = uid
-        for g in self.geometry:
-            if original is not None and g.uid.startswith(original_prefix):
-                g.uid = self.UID_SEPARATOR.join(
-                    [uid, g.uid.replace(original_prefix, "", 1)]
-                )
-        self._sync_geometry_uid()
-        
-        if (original is not None
-                and self._sketch_cs.uid.startswith(original_prefix)):
-            self._sketch_cs.uid = self._sketch_cs.uid.replace(
-                original_prefix, self.uid + self.UID_SEPARATOR, 1
-            )
-        elif self.uid is None:
-            pass
-        else:
-            self._sketch_cs.uid = self.UID_SEPARATOR.join(
-                [self.uid, self._sketch_cs.uid]
-            )
     
     # Public Functions #
     def add_constraint(self, constraint: ConstraintType) -> Self:
@@ -417,7 +398,6 @@ class Sketch(AbstractFeature):
             raise ValueError(f"2D Geometry only, given 3D: {geometry}")
         self.geometry = self.geometry + (geometry,)
         self.construction = self.construction + (construction,)
-        self._sync_geometry_uid()
         return self
     
     def get_construction_geometry(self) -> tuple[GeometryType]:
@@ -806,7 +786,10 @@ class Sketch(AbstractFeature):
     def __str__(self) -> str:
         """Returns the longer string representation of the sketch"""
         sketch_summary = []
-        sketch_summary.append(f"Sketch '{self.uid}'")
+        sketch_summary.append(f"Sketch '{self.name}'")
+        sketch_summary.append(
+            textwrap.indent(f"Sketch uid: {self.uid}", "  ")
+        )
         
         # Location/Plane Summary
         sketch_summary.append(

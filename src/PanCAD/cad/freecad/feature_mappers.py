@@ -1,10 +1,12 @@
 """A module providing functions to map PanCAD features to FreeCAD features."""
 
+from collections.abc import MutableMapping
 from functools import singledispatch
 
 from PanCAD.cad.freecad import App, Sketcher, Part
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.geometry import (AbstractGeometry,
+from PanCAD.geometry import (PanCADThing,
+                             AbstractGeometry,
                              AbstractFeature,
                              Circle,
                              CoordinateSystem,
@@ -95,3 +97,68 @@ def _sketch_geometry(pancad_geometry: SketchGeometry,
                      index: int) -> dict:
     map_to_freecad = {(parent_sketch, "geometry", index): freecad_geometry}
     return _get_ordered_map(map_to_freecad, from_freecad)
+
+class FreeCADMap(MutableMapping):
+    """A class implementing a custom mapping between PanCAD elements and FreeCAD 
+    elements.
+    
+    :param _writing_map: Sets whether the map is for writing to FreeCAD or 
+        reading from FreeCAD. A writing map will have PanCAD objects as keys and 
+        FreeCAD objects as values, and a reading map will reverse those roles.
+    
+    """
+    def __init__(self, writing_map: bool=True) -> None:
+        self._mapping = dict()
+        self._writing_map = writing_map
+    
+    
+    # Python Dunders #
+    def __contains__(self, key: object) -> bool:
+        if isinstance(key, PanCADThing):
+            return key.uid in self._mapping
+        else:
+            return key in self._mapping
+    
+    def __delitem__(self, key) -> None:
+        del self._mapping[key.uid]
+    
+    def __getitem__(self, key: object | tuple) -> object:
+        if isinstance(key, tuple):
+            key, reference = key
+            _, subfeatures = self._mapping[key.uid]
+            value = subfeatures[reference]
+        else:
+            _, value = self._mapping[key.uid]
+        return value
+    
+    def __iter__(self):
+        return iter(self._mapping)
+    
+    def __len__(self) -> int:
+        return len(self._mapping)
+    
+    def __setitem__(self, key: object, value: object) -> None:
+        if self._writing_map:
+            if isinstance(key, CoordinateSystem):
+                subfeatures = {
+                    ConstraintReference.ORIGIN: value,
+                    ConstraintReference.X: value.OriginFeatures[0],
+                    ConstraintReference.Y: value.OriginFeatures[1],
+                    ConstraintReference.Z: value.OriginFeatures[2],
+                    ConstraintReference.XY: value.OriginFeatures[3],
+                    ConstraintReference.XZ: value.OriginFeatures[4],
+                    ConstraintReference.YZ: value.OriginFeatures[5],
+                }
+                self._mapping[key.uid] = (key, subfeatures)
+            elif isinstance(key, PanCADThing):
+                self._mapping[key.uid] = (key, value)
+            else:
+                raise TypeError("Writing map keys must be PanCAD objects,"
+                                f" given: {key}, class: {key.__class__}")
+        else:
+            if not isinstance(key, PanCADThing):
+                self._mapping[key] = (key, value)
+            else:
+                raise TypeError("Reading map keys cannot be PanCAD objects,"
+                                f" given: {key}")
+    

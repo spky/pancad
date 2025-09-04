@@ -3,18 +3,12 @@ PanCAD feature classes.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
+from PanCAD.geometry import PanCADThing, AbstractGeometry
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractFeature(ABC):
-    
-    # Properties #
-    @property
-    @abstractmethod
-    def uid(self) -> str:
-        """The unique id of the feature, usually used as its name."""
+class AbstractFeature(PanCADThing):
     
     # Public Methods #
     @abstractmethod

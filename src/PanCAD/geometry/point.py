@@ -8,6 +8,7 @@ import math
 from functools import partial, singledispatchmethod
 from numbers import Real
 from typing import overload, NoReturn, Self
+from uuid import uuid4
 
 import numpy as np
 
@@ -78,7 +79,10 @@ class Point(AbstractGeometry):
                  unit: str=None) -> None: ...
     
     def __init__(self, cartesian=None, y=None, z=None, *, uid=None, unit=None):
-        self.uid = uid
+        if uid is None:
+            self.uid = uuid4()
+        else:
+            self.uid = uid
         
         if all([isinstance(n, Real) for n in [cartesian, y, z]]):
             self.cartesian = (cartesian, y, z)
@@ -189,15 +193,6 @@ class Point(AbstractGeometry):
                    uid=uid, unit=unit)
     
     # Getters #
-    @property
-    def uid(self) -> str:
-        """The unique id of the point.
-        
-        :getter: Returns the unique id.
-        :setter: Sets the unique id.
-        """
-        return self._uid
-    
     # Cartesian Coordinates #
     @property
     def cartesian(self) -> tuple[Real]:
@@ -298,10 +293,6 @@ class Point(AbstractGeometry):
             self._cartesian = value
         else:
             raise ValueError(f"Given cartesian {value} needs 2 or 3 elements")
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        self._uid = uid
     
     @x.setter
     def x(self, value: Real) -> None:

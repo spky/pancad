@@ -4,6 +4,7 @@
 # sometimes dependencies of the modules towards the bottom of the file
 
 # Import Geometry Types
+from PanCAD.geometry.abstract_pancad_thing import PanCADThing
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
 
 from PanCAD.geometry.point import Point

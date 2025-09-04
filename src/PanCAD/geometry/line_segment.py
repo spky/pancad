@@ -202,16 +202,6 @@ class LineSegment(AbstractGeometry):
         """
         return trig.theta_of_cartesian(self.direction)
     
-    @property
-    def uid(self) -> str:
-        """The unique id of the LineSegment.
-        
-        :getter: Returns the unique id of the LineSegment.
-        :setter: Sets the unique id of the LineSegment and updates the uid of 
-            the internal points a and b unique ids accordingly.
-        """
-        return self._uid
-    
     # Setters #
     @point_a.setter
     def point_a(self, pt: Point) -> None:
@@ -220,12 +210,6 @@ class LineSegment(AbstractGeometry):
     @point_b.setter
     def point_b(self, pt: Point) -> None:
         self.update_points(self.point_a, pt)
-    
-    @uid.setter
-    def uid(self, value: str) -> None:
-        self._uid = value
-        self.point_a.uid = f"{self._uid}_point_a"
-        self.point_b.uid = f"{self._uid}_point_b"
     
     # Public Methods #
     def copy(self) -> LineSegment:

@@ -16,8 +16,7 @@ class TestInit(unittest.TestCase):
                      center_point: Point,
                      radius: int | float,
                      vector_1: tuple=None,
-                     vector_2: tuple=None,
-                     uid: str=None):
+                     vector_2: tuple=None,):
         test_vector_1, test_vector_2 = test_circle.get_orientation_vectors()
         
         with self.subTest(expected_center=center_point,
@@ -34,16 +33,6 @@ class TestInit(unittest.TestCase):
             else:
                 assertPanCADAlmostEqual(self, test_vector_1, vector_1,
                                         ROUNDING_PLACES)
-        with self.subTest(expected_uid=uid, test_uid=test_circle.uid):
-            self.assertEqual(test_circle.uid, uid)
-        
-        if uid is None:
-            expected_center_uid = None
-        else:
-            expected_center_uid = test_circle.CENTER_UID_FORMAT.format(uid=uid)
-        with self.subTest(expected_center_pt_uid=expected_center_uid,
-                          test_center_uid=test_circle.center.uid):
-            self.assertEqual(test_circle.center.uid, expected_center_uid)
 
 class Test2DCircle(TestInit):
     
@@ -53,7 +42,7 @@ class Test2DCircle(TestInit):
     
     def test_for_nominal_error(self):
         circle = Circle(self.center, self.radius, uid=self.uid)
-        self.check_values(circle, self.center, self.radius, uid=self.uid)
+        self.check_values(circle, self.center, self.radius)
     
     def test_for_nominal_error_no_uid(self):
         circle = Circle(self.center, self.radius)
@@ -71,7 +60,7 @@ class Test2DCircle(TestInit):
     def test_set_uid(self):
         circle = Circle(self.center, self.radius)
         circle.uid = self.uid
-        self.check_values(circle, self.center, self.radius, uid=self.uid)
+        self.check_values(circle, self.center, self.radius)
     
     def test_update(self):
         circle = Circle(self.center, self.radius)
@@ -112,7 +101,7 @@ class Test3DCircle(TestInit):
         circle = Circle(self.center, self.radius, self.vector_1, self.vector_2,
                         uid=self.uid)
         self.check_values(circle, self.center, self.radius,
-                          self.vector_1, self.vector_2, self.uid)
+                          self.vector_1, self.vector_2)
     
     def test_for_repr_error(self):
         circle = Circle(self.center, self.radius, self.vector_1, self.vector_2,

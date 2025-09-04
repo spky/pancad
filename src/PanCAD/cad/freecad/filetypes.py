@@ -142,7 +142,9 @@ class FreeCADFile:
         for feature in self._features:
             match feature.TypeId:
                 case ObjectType.SKETCH:
-                    feature_map = self._translate_sketch(feature, feature_map)
+                    feature_map = self._translate_sketch_from_freecad(
+                        feature, feature_map
+                    )
                     sketch, *_ = feature_map[feature]
                     part_file.add_feature(sketch)
                 case ObjectType.PAD:
@@ -224,9 +226,9 @@ class FreeCADFile:
         )
         return feature_map
     
-    def _translate_sketch(self,
-                          sketch: Sketcher.Sketch,
-                          feature_map: dict) -> dict:
+    def _translate_sketch_from_freecad(self,
+                                       sketch: Sketcher.Sketch,
+                                       feature_map: dict) -> dict:
         """Adds the FreeCAD sketch and its geometry to the given feature map.
         
         :param sketch: A FreeCAD Sketch object.

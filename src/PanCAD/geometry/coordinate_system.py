@@ -38,14 +38,6 @@ class CoordinateSystem(AbstractGeometry):
         Right-handed if True, left-handed if False. Defaults to False.
     :param uid: The unique ID of the coordinate system.
     """
-    UID_SEPARATOR = "_"
-    XLINE_UID = "xline"
-    YLINE_UID = "yline"
-    ZLINE_UID = "zline"
-    XYPLANE_UID = "xyplane"
-    XZPLANE_UID = "xzplane"
-    YZPLANE_UID = "yzplane"
-    ORIGIN_UID = "origin"
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,
                   ConstraintReference.Y,
@@ -134,17 +126,6 @@ class CoordinateSystem(AbstractGeometry):
     
     # Getters #
     @property
-    def uid(self) -> str:
-        """The unique id of the coordinate system. Can also be interpreted as 
-        the name of the coordinate system
-        
-        :getter: Returns the unique id as a string.
-        :setter: Sets the unique id of the coordinate system and updates the 
-            internal geometry uids of the origin, axes, and planes accordingly.
-        """
-        return self._uid
-    
-    @property
     def origin(self) -> Point:
         """The origin point of the coordinate system.
         
@@ -176,36 +157,6 @@ class CoordinateSystem(AbstractGeometry):
             self._origin.update(point)
         else:
             self._origin.cartesian = point
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        if uid is None:
-            self._x_axis_line.uid = self.XLINE_UID
-            self._y_axis_line.uid = self.YLINE_UID
-            self._origin.uid = self.ORIGIN_UID
-        else:
-            self._x_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.XLINE_UID])
-            self._y_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.YLINE_UID])
-            self._origin.uid = self.UID_SEPARATOR.join([uid, self.ORIGIN_UID])
-            
-        if len(self.origin) == 3 and uid is None:
-            self._z_axis_line.uid = self.ZLINE_UID
-            self._xy_plane.uid = self.XYPLANE_UID
-            self._xz_plane.uid = self.XZPLANE_UID
-            self._yz_plane.uid = self.YZPLANE_UID
-        elif len(self.origin) == 3:
-            self._z_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.ZLINE_UID])
-            self._xy_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.XYPLANE_UID])
-            self._xz_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.XZPLANE_UID])
-            self._yz_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.YZPLANE_UID])
-        
-        self._uid = uid
     
     # Public Methods #
     def get_all_references(self) -> tuple[ConstraintReference]:

@@ -32,15 +32,6 @@ class TestInit(unittest.TestCase):
                      minor_axis_line: Line=None,
                      uid: str=None):
         # Set up expected
-        if uid is None:
-            center_uid = None
-            major_axis_uid = None
-            minor_axis_uid = None
-        else:
-            center_uid = test.CENTER_UID_FORMAT.format(uid=uid)
-            major_axis_uid = test.MAJOR_AXIS_UID_FORMAT.format(uid=uid)
-            minor_axis_uid = test.MINOR_AXIS_UID_FORMAT.format(uid=uid)
-        
         if minor_axis_line is None:
             minor_axis_line = Line(
                 center,
@@ -93,25 +84,6 @@ class TestInit(unittest.TestCase):
                           got=test.focal_point_plus):
             np.testing.assert_allclose(test.focal_point_plus.cartesian,
                                        plus_focal.cartesian)
-            
-        
-        
-        # uid Sub-tests
-        with self.subTest("ellipse uid !=", expected=uid, got=test.uid):
-            self.assertEqual(test.uid, test.uid)
-            
-        with self.subTest("center uid !=",
-                          expected=center_uid,
-                          got=test.center.uid):
-            self.assertEqual(test.center.uid, center_uid)
-        with self.subTest("major_axis_line uid !=",
-                          expected=major_axis_uid,
-                          got=test.major_axis_line.uid):
-            self.assertEqual(test.major_axis_line.uid, major_axis_uid)
-        with self.subTest("minor_axis_line uid !=",
-                          expected=minor_axis_uid,
-                          got=test.minor_axis_line.uid):
-            self.assertEqual(test.minor_axis_line.uid, minor_axis_uid)
 
 class Test2DEllipseInitialization(TestInit):
     

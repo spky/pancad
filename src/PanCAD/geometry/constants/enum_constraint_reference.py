@@ -58,3 +58,10 @@ class ConstraintReference(Flag):
     
     def __repr__(self) -> str:
         return f"{self.name}"
+
+class FeatureReference(Flag):
+    """An enumeration used by features to reference portions of other 
+    features.
+    """
+    ROOT = auto
+    """The feature as a whole."""

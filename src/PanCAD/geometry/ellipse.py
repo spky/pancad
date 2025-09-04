@@ -7,6 +7,7 @@ from functools import partial
 from math import atan2, cos, radians, sin, sqrt
 from numbers import Real
 from typing import overload, Self
+from uuid import uuid4
 
 import numpy as np
 
@@ -40,9 +41,6 @@ class Ellipse(AbstractGeometry):
     :raises ValueError: When minor_direction is provided for a 2D ellipse or not 
         provided for a 3D ellipse.
     """
-    CENTER_UID_FORMAT = "{uid}_center"
-    MAJOR_AXIS_UID_FORMAT = "{uid}_major_axis"
-    MINOR_AXIS_UID_FORMAT = "{uid}_minor_axis"
     
     REFERENCES = (ConstraintReference.CORE,
                   ConstraintReference.CENTER,
@@ -249,16 +247,6 @@ class Ellipse(AbstractGeometry):
         """
         return self._semi_minor_axis
     
-    @property
-    def uid(self) -> str:
-        """Unique id of the ellipse.
-        
-        :getter: Returns the unique id.
-        :setter: Updates the ellipse and its center point, major axis line, and 
-            minor axis line's unique ids.
-        """
-        return self._uid
-    
     # Setters #
     @center.setter
     def center(self, point: Point | VectorLike) -> None:
@@ -332,22 +320,6 @@ class Ellipse(AbstractGeometry):
     @semi_minor_axis.setter
     def semi_minor_axis(self, length: Real) -> None:
         self._semi_minor_axis = length
-    
-    @uid.setter
-    def uid(self, value: str) -> None:
-        self._uid = value
-        if self._uid is None:
-            self.center.uid = None
-            self.major_axis_line.uid = None
-            self.minor_axis_line.uid = None
-        else:
-            self.center.uid = self.CENTER_UID_FORMAT.format(uid=self._uid)
-            self.major_axis_line.uid = self.MAJOR_AXIS_UID_FORMAT.format(
-                uid=self._uid
-            )
-            self.minor_axis_line.uid = self.MINOR_AXIS_UID_FORMAT.format(
-                uid=self._uid
-            )
     
     # Public Methods #
     def copy(self) -> Point:

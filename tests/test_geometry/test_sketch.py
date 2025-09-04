@@ -125,39 +125,6 @@ class TestGeometrySetting(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.sketch.geometry = geometry
 
-class TestUID(unittest.TestCase):
-    
-    def setUp(self):
-        self.cs = CoordinateSystem((0, 0, 0))
-        self.sketch_uid = "TestSketch"
-        self.special_uid = "Special"
-        self.test_geo = [
-            Point(1, 1),
-            Line.from_two_points((0, 0), (0, 1)),
-            Line.from_two_points((0, 0), (0, 1)),
-            LineSegment((-1, -1), (-1, 1)),
-            LineSegment((-1, -1), (-1, 1), uid=self.special_uid),
-            LineSegment((-1, -1), (-1, 1), uid="2"),
-            LineSegment((-1, -1), (-1, 1), uid=""),
-        ]
-    
-    def test_uid_sync(self):
-        expected = [Sketch.UID_SEPARATOR.join([self.sketch_uid, str(i)])
-                    for i, _ in enumerate(self.test_geo)]
-        expected[4] = self.special_uid
-        sketch = Sketch(self.cs, geometry=self.test_geo, uid=self.sketch_uid)
-        uids = [g.uid for g in sketch.geometry]
-        self.assertCountEqual(uids, expected)
-    
-    def test_uid_update_sync(self):
-        sketch = Sketch(self.cs, geometry=self.test_geo, uid=self.sketch_uid)
-        uid = "ModifiedSketch"
-        sketch.uid = uid
-        uids = [g.uid for g in sketch.geometry]
-        expected = [Sketch.UID_SEPARATOR.join([uid, str(i)])
-                    for i, _ in enumerate(self.test_geo)]
-        expected[4] = self.special_uid
-        self.assertCountEqual(uids, expected)
 
 class TestConstraints(unittest.TestCase):
     

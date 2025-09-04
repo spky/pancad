@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import partial
 import math
+from uuid import uuid4
 
 import numpy as np
 
@@ -84,16 +85,6 @@ class Plane(AbstractGeometry):
         """
         return trig.theta_of_cartesian(self.normal)
     
-    @property
-    def uid(self) -> str:
-        """The unique id of the plane. Can also be interpreted as the name of 
-        the plane
-        
-        :getter: Returns the unique id as a string.
-        :setter: Sets the unique id.
-        """
-        return self._uid
-    
     # Setters #
     @normal.setter
     def normal(self, vector: list | tuple | np.ndarray):
@@ -109,10 +100,6 @@ class Plane(AbstractGeometry):
     @theta.setter
     def theta(self, value: float):
         raise NotImplementedError
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        self._uid = uid
     
     # Public Methods #
     def get_d(self) -> float:

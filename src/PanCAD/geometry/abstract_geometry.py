@@ -3,19 +3,14 @@ PanCAD geometry classes.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Self
 
+from PanCAD.geometry import PanCADThing
 from PanCAD.geometry.constants import ConstraintReference
 
-class AbstractGeometry(ABC):
+class AbstractGeometry(PanCADThing):
     """A class defining the interfaces provided by PanCAD Geometry Elements."""
-    
-    # Properties #
-    @property
-    @abstractmethod
-    def uid(self) -> str:
-        """The unique id of the geometry, usually used as its name."""
     
     # Public Methods #
     @abstractmethod
