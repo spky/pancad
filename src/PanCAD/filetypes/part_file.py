@@ -20,10 +20,11 @@ import textwrap
 from typing import Sequence, Self
 from pprint import pformat
 
-from PanCAD.geometry import CoordinateSystem, Sketch, AbstractFeature
+from PanCAD.geometry import (CoordinateSystem, Sketch, AbstractFeature,
+                             PanCADThing)
 from PanCAD.filetypes.constants import SoftwareName
 
-class PartFile:
+class PartFile(PanCADThing):
     """A class representing a part file in CAD applications. PanCAD defines a 
     part file that contains geometry definition for one object and different 
     geometry configurations of that object.
@@ -75,8 +76,8 @@ class PartFile:
                  coordinate_system: CoordinateSystem=None,
                  metadata_map: dict[SoftwareName,
                                     dict[str,
-                                         tuple[SoftwareName, str]]]=None
-                 ) -> None:
+                                         tuple[SoftwareName, str]]]=None,
+                 uid: str=None) -> None:
         self.filename = filename
         # self._set_filename(filename)
         self._metadata = defaultdict(dict)
@@ -91,9 +92,7 @@ class PartFile:
             self._features = tuple(features)
         
         if coordinate_system is None:
-            self._coordinate_system = CoordinateSystem(
-                uid=f"{self.filename} CS"
-            )
+            self._coordinate_system = CoordinateSystem(context=self)
         else:
             self._coordinate_system = coordinate_system
         
@@ -101,6 +100,7 @@ class PartFile:
             self._metadata = None
         else:
             self._initialize_metadata(metadata, original_software, metadata_map)
+        self.uid = uid
     
     # Class Methods #
     @classmethod

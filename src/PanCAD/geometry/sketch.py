@@ -98,7 +98,7 @@ class Sketch(AbstractFeature):
         if externals is None:
             externals = tuple()
         
-        self._sketch_cs = CoordinateSystem((0, 0), uid=self.CS_2D_UID)
+        self._sketch_cs = CoordinateSystem((0, 0), context=self)
         
         if coordinate_system is None:
             self.coordinate_system = CoordinateSystem()

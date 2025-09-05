@@ -6,6 +6,7 @@
 # Import Geometry Types
 from PanCAD.geometry.abstract_pancad_thing import PanCADThing
 from PanCAD.geometry.abstract_geometry import AbstractGeometry
+from PanCAD.geometry.abstract_feature import AbstractFeature
 
 from PanCAD.geometry.point import Point
 from PanCAD.geometry.line import Line
@@ -16,7 +17,7 @@ from PanCAD.geometry.ellipse import Ellipse
 from PanCAD.geometry.coordinate_system import CoordinateSystem
 
 # Import Features
-from PanCAD.geometry.abstract_feature import AbstractFeature
+
 
 # Import 2D Geometry Aggregations - dependent on Geometry Types
 from PanCAD.geometry.sketch import Sketch

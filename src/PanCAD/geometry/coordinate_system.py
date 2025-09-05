@@ -11,7 +11,11 @@ from typing import overload, Self, NoReturn
 import numpy as np
 import quaternion
 
-from PanCAD.geometry import AbstractGeometry, Point, Line, Plane
+from PanCAD.geometry import (AbstractFeature,
+                             AbstractGeometry,
+                             Point,
+                             Line,
+                             Plane)
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import (yaw_pitch_roll,
@@ -23,7 +27,7 @@ from PanCAD.utils.pancad_types import VectorLike
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class CoordinateSystem(AbstractGeometry):
+class CoordinateSystem(AbstractGeometry, AbstractFeature):
     """A class representing coordinate systems in 2D and 3D space. Initial 
     rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
     
@@ -37,6 +41,8 @@ class CoordinateSystem(AbstractGeometry):
     :param right_handed: Whether the coordinate system is right-handed. 
         Right-handed if True, left-handed if False. Defaults to False.
     :param uid: The unique ID of the coordinate system.
+    :param context: The feature defining the context that the CoordinateSystem 
+        exists inside of.
     """
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,
@@ -54,7 +60,8 @@ class CoordinateSystem(AbstractGeometry):
                  origin: Point | VectorLike,
                  alpha: Real=0,
                  *,
-                 uid: str=None) -> None: ...
+                 uid: str=None,
+                 context: AbstractFeature=None) -> None: ...
     
     @overload
     def __init__(self,
@@ -64,10 +71,11 @@ class CoordinateSystem(AbstractGeometry):
                  gamma: Real=0,
                  *,
                  right_handed: bool=True,
-                 uid: str=None) -> None: ...
+                 uid: str=None,
+                 context: AbstractFeature=None) -> None: ...
     
     def __init__(self, origin=None, alpha=0, beta=0, gamma=0,
-                 *, right_handed: bool=True, uid: str=None):
+                 *, right_handed=True, uid=None, context=None):
         if origin is None:
             origin = (0, 0, 0)
         if isinstance(origin, VectorLike):
@@ -86,6 +94,7 @@ class CoordinateSystem(AbstractGeometry):
         else:
             self._init_3d(origin, alpha, beta, gamma)
         
+        self.context = context
         self.uid = uid
     
     # Class Methods #
@@ -167,6 +176,9 @@ class CoordinateSystem(AbstractGeometry):
             return self.REFERENCES[0:3]
         else:
             return self.REFERENCES
+    
+    def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
+        return (self.context,)
     
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""

@@ -3,8 +3,10 @@
 from collections.abc import MutableMapping
 from functools import singledispatch
 
+from PanCAD import PartFile
 from PanCAD.cad.freecad import App, Sketcher, Part
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.cad.freecad.constants import ObjectType
+from PanCAD.cad.freecad.sketch_geometry import get_freecad_sketch_geometry
 from PanCAD.geometry import (PanCADThing,
                              AbstractGeometry,
                              AbstractFeature,
@@ -13,6 +15,7 @@ from PanCAD.geometry import (PanCADThing,
                              LineSegment,
                              Sketch,
                              Extrude)
+from PanCAD.geometry.constants import ConstraintReference
 
 SketchGeometry = LineSegment | Circle
 ToFreeCADLike = dict[AbstractGeometry
@@ -109,6 +112,7 @@ class FreeCADMap(MutableMapping):
     """
     def __init__(self, writing_map: bool=True) -> None:
         self._mapping = dict()
+        self._containment = dict()
         self._writing_map = writing_map
     
     
@@ -126,9 +130,15 @@ class FreeCADMap(MutableMapping):
         if isinstance(key, tuple):
             key, reference = key
             _, subfeatures = self._mapping[key.uid]
-            value = subfeatures[reference]
+            if isinstance(subfeatures, dict):
+                value = subfeatures[reference]
+            else:
+                raise ValueError("key has no subfeatures")
         else:
             _, value = self._mapping[key.uid]
+            if isinstance(value, dict):
+                # If only given the key for a subfeatured item, return the CORE.
+                value = value[ConstraintReference.CORE]
         return value
     
     def __iter__(self):
@@ -141,6 +151,7 @@ class FreeCADMap(MutableMapping):
         if self._writing_map:
             if isinstance(key, CoordinateSystem):
                 subfeatures = {
+                    ConstraintReference.CORE: value,
                     ConstraintReference.ORIGIN: value,
                     ConstraintReference.X: value.OriginFeatures[0],
                     ConstraintReference.Y: value.OriginFeatures[1],
@@ -150,8 +161,26 @@ class FreeCADMap(MutableMapping):
                     ConstraintReference.YZ: value.OriginFeatures[5],
                 }
                 self._mapping[key.uid] = (key, subfeatures)
+            
+            elif isinstance(key, Sketch):
+                freecad_sketch = value
+                freecad_sketch.AttachmentSupport = (self[key.coordinate_system,
+                                                         key.plane_reference],
+                                                    [""])
+                freecad_sketch.MapMode = "FlatFace"
+                freecad_sketch.Label = key.name
+                freecad_origin_parent = self[key.coordinate_system].getParent()
+                freecad_origin_parent.addObject(freecad_sketch)
+                self._mapping[key.uid] = (key, freecad_sketch)
+                for geometry, construction in zip(key.geometry,
+                                                  key.construction):
+                    freecad_geometry = get_freecad_sketch_geometry(geometry)
+                    freecad_sketch.addGeometry(freecad_geometry, construction)
+                    self._mapping[geometry.uid] = (geometry, freecad_geometry)
+            
             elif isinstance(key, PanCADThing):
                 self._mapping[key.uid] = (key, value)
+            
             else:
                 raise TypeError("Writing map keys must be PanCAD objects,"
                                 f" given: {key}, class: {key.__class__}")
@@ -162,3 +191,5 @@ class FreeCADMap(MutableMapping):
                 raise TypeError("Reading map keys cannot be PanCAD objects,"
                                 f" given: {key}")
     
+    def __str__(self) -> str:
+        pass
