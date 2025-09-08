@@ -116,7 +116,17 @@ class PartFile(PanCADThing):
         file = FreeCADFile(filepath)
         return file.to_pancad()
     
-    # Properties #
+    # Getters #
+    @property
+    def coordinate_system(self) -> CoordinateSystem:
+        """The PartFile's top level coordinate system that all the features in 
+        the PartFile can be defined by or compared against.
+        
+        :getter: Returns the CoordinateSystem object.
+        :setter: Sets the coordinate system.
+        """
+        return self._coordinate_system
+    
     @property
     def filename(self) -> str:
         """The filename of the PartFile. Does not contain a path or extension.
@@ -126,6 +136,11 @@ class PartFile(PanCADThing):
             the input string.
         """
         return self._filename
+    
+    # Setters #
+    @coordinate_system.setter
+    def coordinate_system(self, coordinate_system: CoordinateSystem) -> None:
+        self._coordinate_system = coordinate_system
     
     @filename.setter
     def filename(self, name: str) -> None:

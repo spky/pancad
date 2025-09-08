@@ -79,6 +79,15 @@ class FreeCADFile:
     
     # Properties #
     @property
+    def document(self) -> App.Document:
+        """The FreeCAD python object for the document.
+        
+        :getter: Returns the Document object.
+        :setter: Read-only.
+        """
+        return self._document
+    
+    @property
     def filepath(self) -> str:
         """The filepath of the FreeCADFile.
         

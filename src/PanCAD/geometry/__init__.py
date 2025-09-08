@@ -18,11 +18,11 @@ from PanCAD.geometry.coordinate_system import CoordinateSystem
 
 # Import Features
 
-
 # Import 2D Geometry Aggregations - dependent on Geometry Types
 from PanCAD.geometry.sketch import Sketch
 
 # Import 3D Geometry Aggregations - dependent on 2D Geometry Aggregations
+from PanCAD.geometry.feature_container import FeatureContainer
 from PanCAD.geometry.extrude import Extrude
 
 from PanCAD.geometry.body import Body

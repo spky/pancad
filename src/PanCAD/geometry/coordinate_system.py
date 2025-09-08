@@ -6,6 +6,7 @@ from __future__ import annotations
 from functools import partial, singledispatchmethod
 import math
 from numbers import Real
+from textwrap import indent
 from typing import overload, Self, NoReturn
 
 import numpy as np
@@ -43,6 +44,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     :param uid: The unique ID of the coordinate system.
     :param context: The feature defining the context that the CoordinateSystem 
         exists inside of.
+    :param name: The name of the feature displayed to the users in CAD.
     """
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,
@@ -61,7 +63,8 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                  alpha: Real=0,
                  *,
                  uid: str=None,
-                 context: AbstractFeature=None) -> None: ...
+                 context: AbstractFeature=None,
+                 name: str=None) -> None: ...
     
     @overload
     def __init__(self,
@@ -72,10 +75,11 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                  *,
                  right_handed: bool=True,
                  uid: str=None,
-                 context: AbstractFeature=None) -> None: ...
+                 context: AbstractFeature=None,
+                 name: str=None) -> None: ...
     
     def __init__(self, origin=None, alpha=0, beta=0, gamma=0,
-                 *, right_handed=True, uid=None, context=None):
+                 *, right_handed=True, uid=None, context=None, name=None):
         if origin is None:
             origin = (0, 0, 0)
         if isinstance(origin, VectorLike):
@@ -94,6 +98,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         else:
             self._init_3d(origin, alpha, beta, gamma)
         
+        self.name = name
         self.context = context
         self.uid = uid
     
@@ -104,7 +109,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                         quat: np.quaternion=None,
                         *,
                         right_handed: bool=True,
-                        uid: str=None) -> CoordinateSystem:
+                        uid: str=None,
+                        name: str=None,
+                        context: AbstractFeature=None) -> CoordinateSystem:
         """Returns a 3D coordinate system defined with a quaternion.
         
         :param origin: A 3D center Point of the coordinate system. Defaults to 
@@ -129,11 +136,17 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             coordinate_system = cls(origin,
                                     0, 0, 0,
                                     right_handed=right_handed,
-                                    uid=uid)
+                                    uid=uid,
+                                    context=context,
+                                    name=name)
         coordinate_system._rotate_axes(quat)
         return coordinate_system
     
     # Getters #
+    @property
+    def context(self) -> AbstractFeature | None:
+        return self._context
+    
     @property
     def origin(self) -> Point:
         """The origin point of the coordinate system.
@@ -160,6 +173,10 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return self._z_vector
     
     # Setters #
+    @context.setter
+    def context(self, context_feature: AbstractFeature | None) -> None:
+        self._context = context_feature
+    
     @origin.setter
     def origin(self, point: Point | VectorLike):
         if isinstance(point, Point):
@@ -404,6 +421,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return len(self.origin)
     
     def __str__(self) -> str:
+        INDENTATION = "    "
         pt_strs, axis_strs = [], []
         for i in range(0, len(self.origin)):
             if isclose0(self.origin[i]):
@@ -425,5 +443,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             axis_strs.append(f"{axis_name.upper()}-Axis ({component_str})")
         axis_str = " ".join(axis_strs)
         point_str = ", ".join(pt_strs)
-        return (f"PanCAD '{self.uid}' CoordinateSystem with origin"
-                f" ({point_str}) and axes {axis_str}")
+        
+        summary = [f"CoordinateSystem '{self.name}'",
+                   "Origin and Axes:",
+                   indent(f"Origin ({point_str})", INDENTATION),
+                   indent("\n".join(axis_strs), INDENTATION),]
+        return "\n".join(summary)

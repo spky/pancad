@@ -35,6 +35,7 @@ class Extrude(AbstractFeature):
         defined by features.
     :param unit: The unit of the length and opposite_length values. Defaults 
         to None.
+    :param name: The name of the feature displayed to the users in CAD.
     :raises ValueError: Raised for 
         :attr:`~PanCAD.geometry.constants.FeatureType.DIMENSION_TYPE` extrudes 
         if it is midplane and also has an opposite length defined or if length 
@@ -63,7 +64,9 @@ class Extrude(AbstractFeature):
                  is_midplane: bool=False,
                  is_reverse_direction: bool=False,
                  end_feature: object=None,
-                 unit: str=None) -> None:
+                 unit: str=None,
+                 name: str=None,
+                 context: AbstractFeature=None,) -> None:
         self.profile = profile
         self.feature_type = feature_type
         self.uid = uid
@@ -73,6 +76,8 @@ class Extrude(AbstractFeature):
         self.is_reverse_direction = is_reverse_direction
         self.end_feature = end_feature
         self.unit = unit
+        self.name = name
+        self.context = context
         # if self.feature_type in self.LENGTH_TYPE_ENUMS:
         if self.feature_type in FeatureType.DIMENSION_TYPE:
             self._validate_length_extrude()
@@ -95,7 +100,9 @@ class Extrude(AbstractFeature):
                     uid: str=None,
                     *,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @overload
     @classmethod
@@ -105,7 +112,9 @@ class Extrude(AbstractFeature):
                     uid: str=None,
                     *,
                     is_midplane: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @overload
     @classmethod
@@ -116,7 +125,9 @@ class Extrude(AbstractFeature):
                     *,
                     opposite_length: Real,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @classmethod
     def from_length(cls,
@@ -127,7 +138,9 @@ class Extrude(AbstractFeature):
                     opposite_length: Real=None,
                     is_midplane: bool=False,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self:
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self:
         """Initializes an extrude from length dimensions. Determines the correct 
         FeatureType based on the input combination.
         
@@ -170,7 +183,9 @@ class Extrude(AbstractFeature):
                    is_midplane,
                    is_reverse_direction,
                    end_feature=None,
-                   unit=unit)
+                   unit=unit,
+                   name=name,
+                   context=context,)
     
     @classmethod
     def from_end_condition(cls,
@@ -194,13 +209,13 @@ class Extrude(AbstractFeature):
     
     # Getters #
     @property
-    def uid(self) -> str:
-        return self._uid
+    def context(self) -> AbstractFeature | None:
+        return self._context
     
     # Setters #
-    @uid.setter
-    def uid(self, uid: str):
-        self._uid = uid
+    @context.setter
+    def context(self, context_feature: AbstractFeature | None) -> None:
+        self._context = context_feature
     
     # Public Methods #
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
