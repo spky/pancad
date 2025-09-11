@@ -122,8 +122,11 @@ class FreeCADMap(MutableMapping):
         self._writing_map = writing_map
         self._document = document
         
-        self._freecad_sketch_geometry_map = dict()
+        self._geometry_map = _FreeCADSketchMap()
         # Maps freecad sketches to their contained geometry
+        
+        self._constraint_map = _FreeCADSketchMap()
+        # Maps freecad sketches to their contained constraints
     
     # Public Methods #
     @singledispatchmethod
@@ -193,70 +196,8 @@ class FreeCADMap(MutableMapping):
     def __setitem__(self, key: object, value: object) -> None:
         if self._writing_map:
             # Writing **TO** FreeCAD
-            if isinstance(key, FeatureContainer):
-                self._mapping[key.uid] = (key, value)
-            elif isinstance(key, CoordinateSystem):
-                subfeatures = {ConstraintReference.CORE: value,
-                               ConstraintReference.ORIGIN: value,
-                               ConstraintReference.X: value.OriginFeatures[0],
-                               ConstraintReference.Y: value.OriginFeatures[1],
-                               ConstraintReference.Z: value.OriginFeatures[2],
-                               ConstraintReference.XY: value.OriginFeatures[3],
-                               ConstraintReference.XZ: value.OriginFeatures[4],
-                               ConstraintReference.YZ: value.OriginFeatures[5],}
-                self._mapping[key.uid] = (key, subfeatures)
-            elif isinstance(key, Sketch):
-                sketch = value
-                sketch.AttachmentSupport = (self[key.coordinate_system,
-                                                         key.plane_reference],
-                                                    [""])
-                sketch.MapMode = "FlatFace"
-                sketch.Label = key.name
-                freecad_parent = self[key.context]
-                freecad_parent.addObject(sketch)
-                self._mapping[key.uid] = (key, sketch)
-                
-                # Map the geometry inside of the sketch
-                geometry_map = dict()
-                index = 0
-                for geometry, construction in zip(key.geometry,
-                                                  key.construction):
-                    freecad_geometry = get_freecad_sketch_geometry(geometry)
-                    sketch.addGeometry(freecad_geometry, construction)
-                    self._mapping[geometry.uid] = (geometry, freecad_geometry)
-                    geometry_map[index] = freecad_geometry
-                    if isinstance(geometry, Ellipse):
-                        sketch.exposeInternalGeometry(index)
-                        subgeometry = {
-                            ConstraintReference.CORE: freecad_geometry,
-                            ConstraintReference.CENTER: freecad_geometry,
-                            ConstraintReference.X: sketch.Geometry[Index + 1],
-                            ConstraintReference.Y: sketch.Geometry[Index + 2],
-                            ConstraintReference.FOCAL_PLUS: sketch.Geometry[
-                                Index + 3
-                            ],
-                            ConstraintReference.FOCAL_MINUS: sketch.Geometry[
-                                Index + 4
-                            ],
-                        }
-                        index += 5
-                    else:
-                        index += 1
-                self._freecad_sketch_geometry_map[sketch.ID] = geometry_map
-            elif isinstance(key, Extrude):
-                freecad_pad = value
-                freecad_parent = self[key.context]
-                freecad_parent.addObject(freecad_pad)
-                freecad_pad.Profile = (self[key.profile], [""])
-                freecad_pad.Length = key.length
-                freecad_pad.ReferenceAxis = (self[key.profile], ["N_Axis"])
-                self[key.profile].Visibility = False
-                self._mapping[key.uid] = (key, freecad_pad)
-            elif isinstance(key, PanCADThing):
-                self._mapping[key.uid] = (key, value)
-            else:
-                raise TypeError("Writing map keys must be PanCAD objects,"
-                                f" given: {key}, class: {key.__class__}")
+            if isinstance(key, AbstractFeature):
+                self._link_pancad_to_freecad_feature(key, value)
         else:
             if not isinstance(key, PanCADThing):
                 self._mapping[key] = (key, value)
@@ -266,3 +207,140 @@ class FreeCADMap(MutableMapping):
     
     def __str__(self) -> str:
         return str(self._mapping)
+    
+    # Private Methods #
+    @singledispatchmethod
+    def _link_pancad_to_freecad_feature(self, key, value: object):
+        """Adds a PanCAD parent and FreeCAD child feature pairing to the map.
+        """
+        raise TypeError(f"Unrecognized PanCAD geometry type {key.__class__}")
+    
+    @_link_pancad_to_freecad_feature.register
+    def _coordinate_system(self, key: CoordinateSystem, value: object) -> None:
+        subfeatures = {ConstraintReference.CORE: value,
+                       ConstraintReference.ORIGIN: value,
+                       ConstraintReference.X: value.OriginFeatures[0],
+                       ConstraintReference.Y: value.OriginFeatures[1],
+                       ConstraintReference.Z: value.OriginFeatures[2],
+                       ConstraintReference.XY: value.OriginFeatures[3],
+                       ConstraintReference.XZ: value.OriginFeatures[4],
+                       ConstraintReference.YZ: value.OriginFeatures[5],}
+        self._mapping[key.uid] = (key, subfeatures)
+    
+    @_link_pancad_to_freecad_feature.register
+    def _extrude(self, key: Extrude, value: object) -> None:
+        pad = value
+        parent = self[key.context]
+        parent.addObject(pad)
+        pad.Profile = (self[key.profile], [""])
+        pad.Length = key.length
+        pad.ReferenceAxis = (self[key.profile], ["N_Axis"])
+        self[key.profile].Visibility = False
+        self._mapping[key.uid] = (key, pad)
+    
+    @_link_pancad_to_freecad_feature.register
+    def _feature_container(self, key: FeatureContainer, value: object) -> None:
+        self._mapping[key.uid] = (key, value)
+    
+    @_link_pancad_to_freecad_feature.register
+    def _sketch(self, key: Sketch, value: object) -> None:
+        sketch = value
+        sketch.AttachmentSupport = (
+            self[key.coordinate_system, key.plane_reference], [""]
+        )
+        sketch.MapMode = "FlatFace"
+        sketch.Label = key.name
+        parent = self[key.context]
+        parent.addObject(sketch)
+        self._mapping[key.uid] = (key, sketch)
+        
+        # Map the geometry inside of the sketch
+        self._geometry_map[sketch.ID, -2] = sketch.ExternalGeo[1]
+        self._geometry_map[sketch.ID, -1] = sketch.ExternalGeo[0]
+        geometry_index = 0
+        internal_constraint_index = 0
+        for geometry, construction in zip(key.geometry, key.construction):
+            new_geometry = get_freecad_sketch_geometry(geometry)
+            sketch.addGeometry(new_geometry, construction)
+            
+            if isinstance(geometry, Ellipse):
+                sketch.exposeInternalGeometry(geometry_index)
+                subgeometry = dict()
+                subgeometry[ConstraintReference.CORE] = new_geometry
+                ellipse_references = [ConstraintReference.CENTER,
+                                      ConstraintReference.X,
+                                      ConstraintReference.Y,
+                                      ConstraintReference.FOCAL_PLUS,
+                                      ConstraintReference.FOCAL_MINUS]
+                for i, reference in enumerate(ellipse_references):
+                    self._geometry_map[
+                        sketch.ID, geometry_index + i
+                    ] = sketch.Geometry[geometry_index + i]
+                    subgeometry[reference] = (sketch.ID, geometry_index + i)
+                self._mapping[geometry.uid] = (key, subgeometry)
+                geometry_index += len(ellipse_references)
+                
+                last_constraint_index = internal_constraint_index + 4
+                
+            else:
+                self._mapping[geometry.uid] = (geometry,
+                                               (sketch.ID, geometry_index))
+                self._geometry_map[sketch.ID, geometry_index] = new_geometry
+                geometry_index += 1
+
+class _FreeCADSketchMap(MutableMapping):
+    """Used to map geometry and constraints in FreeCAD sketches according to 
+    their owning sketch id and its equivalent constraint index.
+    """
+    
+    def __init__(self) -> None:
+        self._sketches = dict()
+    
+    # Public Methods #
+    def get_sketch(self, sketch_id: int) -> dict:
+        """Returns a dictionary of indices to the constraint or geometry in the 
+        sketch.
+        """
+        return self._sketches[sketch_id]
+    
+    # Python Dunders #
+    def __contains__(self, key: int | tuple[int, int]) -> bool:
+        if isinstance(key, tuple):
+            sketch_id, index = key
+            if sketch_id in self._sketches:
+                return index in self._sketches[sketch_id]
+            else:
+                return False
+        elif isinstance(key, int):
+            # Return if a sketch with the id of key has an element in the map
+            return any([key == sketch_id for sketch_id, _ in self._sketches])
+        else:
+            raise TypeError(f"Unrecognized input type {key.__class__}")
+    
+    def __delitem__(self, key: tuple[int, int]) -> None:
+        sketch_id, index = key
+        del self._sketches[sketch_id][index]
+    
+    def __getitem__(self, key: tuple[int, int]) -> object:
+        sketch_id, index = key
+        return self._sketches[sketch_id][index]
+    
+    def __iter__(self):
+        return iter(self._sketches)
+    
+    def __len__(self) -> int:
+        return len(self._sketches)
+    
+    def __setitem__(self, key: tuple[int, int], value: object) -> None:
+        sketch_id, index = key
+        if sketch_id not in self._sketches:
+            self._sketches[sketch_id] = dict()
+        self._sketches[sketch_id][index] = value
+    
+    def __str__(self) -> str:
+        output_strings = []
+        for sketch, values in self._sketches.items():
+            output_strings.append(f"{sketch}:")
+            for index, geometry in values.items():
+                output_strings.append(f"{{{index}: {geometry}}}")
+        return "\n".join(output_strings)

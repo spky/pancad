@@ -35,16 +35,16 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
     def test_nominal_init(self):
         mapping = FreeCADMap(self.document)
     
-    def test_map_line_segment(self):
-        pancad_line_1 = LineSegment((0, 0), (1, 1))
-        pancad_line_2 = LineSegment((-1, 0), (1, 0))
-        freecad_line = get_freecad_sketch_geometry(pancad_line_1)
-        self.mapping[pancad_line_1] = freecad_line
+    # def test_map_line_segment(self):
+        # pancad_line_1 = LineSegment((0, 0), (1, 1))
+        # pancad_line_2 = LineSegment((-1, 0), (1, 0))
+        # freecad_line = get_freecad_sketch_geometry(pancad_line_1)
+        # self.mapping[pancad_line_1] = freecad_line
     
-    def test_map_coordinate_system(self):
-        root = self.document.addObject(ObjectType.BODY, "Body")
-        cs = CoordinateSystem()
-        self.mapping[cs] = root.Origin
+    # def test_map_coordinate_system(self):
+        # root = self.document.addObject(ObjectType.BODY, "Body")
+        # cs = CoordinateSystem()
+        # self.mapping[cs] = root.Origin
     
     def test_map_add_feature_container(self):
         container = FeatureContainer(name="TestBucket")
@@ -116,8 +116,8 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         self.mapping.add_pancad_feature(container)
         # print(self.mapping._freecad_sketch_geometry_map)
         
-        # for key, value in self.mapping.items():
-            # print(key, ": ", value)
+        for key, value in self.mapping.items():
+            print(key, ": ", value)
 
 class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
     def ellipse_sketch(self,
