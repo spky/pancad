@@ -30,7 +30,7 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
     def setUp(self):
         self.file = PartFile("Testing Mapping")
         self.document = App.newDocument()
-        self.mapping = FreeCADMap(self.document)
+        self.test_map = FreeCADMap(self.document)
     
     def test_nominal_init(self):
         mapping = FreeCADMap(self.document)
@@ -54,7 +54,8 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
                         geometry=[line],
                         coordinate_system=coordinate_system)
         container.features = [coordinate_system, sketch]
-        self.mapping.add_pancad_feature(container)
+        self.test_map.add_pancad_feature(container)
+        print(self.test_map)
         # for key, value in self.mapping.items():
             # print(key, ": ", value)
         # self.assertEqual(len(self.mapping), 2)
@@ -113,11 +114,10 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         sketch = self.square_sketch("Test Sketch", ConstraintReference.XY, cs)
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
-        self.mapping.add_pancad_feature(container)
+        self.test_map.add_pancad_feature(container)
         # print(self.mapping._freecad_sketch_geometry_map)
         
-        for key, value in self.mapping.items():
-            print(key, ": ", value)
+        print(self.test_map)
 
 class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
     def ellipse_sketch(self,
@@ -140,4 +140,4 @@ class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
         sketch = self.ellipse_sketch("Test Sketch", ConstraintReference.XY, cs)
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
-        self.mapping.add_pancad_feature(container)
+        self.test_map.add_pancad_feature(container)

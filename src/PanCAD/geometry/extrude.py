@@ -258,8 +258,7 @@ class Extrude(AbstractFeature):
     
     # Python Dunders #
     def __repr__(self) -> str:
-        return (f"<PanCAD_{repr(self.feature_type)}_Extrude'{self.uid}'"
-                f"p'{self.profile.uid}'>")
+        return (f"<PanCAD{repr(self.feature_type)}Extrude'{self.name}'>")
     
     def __str__(self) -> str:
         type_name = self.feature_type.name \
@@ -270,7 +269,7 @@ class Extrude(AbstractFeature):
         else:
             end_feature_uid = self.end_feature.uid
         summary = []
-        summary.append(f"Extrude '{self.uid}' of profile '{self.profile.uid}'")
+        summary.append(f"Extrude '{self.name}' of profile '{self.profile.uid}'")
         summary_info = {
             "Active Type": type_name,
             "Length": self.get_length_string(),

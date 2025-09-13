@@ -412,7 +412,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             axis_strs.append(axis_name + "(" + component_str + ")")
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
-        return f"<PanCADCoordSys'{self.uid}'({point_str}){axis_str}>"
+        return f"<PanCADCoordSys'{self.name}'({point_str}){axis_str}>"
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by 
