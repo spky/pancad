@@ -55,7 +55,7 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
                         coordinate_system=coordinate_system)
         container.features = [coordinate_system, sketch]
         self.test_map.add_pancad_feature(container)
-        print(self.test_map)
+        # print(self.test_map)
         # for key, value in self.mapping.items():
             # print(key, ": ", value)
         # self.assertEqual(len(self.mapping), 2)
@@ -115,7 +115,6 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
-        # print(self.mapping._freecad_sketch_geometry_map)
         
         print(self.test_map)
 
