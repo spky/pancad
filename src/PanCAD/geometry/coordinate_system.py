@@ -185,6 +185,14 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             self._origin.cartesian = point
     
     # Public Methods #
+    def copy(self) -> CoordinateSystem:
+        """Returns a copy of the CoordinateSystem.
+        
+        :returns: the same origin, axes, planes and context, but not the same 
+            uid.
+        """
+        return self.__copy__()
+    
     def get_all_references(self) -> tuple[ConstraintReference]:
         """Returns all ConstraintReferences applicable to CoordinateSystems. See 
         :attr:`CoordinateSystem.REFERENCES`.
@@ -360,7 +368,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self._set_axes(new_axis_matrix)
         return self
     
-    def _set_axes(self, axis_matrix: list|tuple|np.ndarray) -> None:
+    def _set_axes(self, axis_matrix: list | tuple | np.ndarray) -> None:
         """Used to set the axes all at once while ensuring they are tuples. 
         Assumes that the axes are still unit vectors, perpendicular, and 
         linearly independent (that's why this is private).
@@ -390,6 +398,21 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             self._yz_plane.update(Plane(self.origin, self._x_vector))
     
     # Python Dunders #
+    def __copy__(self) -> CoordinateSystem:
+        """Returns a copy of the CoordinateSystem that has the same origin, 
+        axes, planes and context, but not the same uid. Can be used with the 
+        python copy module.
+        """
+        if len(self) == 3:
+            return CoordinateSystem.from_quaternion(self.origin,
+                                                    self.get_quaternion(),
+                                                    context=self.context)
+        else:
+            new_system = CoordinateSystem(self.origin, context=self.context)
+            new_initial_axis_matrix = (self._x_vector, self._y_vector)
+            new_system._set_axes(new_initial_axis_matrix)
+            return new_system
+    
     def __repr__(self) -> str:
         pt_strs, axis_strs = [], []
         for i in range(0, len(self.origin)):

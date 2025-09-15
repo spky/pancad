@@ -136,8 +136,7 @@ def freecad_constraint(constraint: AbstractConstraint,
     raise NotImplementedError(f"Unsupported 1st type {constraint.__class__}")
 
 @freecad_constraint.register
-def freecad_constraint_angle(constraint: Angle,
-                             args: tuple) -> Sketcher.Constraint:
+def _angle(constraint: Angle, args: tuple) -> Sketcher.Constraint:
     match constraint.quadrant:
         case 1:
             iline1, iline2 = args[0::2]
@@ -157,27 +156,23 @@ def freecad_constraint_angle(constraint: Angle,
                                angle_value_str)
 
 @freecad_constraint.register
-def freecad_constraint_coincident(constraint: Coincident,
-                                  args: tuple) -> Sketcher.Constraint:
+def _coincident(constraint: Coincident, args: tuple) -> Sketcher.Constraint:
     return Sketcher.Constraint("Coincident", *args)
 
 @freecad_constraint.register
-def freecad_constraint_diameter(constraint: Diameter,
-                                args: tuple) -> Sketcher.Constraint:
+def _diameter(constraint: Diameter, args: tuple) -> Sketcher.Constraint:
     geometry_index, _ = args
     value_str = f"{constraint.value} {constraint.unit}"
     return Sketcher.Constraint("Diameter", geometry_index,
                                App.Units.Quantity(value_str))
 
 @freecad_constraint.register
-def freecad_constraint_distance(constraint: Distance,
-                                args: tuple) -> Sketcher.Constraint:
+def _distance(constraint: Distance, args: tuple) -> Sketcher.Constraint:
     value_str = f"{constraint.value} {constraint.unit}"
     return Sketcher.Constraint("Distance", *args, App.Units.Quantity(value_str))
 
 @freecad_constraint.register
-def freecad_constraint_horizontal(constraint: Horizontal,
-                                  args: tuple) -> Sketcher.Constraint:
+def _horizontal(constraint: Horizontal, args: tuple) -> Sketcher.Constraint:
     if len(constraint.get_constrained()) == 1:
         geometry_index, _ = args
         return Sketcher.Constraint("Horizontal", geometry_index)
@@ -185,16 +180,14 @@ def freecad_constraint_horizontal(constraint: Horizontal,
         return Sketcher.Constraint("Horizontal", *args)
 
 @freecad_constraint.register
-def freecad_constraint_radius(constraint: Radius,
-                              args: tuple) -> Sketcher.Constraint:
+def _radius(constraint: Radius, args: tuple) -> Sketcher.Constraint:
     geometry_index, _ = args
     value_str = f"{constraint.value} {constraint.unit}"
     return Sketcher.Constraint("Radius", geometry_index,
                                App.Units.Quantity(value_str))
 
 @freecad_constraint.register
-def freecad_constraint_vertical(constraint: Vertical,
-                                args: tuple) -> Sketcher.Constraint:
+def _vertical(constraint: Vertical, args: tuple) -> Sketcher.Constraint:
     if len(constraint.get_constrained()) == 1:
         geometry_index, _ = args
         return Sketcher.Constraint("Vertical", geometry_index)
@@ -202,18 +195,16 @@ def freecad_constraint_vertical(constraint: Vertical,
         return Sketcher.Constraint("Vertical", *args)
 
 @freecad_constraint.register
-def freecad_constraint_equal(constraint: Equal,
-                             args: tuple) -> Sketcher.Constraint:
+def _equal(constraint: Equal, args: tuple) -> Sketcher.Constraint:
     return Sketcher.Constraint("Equal", *args[0::2])
 
 @freecad_constraint.register
-def freecad_constraint_perpendicular(constraint: Perpendicular,
-                                     args: tuple) -> Sketcher.Constraint:
+def _perpendicular(constraint: Perpendicular,
+                   args: tuple) -> Sketcher.Constraint:
     return Sketcher.Constraint("Perpendicular", *args[0::2])
 
 @freecad_constraint.register
-def freecad_constraint_parallel(constraint: Parallel,
-                                args: tuple) -> Sketcher.Constraint:
+def _parallel(constraint: Parallel, args: tuple) -> Sketcher.Constraint:
     return Sketcher.Constraint("Parallel", *args[0::2])
 
 # Utility Functions ############################################################
@@ -288,7 +279,7 @@ def _get_pancad_index_pair(index: int,
         pancad_reference = subpart_to_reference(sub_part)
     else:
         if index in [-1, -2]:
-            pancad_index = ConstraintReference.COORDINATE_SYSTEM
+            pancad_index = -1
             if sub_part == EdgeSubPart.START:
                 pancad_reference = ConstraintReference.ORIGIN
             elif index == -1 and sub_part == EdgeSubPart.EDGE:
@@ -314,6 +305,10 @@ def map_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
     """
     match reference:
         case ConstraintReference.CORE:
+            return EdgeSubPart.EDGE
+        case ConstraintReference.X:
+            return EdgeSubPart.EDGE
+        case ConstraintReference.Y:
             return EdgeSubPart.EDGE
         case ConstraintReference.START:
             return EdgeSubPart.START

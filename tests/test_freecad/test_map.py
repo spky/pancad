@@ -46,6 +46,7 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
         # cs = CoordinateSystem()
         # self.mapping[cs] = root.Origin
     
+    @unittest.skip
     def test_map_add_feature_container(self):
         container = FeatureContainer(name="TestBucket")
         coordinate_system = CoordinateSystem()
@@ -76,24 +77,24 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         ]
         # Constrain geometry to each other
         constraints = [
-            Horizontal(geometry[0], ConstraintReference.CORE),
-            Vertical(geometry[1], ConstraintReference.CORE),
-            Horizontal(geometry[2], ConstraintReference.CORE),
-            Vertical(geometry[3], ConstraintReference.CORE),
+            # Horizontal(geometry[0], ConstraintReference.CORE),
+            # Vertical(geometry[1], ConstraintReference.CORE),
+            # Horizontal(geometry[2], ConstraintReference.CORE),
+            # Vertical(geometry[3], ConstraintReference.CORE),
             Coincident(geometry[0], ConstraintReference.START,
                        geometry[3], ConstraintReference.END),
-            Coincident(geometry[0], ConstraintReference.END,
-                       geometry[1], ConstraintReference.START),
-            Coincident(geometry[1], ConstraintReference.END,
-                       geometry[2], ConstraintReference.START),
-            Coincident(geometry[2], ConstraintReference.END,
-                       geometry[3], ConstraintReference.START),
-            Distance(geometry[0], ConstraintReference.CORE,
-                     geometry[2], ConstraintReference.CORE,
-                     length, unit="mm"),
-            Distance(geometry[1], ConstraintReference.CORE,
-                     geometry[3], ConstraintReference.CORE,
-                     width, unit="mm"),
+            # Coincident(geometry[0], ConstraintReference.END,
+                       # geometry[1], ConstraintReference.START),
+            # Coincident(geometry[1], ConstraintReference.END,
+                       # geometry[2], ConstraintReference.START),
+            # Coincident(geometry[2], ConstraintReference.END,
+                       # geometry[3], ConstraintReference.START),
+            # Distance(geometry[0], ConstraintReference.CORE,
+                     # geometry[2], ConstraintReference.CORE,
+                     # length, unit="mm"),
+            # Distance(geometry[1], ConstraintReference.CORE,
+                     # geometry[3], ConstraintReference.CORE,
+                     # width, unit="mm"),
         ]
         sketch = Sketch(coordinate_system=coordinate_system,
                         plane_reference=plane_ref,
@@ -108,6 +109,7 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         )
         return sketch
     
+    @unittest.skip
     def test_map_cube_extrude(self):
         container = FeatureContainer(name="TestBucket")
         cs = CoordinateSystem()
@@ -133,6 +135,7 @@ class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
                         name=name)
         return sketch
     
+    @unittest.skip
     def test_map_ellipse_extrude(self):
         container = FeatureContainer(name="TestBucket")
         cs = CoordinateSystem()

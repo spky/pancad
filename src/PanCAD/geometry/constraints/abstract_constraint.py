@@ -27,8 +27,6 @@ class AbstractConstraint(PanCADThing):
         the start point of a :class:`~PanCAD.geometry.LineSegment`.
         """
     
-    
-    
     # Abstract Public Methods #
     @abstractmethod
     def get_constrained(self) -> tuple[AbstractGeometry]:

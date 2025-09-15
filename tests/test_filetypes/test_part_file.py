@@ -110,8 +110,7 @@ class TestPartFile(unittest.TestCase):
         # Constrain bottom left corner to origin
         sketch.add_constraint(
             Coincident(geometry[0], ConstraintReference.START,
-                       sketch.get_sketch_coordinate_system(),
-                       ConstraintReference.ORIGIN)
+                       sketch, ConstraintReference.ORIGIN)
         )
         return sketch
     
@@ -131,8 +130,7 @@ class TestPartFile(unittest.TestCase):
                         uid=uid)
         sketch.add_constraint(
             Coincident(geometry[0], ConstraintReference.CENTER,
-                       sketch.get_sketch_coordinate_system(),
-                       ConstraintReference.ORIGIN)
+                       sketch, ConstraintReference.ORIGIN)
         )
         return sketch
     
@@ -298,8 +296,7 @@ class TestPartFileSquareSketchVariations(TestPartFileSketches):
                          self.geometry[0], ConstraintReference.END,
                          value=self.side, unit=self.unit),
                 Coincident(self.geometry[0], ConstraintReference.START,
-                           self.sketch.get_sketch_coordinate_system(),
-                           ConstraintReference.ORIGIN)
+                           self.sketch, ConstraintReference.ORIGIN)
             ]
         )
         self.finish_to_freecad()
@@ -320,8 +317,7 @@ class TestPartFileSquareSketchVariations(TestPartFileSketches):
                          self.geometry[0], ConstraintReference.END,
                          value=self.side, unit=self.unit),
                 Coincident(self.geometry[0], ConstraintReference.START,
-                           self.sketch.get_sketch_coordinate_system(),
-                           ConstraintReference.ORIGIN)
+                           self.sketch, ConstraintReference.ORIGIN)
             ]
         )
         self.finish_to_freecad()
@@ -343,8 +339,7 @@ class TestPartFileSquareSketchVariations(TestPartFileSketches):
                          self.geometry[0], ConstraintReference.END,
                          value=self.side, unit=self.unit),
                 Coincident(self.geometry[0], ConstraintReference.START,
-                           self.sketch.get_sketch_coordinate_system(),
-                           ConstraintReference.ORIGIN)
+                           self.sketch, ConstraintReference.ORIGIN)
             ]
         )
         self.finish_to_freecad()
@@ -367,8 +362,7 @@ class TestPartFileSquareSketchVariations(TestPartFileSketches):
                          self.geometry[0], ConstraintReference.END,
                          value=self.side, unit=self.unit),
                 Coincident(self.geometry[0], ConstraintReference.START,
-                           self.sketch.get_sketch_coordinate_system(),
-                           ConstraintReference.ORIGIN)
+                           self.sketch, ConstraintReference.ORIGIN)
             ]
         )
         self.finish_to_freecad()

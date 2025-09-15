@@ -465,7 +465,7 @@ class Line(AbstractGeometry):
     # Python Dunders #
     def __copy__(self) -> Line:
         """Returns a copy of the line that has the same closest to origin 
-        point and direction, but no assigned uid. Can be used with the python 
+        point and direction, but a different uid. Can be used with the python 
         copy module.
         """
         return Line(self.reference_point, self.direction)

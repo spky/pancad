@@ -52,12 +52,11 @@ class TestSketches(unittest.TestCase):
                         uid=uid)
         sketch.constraints = [
             Coincident(geometry[0], ConstraintReference.START,
-                       sketch.get_sketch_coordinate_system(),
-                       ConstraintReference.ORIGIN),
+                       sketch, ConstraintReference.ORIGIN),
             Distance(geometry[0], ConstraintReference.START,
                      geometry[0], ConstraintReference.END,
                      value=length, unit=unit),
-            Angle(sketch.get_sketch_coordinate_system(), ConstraintReference.X,
+            Angle(sketch, ConstraintReference.X,
                   geometry[0], ConstraintReference.CORE,
                   value=angle_degrees, quadrant=quadrant),
         ]

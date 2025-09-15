@@ -12,7 +12,7 @@ import math
 from numbers import Real
 from typing import NoReturn
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
     Circle, CoordinateSystem, Line, LineSegment, Plane, Point
 )

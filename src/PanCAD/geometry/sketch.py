@@ -30,7 +30,7 @@ from PanCAD.geometry.constraints import (
 )
 from PanCAD.utils.text_formatting import get_table_string
 
-class Sketch(AbstractFeature):
+class Sketch(AbstractFeature, AbstractGeometry):
     """A class representing a set of 2D geometry placed onto a coordinate system 
     plane in 3D space.
     
@@ -54,11 +54,13 @@ class Sketch(AbstractFeature):
         application requires a human-readable name for the sketch element.
     """
     # Class Constants
-    UID_SEPARATOR = "_"
-    CS_2D_UID = "sketchcs"
-    REFERENCE_PLANES = (ConstraintReference.XY,
-                        ConstraintReference.XZ,
-                        ConstraintReference.YZ)
+    REFERENCES = (ConstraintReference.ORIGIN,
+                  ConstraintReference.X,
+                  ConstraintReference.Y)
+    
+    PLANE_OPTIONS = (ConstraintReference.XY,
+                     ConstraintReference.XZ,
+                     ConstraintReference.YZ)
     """Allowable ConstraintReferences for the sketch's plane_reference."""
     
     # Type Tuples for checking with isinstance()
@@ -89,6 +91,7 @@ class Sketch(AbstractFeature):
                  name: str=None,
                  context: AbstractFeature=None,):
         # Initialize private uid since uid and geometry sync with each other
+        self.uid = uid
         self._constraints = tuple()
         
         if geometry is None:
@@ -110,7 +113,6 @@ class Sketch(AbstractFeature):
         self.construction = construction
         self.plane_reference = plane_reference
         self.constraints = constraints
-        self.uid = uid
         self.name = name
         self.context = context
     
@@ -230,11 +232,11 @@ class Sketch(AbstractFeature):
     
     @plane_reference.setter
     def plane_reference(self, reference: ConstraintReference):
-        if reference in self.REFERENCE_PLANES:
+        if reference in self.PLANE_OPTIONS:
             self._plane_reference = reference
         else:
             raise ValueError(f"{reference} not recognized as a plane reference,"
-                             f"must be one of {list(self.REFERENCE_PLANES)}")
+                             f"must be one of {list(self.PLANE_OPTIONS)}")
     
     # Public Functions #
     def add_constraint(self, constraint: ConstraintType) -> Self:
@@ -396,6 +398,12 @@ class Sketch(AbstractFeature):
         self.construction = self.construction + (construction,)
         return self
     
+    def get_all_references(self) -> tuple[ConstraintReference]:
+        """Returns all ConstraintReferences applicable to Sketches. See 
+        :attr:`Sketch.REFERENCES`.
+        """
+        return self.REFERENCES
+    
     def get_construction_geometry(self) -> tuple[GeometryType]:
         """Returns the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
@@ -415,17 +423,18 @@ class Sketch(AbstractFeature):
         geometry_uids = [g.uid for g in self.geometry]
         if uid in geometry_uids:
             return self.geometry[geometry_uids.index(uid)]
-        elif uid is ConstraintReference.CS:
-            return self.get_sketch_coordinate_system()
+        elif uid == self.uid:
+            return self
         elif uid is None:
             return None
         else:
             raise ValueError(f"uid '{uid}' was not found in sketch's geometry")
     
     def get_index_of(self,
-                     item: GeometryType | ExternalType | ConstraintType) -> int:
+                     item: GeometryType | ExternalType | ConstraintType | Sketch
+                     ) -> int:
         """Returns the index of a geometry, external, or constraint item in 
-        their respective tuples.
+        their respective tuples. Returns -1 if it's the sketch itself.
         
         :raises LookupError: Raised if the item is not in the sketch geometry, 
             externals, or constraints.
@@ -436,13 +445,8 @@ class Sketch(AbstractFeature):
             return [item is c for c in self.constraints].index(True)
         elif any([item is g for g in self.externals]):
             return [item is g for g in self.externals].index(True)
-        
-        sketch_cs = self.get_sketch_coordinate_system()
-        cs_ref_geometry = [sketch_cs]
-        cs_ref_geometry.extend([sketch_cs.get_reference(r)
-                                for r in sketch_cs.get_all_references()])
-        if any([item is g for g in cs_ref_geometry]):
-            return item.__class__.__name__
+        elif item is self:
+            return -1
         else:
             raise LookupError(f"Item {item} is not in sketch")
     
@@ -454,6 +458,16 @@ class Sketch(AbstractFeature):
     def get_plane(self) -> Plane:
         """Returns the plane that contains the sketch geometry."""
         return self.coordinate_system.get_reference(self.plane_reference)
+    
+    def get_reference(self, reference: ConstraintReference) -> AbstractGeometry:
+        """Returns reference geometry for use in external modules like 
+        constraints.
+        
+        :param reference: A ConstraintReference enumeration value applicable to 
+            Sketches. See :attr:`Sketch.REFERENCES`.
+        :returns: The geometry corresponding to the reference.
+        """
+        return self._sketch_cs.get_reference(reference)
     
     def get_sketch_coordinate_system(self) -> CoordinateSystem:
         """Returns the sketch's 2D coordinate system."""
@@ -469,17 +483,28 @@ class Sketch(AbstractFeature):
         constrainable_geometry = (self._sketch_cs,) + self.geometry
         return any(geometry is cg for cg in constrainable_geometry)
     
+    def update(self, other: Sketch) -> Self:
+        """Updates the origin, axes, planes and context of the Sketch to match 
+        another Sketch. Does not directly modify the geometry inside the sketch.
+        
+        :param other: The Sketch to update to.
+        :returns: The updated Sketch.
+        """
+        self._sketch_cs = other._sketch_cs.copy()
+        self.plane_reference = other.plane_reference
+        self.context = other.context
+        return self
+    
     # Private Functions #
-    def _get_geometry_by_index(self, index: int | ConstraintReference | None
-                               ) -> GeometryType | None:
+    def _get_geometry_by_index(self, index: int | None) -> GeometryType | None:
         """Returns the geometry at the index of the sketch's geometry tuple.
         
         :param index: The index of the geometry in the geometry tuple, or 
             ConstraintReference.CS to reference the sketch's coordinate system
         :returns: The geometry at index or the sketch's 2D coordinate system.
         """
-        if index is ConstraintReference.CS:
-            return self._sketch_cs
+        if index == -1:
+            return self
         elif index is None:
             return None
         else:
@@ -577,21 +602,6 @@ class Sketch(AbstractFeature):
                 raise ValueError(f"Constraint choice {constraint_choice}"
                                  " not recognized")
         self.add_constraint(new_constraint)
-    
-    def _sync_geometry_uid(self):
-        """Prepends the geometry uids with the sketch's uid unless it was 
-        specially overridden.
-        """
-        if self.uid is not None:
-            for i, g in enumerate(self.geometry):
-                if g.uid is None or g.uid == "" or g.uid.isnumeric():
-                    uid_parts = [self.uid, str(i)]
-                else:
-                    # Leave the geometry uid unchanged if it is not a number,
-                    # none or empty string. Assumed to be a special user defined 
-                    # uid
-                    uid_parts = [g.uid]
-                g.uid = self.UID_SEPARATOR.join(uid_parts)
     
     # Private Dispatch Methods
     @singledispatchmethod
@@ -741,9 +751,10 @@ class Sketch(AbstractFeature):
         raise NotImplementedError("Sketch copy hasn't been implemented yet,"
                                   " see github issue #53")
     
-    def __contains__(self, item):
-        contents = (self.get_sketch_coordinate_system(),) + self.geometry
-        return any([item is c for c in contents])
+    def __contains__(self, item: AbstractGeometry):
+        contents = [geometry.uid for geometry in self.geometry]
+        contents.append(self.uid)
+        return item.uid in contents
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the sketch's contextual 

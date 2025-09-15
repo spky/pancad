@@ -14,6 +14,7 @@ from PanCAD.cad.freecad import (App, Sketcher, Part,
                                 FreeCADOrigin,)
 from PanCAD.cad.freecad.constants import ObjectType
 from PanCAD.cad.freecad.sketch_geometry import get_freecad_sketch_geometry
+from PanCAD.cad.freecad.sketch_constraints import translate_constraint
 from PanCAD.geometry import (PanCADThing,
                              AbstractGeometry,
                              AbstractFeature,
@@ -53,7 +54,7 @@ FreeCADID = FeatureID | SketchGeometryID
 """The unique ID for a FreeCADCADObject."""
 SketchSubGeometryID = tuple[FeatureID, SketchGeometryID, ConstraintReference]
 """The ID for a FreeCAD geometry element acting as the subgeometry of another 
-geometry element in the same sketch.
+geometry element in the same sketch. The FeatureID has to be for a sketch.
 """
 SubGeometryMap = dict[ConstraintReference, GeometryIndex]
 """Maps a constraint reference to another sketch index in the same sketch."""
@@ -152,6 +153,8 @@ class FreeCADMap(MutableMapping):
         # Maps freecad ids to their features
         self._geometry_map = _FreeCADSketchGeometryMap(self._feature_map)
         # Maps freecad sketch ids to their contained geometry
+        self._constraint_map = _FreeCADSketchConstraintMap(self._feature_map,
+                                                           self._geometry_map)
     
     # Python Dunders #
     def __contains__(self, key: PanCADThing) -> bool:
@@ -368,6 +371,8 @@ class FreeCADMap(MutableMapping):
         # Map Feature
         self._feature_map[sketch.ID] = {ConstraintReference.CORE: sketch}
         self._mapping[key.uid] = (key, sketch.ID)
+        coordinate_system = key.get_sketch_coordinate_system()
+        self._mapping[coordinate_system.uid] 
         
         # Map the geometry inside of the sketch
         self._geometry_map[sketch.ID, -2] = {
@@ -379,7 +384,7 @@ class FreeCADMap(MutableMapping):
             ConstraintReference.CORE: -1
         }
         geometry_index = 0
-        internal_constraint_index = 0
+        constraint_index = 0
         for geometry, construction in zip(key.geometry, key.construction):
             new_geometry = get_freecad_sketch_geometry(geometry)
             sketch.addGeometry(new_geometry, construction)
@@ -388,13 +393,13 @@ class FreeCADMap(MutableMapping):
                 sketch.exposeInternalGeometry(geometry_index)
                 ellipse_id = (sketch.ID, geometry_index)
                 subgeometry = dict()
-                subgeometry[ConstraintReference.CORE] = new_geometry
+                subgeometry[ConstraintReference.CORE] = ellipse_id
                 ellipse_references = [ConstraintReference.CENTER,
                                       ConstraintReference.X,
                                       ConstraintReference.Y,
                                       ConstraintReference.FOCAL_PLUS,
                                       ConstraintReference.FOCAL_MINUS]
-                self._mapping[geometry.uid] = (key, ellipse_id)
+                self._mapping[geometry.uid] = (geometry, ellipse_id)
                 for i, reference in enumerate(ellipse_references):
                     sub_index = geometry_index + i
                     self._geometry_map[sketch.ID, sub_index] = {
@@ -403,15 +408,30 @@ class FreeCADMap(MutableMapping):
                     subgeometry[reference] = sub_index
                 self._geometry_map[ellipse_id] = subgeometry
                 geometry_index += len(ellipse_references)
-                last_constraint_index = internal_constraint_index + 4
-                
+                constraint_index += 4
             else:
                 self._mapping[geometry.uid] = (geometry,
                                                (sketch.ID, geometry_index))
-                self._geometry_map[sketch.ID, geometry_index] = {
-                    ConstraintReference.CORE: geometry_index,
-                }
+                reference_map = dict()
+                for reference in geometry.get_all_references():
+                    reference_map[reference] = geometry_index
+                self._geometry_map[sketch.ID, geometry_index] = reference_map
                 geometry_index += 1
+        
+        for constraint in key.constraints:
+            new_constraint = translate_constraint(key, constraint)
+            sketch.addConstraint(new_constraint)
+            constraint_id = (sketch.ID, constraint_index)
+            self._mapping[constraint.uid] = (constraint, constraint_id)
+            constrained_ids = tuple()
+            for parent, reference in zip(constraint.get_constrained(),
+                                              constraint.get_references()):
+                print(repr(parent))
+                sketch_geometry_id = self.get_freecad_id(parent, reference)
+                constrained_ids = constrained_ids + (*sketch_geometry_id,
+                                                     reference)
+            self._constraint_map[sketch.ID, constraint_index] = constrained_ids
+            constraint_index += 1
 
 class _FreeCADFeatureMap(MutableMapping):
     """Used to map features and their subfeatures in FreeCAD according to their 
@@ -511,7 +531,9 @@ class _FreeCADSketchGeometryMap(MutableMapping):
         return list(self._sketches[sketch_id][index])
     
     # Python Dunders #
-    def __contains__(self, key: FeatureID | SketchSubGeometryID) -> bool:
+    def __contains__(self,
+                     key: FeatureID | SketchGeometryID | SketchSubGeometryID
+                     ) -> bool:
         if isinstance(key, tuple):
             if len(key) == 3:
                 # Check if the specific sub geometry is in the map
@@ -594,49 +616,31 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         self._sketch_map = sketch_map
         self._sketches = dict()
     
-    # Public Methods #
-    def get_freecad_id(self,
-                       key: tuple[int, int, ConstraintReference],
-                       ) -> tuple[int, int]:
-        sketch_id, index, reference = key
-        subgeometry_index = self._sketches[sketch_id][index][reference]
-        return (sketch_id, subgeometry_index)
-    
     # Python Dunders #
-    def __contains__(self,
-                     key: int | tuple[int, int, ConstraintReference]) -> bool:
+    def __contains__(self, key: FeatureID | SketchConstraintID) -> bool:
         if isinstance(key, tuple):
-            if len(key) == 3:
-                # Check if the specific sub geometry is in the map
-                sketch_id, index, reference = key
-                if (sketch_id in self._sketches
-                        and index in self._sketches[sketch_id]):
-                    return reference in self._sketches[sketch_id][index]
-                else:
-                    return False
-            elif len(key) == 2:
+            if len(key) == 2:
                 # Check if the geometry as a whole is in the map
                 sketch_id, index = key
                 return (sketch_id in self._sketches
                         and index in self._sketches[sketch_id])
             else:
-                raise ValueError("Tuple key must be either 2 or 3 long")
+                raise ValueError("Tuple key must be 2 long")
         elif isinstance(key, int):
             # Return if a sketch with the id of key has an element in the map
             return any([key == sketch_id for sketch_id, _ in self._sketches])
         else:
             raise TypeError(f"Unrecognized input type {key.__class__}")
     
-    def __delitem__(self, key: tuple[int, int]) -> None:
+    def __delitem__(self, key: SketchConstraintID) -> None:
         """Delete the geometry in the key along with its subgeometry."""
         sketch_id, index = key
         del self._sketches[sketch_id][index]
     
-    def __getitem__(self, key: tuple[int, int, ConstraintReference]) -> object:
+    def __getitem__(self, key: SketchConstraintID) -> object:
         """Get the subgeometry of sketch geometry."""
-        sketch_id, index, reference = key
-        subgeometry_index = self._sketches[sketch_id][index][reference]
-        return self._feature_map[sketch_id].Geometry[subgeometry_index]
+        sketch_id, index = key
+        return self._feature_map[sketch_id].Constraints[index]
     
     def __iter__(self):
         return iter(self._sketches)
@@ -645,31 +649,23 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         return len(self._sketches)
     
     def __setitem__(self,
-                    key: tuple[int, int],
-                    subgeometry: dict[ConstraintReference, int]) -> None:
+                    key: SketchConstraintID,
+                    constrained: tuple[SketchSubGeometryID]) -> None:
         if not isinstance(key, tuple):
-            raise ValueError("Key must be tuple of sketch id and index."
-                             f" Given {key}")
+            raise ValueError("Key must be tuple of sketch feature id and"
+                             f" constraint index. Given {key}")
         sketch_id, index = key
         if sketch_id not in self._sketches:
             # When the sketch id is new, initialize a sketch dict
             self._sketches[sketch_id] = dict()
-        if index not in self._sketches[sketch_id]:
-            # When the index is new, initialize a index dict
-            self._sketches[sketch_id][index] = dict()
-        
-        if ConstraintReference.CORE in subgeometry:
-            self._sketches[sketch_id][index] = subgeometry
-        else:
-            raise ValueError("Subgeometry must contain a"
-                             " ConstraintReference.CORE")
+        self._sketches[sketch_id][index] = constrained
     
     def __str__(self) -> str:
         output_strings = []
         for sketch, values in self._sketches.items():
             output_strings.append(f"{sketch}:")
-            for index, geometry in values.items():
-                output_strings.append(f"{{{index}: {geometry}}}")
+            for index, constraints in values.items():
+                output_strings.append(f"{{{index}: {constraints}}}")
         return "\n".join(output_strings)
     
     

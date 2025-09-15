@@ -33,8 +33,7 @@ class TestDunder(unittest.TestCase):
         cs = CoordinateSystem((0, 0, 0))
         geom = [Point(1,1), LineSegment((-1,-1),(-1,1))]
         cons = [Coincident(geom[0], ConstraintReference.CORE, geom[1], ConstraintReference.CORE)]
-        uid = "TestSketch"
-        self.sketch = Sketch(cs, geometry=geom, constraints=cons, uid=uid)
+        self.sketch = Sketch(cs, geometry=geom, constraints=cons)
     
     def test_repr(self):
         # Checks whether repr errors out
@@ -74,7 +73,8 @@ class TestSummary(unittest.TestCase):
                      geometry[0], ConstraintReference.END,
                      value=side_length, unit=unit),
             Coincident(geometry[0], ConstraintReference.START,
-                       sketch.get_sketch_coordinate_system(),
+                       # sketch.get_sketch_coordinate_system(),
+                       sketch,
                        ConstraintReference.ORIGIN),
             Diameter(geometry[4], ConstraintReference.CORE, 1, unit=unit),
             Angle(geometry[0], ConstraintReference.CORE,
@@ -212,11 +212,11 @@ class TestConstraints(unittest.TestCase):
     def test_add_constraint_to_sketch_cs(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         expected_constraint = Coincident(
-            sketch.get_sketch_coordinate_system(), ConstraintReference.ORIGIN,
+            sketch, ConstraintReference.ORIGIN,
             self.geo[0], ConstraintReference.CORE
         )
         sketch.add_constraint_by_uid(SketchConstraint.COINCIDENT,
-                                     ConstraintReference.COORDINATE_SYSTEM, ConstraintReference.ORIGIN,
+                                     sketch.uid, ConstraintReference.ORIGIN,
                                      self.geo[0].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
 

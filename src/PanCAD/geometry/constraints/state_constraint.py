@@ -38,14 +38,10 @@ class AbstractStateConstraint(AbstractConstraint):
                  uid: str=None) -> None:
         self.uid = uid
         
-        if len(constrain_a) == len(constrain_b):
-            self._a = constrain_a
-            self._a_reference = reference_a
-            self._b = constrain_b
-            self._b_reference = reference_b
-        else:
-            raise ValueError("Geometry a and b must have the same number"
-                             " of dimensions")
+        self._a = constrain_a
+        self._a_reference = reference_a
+        self._b = constrain_b
+        self._b_reference = reference_b
         
         self._validate_parent_geometry()
         self._validate_geometry()
