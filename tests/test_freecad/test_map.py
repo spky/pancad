@@ -81,8 +81,8 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
             # Vertical(geometry[1], ConstraintReference.CORE),
             # Horizontal(geometry[2], ConstraintReference.CORE),
             # Vertical(geometry[3], ConstraintReference.CORE),
-            Coincident(geometry[0], ConstraintReference.START,
-                       geometry[3], ConstraintReference.END),
+            # Coincident(geometry[0], ConstraintReference.START,
+                       # geometry[3], ConstraintReference.END),
             # Coincident(geometry[0], ConstraintReference.END,
                        # geometry[1], ConstraintReference.START),
             # Coincident(geometry[1], ConstraintReference.END,
@@ -102,14 +102,12 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
                         constraints=constraints,
                         name=name)
         # Constrain bottom left corner to origin
-        sketch.add_constraint(
-            Coincident(geometry[0], ConstraintReference.START,
-                       sketch.get_sketch_coordinate_system(),
-                       ConstraintReference.ORIGIN)
-        )
+        # sketch.add_constraint(
+            # Coincident(geometry[0], ConstraintReference.START,
+                       # sketch, ConstraintReference.ORIGIN)
+        # )
         return sketch
     
-    @unittest.skip
     def test_map_cube_extrude(self):
         container = FeatureContainer(name="TestBucket")
         cs = CoordinateSystem()
