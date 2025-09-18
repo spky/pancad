@@ -241,15 +241,16 @@ class FreeCADMap(MutableMapping):
             else:
                 raise TypeError("Reading map keys cannot be PanCAD objects,"
                                 f" given: {key}")
-
+    
     def __str__(self) -> str:
         strings = []
         for key, value in self.items():
             for reference in self.get_references(key):
                 freecad_id = self.get_freecad_id(key, reference)
                 freecad_repr = self._freecad_repr(freecad_id)
-                strings.append(f" {repr(key)}, {reference}: {freecad_repr},")
+                strings.append(f" {repr(key)}, {reference.name}: {freecad_repr},")
         strings[-1] = strings[-1] + "}"
+        strings[0] = "{" + strings[0]
         return "\n".join(strings)
 
     # Public Methods #
@@ -311,12 +312,17 @@ class FreeCADMap(MutableMapping):
     def _freecad_repr(self, freecad_id: FreeCADID) -> str:
         """Returns a string representing the freecad object."""
         freecad_object = self._id_map[freecad_id]
-        default_repr = repr(freecad_object).replace("<", "").replace(">", "")
+        type_id = freecad_object.TypeId.split("::")[-1]
+        default_repr = repr(type_id).replace("<", "") \
+                                    .replace(">", "") \
+                                    .replace("'", "")
         
         if hasattr(freecad_object, "Label"):
             return f"<ID:{freecad_id} '{freecad_object.Label}' {default_repr}>"
         else:
-            return f"<ID:{freecad_id} {default_repr}>"
+            sketch_id, list_name, index = freecad_id
+            id_str = f"({sketch_id},{list_name.value},{index})"
+            return f"<ID:{id_str} {default_repr}>"
 
 
     @singledispatchmethod
