@@ -457,5 +457,3 @@ class LineSegment(AbstractGeometry):
         
         prefix = super().__str__()
         return f"{prefix}({pt_a_str})({pt_b_str})>"
-        # return (f"PanCAD LineSegment with start ({pt_a_str})"
-                # f" and end ({pt_b_str})")
