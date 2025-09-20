@@ -132,7 +132,7 @@ class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
                         name=name)
         return sketch
     
-    @unittest.skip
+    # @unittest.skip
     def test_map_ellipse_extrude(self):
         container = FeatureContainer(name="TestBucket")
         cs = CoordinateSystem()
@@ -140,3 +140,5 @@ class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
+        print(self.test_map)
+        

@@ -457,43 +457,47 @@ class FreeCADMap(MutableMapping):
         geometry_index = 0
         constraint_index = 0
         for geometry, construction in zip(key.geometry, key.construction):
-            new_geometry = get_freecad_sketch_geometry(geometry)
-            sketch.addGeometry(new_geometry, construction)
-            
-            if isinstance(geometry, Ellipse):
-                sketch.exposeInternalGeometry(geometry_index)
-                ellipse_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-                subgeometry = dict()
-                subgeometry[ConstraintReference.CORE] = ellipse_id
-                ellipse_references = [ConstraintReference.CENTER,
-                                      ConstraintReference.X,
-                                      ConstraintReference.Y,
-                                      ConstraintReference.FOCAL_PLUS,
-                                      ConstraintReference.FOCAL_MINUS]
+            geometry_index, constraint_index = (
+                self._link_pancad_to_freecad_geometry(geometry,
+                                                      sketch,
+                                                      construction,
+                                                      geometry_index,
+                                                      constraint_index,)
+            )
+            # if isinstance(geometry, Ellipse):
+                # sketch.exposeInternalGeometry(geometry_index)
+                # ellipse_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+                # subgeometry = dict()
+                # subgeometry[ConstraintReference.CORE] = ellipse_id
+                # ellipse_references = [ConstraintReference.CENTER,
+                                      # ConstraintReference.X,
+                                      # ConstraintReference.Y,
+                                      # ConstraintReference.FOCAL_PLUS,
+                                      # ConstraintReference.FOCAL_MINUS]
                 
-                for reference in ellipse_references:
-                    sub_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-                    # TODO: May need ConstraintReferences per geometry type!
-                    self._id_map[sub_id] = sketch.Geometry[geometry_index]
-                    self._geometry_map[sub_id] = {
-                        ConstraintReference.CORE: geometry_index
-                    }
-                    subgeometry[reference] = geometry_index
-                    geometry_index += 1
+                # for reference in ellipse_references:
+                    # sub_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+                    # # TODO: May need ConstraintReferences per geometry type!
+                    # self._id_map[sub_id] = sketch.Geometry[geometry_index]
+                    # self._geometry_map[sub_id] = {
+                        # ConstraintReference.CORE: geometry_index
+                    # }
+                    # subgeometry[reference] = geometry_index
+                    # geometry_index += 1
                 
-                self._id_map[ellipse_id] = geometry
-                self._geometry_map[ellipse_id] = subgeometry
-                self._mapping[geometry.uid] = (geometry, ellipse_id)
-                constraint_index += 4
-            else:
-                geometry_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-                self._id_map[geometry_id] = new_geometry
-                self._mapping[geometry.uid] = (geometry, geometry_id)
-                reference_map = dict()
-                for reference in geometry.get_all_references():
-                    reference_map[reference] = geometry_index
-                self._geometry_map[geometry_id] = reference_map
-                geometry_index += 1
+                # self._id_map[ellipse_id] = geometry
+                # self._geometry_map[ellipse_id] = subgeometry
+                # self._mapping[geometry.uid] = (geometry, ellipse_id)
+                # constraint_index += 4
+            # else:
+                # geometry_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+                # self._id_map[geometry_id] = new_geometry
+                # self._mapping[geometry.uid] = (geometry, geometry_id)
+                # reference_map = dict()
+                # for reference in geometry.get_all_references():
+                    # reference_map[reference] = geometry_index
+                # self._geometry_map[geometry_id] = reference_map
+                # geometry_index += 1
         
         for constraint in key.constraints:
             new_constraint = translate_constraint(key, constraint)
@@ -533,7 +537,8 @@ class FreeCADMap(MutableMapping):
         :returns: A tuple of the new geometry_index and the new 
             constraint_index.
         """
-        raise TypeError(f"Geometry class {geometry.__class__} not recognized")
+        raise TypeError(f"Geometry class {pancad_geometry.__class__}"
+                        " not recognized")
     
     @_link_pancad_to_freecad_geometry.register
     def _ellipse(self,
@@ -549,26 +554,49 @@ class FreeCADMap(MutableMapping):
         
         # Map newly created Internal Geometry
         subgeometry = dict()
-        subgeometry[ConstraintReference.CORE] = ellipse_id
-        ellipse_references = [ConstraintReference.CENTER,
-                              ConstraintReference.X,
-                              ConstraintReference.Y,
-                              ConstraintReference.FOCAL_PLUS,
-                              ConstraintReference.FOCAL_MINUS]
-        for reference in ellipse_references:
-            sub_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-            # TODO: May need ConstraintReferences per geometry type!
-            self._id_map[sub_id] = sketch.Geometry[geometry_index]
-            self._geometry_map[sub_id] = {
-                ConstraintReference.CORE: geometry_index
-            }
-            subgeometry[reference] = geometry_index
-            geometry_index += 1
+        ellipse_references = [
+            (ConstraintReference.CORE, geometry_index),
+            (ConstraintReference.CENTER, geometry_index),
+            (ConstraintReference.X, geometry_index + 1),
+            (ConstraintReference.X_MAX, geometry_index + 1),
+            (ConstraintReference.X_MIN, geometry_index + 1),
+            (ConstraintReference.Y, geometry_index + 2),
+            (ConstraintReference.Y_MAX, geometry_index + 2),
+            (ConstraintReference.Y_MIN, geometry_index + 2),
+            (ConstraintReference.FOCAL_PLUS, geometry_index + 3),
+            (ConstraintReference.FOCAL_MINUS, geometry_index + 4),
+        ]
+        for reference, sub_index in ellipse_references:
+            sub_id = (sketch.ID, ListName.GEOMETRY, sub_index)
+            self._id_map[sub_id] = sketch.Geometry[sub_index]
+            self._geometry_map[sub_id] = {ConstraintReference.CORE: sub_index}
+            subgeometry[reference] = sub_index
+        geometry_index += 5
         
         self._id_map[ellipse_id] = geometry
         self._geometry_map[ellipse_id] = subgeometry
-        self._mapping[geometry.uid] = (geometry, ellipse_id)
+        self._mapping[pancad_geometry.uid] = (pancad_geometry, ellipse_id)
         constraint_index += 4
+        return geometry_index, constraint_index
+    
+    @_link_pancad_to_freecad_geometry.register
+    def _one_to_one(self,
+                    pancad_geometry: LineSegment,
+                    sketch: Sketcher.Sketch,
+                    construction: bool,
+                    geometry_index: int,
+                    constraint_index: int) -> tuple[int, int]:
+        geometry = get_freecad_sketch_geometry(pancad_geometry)
+        sketch.addGeometry(geometry, construction)
+        geometry_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+        self._id_map[geometry_id] = geometry
+        self._mapping[pancad_geometry.uid] = (pancad_geometry, geometry_id)
+        reference_map = dict()
+        for reference in pancad_geometry.get_all_references():
+            reference_map[reference] = geometry_index
+        self._geometry_map[geometry_id] = reference_map
+        geometry_index += 1
+        return geometry_index, constraint_index
 
 class _FreeCADIDMap(MutableMapping):
     """Used to map FreeCAD IDs to Features, Geometry and Constraints."""

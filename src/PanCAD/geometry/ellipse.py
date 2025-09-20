@@ -547,3 +547,4 @@ class Ellipse(AbstractGeometry):
         prefix = super().__str__()
         string = (f"{prefix}{center_str}"
                   f"a{self.semi_major_axis}b{self.semi_minor_axis}>")
+        return string
