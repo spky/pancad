@@ -9,6 +9,7 @@ from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractConstraint(PanCADThing):
     
+    
     # Abstract Properties #
     @property
     @abstractmethod
@@ -45,3 +46,25 @@ class AbstractConstraint(PanCADThing):
         """Returns a tuple of the constrained geometrys' ConstraintReferences in 
         the same order as the tuple returned by :meth:`get_constrained`.
         """
+    
+    def __repr__(self) -> str:
+        return str(self)
+    
+    def __str__(self) -> str:
+        strings = ["<", self.__class__.__name__]
+        
+        if self.STR_VERBOSE:
+            strings.append(f"'{self.uid}'")
+        strings.append("-")
+        
+        constrained = self.get_constrained()
+        references = self.get_references()
+        geometry_strings = []
+        for geometry, reference in zip(constrained, references):
+            geometry_strings.append(
+                repr(geometry).replace("<", "").replace(">", "")
+            )
+            geometry_strings[-1] += reference.name
+        strings.append(",".join(geometry_strings))
+        strings.append(">")
+        return "".join(strings)

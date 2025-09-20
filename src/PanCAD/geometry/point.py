@@ -545,16 +545,16 @@ class Point(AbstractGeometry):
         else:
             raise StopIteration
     
-    def __repr__(self) -> str:
-        """Returns the short string representation of the point."""
-        pt_strs = []
-        for i in range(0, len(self.cartesian)):
-            if isclose0(self.cartesian[i]):
-                pt_strs.append("0")
-            else:
-                pt_strs.append("{:g}".format(self.cartesian[i]))
-        point_str = ",".join(pt_strs)
-        return f"<PanCADPoint'{self.uid}'({point_str})>"
+    # def __repr__(self) -> str:
+        # """Returns the short string representation of the point."""
+        # pt_strs = []
+        # for i in range(0, len(self.cartesian)):
+            # if isclose0(self.cartesian[i]):
+                # pt_strs.append("0")
+            # else:
+                # pt_strs.append("{:g}".format(self.cartesian[i]))
+        # point_str = ",".join(pt_strs)
+        # return f"<PanCADPoint'{self.uid}'({point_str})>"
     
     def __str__(self) -> str:
         pt_strs = []
@@ -564,7 +564,8 @@ class Point(AbstractGeometry):
             else:
                 pt_strs.append("{:g}".format(self.cartesian[i]))
         point_str = ",".join(pt_strs)
-        return f"<PanCADPoint'{self.uid}'({point_str})>"
+        prefix = super().__str__()
+        return f"{prefix}({point_str})>"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

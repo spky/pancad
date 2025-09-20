@@ -44,9 +44,9 @@ FromFreeCADLike = dict[object,
 FeatureID = int
 """The ID that FreeCAD assigns to Features, usually a 4 digit integer."""
 GeometryIndex = int
-"""The index of a geometry element in a FreeCAD sketch's Geometry list. FreeCAD 
-allows ExternalGeo elements to be reference by constraints using negative 
-numbers in addition to the normal Geometry elements.
+"""The index of a geometry element in a FreeCAD sketch's Geometry or ExternalGeo 
+list. FreeCAD allows ExternalGeo elements to be referenced by constraints using 
+negative numbers in addition to the normal Geometry elements in constraints.
 """
 ConstraintIndex = int
 """The index of a constraint element in a FreeCAD sketch's Constraints list."""
@@ -341,17 +341,28 @@ class FreeCADMap(MutableMapping):
                                     .replace("'", "")
         
         if hasattr(freecad_object, "Label"):
+            # Features
             return f"<ID:{freecad_id} '{freecad_object.Label}' {default_repr}>"
         elif hasattr(freecad_object, "Type"):
+            # Constraints
             sketch_id, list_name, index = freecad_id
             id_str = f"({sketch_id},{list_name.value},{index})"
-            return f"<ID:{id_str} '{freecad_object.Type}' {default_repr}>"
+            constrained = self._constraint_map.get_constrained_ids(freecad_id)
+            geometry_strings = []
+            for geometry_id in constrained:
+                sketch_id, list_name, index = geometry_id
+                geometry_strings.append(
+                    f"({sketch_id},{list_name.value},{index})"
+                )
+            geometry_str = "".join(geometry_strings)
+            return (f"<ID:{id_str}-{geometry_str} '{freecad_object.Type}'"
+                    f"{default_repr}>")
         else:
+            # Geometry
             sketch_id, list_name, index = freecad_id
             id_str = f"({sketch_id},{list_name.value},{index})"
             return f"<ID:{id_str} {default_repr}>"
-
-
+    
     @singledispatchmethod
     def _link_pancad_to_freecad_feature(self,
                                         key: PanCADThing,
@@ -448,7 +459,7 @@ class FreeCADMap(MutableMapping):
         for geometry, construction in zip(key.geometry, key.construction):
             new_geometry = get_freecad_sketch_geometry(geometry)
             sketch.addGeometry(new_geometry, construction)
-        
+            
             if isinstance(geometry, Ellipse):
                 sketch.exposeInternalGeometry(geometry_index)
                 ellipse_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
@@ -498,6 +509,66 @@ class FreeCADMap(MutableMapping):
             self._id_map[constraint_id] = new_constraint
             self._constraint_map[constraint_id] = constrained_ids
             constraint_index += 1
+    
+    @singledispatchmethod
+    def _link_pancad_to_freecad_geometry(self,
+                                         pancad_geometry: AbstractGeometry,
+                                         sketch: Sketcher.Sketch,
+                                         construction: bool,
+                                         geometry_index: int,
+                                         constraint_index: int) -> NoReturn:
+        
+        """Adds the PanCAD geometry to the FreeCAD sketch while also mapping 
+        the relations between the new geometry and constraints to PanCAD 
+        geometry.
+        
+        :param pancad_geometry: A PanCAD AbstractGeometry object.
+        :param sketch: A FreeCAD sketch.
+        :param construction: Sets the geometry to construction is True, 
+            non-construction if False.
+        :param geometry_index: The index to set the geometry to in the 
+            FreeCAD sketch.
+        :param constraint_id: The index for the next constraint, if any will 
+            be added.
+        :returns: A tuple of the new geometry_index and the new 
+            constraint_index.
+        """
+        raise TypeError(f"Geometry class {geometry.__class__} not recognized")
+    
+    @_link_pancad_to_freecad_geometry.register
+    def _ellipse(self,
+                 pancad_geometry: Ellipse,
+                 sketch: Sketcher.Sketch,
+                 construction: bool,
+                 geometry_index: int,
+                 constraint_index: int) -> tuple[int, int]:
+        geometry = get_freecad_sketch_geometry(pancad_geometry)
+        ellipse_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+        sketch.addGeometry(geometry, construction)
+        sketch.exposeInternalGeometry(geometry_index)
+        
+        # Map newly created Internal Geometry
+        subgeometry = dict()
+        subgeometry[ConstraintReference.CORE] = ellipse_id
+        ellipse_references = [ConstraintReference.CENTER,
+                              ConstraintReference.X,
+                              ConstraintReference.Y,
+                              ConstraintReference.FOCAL_PLUS,
+                              ConstraintReference.FOCAL_MINUS]
+        for reference in ellipse_references:
+            sub_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
+            # TODO: May need ConstraintReferences per geometry type!
+            self._id_map[sub_id] = sketch.Geometry[geometry_index]
+            self._geometry_map[sub_id] = {
+                ConstraintReference.CORE: geometry_index
+            }
+            subgeometry[reference] = geometry_index
+            geometry_index += 1
+        
+        self._id_map[ellipse_id] = geometry
+        self._geometry_map[ellipse_id] = subgeometry
+        self._mapping[geometry.uid] = (geometry, ellipse_id)
+        constraint_index += 4
 
 class _FreeCADIDMap(MutableMapping):
     """Used to map FreeCAD IDs to Features, Geometry and Constraints."""
@@ -743,11 +814,38 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         self._sketches = dict()
     
     # Public Methods #
-    def get_freecad_id(self, key: SketchConstraintID) -> SketchGeometryID:
+    def get_freecad_id(self, key: SketchConstraintID) -> SketchConstraintID:
         if key in self:
             return key
         else:
             raise LookupError(f"Key {key} is not in the map")
+    
+    def get_constrained(self,
+                        key: SketchConstraintID) -> tuple[FreeCADCADObject]:
+        """Returns the freecad geometry constrained by this constraint."""
+        constrained_ids = self.get_constrained_ids(key)
+        constrained = [
+            self._id_map[freecad_id] for freecad_id in constrained_ids
+        ]
+        return tuple(constrained)
+    
+    def get_constrained_ids(self,
+                            key: SketchConstraintID) -> tuple[SketchGeometryID]:
+        """Returns the ids of the geometry constrained by this constraint."""
+        if key not in self:
+            raise LookupError(f"No constraint found for {key}")
+        
+        sketch_id, _, index = key
+        constraint = self._feature_map[sketch_id].Constraints[index]
+        constrained = []
+        indices = [constraint.First, constraint.Second, constraint.Third]
+        for index in indices:
+            if index != -2000:
+                freecad_id = self._index_to_freecad_id(sketch_id, index)
+                constrained.append(freecad_id)
+            else:
+                break
+        return constrained
     
     # Python Dunders #
     def __contains__(self, key: FeatureID | SketchConstraintID) -> bool:
@@ -769,11 +867,10 @@ class _FreeCADSketchConstraintMap(MutableMapping):
     
     def __getitem__(self, key: SketchConstraintID) -> FreeCADConstraint:
         """Get the constraint from the FreeCAD sketch."""
-        sketch_id, list_name, index = key
-        self._check_list_name(list_name)
         if key in self:
             # Only return if it's in the map, even if it's in the FreeCAD
             # sketch.
+            sketch_id, _, index = key
             return self._feature_map[sketch_id].Constraints[index]
         else:
             raise LookupError(f"No constraint found for {key}")
@@ -807,3 +904,13 @@ class _FreeCADSketchConstraintMap(MutableMapping):
     def _check_list_name(self, name: ListName) -> NoReturn:
         if name != ListName.CONSTRAINTS:
             raise ValueError(f"ListName {list_name} not recognized")
+    
+    def _index_to_freecad_id(self, sketch_id: FeatureID, index: int):
+        """Returns the freecad id associated with a constraint geometry 
+        index. Positive numbers are in the Geometry list and negative 
+        numbers are in the ExternalGeo list.
+        """
+        if index < 0:
+            return (sketch_id, ListName.EXTERNALS, -(index + 1))
+        else:
+            return (sketch_id, ListName.GEOMETRY, index)

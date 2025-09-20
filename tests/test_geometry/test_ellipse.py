@@ -23,6 +23,18 @@ class TestInit(unittest.TestCase):
         else:
             return Point(center - c*np.array(major_direction))
     
+    @staticmethod
+    def extreme_points(center: Point,
+                       a: Real,
+                       b: Real,
+                       major_direction: tuple[Real],
+                       minor_direction: tuple[Real],) -> tuple[Point]:
+        x_max = Point(center + a*np.array(major_direction))
+        x_min = Point(center - a*np.array(major_direction))
+        y_max = Point(center + b*np.array(minor_direction))
+        y_min = Point(center - b*np.array(minor_direction))
+        return x_max, x_min, y_max, y_min
+    
     def check_values(self,
                      test: Ellipse,
                      center: Point,
@@ -49,6 +61,12 @@ class TestInit(unittest.TestCase):
                                        semi_minor_axis,
                                        major_axis_line.direction,
                                        False)
+        x_max, x_min, y_max, y_min = self.extreme_points(
+            center,
+            semi_major_axis, semi_minor_axis,
+            major_axis_line.direction, minor_axis_line.direction,
+        )
+        
         
         # Real and geometry Sub-tests
         with self.subTest("center !=", expected=center, got=test.center):
@@ -84,6 +102,31 @@ class TestInit(unittest.TestCase):
                           got=test.focal_point_plus):
             np.testing.assert_allclose(test.focal_point_plus.cartesian,
                                        plus_focal.cartesian)
+        with self.subTest("minus_focal_point !=",
+                          expected=minus_focal,
+                          got=test.focal_point_minus):
+            np.testing.assert_allclose(test.focal_point_minus.cartesian,
+                                       minus_focal.cartesian)
+        with self.subTest("major_axis_max !=",
+                          expected=x_max,
+                          got=test.major_axis_max):
+            np.testing.assert_allclose(test.major_axis_max.cartesian,
+                                       x_max.cartesian)
+        with self.subTest("major_axis_min !=",
+                          expected=x_min,
+                          got=test.major_axis_min):
+            np.testing.assert_allclose(test.major_axis_min.cartesian,
+                                       x_min.cartesian)
+        with self.subTest("minor_axis_max !=",
+                          expected=y_max,
+                          got=test.minor_axis_max):
+            np.testing.assert_allclose(test.minor_axis_max.cartesian,
+                                       y_max.cartesian)
+        with self.subTest("minor_axis_min !=",
+                          expected=y_min,
+                          got=test.minor_axis_min):
+            np.testing.assert_allclose(test.minor_axis_min.cartesian,
+                                       y_min.cartesian)
 
 class Test2DEllipseInitialization(TestInit):
     

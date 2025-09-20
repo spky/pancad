@@ -146,14 +146,14 @@ class AbstractStateConstraint(AbstractConstraint):
         else:
             return NotImplemented
     
-    def __repr__(self) -> str:
-        return (f"<{self.__class__.__name__}'{self.uid}'"
-                f"{repr(self._a)}{repr(self._b)}>")
+    # def __repr__(self) -> str:
+        # return (f"<{self.__class__.__name__}'{self.uid}'"
+                # f"{repr(self._a)}{repr(self._b)}>")
     
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)}"
-                " as geometry b")
+    # def __str__(self) -> str:
+        # return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
+                # f" with {repr(self._a)} as geometry a and {repr(self._b)}"
+                # " as geometry b")
 
 class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same 

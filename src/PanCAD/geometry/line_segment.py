@@ -441,7 +441,7 @@ class LineSegment(AbstractGeometry):
         """
         return len(self.point_a)
     
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
             if isclose0(self.point_a[i]):
@@ -454,20 +454,8 @@ class LineSegment(AbstractGeometry):
                 pt_b_strs.append("{:g}".format(self.point_b[i]))
         pt_a_str = ",".join(pt_a_strs)
         pt_b_str = ",".join(pt_b_strs)
-        return f"<PanCADLineSegment'{self.uid}'({pt_a_str})({pt_b_str})>"
-    
-    def __str__(self) -> str:
-        pt_a_strs, pt_b_strs = [], []
-        for i in range(0, len(self)):
-            if isclose0(self.point_a[i]):
-                pt_a_strs.append("0")
-            else:
-                pt_a_strs.append("{:g}".format(self.point_a[i]))
-            if isclose0(self.point_b[i]):
-                pt_b_strs.append("0")
-            else:
-                pt_b_strs.append("{:g}".format(self.point_b[i]))
-        pt_a_str = ", ".join(pt_a_strs)
-        pt_b_str = ", ".join(pt_b_strs)
-        return (f"PanCAD LineSegment with start ({pt_a_str})"
-                f" and end ({pt_b_str})")
+        
+        prefix = super().__str__()
+        return f"{prefix}({pt_a_str})({pt_b_str})>"
+        # return (f"PanCAD LineSegment with start ({pt_a_str})"
+                # f" and end ({pt_b_str})")

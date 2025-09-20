@@ -115,8 +115,7 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
-        
-        print(self.test_map)
+        # print(self.test_map)
 
 class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
     def ellipse_sketch(self,

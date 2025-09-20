@@ -10,6 +10,10 @@ class PanCADThing(ABC):
     elements, constraints, or whatever must have with no exceptions.
     """
     
+    STR_VERBOSE = False
+    """A Flag allowing PanCAD objects to print more verbose strings and reprs.
+    """
+    
     # Getters #
     @property
     def uid(self) -> str | UUID:

@@ -33,3 +33,13 @@ class AbstractGeometry(PanCADThing):
         """Implements the Python len() function to return whether the geometry 
         is 2D or 3D.
         """
+    
+    def __repr__(self) -> str:
+        return str(self)
+    
+    @abstractmethod
+    def __str__(self) -> str:
+        strings = ["<", self.__class__.__name__]
+        if self.STR_VERBOSE:
+            strings.append(f"'{self.uid}'")
+        return "".join(strings)
