@@ -82,10 +82,9 @@ class AbstractValue(AbstractConstraint):
         else:
             return NotImplemented
     
-    def __repr__(self) -> str:
-        geometry_reprs = "".join([repr(g) for g in self.get_constrained()])
-        return (f"<{self.__class__.__name__}'{self.uid}'"
-                f"{geometry_reprs}v{self.value}>")
+    def __str__(self) -> str:
+        super_str = super().__str__().removesuffix(">")
+        return f"{super_str}[{self.value}{self.unit}]>"
 
 class Angle(AbstractValue):
     """A class representing angle value constraints between lines. Stores and 
@@ -210,12 +209,6 @@ class Angle(AbstractValue):
         if not isinstance(self.value, (int, float)):
             raise ValueError("Value must be an int or float,"
                              f" given: {value.__class__}")
-    
-    # Dunder Methods #
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)} as"
-                f" geometry b and value {self.value}")
 
 class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more 
@@ -287,11 +280,6 @@ class Abstract2GeometryDistance(AbstractDistance):
     
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference, self._b_reference)
-    
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)} as"
-                f" geometry b and value {self.value}")
 
 class Abstract1GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly one** 
@@ -338,10 +326,6 @@ class Abstract1GeometryDistance(AbstractDistance):
     
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference,)
-    
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and value {self.value}")
     
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:

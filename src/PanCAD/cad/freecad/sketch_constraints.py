@@ -316,6 +316,11 @@ def map_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
             return EdgeSubPart.END
         case ConstraintReference.CENTER:
             return EdgeSubPart.CENTER
+        case ConstraintReference.ORIGIN:
+            # The origin of sketch coordinate systems in FreeCAD is arbitrarily 
+            # the start point of the sketch coordinate system's x-axis line 
+            # segment located in the Sketch's ExternalGeo list index 0.
+            return EdgeSubPart.START
         case _:
             raise ValueError(f"Unsupported reference: {reference}")
 

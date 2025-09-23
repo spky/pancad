@@ -11,7 +11,6 @@ from collections.abc import Sequence
 from functools import reduce, singledispatchmethod
 from itertools import compress
 from math import degrees
-import textwrap
 from typing import overload, Self, NoReturn
 
 from PanCAD.geometry import (
@@ -103,10 +102,11 @@ class Sketch(AbstractFeature, AbstractGeometry):
         
         self._sketch_cs = CoordinateSystem((0, 0), context=self)
         
-        if coordinate_system is None:
-            self.coordinate_system = CoordinateSystem()
-        else:
-            self.coordinate_system = coordinate_system
+        self.coordinate_system = coordinate_system
+        # if coordinate_system is None:
+            # self.coordinate_system = CoordinateSystem()
+        # else:
+            # self.coordinate_system = coordinate_system
             
         self.geometry = geometry
         self.externals = externals
@@ -409,7 +409,10 @@ class Sketch(AbstractFeature, AbstractGeometry):
         return tuple(compress(self.geometry, self.construction))
     
     def get_dependencies(self) -> tuple[ExternalType]:
-        return (self.coordinate_system,) + self.externals
+        if self.coordinate_system is None:
+            return self.externals
+        else:
+            return (self.coordinate_system,) + self.externals
     
     def get_geometry_by_uid(self,
                             uid: str | ConstraintReference) -> GeometryType:
@@ -514,6 +517,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """Returns a string summarizing a list of classes of geometry or 
         constraints in table format.
         """
+        from textwrap import indent
         summary_strings = []
         for title, type_ in title_to_type.items():
             info = []
@@ -522,17 +526,20 @@ class Sketch(AbstractFeature, AbstractGeometry):
             if len(info) > 0:
                 summary_strings.append(title)
                 summary_strings.append(
-                    textwrap.indent(get_table_string(info), "  ")
+                    indent(get_table_string(info), "  ")
                 )
         summary = "\n".join(summary_strings)
-        summary = textwrap.indent(summary, "  ")
+        summary = indent(summary, "  ")
         return summary
     
     def _generate_location_string(self) -> str:
         """Returns a string describing where the sketch is located."""
+        if self.coordinate_system is None:
+            system_uid = None
+        else:
+            system_uid = self.coordinate_system.uid
         location_str = (f"On the {self.plane_reference.name} plane"
-                        " in coordinate system  with uid"
-                        f" '{self.coordinate_system.uid}'")
+                        f" in coordinate system  with uid '{system_uid}'")
         return location_str
     
     def _generate_quantity_string(self) -> str:
@@ -766,19 +773,20 @@ class Sketch(AbstractFeature, AbstractGeometry):
         n_geo = len(self.geometry)
         n_cons = len(self.constraints)
         n_ext = len(self.externals)
-        return f"<PanCADSketch'{self.name}'(g{n_geo},c{n_cons},e{n_ext})>"
+        return f"<Sketch'{self.name}'(g{n_geo},c{n_cons},e{n_ext})>"
     
     def __str__(self) -> str:
         """Returns the longer string representation of the sketch"""
+        from textwrap import indent
         sketch_summary = []
         sketch_summary.append(f"Sketch '{self.name}'")
         sketch_summary.append(
-            textwrap.indent(f"Sketch uid: {self.uid}", "  ")
+            indent(f"Sketch uid: {self.uid}", "  ")
         )
         
         # Location/Plane Summary
         sketch_summary.append(
-            textwrap.indent(self._generate_location_string(), "  ")
+            indent(self._generate_location_string(), "  ")
         )
         # Geometry Summary #
         sketch_summary.append("Geometry")

@@ -12,7 +12,7 @@ import quaternion
 
 from PanCAD.cad.freecad import App, PartDesign, Sketcher, Part
 from PanCAD.cad.freecad.constants import ObjectType, PadType
-from PanCAD.cad.freecad.feature_mappers import map_freecad
+from PanCAD.cad.freecad.feature_mappers import map_freecad, FreeCADMap
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
 from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
 from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
@@ -56,21 +56,13 @@ class FreeCADFile:
             new_file = cls.__new__(cls)
             new_file._document = App.newDocument()
             new_file.filepath = filepath
-            new_file._document.FileName = new_file.filepath
+            new_file.document.FileName = new_file.filepath
             
-            # Add body and coordinate system
-            root = new_file._document.addObject(ObjectType.BODY, "Body")
-            part_file_cs = part_file.get_coordinate_system()
-            
-            # Initialize feature map with part_file coordinate system
-            feature_map = OrderedDict()
-            feature_map.update(
-                map_freecad(part_file_cs, root.Origin)
-            )
-            
-            # Add all other PartFile features.
-            for feature in part_file.get_features():
-                feature_map = add_feature_to_freecad(feature, feature_map)
+            mapping = FreeCADMap(new_file.document)
+            if part_file.container.name is None:
+                # The body has to be named or FreeCAD won't add it
+                part_file.container.name = "Body"
+            mapping.add_pancad_feature(part_file.container)
             
             new_file.save()
             return new_file

@@ -35,7 +35,7 @@ class ConstraintReference(Flag):
     """The focal point of an ellipse in the negative direction of its major
     axis.
     """
-    ORIGIN = CENTER
+    ORIGIN = auto()
     """An alias for the center of the geometry. Example: The origin point of a 
     coordinate system.
     """

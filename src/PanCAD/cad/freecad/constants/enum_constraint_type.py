@@ -13,6 +13,7 @@ class ConstraintType(StrEnum):
     DISTANCE_Y = "DistanceY"
     EQUAL = "Equal"
     HORIZONTAL = "Horizontal"
+    INTERNAL_ALIGNMENT = "InternalAlignment"
     PARALLEL = "Parallel"
     PERPENDICULAR = "Perpendicular"
     POINT_ON_OBJECT = "PointOnObject"

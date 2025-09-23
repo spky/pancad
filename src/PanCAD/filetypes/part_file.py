@@ -16,12 +16,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-import textwrap
 from typing import Sequence, Self
 from pprint import pformat
 
-from PanCAD.geometry import (CoordinateSystem, Sketch, AbstractFeature,
-                             PanCADThing)
+from PanCAD.geometry import (CoordinateSystem, FeatureContainer, Sketch,
+                             AbstractFeature, PanCADThing)
 from PanCAD.filetypes.constants import SoftwareName
 
 class PartFile(PanCADThing):
@@ -30,23 +29,11 @@ class PartFile(PanCADThing):
     geometry configurations of that object.
     
     :param filename: The name of the file. Any extension at the end of the file 
-        will be removed.
-    :param original_software: A SoftwareName enumeration value defining where 
-        the PartFile was originally designed. Defaults to None, resulting in no 
-        metadata storage.
-    :param features: The Features to be added to the PartFile. Defaults to an 
-        empty tuple.
-    :param metadata: The metadata to be added to the file. Cross references the 
-        PanCAD metadata keys with the known original_software metadata keys. 
-        Defaults to None.
-    :param coordinate_system: The CoordinateSystem that all of the PartFile's 
-        features depend on. Defaults to a coordinate system with an origin at 
-        (0, 0, 0) and with axes in the canonical cartesian xyz directions.
-    :param metadata_map: The mapping between synchronized software metadata 
-        fields. Its keys must be SoftwareName values, and each value must have a 
-        subdictionary with field names for keys and a tuple of (SoftwareName, 
-        field name). The mapping allows different software metadata fields to be 
-        synchronized together as necessary.
+        will be removed. Defaults to "New_PartFile".
+    :param container: The primary container for the PartFile. Contains all 
+        features inside the file. Usually represented as a FeatureTree inside 
+        of a file, but can also be something like a Body or Part object in 
+        software like FreeCAD.
     """
     
     PANCAD_METADATA = [
@@ -68,39 +55,13 @@ class PartFile(PanCADThing):
     """
     
     def __init__(self,
-                 filename: str,
-                 original_software: SoftwareName=None,
-                 features: Sequence=None,
+                 filename: str="New_PartFile",
+                 container: FeatureContainer=None,
                  *,
-                 metadata: dict=None,
-                 coordinate_system: CoordinateSystem=None,
-                 metadata_map: dict[SoftwareName,
-                                    dict[str,
-                                         tuple[SoftwareName, str]]]=None,
                  uid: str=None) -> None:
         self.filename = filename
-        # self._set_filename(filename)
-        self._metadata = defaultdict(dict)
-        self._metadata_map = defaultdict(dict)
-        
-        if metadata_map is None:
-            metadata_map = dict()
-        
-        if features is None:
-            self._features = tuple()
-        else:
-            self._features = tuple(features)
-        
-        if coordinate_system is None:
-            self._coordinate_system = CoordinateSystem(context=self)
-        else:
-            self._coordinate_system = coordinate_system
-        
-        if original_software is None:
-            self._metadata = None
-        else:
-            self._initialize_metadata(metadata, original_software, metadata_map)
         self.uid = uid
+        self.container = container
     
     # Class Methods #
     @classmethod
@@ -118,14 +79,9 @@ class PartFile(PanCADThing):
     
     # Getters #
     @property
-    def coordinate_system(self) -> CoordinateSystem:
-        """The PartFile's top level coordinate system that all the features in 
-        the PartFile can be defined by or compared against.
-        
-        :getter: Returns the CoordinateSystem object.
-        :setter: Sets the coordinate system.
-        """
-        return self._coordinate_system
+    def container(self) -> FeatureContainer:
+        """The primary FeatureContainer for the PartFile."""
+        return self._container
     
     @property
     def filename(self) -> str:
@@ -137,14 +93,28 @@ class PartFile(PanCADThing):
         """
         return self._filename
     
+    @property
+    def features(self) -> tuple[AbstractFeature]:
+        """The features inside the PartFile"""
+        return self.container.features
+    
     # Setters #
-    @coordinate_system.setter
-    def coordinate_system(self, coordinate_system: CoordinateSystem) -> None:
-        self._coordinate_system = coordinate_system
+    @container.setter
+    def container(self, feature_container: FeatureContainer) -> None:
+        if feature_container is None:
+            self._container = FeatureContainer()
+        else:
+            self._container = feature_container
     
     @filename.setter
     def filename(self, name: str) -> None:
         self._filename = Path(name).stem
+    
+    @features.setter
+    def features(self, new_features: tuple[AbstractFeature]) -> None:
+        if not isinstance(new_features[0], CoordinateSystem):
+            new_features = (CoordinateSystem(),) + new_features
+        self.container.features = new_features
     
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:
@@ -155,65 +125,40 @@ class PartFile(PanCADThing):
         :raises LookupError: Raised if the feature's dependencies are not 
             already in the PartFile.
         """
-        if (isinstance(feature, Sketch)
-            and feature.coordinate_system is not self.get_coordinate_system()):
-            # Replace the sketch's locating coordinate system with the part 
-            # file's. Sketches are currently only possible to place on Part File 
-            # baseplanes
-            feature.coordinate_system = self.get_coordinate_system()
+        if (not isinstance(feature, CoordinateSystem)
+                and len(self.container.features) == 0):
+            # The first element in the PartFile's primary container needs to 
+            # always be its coordinate system. This behavior can't be done on 
+            # the FeatureContainer level since it only applies to PartFiles 
+            # and not things like Folders.
+            self.container.add_feature(
+                CoordinateSystem(name="Coordinate System")
+            )
         
-        if all([d in self for d in feature.get_dependencies()]):
-            self._features = self._features + (feature,)
-        else:
-            missed = filter(lambda d: d not in self, feature.get_dependencies())
-            raise LookupError(f"Dependencies for {repr(feature)} are missing"
-                             f" from part: {list(missed)}")
+        if isinstance(feature, Sketch) and feature.coordinate_system is None:
+            # If the sketch doesn't have a coordinate system and is being put 
+            # into a PartFile's primary container, its coordinate system is 
+            # set to the PartFile's first coordinate system.
+            feature.coordinate_system = self.container.features[0]
+        
+        self.container.add_feature(feature)
+        
         return self
-    
-    def get_coordinate_system(self) -> CoordinateSystem:
-        """Returns the PartFile's defining coordinate_system."""
-        return self._coordinate_system
     
     def get_feature(self, uid: str) -> AbstractFeature:
         """Returns the feature with the given uid.
         
         :raises LookupError: When no feature with the uid is in the file.
         """
-        for feature in self.get_features():
+        
+        for feature in self.container.features:
             if uid == feature.uid:
                 return feature
-        
         raise LookupError(f"File has no feature with uid '{uid}'")
     
     def get_features(self) -> tuple[AbstractFeature]:
         """Returns all of the PartFile's stored features."""
-        return self._features
-    
-    def get_metadata_value(self,
-                           software: SoftwareName,
-                           metadata_name: str) -> object | None:
-        """Returns a software's metadata field.
-        
-        :param software: The SoftwareName for the software that defined the 
-            metadata field.
-        :param metadata_name: The name of the metadata field in the software.
-        :returns: The value of the metadata field if it exists, otherwise None.
-        """
-        try:
-            origin_software, name = self._metadata_map[software][metadata_name]
-            return self._metadata[origin_software][name]
-        except KeyError:
-            return None
-    
-    def metadata_to_dict(self) -> dict[str, dict[str, object]]:
-        """Returns the metadata as a simplified dictionary without automated 
-        synchronization.
-        """
-        data = defaultdict(dict)
-        for software, data_map in self._metadata_map.items():
-            for data_name, (origin, name) in data_map.items():
-                data[software][data_name] = self._metadata[origin][name]
-        return dict(data)
+        return self.container.features
     
     def to_freecad(self, filepath: str) -> None:
         """Writes the PartFile to a FreeCAD file.
@@ -224,134 +169,48 @@ class PartFile(PanCADThing):
         from PanCAD.cad.freecad import FreeCADFile
         file = FreeCADFile.from_partfile(self, filepath)
     
-    def update_metadata_value(self,
-                              software: SoftwareName,
-                              metadata_name: str,
-                              value: object) -> Self:
-        """Updates a metadata field for a specific software.
-        
-        :param software: The SoftwareName for the software that defined the 
-            metadata field.
-        :param metadata_name: The name of the metadata field in the software.
-        :param value: The value of the metadata field.
-        :returns: The updated PartFile.
-        """
-        origin_software, name = self._metadata_map[software][metadata_name]
-        self._metadata[origin_software][name] = value
-        return self
-    
-    # Private Methods #
-    def _initialize_metadata(self,
-                             metadata: dict,
-                             software: SoftwareName,
-                             metadata_map: dict=None) -> None:
-        """Takes metadata from CAD software and maps it into standard data.
-        
-        :metadata: The original software's metadata.
-        :software: The original software's SoftwareName.
-        :metadata_map: The metadata mapping described in the init method.
-        """
-        self._metadata[software] = metadata
-        
-        for key in metadata:
-            self._metadata_map[software][key] = (software, key)
-        
-        for key, value in metadata_map.items():
-            if key in self.PANCAD_METADATA and value in metadata:
-                self._metadata_map[SoftwareName.PANCAD][key] = (software, value)
-            elif key not in self.PANCAD_METADATA:
-                raise KeyError(f"metadata_map key '{key}' not found in pancad"
-                               " metadata. Dict must be formatted"
-                               " {pancad_data_name: software_data_name}."
-                               f"\npancad_data_names: {self.PANCAD_METADATA}")
-            elif value not in metadata:
-                raise KeyError(f"Mapped '{key}' not found in '{software}'"
-                               " metadata")
-            else:
-                self._metadata_map[SoftwareName.PANCAD][key] = (software, None)
-    
     # Python Dunders #
     def __contains__(self, item) -> bool:
-        contents = (self._coordinate_system,) + self._features
-        return any([item is c for c in contents])
+        return item in self.container
     
     def __repr__(self) -> str:
-        n_features = len(self.get_features())
+        n_features = len(self.container.features)
         return f"<PanCADPartFile'{self.filename}'({n_features}feats)>"
     
     def __str__(self) -> str:
         """Prints a summary of the part file's contents."""
-        INDENT = "    "
+        from textwrap import indent
+        PREFIX = "    "
         summary = [f"PartFile '{self.filename}'"]
         
-        # Summarize Coordinate System
-        cs = self.get_coordinate_system()
-        cs_title = f"{cs.__class__.__name__} '{cs.uid}'"
-        cs_lines = []
-        for reference in cs.get_all_references():
-            geometry = cs.get_reference(reference)
-            cs_lines.append(f"{reference.name} {geometry.__class__.__name__}"
-                            f" '{geometry.uid}'")
-        cs_summary = "\n".join(
-            [
-                f"{cs.__class__.__name__} '{cs.uid}'",
-                textwrap.indent("\n".join(cs_lines), INDENT)
-            ]
-        )
-        summary.append(
-            textwrap.indent(cs_summary, INDENT)
-        )
-        
         # Summarize Features
-        for feature in self.get_features():
-            
+        for feature in self.container.features:
             dependency_lines = []
             for dependency in feature.get_dependencies():
                 dependency_lines.append(
                     f"{dependency.__class__.__name__} '{dependency.uid}'"
                 )
-            dependency_iter = iter(dependency_lines)
+            
             preface = "Dependencies: "
-            dependency_summary = [preface + next(dependency_iter)]
-            dep_indent = " "*len(preface)
-            dependency_summary.extend(
-                [textwrap.indent(line, dep_indent) for line in dependency_iter]
-            )
+            if len(dependency_lines) > 0:
+                dependency_iter = iter(dependency_lines)
+                dependency_summary = [preface + next(dependency_iter)]
+                dep_indent = " "*len(preface)
+                dependency_summary.extend(
+                    [indent(line, dep_indent) for line in dependency_iter]
+                )
+            else:
+                dependency_summary = [preface + "None"]
             feature_str = "\n".join(str(feature).split("\n")[1:])
             feature_summary = "\n".join(
                 [
-                    f"{feature.__class__.__name__} '{feature.uid}'",
-                    textwrap.indent("\n".join(dependency_summary), INDENT),
-                    textwrap.indent(feature_str, INDENT),
+                    f"{feature.__class__.__name__} '{feature.name}'",
+                    indent("\n".join(dependency_summary), PREFIX),
+                    indent(feature_str, PREFIX),
                 ]
             )
             summary.append(
-                textwrap.indent(feature_summary, INDENT)
+                indent(feature_summary, PREFIX)
             )
         
-        # Summarize Metadata
-        metadata_summary = []
-        metadata_lines = []
-        
-        for software, data in self.metadata_to_dict().items():
-            data_lines = [f"{field}: '{val}'" for field, val in data.items()]
-            data_iter = iter(data_lines)
-            preface = software.value + ": "
-            software_summary = [preface + next(data_iter)]
-            sw_indent = " "*len(preface)
-            software_summary.extend(
-                [textwrap.indent(line, sw_indent) for line in data_iter]
-            )
-            metadata_lines.append("\n".join(software_summary))
-        if len(metadata_lines) == 0:
-            metadata_lines = ["No metadata available"]
-        metadata_summary = "\n".join(
-            [
-                "Metadata",
-                textwrap.indent("\n".join(metadata_lines), INDENT)
-            ]
-        )
-        summary.append(
-            textwrap.indent(metadata_summary, INDENT)
-        )
         return "\n".join(summary)

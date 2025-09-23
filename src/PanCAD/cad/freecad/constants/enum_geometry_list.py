@@ -15,3 +15,8 @@ class ListName(StrEnum):
     """The Externals list inside of a sketch object."""
     GEOMETRY = "Geometry"
     """The Geometry list inside of a sketch object."""
+    INTERNAL_ALIGNMENT = "InternalAlignment"
+    """Not a list explicitly in FreeCAD, but represents the list of 
+    InternalAlignment constraints that are used to define other parts of the 
+    geometry.
+    """

@@ -141,24 +141,6 @@ class AbstractSnapTo(AbstractConstraint):
             return all([g is other_g for g, other_g in geometry_zip])
         else:
             return NotImplemented
-    
-    def __repr__(self) -> str:
-        name = self.__class__.__name__
-        if self._b is None:
-            return (f"<{name}'{self.uid}'"
-                    f"{repr(self._a)}{self._a_reference.name}>")
-        else:
-            return f"<{name}'{self.uid}'{repr(self._a)}{repr(self._b)}>"
-    
-    def __str__(self) -> str:
-        name = self.__class__.__name__
-        if self._b is None:
-            return (f"PanCAD {name} Constraint '{self.uid}' constraining"
-                    f" {repr(self._a)}")
-        else:
-            return (f"PanCAD {name} Constraint '{self.uid}' with"
-                    f" {repr(self._a)} as constrained a and {repr(self._b)}"
-                    " as constrained b")
 
 class Horizontal(AbstractSnapTo):
     """A constraint that sets either a single geometry horizontal or a pair of 

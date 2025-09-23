@@ -11,7 +11,7 @@ from __future__ import annotations
 from textwrap import indent
 from typing import Sequence, Self
 
-from PanCAD.geometry import PanCADThing, AbstractFeature
+from PanCAD.geometry import PanCADThing, AbstractFeature, Sketch
 
 class FeatureContainer(AbstractFeature):
     """A class representing a grouping of features in CAD applications. Strictly 
@@ -90,8 +90,23 @@ class FeatureContainer(AbstractFeature):
     
     # Python Dunders #
     def __contains__(self, item: object) -> bool:
-        return (isinstance(item, PanCADThing)
-                and item.uid in self._uid_to_feature)
+        if item.uid in self._uid_to_feature:
+            return True
+        
+        for subcontainer in filter(lambda f: isinstance(f, FeatureContainer),
+                                   self.features):
+            # Search through all FeatureContainers inside this FeatureContainer
+            # Also search through their subcontainers.
+            if item in subcontainer:
+                return True
+        
+        for sketch in filter(lambda f: isinstance(f, Sketch),
+                             self.features):
+            # Search through sketches for sketch geometry.
+            if item in sketch:
+                return True
+        
+        return False
     
     def __repr__(self) -> str:
         n_features = len(self.features)

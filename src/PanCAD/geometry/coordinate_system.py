@@ -203,7 +203,10 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             return self.REFERENCES
     
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
-        return (self.context,)
+        if self.context is None:
+            return tuple()
+        else:
+            return (self.context,)
     
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""
