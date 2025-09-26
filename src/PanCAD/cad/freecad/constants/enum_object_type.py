@@ -9,3 +9,4 @@ class ObjectType(StrEnum):
     SKETCH = "Sketcher::SketchObject"
     PAD = "PartDesign::Pad"
     ORIGIN = "App::Origin"
+    PART = "App::Part"

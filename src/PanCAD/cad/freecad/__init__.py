@@ -20,5 +20,6 @@ from PanCAD.cad.freecad.element_types import (FreeCADConstraint,
                                               FreeCADFeature,
                                               FreeCADGeometry,
                                               FreeCADOrigin,
-                                              FreeCADCADObject,)
+                                              FreeCADCADObject,
+                                              FreeCADBody,)
 from PanCAD.cad.freecad.filetypes import FreeCADFile

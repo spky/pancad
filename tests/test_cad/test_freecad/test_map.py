@@ -3,7 +3,12 @@ import unittest
 
 from PanCAD import PartFile
 from PanCAD.cad.freecad import App, Part, Sketcher
-from PanCAD.cad.freecad.feature_mappers import FreeCADMap
+from PanCAD.cad.freecad.feature_mappers import (FreeCADMap,
+                                                FeatureID,
+                                                SubFeatureID,
+                                                SketchElementID,
+                                                SketchSubGeometryID,)
+from PanCAD.cad.freecad.constants import ListName
 from PanCAD.geometry import (LineSegment,
                              CoordinateSystem,
                              Sketch,
@@ -12,6 +17,24 @@ from PanCAD.geometry import (LineSegment,
 from PanCAD.geometry.constants import ConstraintReference
 
 from tests.sample_pancad_objects import sample_sketches
+
+class TestMapIDTypes(unittest.TestCase):
+    
+    def test_get_id_type(self):
+        tests = [
+            (1000, FeatureID),
+            ((1000, ConstraintReference.CORE), SubFeatureID),
+            ((1000, ListName.GEOMETRY, 0), SketchElementID),
+            ((1000, ListName.EXTERNALS, 0), SketchElementID),
+            (
+                (1000, ListName.GEOMETRY, 0, ConstraintReference.CORE),
+                SketchSubGeometryID
+            ),
+        ]
+        for freecad_id, expected_type in tests:
+            with self.subTest(freecad_id=freecad_id, expected=expected_type):
+                self.assertEqual(FreeCADMap.get_id_type(freecad_id),
+                                 expected_type)
 
 class TestPanCADtoFreeCAD(unittest.TestCase):
     

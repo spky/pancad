@@ -3,7 +3,8 @@
 from PanCAD.cad.freecad import App, Sketcher, Part
 
 FreeCADOrigin = App.DocumentObject
-FreeCADFeature = Part.Feature | FreeCADOrigin | Sketcher.Sketch
+FreeCADBody = Part.BodyBase
+FreeCADFeature = Part.Feature | FreeCADOrigin | Sketcher.Sketch | FreeCADBody
 FreeCADGeometry = Part.LineSegment | Part.Circle | Part.Point | Part.Ellipse
 FreeCADConstraint = Sketcher.Constraint
-FreeCADCADObject = FreeCADFeature | FreeCADGeometry | FreeCADConstraint
+FreeCADCADObject = FreeCADFeature | FreeCADGeometry | FreeCADConstraint | FreeCADBody
