@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from PanCAD.cad.freecad import App, Sketcher, Part
-from PanCAD.cad.freecad.feature_mappers import map_freecad
+# from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_constraints import translate_constraint
 from PanCAD.cad.freecad.sketch_geometry import (get_freecad_sketch_geometry,
                                                 get_freecad_feature)

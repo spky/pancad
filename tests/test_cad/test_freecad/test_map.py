@@ -1,3 +1,4 @@
+from os.path import join
 from math import radians
 import unittest
 
@@ -17,6 +18,7 @@ from PanCAD.geometry import (LineSegment,
 from PanCAD.geometry.constants import ConstraintReference
 
 from tests.sample_pancad_objects import sample_sketches
+from tests import sample_freecad
 
 class TestMapIDTypes(unittest.TestCase):
     
@@ -55,8 +57,6 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
                         coordinate_system=coordinate_system)
         container.features = [coordinate_system, sketch]
         self.test_map.add_pancad_feature(container)
-
-class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
     
     def test_map_cube_extrude(self):
         container = FeatureContainer(name="TestBucket")
@@ -65,8 +65,6 @@ class TestPanCADtoFreeCADCubeExtrudeMap(TestPanCADtoFreeCAD):
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
-
-class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
     
     def test_map_ellipse_extrude(self):
         container = FeatureContainer(name="TestBucket")
@@ -75,3 +73,16 @@ class TestPanCADtoFreeCADEllipseExtrude(TestPanCADtoFreeCAD):
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
+
+class TestFreeCADtoPanCADCube1x1x1(unittest.TestCase):
+    
+    def setUp(self):
+        sample_dir = sample_freecad.__path__[0]
+        filename = "cube_1x1x1.FCStd"
+        filepath = join(sample_dir, filename)
+        self.document = App.open(filepath)
+        self.test_map = FreeCADMap(self.document)
+    
+    def test_add_cube_body(self):
+        pass
+        
