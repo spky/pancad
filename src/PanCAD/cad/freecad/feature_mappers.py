@@ -57,8 +57,8 @@ class FreeCADMap(MutableMapping):
     :param part_file: The PanCAD PartFile being mapped to or from.
     """
     
-    from ._feature_translation import _pancad_to_freecad_feature
-    from ._geometry_translation import (
+    from ._feature_translation import (
+        _pancad_to_freecad_feature,
         _freecad_add_to_sketch,
         _pancad_to_freecad_geometry,
     )
