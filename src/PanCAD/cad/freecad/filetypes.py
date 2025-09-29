@@ -12,7 +12,6 @@ import quaternion
 
 from PanCAD.cad.freecad import App, PartDesign, Sketcher, Part
 from PanCAD.cad.freecad.constants import ObjectType, PadType
-from PanCAD.cad.freecad.feature_mappers import FreeCADMap #, map_freecad
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
 from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
 from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
@@ -51,6 +50,7 @@ class FreeCADFile:
         :returns: The new FreeCADFile.
         :raises ValueError: When part_file is not a PartFile.
         """
+        from PanCAD.cad.freecad.feature_mappers import FreeCADMap
         if isinstance(part_file, PartFile):
             # Use __new__ to bypass the init function
             new_file = cls.__new__(cls)
@@ -58,7 +58,7 @@ class FreeCADFile:
             new_file.filepath = filepath
             new_file.document.FileName = new_file.filepath
             
-            mapping = FreeCADMap(new_file.document)
+            mapping = FreeCADMap(new_file.document, part_file)
             if part_file.container.name is None:
                 # The body has to be named or FreeCAD won't add it
                 part_file.container.name = "Body"

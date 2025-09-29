@@ -3,8 +3,8 @@ from collections import OrderedDict
 from PanCAD.cad.freecad import App, Sketcher, Part
 # from PanCAD.cad.freecad.feature_mappers import map_freecad
 from PanCAD.cad.freecad.sketch_constraints import translate_constraint
-from PanCAD.cad.freecad.sketch_geometry import (get_freecad_sketch_geometry,
-                                                get_freecad_feature)
+from PanCAD.cad.freecad.sketch_geometry import (pancad_to_freecad_geometry,
+                                                pancad_to_freecad_feature)
 from PanCAD.cad.freecad.constants import ObjectType, EdgeSubPart
 
 from PanCAD.filetypes import PartFile
@@ -30,7 +30,7 @@ def add_feature_to_freecad(feature: Sketch | Extrude,
         objects.
     :return: The feature_map with new entries for the feature.
     """
-    freecad_feature = get_freecad_feature(feature, feature_map)
+    freecad_feature = pancad_to_freecad_feature(feature, feature_map)
     feature_map.update(
         {(feature, ConstraintReference.CORE): freecad_feature}
     )
@@ -80,7 +80,7 @@ def map_sketch_geometry(sketch: Sketch, feature_map: dict) -> dict:
     
     for i, (geo, cons) in enumerate(zip(sketch.geometry, sketch.construction)):
         # Add all sketch geometry
-        new_geometry = get_freecad_sketch_geometry(geo)
+        new_geometry = pancad_to_freecad_geometry(geo)
         freecad_sketch.addGeometry(new_geometry, cons)
         feature_map.update({(sketch, "geometry", i): new_geometry})
     

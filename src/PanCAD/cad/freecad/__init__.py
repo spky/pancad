@@ -16,10 +16,18 @@ import Sketcher
 import Part
 import PartDesign
 
-from PanCAD.cad.freecad.element_types import (FreeCADConstraint,
-                                              FreeCADFeature,
-                                              FreeCADGeometry,
-                                              FreeCADOrigin,
-                                              FreeCADCADObject,
-                                              FreeCADBody,)
+from PanCAD.cad.freecad._application_types import (
+    FreeCADBody,
+    FreeCADCADObject,
+    FreeCADConstraint,
+    FreeCADLineSegment,
+    FreeCADCircle,
+    FreeCADPoint,
+    FreeCADEllipse,
+    FreeCADFeature,
+    FreeCADGeometry,
+    FreeCADOrigin,
+    FreeCADPad,
+    FreeCADSketch,
+)
 from PanCAD.cad.freecad.filetypes import FreeCADFile

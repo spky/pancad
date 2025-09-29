@@ -8,6 +8,7 @@ from types import GenericAlias
 from uuid import UUID
 from xml.etree import ElementTree
 
+from PanCAD import PartFile
 from PanCAD.cad.freecad import (App, Sketcher, Part,
                                 FreeCADBody,
                                 FreeCADConstraint,
@@ -20,7 +21,9 @@ from PanCAD.cad.freecad.constants import (EdgeSubPart,
                                           InternalAlignmentType,
                                           ListName,
                                           ObjectType,)
-from PanCAD.cad.freecad.sketch_geometry import get_freecad_sketch_geometry
+from PanCAD.cad.freecad.sketch_geometry import (pancad_to_freecad_geometry,
+                                                pancad_to_freecad_feature,
+                                                freecad_to_pancad_feature)
 from PanCAD.cad.freecad.sketch_constraints import translate_constraint
 from PanCAD.geometry import (PanCADThing,
                              AbstractGeometry,
@@ -35,50 +38,38 @@ from PanCAD.geometry import (PanCADThing,
 from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry.constants import ConstraintReference
 
-# FreeCAD ID Typing
-FeatureID = int
-"""The ID that FreeCAD assigns to Features, usually a 4 digit integer."""
-GeometryIndex = int
-"""The index of a geometry element in a FreeCAD sketch's Geometry or ExternalGeo 
-list. FreeCAD allows ExternalGeo elements to be referenced by constraints using 
-negative numbers in addition to the normal Geometry elements in constraints.
-"""
-ConstraintIndex = int
-"""The index of a constraint element in a FreeCAD sketch's Constraints list."""
-SketchElementID = tuple[FeatureID, ListName, GeometryIndex]
-"""The ID for a FreeCAD geometry or constraint element in a sketch."""
-FreeCADID = FeatureID | SketchElementID
-"""The unique ID for a FreeCADCADObject."""
-SketchSubGeometryID = tuple[FeatureID,
-                            ListName,
-                            GeometryIndex,
-                            ConstraintReference,]
-"""The ID for a FreeCAD geometry element acting as the subgeometry of another
-geometry element in the same sketch. The FeatureID has to be for a sketch.
-"""
-SubGeometryMap = dict[ConstraintReference, GeometryIndex]
-"""Maps a constraint reference to another sketch index in the same sketch."""
-
-SubFeatureID = tuple[FeatureID, ConstraintReference]
-SubFeatureMap = dict[ConstraintReference, FreeCADID]
-
-FreeCADIDMap = dict[FreeCADID, FreeCADCADObject]
-"""Maps FreeCAD IDs to their corresponding FreeCADCADObject."""
+from ._map_typing import (
+    FeatureID,
+    FreeCADID,
+    InternalAlignmentMap,
+    SketchElementID,
+    SketchSubGeometryID,
+    SubFeatureID,
+    SubFeatureMap,
+    SubGeometryMap,
+)
 
 class FreeCADMap(MutableMapping):
     """A class implementing a custom mapping between PanCAD elements and FreeCAD
     elements.
     
-    :param document: The freecad document being mapped to or from.
-    :param writing_map: Sets whether the map is for writing to FreeCAD or
-        reading from FreeCAD. A writing map will have PanCAD objects as keys and
-        FreeCAD objects as values, and a reading map will reverse those roles.
+    :param document: The FreeCAD document being mapped to or from.
+    :param part_file: The PanCAD PartFile being mapped to or from.
     """
     
-    def __init__(self, document: App.Document, writing_map: bool=True) -> None:
-        self._writing_map = writing_map
-        self._document = document
+    from ._feature_translation import _pancad_to_freecad_feature
+    from ._geometry_translation import (
+        _freecad_add_to_sketch,
+        _pancad_to_freecad_geometry,
+    )
+    from._element_links import (
+        _link_pancad_to_freecad_feature,
+        _link_pancad_to_freecad_geometry,
+    )
     
+    def __init__(self, document: App.Document, part_file: PartFile) -> None:
+        self._document = document
+        self._part_file = part_file
         self._pancad_to_freecad = dict()
         # Maps from PanCAD objects to their associated FreeCAD objects
         self._freecad_to_pancad = dict()
@@ -94,6 +85,211 @@ class FreeCADMap(MutableMapping):
         self._constraint_map = _FreeCADSketchConstraintMap(self._id_map,
                                                            self._feature_map,
                                                            self._geometry_map)
+    
+    # Public Methods #
+    
+    ### Adding FreeCAD Features ###
+    def add_freecad_feature(self, feature: FreeCADFeature) -> Self:
+        """Adds a FreeCAD feature to the map by generating a new PanCAD object.
+        """
+        match feature.TypeId:
+            # Poor man's singledispatchmethod using the FreeCAD TypeId
+            case ObjectType.BODY:
+                self._add_freecad_body(feature)
+            case ObjectType.SKETCH:
+                pass
+            case ObjectType.PAD:
+                pass
+            case ObjectType.ORIGIN:
+                pass
+        return self
+    
+    @singledispatchmethod
+    def add_pancad_feature(self, feature: AbstractFeature) -> NoReturn:
+        """Adds a PanCAD feature to the map by generating a new FreeCAD object.
+        """
+        freecad_feature = self._pancad_to_freecad_feature(feature)
+        self[feature] = freecad_feature
+        return self
+    
+    @add_pancad_feature.register
+    def _feature_container(self, container: FeatureContainer) -> Self:
+        body = self._pancad_to_freecad_feature(container)
+        self[container] = body
+        for subfeature in container.features:
+            self.add_pancad_feature(subfeature)
+        return self
+    
+    @add_pancad_feature.register
+    def _sketch(self, sketch: Sketch) -> Self:
+        freecad_sketch = self._pancad_to_freecad_feature(sketch)
+        self[sketch] = freecad_sketch
+        return self
+    
+    def get_pancad(self, freecad_id: FreeCADID) -> tuple[PanCADThing,
+                                                         ConstraintReference]:
+        """Returns the PanCAD object and constraint reference mapped to the 
+        FreeCAD ID.
+        """
+        freecad_id_type = self.get_id_type(freecad_id)
+        
+        if freecad_id_type in (FeatureID, SubFeatureID):
+            self._feature_map[freecad_id]
+        elif freecad_id_type in (SketchElementID, SketchSubGeometryID):
+            self._geometry_map[freecad_id]
+        else:
+            raise TypeError(f"Key {key} type not recognized")
+    
+    def get_references(self, key: PanCADThing) -> list[ConstraintReference]:
+        """Returns a tuple of the references available for the key."""
+        if isinstance(key, AbstractFeature):
+            feature = self[key]
+            return self._feature_map.get_references(feature.ID)
+        elif isinstance(key, AbstractGeometry):
+            freecad_id = self.get_freecad_id(key)
+            return self._geometry_map.get_references(freecad_id)
+        else:
+            raise TypeError("Can only return references for Features and"
+                            " Geometry")
+    
+    def get_freecad_id(self,
+                       key: PanCADThing,
+                       reference: ConstraintReference=ConstraintReference.CORE,
+                       ) -> FreeCADID:
+        _, freecad_id = self._pancad_to_freecad[key.uid]
+        if isinstance(key, AbstractFeature):
+            return self._feature_map.get_freecad_id(freecad_id, reference)
+        elif isinstance(key, AbstractGeometry):
+            return self._geometry_map.get_freecad_id(freecad_id + (reference,))
+        else:
+            return freecad_id
+    
+    def freecad_to_pancad_summary(self) -> str:
+        """Returns a string summary of the mapping from freecad to pancad. 
+        Intended to be the reversed viewpoint of __str__.
+        """
+        from textwrap import indent
+        PREFIX = " "
+        strings = []
+        for freecad_id, (uid, reference) in self._freecad_to_pancad.items():
+            freecad_repr = self._freecad_repr(freecad_id)
+            pancad_object = self._get_pancad_by_uid(uid)
+            strings.append(
+                indent(
+                    f"{freecad_repr}: {repr(pancad_object)}, {reference.name}",
+                    PREFIX
+                )
+            )
+            strings[-1] = strings[-1] + ","
+        strings[0] = strings[0].removeprefix(PREFIX)
+        return "{" + "\n".join(strings) + "}"
+    
+    # Public static methods
+    @staticmethod
+    def get_id_type(key: int | tuple) -> GenericAlias:
+        """Returns the type of the input key."""
+        
+        # Check if Feature
+        if isinstance(key, int):
+            return FeatureID
+        elif not isinstance(key, tuple):
+            raise TypeError(f"Key must be int or tuple, given {key.__class__}")
+        
+        feature_id, dispatch, *_ = key
+        
+        if not isinstance(feature_id, int):
+            raise TypeError(f"Key {key} 1st element must be int to reference"
+                            " a FreeCAD feature ID")
+        
+        # Check if key is a SubFeature
+        if dispatch in ConstraintReference and len(key) == 2:
+            return SubFeatureID
+        elif dispatch in ListName:
+            list_name = dispatch
+        else:
+            raise TypeError(f"Key {key} 2nd element must be"
+                            " ConstraintReference or ListName")
+        
+        _, _, index, *_ = key
+        if not isinstance(index, int):
+            raise TypeError(f"Key {key} 3rd element must be int")
+        
+        # Check for list type
+        if len(key) == 3:
+            return SketchElementID
+        elif len(key) == 4 and key[-1] in ConstraintReference:
+            return SketchSubGeometryID
+        else:
+            raise TypeError(f"Key {key} 4th element must be a"
+                            " ConstraintReference to be a"
+                            " SketchSubGeometryID")
+    
+    # Private Methods
+    def _add_freecad_body(self, body: FreeCADBody):
+        """Adds a FreeCAD feature to the map."""
+        container = freecad_to_pancad_feature(body)
+        coordinate_system = freecad_to_pancad_feature(body.Origin)
+        container.add_feature(coordinate_system)
+        if body.Parents:
+            freecad_parents = []
+            for freecad_object, _ in body.Parents:
+                # Reduce to just unique elements
+                if freecad_object.ID not in parents:
+                    freecad_parents.append(freecad_object.ID)
+            if len(freecad_parents) == 1:
+                # Add to existing parent
+                raise NotImplementedError("Bodies nested under parts not yet"
+                                          " implemented")
+            else:
+                raise ValueError("Unknown situation where FreeCAD object has"
+                                 " two or more unique parents! Please make a"
+                                 " github issue so it can be supported.")
+        else:
+            # No parents indicates a top level body
+            self._part_file.container = container
+        
+        self[container] = body
+    
+    # Private Single Dispatch Registers #
+    
+    
+    
+    # Private Methods #
+    def _get_pancad_by_uid(self, uid: UUID) -> PanCADThing:
+        """Returns a PanCAD object from the map that has the uid."""
+        pancad_object, *_ = self._pancad_to_freecad[uid]
+        return pancad_object
+    
+    def _freecad_repr(self, freecad_id: FreeCADID) -> str:
+        """Returns a string representing the freecad object."""
+        freecad_object = self._id_map[freecad_id]
+        type_id = freecad_object.TypeId.split("::")[-1]
+        default_repr = repr(type_id).replace("<", "") \
+                                    .replace(">", "") \
+                                    .replace("'", "")
+        
+        if hasattr(freecad_object, "Label"):
+            # Features
+            return f"<ID:{freecad_id} '{freecad_object.Label}'{default_repr}>"
+        elif hasattr(freecad_object, "Type"):
+            # Constraints
+            sketch_id, list_name, index = freecad_id
+            id_str = f"({sketch_id},{list_name.value},{index})"
+            constrained = self._constraint_map.get_constrained_ids(freecad_id)
+            geometry_strings = []
+            for geometry_id in constrained:
+                sketch_id, list_name, index = geometry_id
+                geometry_strings.append(
+                    f"({sketch_id},{list_name.value},{index})"
+                )
+            geometry_str = "".join(geometry_strings)
+            return (f"<ID:{id_str}-{geometry_str}'{freecad_object.Type}'"
+                    f"{default_repr}>")
+        else:
+            # Geometry
+            sketch_id, list_name, index = freecad_id
+            id_str = f"({sketch_id},{list_name.value},{index})"
+            return f"<ID:{id_str} {default_repr}>"
     
     # Python Dunders #
     def __contains__(self, key: PanCADThing) -> bool:
@@ -219,438 +415,6 @@ class FreeCADMap(MutableMapping):
             strings[-1] = strings[-1] + ","
         strings[0] = strings[0].removeprefix(PREFIX)
         return "{" + "\n".join(strings) + "}"
-    
-    # Public Methods #
-    
-    ### Adding FreeCAD Features ###
-    def add_freecad_feature(self, feature: FreeCADFeature) -> Self:
-        match feature.TypeId:
-            # Poor man's singledispatchmethod using the FreeCAD TypeId
-            case ObjectType.BODY:
-                self._add_freecad_body(feature)
-            case ObjectType.SKETCH:
-                pass
-            case ObjectType.PAD:
-                pass
-            case ObjectType.ORIGIN:
-                pass
-        return self
-    
-    def _add_freecad_body(self, feature: FreeCADFeature):
-        
-        if feature.Parents:
-            freecad_parents = []
-            for freecad_object, _ in feature.Parents:
-                # Reduce to just unique elements
-                if freecad_object.ID not in parents:
-                    freecad_parents.append(freecad_object.ID)
-            
-            if len(freecad_parents) == 1:
-                # Add to existing parent
-                pass
-            elif not freecad_parents:
-                # Top level body
-                pass
-            else:
-                raise ValueError("Unknown situation where FreeCAD object has"
-                                 " two or more unique parents! Please make a"
-                                 " github issue so it can be supported.")
-            
-            
-        else:
-            context = None
-        container = FeatureContainer(name=feature.Label)
-    
-    ### Adding PanCAD Features ###
-    @singledispatchmethod
-    def add_pancad_feature(self, feature: AbstractFeature) -> NoReturn:
-        raise TypeError(f"Unrecognized feature type: {feature}")
-    
-    @add_pancad_feature.register
-    def _feature_container(self, container: FeatureContainer) -> Self:
-        body = self._document.addObject(ObjectType.BODY, container.name)
-        self[container] = body
-        if (len(container.features) > 0
-            and isinstance(container.features[0], CoordinateSystem)):
-            # If the first feature in the feature container is a coordinate
-            # system, it can be assumed that this is a valid context for other
-            # features to be added into.
-            features = iter(container.features)
-            coordinate_system = next(features)
-            self[coordinate_system] = body.Origin
-            for feature in features:
-                self.add_pancad_feature(feature)
-            return self
-    
-    @add_pancad_feature.register
-    def _sketch(self, sketch: Sketch) -> Self:
-        self[sketch] = self._document.addObject(ObjectType.SKETCH, sketch.name)
-        return self
-    
-    @add_pancad_feature.register
-    def _extrude(self, extrude: Extrude) -> Self:
-        self[extrude] = self._document.addObject(ObjectType.PAD, extrude.name)
-        return self
-    
-    def get_pancad(self, freecad_id: FreeCADID) -> tuple[PanCADThing,
-                                                         ConstraintReference]:
-        """Returns the PanCAD object and constraint reference mapped to the 
-        FreeCAD ID.
-        """
-        freecad_id_type = self.get_id_type(freecad_id)
-        
-        if freecad_id_type in (FeatureID, SubFeatureID):
-            self._feature_map[freecad_id]
-        elif freecad_id_type in (SketchElementID, SketchSubGeometryID):
-            self._geometry_map[freecad_id]
-        else:
-            raise TypeError(f"Key {key} type not recognized")
-    
-    def get_references(self, key: PanCADThing) -> list[ConstraintReference]:
-        """Returns a tuple of the references available for the key."""
-        if isinstance(key, AbstractFeature):
-            feature = self[key]
-            return self._feature_map.get_references(feature.ID)
-        elif isinstance(key, AbstractGeometry):
-            freecad_id = self.get_freecad_id(key)
-            return self._geometry_map.get_references(freecad_id)
-        else:
-            raise TypeError("Can only return references for Features and"
-                            " Geometry")
-    
-    def get_freecad_id(self,
-                       key: PanCADThing,
-                       reference: ConstraintReference=ConstraintReference.CORE,
-                       ) -> FreeCADID:
-        _, freecad_id = self._pancad_to_freecad[key.uid]
-        if isinstance(key, AbstractFeature):
-            return self._feature_map.get_freecad_id(freecad_id, reference)
-        elif isinstance(key, AbstractGeometry):
-            return self._geometry_map.get_freecad_id(freecad_id + (reference,))
-        else:
-            return freecad_id
-    
-    def freecad_to_pancad_summary(self) -> str:
-        """Returns a string summary of the mapping from freecad to pancad. 
-        Intended to be the reversed viewpoint of __str__.
-        """
-        from textwrap import indent
-        PREFIX = " "
-        strings = []
-        for freecad_id, (uid, reference) in self._freecad_to_pancad.items():
-            freecad_repr = self._freecad_repr(freecad_id)
-            pancad_object = self._get_pancad_by_uid(uid)
-            strings.append(
-                indent(
-                    f"{freecad_repr}: {repr(pancad_object)}, {reference.name}",
-                    PREFIX
-                )
-            )
-            strings[-1] = strings[-1] + ","
-        strings[0] = strings[0].removeprefix(PREFIX)
-        return "{" + "\n".join(strings) + "}"
-    
-    # Public static methods
-    @staticmethod
-    def get_id_type(key: int | tuple) -> GenericAlias:
-        """Returns the type of the input key."""
-        
-        # Check if Feature
-        if isinstance(key, int):
-            return FeatureID
-        elif not isinstance(key, tuple):
-            raise TypeError(f"Key must be int or tuple, given {key.__class__}")
-        
-        feature_id, dispatch, *_ = key
-        
-        if not isinstance(feature_id, int):
-            raise TypeError(f"Key {key} 1st element must be int to reference"
-                            " a FreeCAD feature ID")
-        
-        # Check if key is a SubFeature
-        if dispatch in ConstraintReference and len(key) == 2:
-            return SubFeatureID
-        elif dispatch in ListName:
-            list_name = dispatch
-        else:
-            raise TypeError(f"Key {key} 2nd element must be"
-                            " ConstraintReference or ListName")
-        
-        _, _, index, *_ = key
-        if not isinstance(index, int):
-            raise TypeError(f"Key {key} 3rd element must be int")
-        
-        # Check for list type
-        if len(key) == 3:
-            return SketchElementID
-        elif len(key) == 4 and key[-1] in ConstraintReference:
-            return SketchSubGeometryID
-        else:
-            raise TypeError(f"Key {key} 4th element must be a"
-                            " ConstraintReference to be a"
-                            " SketchSubGeometryID")
-    
-    
-    # Private Methods #
-    
-    def _get_pancad_by_uid(self, uid: UUID) -> PanCADThing:
-        """Returns a PanCAD object from the map that has the uid."""
-        pancad_object, *_ = self._pancad_to_freecad[uid]
-        return pancad_object
-    
-    def _freecad_repr(self, freecad_id: FreeCADID) -> str:
-        """Returns a string representing the freecad object."""
-        freecad_object = self._id_map[freecad_id]
-        type_id = freecad_object.TypeId.split("::")[-1]
-        default_repr = repr(type_id).replace("<", "") \
-                                    .replace(">", "") \
-                                    .replace("'", "")
-        
-        if hasattr(freecad_object, "Label"):
-            # Features
-            return f"<ID:{freecad_id} '{freecad_object.Label}'{default_repr}>"
-        elif hasattr(freecad_object, "Type"):
-            # Constraints
-            sketch_id, list_name, index = freecad_id
-            id_str = f"({sketch_id},{list_name.value},{index})"
-            constrained = self._constraint_map.get_constrained_ids(freecad_id)
-            geometry_strings = []
-            for geometry_id in constrained:
-                sketch_id, list_name, index = geometry_id
-                geometry_strings.append(
-                    f"({sketch_id},{list_name.value},{index})"
-                )
-            geometry_str = "".join(geometry_strings)
-            return (f"<ID:{id_str}-{geometry_str}'{freecad_object.Type}'"
-                    f"{default_repr}>")
-        else:
-            # Geometry
-            sketch_id, list_name, index = freecad_id
-            id_str = f"({sketch_id},{list_name.value},{index})"
-            return f"<ID:{id_str} {default_repr}>"
-    
-    @singledispatchmethod
-    def _link_pancad_to_freecad_feature(self,
-                                        key: PanCADThing,
-                                        value: FreeCADCADObject):
-        """Adds a PanCAD parent and FreeCAD child feature pairing to the map.
-        Each key is the PanCAD element's uid, mapped to a tuple with the PanCAD
-        parent will be the first element and the FreeCAD feature ID as the
-        second element.
-        """
-        raise TypeError(f"Unrecognized PanCAD geometry type {key.__class__}")
-
-    @_link_pancad_to_freecad_feature.register
-    def _coordinate_system(self,
-                           key: CoordinateSystem,
-                           origin: FreeCADOrigin) -> None:
-        subelements = {ConstraintReference.CORE: origin.ID,
-                       ConstraintReference.ORIGIN: origin.ID}
-        subreferences = [ConstraintReference.X,
-                         ConstraintReference.Y,
-                         ConstraintReference.Z,
-                         ConstraintReference.XY,
-                         ConstraintReference.XZ,
-                         ConstraintReference.YZ]
-        for i, reference in enumerate(subreferences):
-            subreference_id = origin.OriginFeatures[i].ID
-            self._id_map[subreference_id] = origin.OriginFeatures[i]
-            subelements.update({reference: subreference_id})
-        
-        self._id_map[origin.ID] = origin
-        self._feature_map[origin.ID] = subelements
-        self._pancad_to_freecad[key.uid] = (key, origin.ID)
-        
-        # Map back to PanCAD
-        reversed_subelements = dict()
-        for reference, feature_id in subelements.items():
-            if feature_id not in reversed_subelements:
-                # Will skip the ORIGIN reference since that is a duplicate.
-                reversed_subelements.update({feature_id: (key.uid, reference)})
-        self._freecad_to_pancad.update(reversed_subelements)
-
-    @_link_pancad_to_freecad_feature.register
-    def _extrude(self, key: Extrude, pad: Part.Feature) -> None:
-        # Add to corresponding parent
-        parent = self[key.context]
-        parent.addObject(pad)
-        # Sync properties with PanCAD
-        pad.Profile = (self[key.profile], [""])
-        pad.Length = key.length
-        pad.ReferenceAxis = (self[key.profile], ["N_Axis"])
-        self[key.profile].Visibility = False
-        # Add to maps
-        self._id_map[pad.ID] = pad
-        self._feature_map[pad.ID] = {ConstraintReference.CORE: pad.ID}
-        self._pancad_to_freecad[key.uid] = (key, pad.ID)
-        self._freecad_to_pancad[pad.ID] = (key.uid, ConstraintReference.CORE)
-    
-    @_link_pancad_to_freecad_feature.register
-    def _feature_container(self,
-                           key: FeatureContainer,
-                           body: Part.BodyBase) -> None:
-        self._id_map[body.ID] = body
-        self._feature_map[body.ID] = {ConstraintReference.CORE: body.ID}
-        self._pancad_to_freecad[key.uid] = (key, body.ID)
-        self._freecad_to_pancad[body.ID] = (key.uid, ConstraintReference.CORE)
-    
-    @_link_pancad_to_freecad_feature.register
-    def _sketch(self, key: Sketch, sketch: Sketcher.Sketch) -> None:
-        # Sync properties with PanCAD
-        sketch_plane = self[key.coordinate_system, key.plane_reference]
-        sketch.AttachmentSupport = (sketch_plane, [""])
-        sketch.MapMode = "FlatFace"
-        sketch.Label = key.name
-        parent = self[key.context]
-        parent.addObject(sketch)
-        
-        # Map Feature
-        self._id_map[sketch.ID] = sketch
-        self._pancad_to_freecad[key.uid] = (key, sketch.ID)
-        
-        y_axis_id = (sketch.ID, ListName.EXTERNALS, 1)
-        x_axis_id = (sketch.ID, ListName.EXTERNALS, 0)
-        subelements = {ConstraintReference.CORE: sketch.ID,
-                       ConstraintReference.ORIGIN: x_axis_id,
-                       ConstraintReference.X: x_axis_id,
-                       ConstraintReference.Y: y_axis_id,}
-        self._feature_map[sketch.ID] = subelements
-        self._freecad_to_pancad.update(
-            {freecad_id: (key.uid, reference)
-             for reference, freecad_id in subelements.items()}
-        )
-        
-        # Map the geometry inside of the sketch
-        line_references = [ConstraintReference.CORE, ConstraintReference.START,
-                           ConstraintReference.END]
-        y_references = dict()
-        x_references = dict()
-        for reference in line_references:
-            x_references[reference] = 0
-            y_references[reference] = 1
-        self._id_map[x_axis_id] = sketch.ExternalGeo[0]
-        self._id_map[y_axis_id] = sketch.ExternalGeo[1]
-        self._geometry_map[x_axis_id] = x_references
-        self._geometry_map[y_axis_id] = y_references
-        
-        for geometry, construction in zip(key.geometry, key.construction):
-            self._link_pancad_to_freecad_geometry(geometry,
-                                                  sketch,
-                                                  construction)
-        
-        for constraint in key.constraints:
-            constraint_index = len(sketch.Constraints)
-            new_constraint = translate_constraint(key, constraint)
-            sketch.addConstraint(new_constraint)
-            constraint_id = (sketch.ID, ListName.CONSTRAINTS, constraint_index)
-            constrained_ids = tuple()
-            for parent, reference in zip(constraint.get_constrained(),
-                                         constraint.get_references()):
-                sketch_geometry_id = self.get_freecad_id(parent, reference)
-                constrained_ids = constrained_ids + (
-                    (*sketch_geometry_id, reference),
-                )
-            self._pancad_to_freecad[constraint.uid] = (constraint,
-                                                       constraint_id)
-            self._freecad_to_pancad[constraint_id] = (constraint.uid,
-                                                      ConstraintReference.CORE)
-            self._id_map[constraint_id] = new_constraint
-            self._constraint_map[constraint_id] = constrained_ids
-    
-    @singledispatchmethod
-    def _link_pancad_to_freecad_geometry(self,
-                                         pancad_geometry: AbstractGeometry,
-                                         sketch: Sketcher.Sketch,
-                                         construction: bool,
-                                         geometry_index: int) -> NoReturn:
-        
-        """Adds the PanCAD geometry to the FreeCAD sketch while also mapping 
-        the relations between the new geometry and constraints to PanCAD 
-        geometry.
-        
-        :param pancad_geometry: A PanCAD AbstractGeometry object.
-        :param sketch: A FreeCAD sketch.
-        :param construction: Sets the geometry to construction is True, 
-            non-construction if False.
-        :param geometry_index: The index to set the geometry to in the 
-            FreeCAD sketch.
-        :param constraint_id: The index for the next constraint, if any will 
-            be added.
-        :returns: The new geometry_index.
-        """
-        raise TypeError(f"Geometry class {pancad_geometry.__class__}"
-                        " not recognized")
-    
-    @_link_pancad_to_freecad_geometry.register
-    def _ellipse(self,
-                 pancad_geometry: Ellipse,
-                 sketch: Sketcher.Sketch,
-                 construction: bool) -> None:
-        geometry_index = len(sketch.Geometry)
-        geometry = get_freecad_sketch_geometry(pancad_geometry)
-        ellipse_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-        sketch.addGeometry(geometry, construction)
-        sketch.exposeInternalGeometry(geometry_index)
-        
-        # Map newly created Internal Geometry
-        subgeometry = dict()
-        ellipse_references = [
-            (ConstraintReference.CORE, geometry_index),
-            (ConstraintReference.CENTER, geometry_index),
-            (ConstraintReference.X, geometry_index + 1),
-            (ConstraintReference.X_MAX, geometry_index + 1),
-            (ConstraintReference.X_MIN, geometry_index + 1),
-            (ConstraintReference.Y, geometry_index + 2),
-            (ConstraintReference.Y_MAX, geometry_index + 2),
-            (ConstraintReference.Y_MIN, geometry_index + 2),
-            (ConstraintReference.FOCAL_PLUS, geometry_index + 3),
-            (ConstraintReference.FOCAL_MINUS, geometry_index + 4),
-        ]
-        DUPLICATED_REFERENCES = [ConstraintReference.CENTER,
-                                 ConstraintReference.X_MAX,
-                                 ConstraintReference.X_MIN,
-                                 ConstraintReference.Y_MAX,
-                                 ConstraintReference.Y_MIN,]
-        # References that refer to the same geometry as already defined 
-        # references, only there for PanCAD to know what to read so it won't 
-        # have a FreeCAD to PanCAD mapping
-        
-        for reference, sub_index in ellipse_references:
-            sub_id = (sketch.ID, ListName.GEOMETRY, sub_index)
-            self._id_map[sub_id] = sketch.Geometry[sub_index]
-            self._geometry_map[sub_id] = {ConstraintReference.CORE: sub_index}
-            subgeometry[reference] = sub_index
-            
-            if reference not in  DUPLICATED_REFERENCES:
-                self._freecad_to_pancad[sub_id] = (pancad_geometry.uid,
-                                                   reference)
-        
-        self._constraint_map.assign_internal_constraints(sketch.ID)
-        self._id_map[ellipse_id] = geometry
-        self._geometry_map[ellipse_id] = subgeometry
-        self._pancad_to_freecad[pancad_geometry.uid] = (pancad_geometry,
-                                                        ellipse_id)
-    
-    @_link_pancad_to_freecad_geometry.register
-    def _one_to_one(self,
-                    pancad_geometry: LineSegment | Circle,
-                    sketch: Sketcher.Sketch,
-                    construction: bool) -> None:
-        # Handles cases where the geometry in PanCAD is one to one with 
-        # geometry in FreeCAD.
-        geometry_index = len(sketch.Geometry)
-        geometry = get_freecad_sketch_geometry(pancad_geometry)
-        sketch.addGeometry(geometry, construction)
-        geometry_id = (sketch.ID, ListName.GEOMETRY, geometry_index)
-        self._id_map[geometry_id] = geometry
-        self._pancad_to_freecad[pancad_geometry.uid] = (pancad_geometry,
-                                                        geometry_id)
-        self._freecad_to_pancad[geometry_id] = (pancad_geometry.uid,
-                                                ConstraintReference.CORE)
-        reference_map = dict()
-        for reference in pancad_geometry.get_all_references():
-            reference_map[reference] = geometry_index
-        self._geometry_map[geometry_id] = reference_map
 
 class _FreeCADIDMap(MutableMapping):
     """Used to map FreeCAD IDs to Features, Geometry and Constraints."""
@@ -909,11 +673,12 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         else:
             raise LookupError(f"Key {key} is not in the map")
     
-    def assign_internal_constraints(self, sketch_id: FeatureID) -> Self:
+    def assign_internal_constraints(self, sketch_id: FeatureID) -> None:
         """Looks through the sketch and assigns the internal constraints to 
         their geometries. Used to make sure sketch mappings are up to date 
         after geometry like ellipses have been added.
         """
+        
         sketch = self._id_map[sketch_id]
         if sketch_id not in self._sketches:
             self._add_new_sketch(sketch_id)
@@ -961,6 +726,14 @@ class _FreeCADSketchConstraintMap(MutableMapping):
             else:
                 break
         return constrained
+    
+    def get_internal_geometry(self,
+                              key: SketchElementID) -> InternalAlignmentMap:
+        """Returns the internal geometry associated with the geometry element.
+        """
+        sketch_id, list_name, index = key
+        self.assign_internal_constraints(sketch_id) # Refresh to make sure
+        return self._sketches[sketch_id][ListName.INTERNAL_ALIGNMENT][index]
     
     # Python Dunders #
     def __contains__(self, key: FeatureID | SketchElementID) -> bool:

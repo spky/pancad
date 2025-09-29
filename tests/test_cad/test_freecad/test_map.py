@@ -43,10 +43,7 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
     def setUp(self):
         self.file = PartFile("Testing Mapping")
         self.document = App.newDocument()
-        self.test_map = FreeCADMap(self.document)
-    
-    def test_nominal_init(self):
-        mapping = FreeCADMap(self.document)
+        self.test_map = FreeCADMap(self.document, self.file)
     
     def test_map_add_feature_container(self):
         container = FeatureContainer(name="TestBucket")
@@ -80,9 +77,10 @@ class TestFreeCADtoPanCADCube1x1x1(unittest.TestCase):
         sample_dir = sample_freecad.__path__[0]
         filename = "cube_1x1x1.FCStd"
         filepath = join(sample_dir, filename)
+        self.part_file = PartFile("Testing Mapping")
         self.document = App.open(filepath)
-        self.test_map = FreeCADMap(self.document)
+        self.test_map = FreeCADMap(self.document, self.part_file)
     
     def test_add_cube_body(self):
-        pass
-        
+        body = self.document.Objects[0]
+        self.test_map.add_freecad_feature(body)
