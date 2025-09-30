@@ -38,11 +38,11 @@ from ._map_typing import (
     SubFeatureMap,
 )
 
-# Link Features ################################################################
+# Link Features Geometry #######################################################
 @singledispatchmethod
-def _link_pancad_to_freecad_feature(self,
-                                    key: PanCADThing,
-                                    value: FreeCADCADObject):
+def _link_pancad_to_freecad_feature_geometry(self,
+                                             key: PanCADThing,
+                                             value: FreeCADCADObject):
     """Adds a PanCAD parent and FreeCAD child feature pairing to the map.
     Each key is the PanCAD element's uid, mapped to a tuple with the PanCAD
     parent will be the first element and the FreeCAD feature ID as the
@@ -50,7 +50,7 @@ def _link_pancad_to_freecad_feature(self,
     """
     raise TypeError(f"Unrecognized PanCAD geometry type {key.__class__}")
 
-@_link_pancad_to_freecad_feature.register
+@_link_pancad_to_freecad_feature_geometry.register
 def _coordinate_system(self,
                        key: CoordinateSystem,
                        origin: FreeCADOrigin) -> None:
@@ -63,11 +63,7 @@ def _coordinate_system(self,
                      ConstraintReference.XZ,
                      ConstraintReference.YZ]
     for i, reference in enumerate(subreferences):
-        subreference_id = origin.OriginFeatures[i].ID
-        self._id_map[subreference_id] = origin.OriginFeatures[i]
-        subelements.update({reference: subreference_id})
-    
-    self._id_map[origin.ID] = origin
+        subelements[reference] = origin.OriginFeatures[i].ID
     self._feature_map[origin.ID] = subelements
     self._pancad_to_freecad[key.uid] = (key, origin.ID)
     
@@ -79,27 +75,24 @@ def _coordinate_system(self,
             reversed_subelements.update({feature_id: (key.uid, reference)})
     self._freecad_to_pancad.update(reversed_subelements)
 
-@_link_pancad_to_freecad_feature.register
+@_link_pancad_to_freecad_feature_geometry.register
 def _extrude(self, key: Extrude, pad: FreeCADPad) -> None:
-    self._id_map[pad.ID] = pad
     self._feature_map[pad.ID] = {ConstraintReference.CORE: pad.ID}
     self._pancad_to_freecad[key.uid] = (key, pad.ID)
     self._freecad_to_pancad[pad.ID] = (key.uid, ConstraintReference.CORE)
 
-@_link_pancad_to_freecad_feature.register
+@_link_pancad_to_freecad_feature_geometry.register
 def _feature_container(self,
                        key: FeatureContainer,
                        body: FreeCADBody) -> None:
-    self._id_map[body.ID] = body
     self._feature_map[body.ID] = {ConstraintReference.CORE: body.ID}
     self._pancad_to_freecad[key.uid] = (key, body.ID)
     self._freecad_to_pancad[body.ID] = (key.uid, ConstraintReference.CORE)
 
-@_link_pancad_to_freecad_feature.register
+@_link_pancad_to_freecad_feature_geometry.register
 def _sketch(self, key: Sketch, sketch: FreeCADSketch) -> None:
     
     # Map Feature
-    self._id_map[sketch.ID] = sketch
     self._pancad_to_freecad[key.uid] = (key, sketch.ID)
     
     y_axis_id = (sketch.ID, ListName.EXTERNALS, 1)
@@ -214,4 +207,3 @@ def _ellipse(self,
             subgeometry[reference] = index
     
     self._geometry_map[freecad_id] = subgeometry
-    

@@ -4,20 +4,8 @@ FreeCAD.
 """
 from functools import singledispatchmethod
 
-from PanCAD.cad.freecad import (
-    App,
-    Sketcher,
-    Part,
-    FreeCADBody,
-    FreeCADCircle,
-    FreeCADEllipse,
-    FreeCADFeature,
-    FreeCADGeometry,
-    FreeCADLineSegment,
-    FreeCADOrigin,
-    FreeCADSketch,
-)
-from PanCAD.cad.freecad.constants import ListName, ObjectType
+import numpy as np
+
 from PanCAD.geometry import (
     AbstractFeature,
     AbstractGeometry,
@@ -29,23 +17,40 @@ from PanCAD.geometry import (
     LineSegment,
     Sketch,
 )
+from . import (
+    App,
+    Part,
+    FreeCADBody,
+    FreeCADCircle,
+    FreeCADEllipse,
+    FreeCADFeature,
+    FreeCADGeometry,
+    FreeCADLineSegment,
+    FreeCADOrigin,
+    FreeCADSketch,
+)
+from .constants import ListName, ObjectType
 from ._map_typing import SketchElementID
 
-# PanCAD to FreeCAD
+################################################################################
+# PanCAD ---> FreeCAD Features
+################################################################################
 @singledispatchmethod
 def _pancad_to_freecad_feature(self,
                                feature: AbstractFeature) -> FreeCADFeature:
+    """Creates a FreeCAD equivalent to the PanCAD feature and adds its id to the 
+    id map.
+    """
     raise TypeError(f"Unrecognized PanCAD feature type {key.__class__}")
 
 @_pancad_to_freecad_feature.register
 def _coordinate_system(self, system: CoordinateSystem) -> FreeCADOrigin:
     parent = self[system.context]
-    return parent.Origin
-
-@_pancad_to_freecad_feature.register
-def _feature_container(self, container: FeatureContainer) -> FreeCADBody:
-    body = self._document.addObject(ObjectType.BODY, container.name)
-    return body
+    origin = parent.Origin
+    self._id_map[origin.ID] = origin
+    for subfeature in origin.OriginFeatures:
+        self._id_map[subfeature.ID] = subfeature
+    return origin
 
 @_pancad_to_freecad_feature.register
 def _extrude(self, pancad_extrude: Extrude) -> FreeCADFeature:
@@ -56,7 +61,14 @@ def _extrude(self, pancad_extrude: Extrude) -> FreeCADFeature:
     pad.Length = pancad_extrude.length
     pad.ReferenceAxis = (self[pancad_extrude.profile], ["N_Axis"])
     self[pancad_extrude.profile].Visibility = False
+    self._id_map[pad.ID] = pad
     return pad
+
+@_pancad_to_freecad_feature.register
+def _feature_container(self, container: FeatureContainer) -> FreeCADBody:
+    body = self._document.addObject(ObjectType.BODY, container.name)
+    self._id_map[body.ID] = body
+    return body
 
 @_pancad_to_freecad_feature.register
 def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
@@ -68,9 +80,11 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     sketch.AttachmentSupport = (sketch_plane, [""])
     sketch.MapMode = "FlatFace"
     sketch.Label = pancad_sketch.name
+    self._id_map[sketch.ID] = sketch
     
-    geometry_iter = zip(pancad_sketch.geometry, pancad_sketch.construction)
-    for pancad_geometry, construction in geometry_iter:
+    # Add geometry in the sketch
+    pancad_pairs = zip(pancad_sketch.geometry, pancad_sketch.construction)
+    for pancad_geometry, construction in pancad_pairs:
         geometry = self._pancad_to_freecad_geometry(pancad_geometry)
         geometry_id = self._freecad_add_to_sketch(geometry,
                                                   sketch,
@@ -83,9 +97,45 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
                                                         geometry_id)
     return sketch
 
+################################################################################
+# FreeCAD ---> PanCAD Features
+################################################################################
+@staticmethod
+def _freecad_to_pancad_feature(feature: FreeCADFeature) -> AbstractFeature:
+    """Generates a contextless PanCAD feature equivalent to the FreeCAD feature.
+    """
+    match feature.TypeId:
+        # Poor man's singledispatchmethod using the FreeCAD TypeId
+        case ObjectType.BODY:
+            return _freecad_to_pancad_feature_container(feature)
+        case ObjectType.SKETCH:
+            pass
+        case ObjectType.PAD:
+            pass
+        case ObjectType.ORIGIN:
+            return _freecad_to_pancad_feature_coordinate_system(feature)
+        case _:
+            raise TypeError(f"Unrecognized TypeId '{feature.TypeId}'")
 
+def _freecad_to_pancad_feature_container(body: FreeCADBody) -> FeatureContainer:
+    return FeatureContainer(name=body.Label)
 
-# Generating FreeCAD Geometry
+def _freecad_to_pancad_feature_coordinate_system(origin: FreeCADOrigin
+                                                 ) -> FeatureContainer:
+    if len(origin.Parents) > 1:
+        raise ValueError("Unknown situation where FreeCAD object has"
+                         " two or more unique parents! Please make a"
+                         " github issue so it can be supported.")
+    
+    body, _ = origin.Parents[0]
+    location = tuple(body.Placement.Base)
+    quaternion_components = body.Placement.Rotation.Q
+    quat = np.quaternion(*quaternion_components)
+    return CoordinateSystem.from_quaternion(location, quat, name=origin.Label)
+
+################################################################################
+# FreeCAD ---> PanCAD Geometry
+################################################################################
 @singledispatchmethod
 @staticmethod
 def _pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
@@ -117,7 +167,7 @@ def _circle(circle: Circle) -> FreeCADCircle:
 @singledispatchmethod
 def _freecad_add_to_sketch(self,
                            geometry: FreeCADGeometry,
-                           sketch: Sketcher.Sketch,
+                           sketch: FreeCADSketch,
                            construction: bool) -> SketchElementID:
     """Adds the geometry to the FreeCAD sketch and returns its unique PanCAD 
     derived id. Updates the internal FreeCADMap's id map to include the new 
@@ -128,7 +178,7 @@ def _freecad_add_to_sketch(self,
 @_freecad_add_to_sketch.register
 def _ellipse(self,
              ellipse: FreeCADEllipse,
-             sketch: Sketcher.Sketch,
+             sketch: FreeCADSketch,
              construction:bool) -> SketchElementID:
     initial_index = len(sketch.Geometry)
     sketch.addGeometry(ellipse, construction)
@@ -142,7 +192,7 @@ def _ellipse(self,
 @_freecad_add_to_sketch.register
 def _one_to_one_cases(self,
                       geometry: FreeCADLineSegment | FreeCADCircle,
-                      sketch: Sketcher.Sketch,
+                      sketch: FreeCADSketch,
                       construction: bool) -> SketchElementID:
     index = len(sketch.Geometry)
     sketch.addGeometry(geometry, construction)

@@ -9,8 +9,8 @@ from PanCAD.cad.freecad.constants import ListName, InternalAlignmentType
 FeatureID = int
 """The ID that FreeCAD assigns to Features, usually a 4 digit integer."""
 GeometryIndex = int
-"""The index of a geometry element in a FreeCAD sketch's Geometry or ExternalGeo 
-list. FreeCAD allows ExternalGeo elements to be referenced by constraints using 
+"""The index of a geometry element in a FreeCAD sketch's Geometry or ExternalGeo
+list. FreeCAD allows ExternalGeo elements to be referenced by constraints using
 negative numbers in addition to the normal Geometry elements in constraints.
 """
 ConstraintIndex = int

@@ -16,14 +16,11 @@ from PanCAD.cad.freecad import (App, Sketcher, Part,
                                 FreeCADGeometry,
                                 FreeCADCADObject,
                                 FreeCADOrigin,)
-from PanCAD.cad.freecad.constants import (EdgeSubPart,
-                                          ConstraintType,
-                                          InternalAlignmentType,
-                                          ListName,
-                                          ObjectType,)
-from PanCAD.cad.freecad.sketch_geometry import (pancad_to_freecad_geometry,
-                                                pancad_to_freecad_feature,
-                                                freecad_to_pancad_feature)
+from .constants import (EdgeSubPart,
+                        ConstraintType,
+                        InternalAlignmentType,
+                        ListName,
+                        ObjectType,)
 from PanCAD.cad.freecad.sketch_constraints import translate_constraint
 from PanCAD.geometry import (PanCADThing,
                              AbstractGeometry,
@@ -58,13 +55,18 @@ class FreeCADMap(MutableMapping):
     """
     
     from ._feature_translation import (
-        _pancad_to_freecad_feature,
         _freecad_add_to_sketch,
+        _freecad_to_pancad_feature,
+        _pancad_to_freecad_feature,
         _pancad_to_freecad_geometry,
     )
-    from._element_links import (
-        _link_pancad_to_freecad_feature,
+    from ._element_links import (
+        _link_pancad_to_freecad_feature_geometry,
         _link_pancad_to_freecad_geometry,
+    )
+    from .sketch_constraints import (
+        _pancad_to_freecad_constraint,
+        _pancad_to_freecad_add_constraints,
     )
     
     def __init__(self, document: App.Document, part_file: PartFile) -> None:
@@ -123,7 +125,9 @@ class FreeCADMap(MutableMapping):
     @add_pancad_feature.register
     def _sketch(self, sketch: Sketch) -> Self:
         freecad_sketch = self._pancad_to_freecad_feature(sketch)
-        self[sketch] = freecad_sketch
+        self._link_pancad_to_freecad_feature_geometry(sketch, freecad_sketch)
+        freecad_sketch = self._pancad_to_freecad_add_constraints(sketch,
+                                                                 freecad_sketch)
         return self
     
     def get_pancad(self, freecad_id: FreeCADID) -> tuple[PanCADThing,
@@ -227,8 +231,8 @@ class FreeCADMap(MutableMapping):
     # Private Methods
     def _add_freecad_body(self, body: FreeCADBody):
         """Adds a FreeCAD feature to the map."""
-        container = freecad_to_pancad_feature(body)
-        coordinate_system = freecad_to_pancad_feature(body.Origin)
+        container = self._freecad_to_pancad_feature(body)
+        coordinate_system = self._freecad_to_pancad_feature(body.Origin)
         container.add_feature(coordinate_system)
         if body.Parents:
             freecad_parents = []
@@ -385,7 +389,7 @@ class FreeCADMap(MutableMapping):
                     value: FreeCADCADObject) -> None:
         # Writing **TO** FreeCAD
         if isinstance(key, AbstractFeature):
-            self._link_pancad_to_freecad_feature(key, value)
+            self._link_pancad_to_freecad_feature_geometry(key, value)
         else:
             raise TypeError("Given a non-feature element"
                             f" {value.__class__}. Geometry can only be"
@@ -565,6 +569,9 @@ class _FreeCADSketchGeometryMap(MutableMapping):
     
     def get_references(self,
                        key: SketchElementID) -> tuple[ConstraintReference]:
+        """Returns the ConstraintReferences associated with the provided 
+        FreeCAD SketchElementID.
+        """
         sketch_id, list_name, index = key
         return list(self._sketches[sketch_id][list_name][index])
     
@@ -688,6 +695,9 @@ class _FreeCADSketchConstraintMap(MutableMapping):
             if constraint.Type != ConstraintType.INTERNAL_ALIGNMENT:
                 continue
             
+            self._id_map[(sketch_id,
+                          ListName.INTERNAL_ALIGNMENT,
+                          index)] = constraint
             parent_geometry_index = constraint.Second
             content = ElementTree.fromstring(constraint.Content)
             internal_alignment_type = InternalAlignmentType(
@@ -734,6 +744,37 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         sketch_id, list_name, index = key
         self.assign_internal_constraints(sketch_id) # Refresh to make sure
         return self._sketches[sketch_id][ListName.INTERNAL_ALIGNMENT][index]
+    
+    @staticmethod
+    def get_constraint_index(freecad_id: SketchElementID) -> int:
+        """Returns the index that a FreeCAD constraint would need. Makes sure 
+        to use negative indices for ExternalGeo references.
+        """
+        _, list_name, index = freecad_id
+        if list_name == ListName.EXTERNALS:
+            return -index - 1
+        else:
+            return index
+    
+    # Private Methods #
+    def _add_new_sketch(self, sketch_id: FeatureID):
+        self._sketches[sketch_id] = dict()
+        self._sketches[sketch_id][ListName.CONSTRAINTS] = dict()
+        self._sketches[sketch_id][ListName.INTERNAL_ALIGNMENT] = dict()
+    
+    def _check_list_name(self, name: ListName) -> NoReturn:
+        if name != ListName.CONSTRAINTS:
+            raise ValueError(f"ListName {list_name} not recognized")
+    
+    def _index_to_freecad_id(self, sketch_id: FeatureID, index: int):
+        """Returns the freecad id associated with a constraint geometry 
+        index. Positive numbers are in the Geometry list and negative 
+        numbers are in the ExternalGeo list.
+        """
+        if index < 0:
+            return (sketch_id, ListName.EXTERNALS, -(index + 1))
+        else:
+            return (sketch_id, ListName.GEOMETRY, index)
     
     # Python Dunders #
     def __contains__(self, key: FeatureID | SketchElementID) -> bool:
@@ -796,22 +837,4 @@ class _FreeCADSketchConstraintMap(MutableMapping):
             output_strings.append("\n".join(sketch_strings))
         return "{" + "\n".join(output_strings) + "}"
     
-    # Private Methods #
-    def _add_new_sketch(self, sketch_id: FeatureID):
-        self._sketches[sketch_id] = dict()
-        self._sketches[sketch_id][ListName.CONSTRAINTS] = dict()
-        self._sketches[sketch_id][ListName.INTERNAL_ALIGNMENT] = dict()
     
-    def _check_list_name(self, name: ListName) -> NoReturn:
-        if name != ListName.CONSTRAINTS:
-            raise ValueError(f"ListName {list_name} not recognized")
-    
-    def _index_to_freecad_id(self, sketch_id: FeatureID, index: int):
-        """Returns the freecad id associated with a constraint geometry 
-        index. Positive numbers are in the Geometry list and negative 
-        numbers are in the ExternalGeo list.
-        """
-        if index < 0:
-            return (sketch_id, ListName.EXTERNALS, -(index + 1))
-        else:
-            return (sketch_id, ListName.GEOMETRY, index)
