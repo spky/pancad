@@ -103,10 +103,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
         self._sketch_cs = CoordinateSystem((0, 0), context=self)
         
         self.coordinate_system = coordinate_system
-        # if coordinate_system is None:
-            # self.coordinate_system = CoordinateSystem()
-        # else:
-            # self.coordinate_system = coordinate_system
             
         self.geometry = geometry
         self.externals = externals

@@ -3,7 +3,7 @@
 from collections import defaultdict
 from collections.abc import MutableMapping
 from functools import singledispatch, singledispatchmethod
-from typing import Self, NoReturn
+from typing import overload, Self, NoReturn
 from types import GenericAlias
 from uuid import UUID
 from xml.etree import ElementTree
@@ -57,6 +57,7 @@ class FreeCADMap(MutableMapping):
     from ._feature_translation import (
         _freecad_add_to_sketch,
         _freecad_to_pancad_feature,
+        _freecad_to_pancad_geometry,
         _pancad_to_freecad_feature,
         _pancad_to_freecad_geometry,
     )
@@ -94,16 +95,13 @@ class FreeCADMap(MutableMapping):
     def add_freecad_feature(self, feature: FreeCADFeature) -> Self:
         """Adds a FreeCAD feature to the map by generating a new PanCAD object.
         """
-        match feature.TypeId:
-            # Poor man's singledispatchmethod using the FreeCAD TypeId
-            case ObjectType.BODY:
-                self._add_freecad_body(feature)
-            case ObjectType.SKETCH:
-                pass
-            case ObjectType.PAD:
-                pass
-            case ObjectType.ORIGIN:
-                pass
+        pancad_feature = self._freecad_to_pancad_feature(feature)
+        self[pancad_feature] = feature
+        if feature.TypeId == ObjectType.BODY:
+            children = [feature.Origin] + feature.Group
+            for child in children:
+                child_pancad_feature = self._freecad_to_pancad_feature(child)
+                self[child_pancad_feature] = child
         return self
     
     @singledispatchmethod
@@ -229,30 +227,7 @@ class FreeCADMap(MutableMapping):
                             " SketchSubGeometryID")
     
     # Private Methods
-    def _add_freecad_body(self, body: FreeCADBody):
-        """Adds a FreeCAD feature to the map."""
-        container = self._freecad_to_pancad_feature(body)
-        coordinate_system = self._freecad_to_pancad_feature(body.Origin)
-        container.add_feature(coordinate_system)
-        if body.Parents:
-            freecad_parents = []
-            for freecad_object, _ in body.Parents:
-                # Reduce to just unique elements
-                if freecad_object.ID not in parents:
-                    freecad_parents.append(freecad_object.ID)
-            if len(freecad_parents) == 1:
-                # Add to existing parent
-                raise NotImplementedError("Bodies nested under parts not yet"
-                                          " implemented")
-            else:
-                raise ValueError("Unknown situation where FreeCAD object has"
-                                 " two or more unique parents! Please make a"
-                                 " github issue so it can be supported.")
-        else:
-            # No parents indicates a top level body
-            self._part_file.container = container
-        
-        self[container] = body
+    
     
     # Private Single Dispatch Registers #
     
@@ -380,14 +355,11 @@ class FreeCADMap(MutableMapping):
             return parent
         else:
             raise StopIteration
-
+    
     def __len__(self) -> int:
         return len(self._pancad_to_freecad)
-
-    def __setitem__(self,
-                    key: PanCADThing,
-                    value: FreeCADCADObject) -> None:
-        # Writing **TO** FreeCAD
+    
+    def __setitem__(self, key: AbstractFeature, value: FreeCADFeature) -> None:
         if isinstance(key, AbstractFeature):
             self._link_pancad_to_freecad_feature_geometry(key, value)
         else:

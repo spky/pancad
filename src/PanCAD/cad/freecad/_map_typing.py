@@ -1,6 +1,7 @@
 """
 A module providing GenericAlias constants for use in FreeCAD-PanCAD mapping.
 """
+from PanCAD.geometry import PanCADThing
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.cad.freecad import FreeCADCADObject
 from PanCAD.cad.freecad.constants import ListName, InternalAlignmentType
@@ -36,3 +37,5 @@ InternalAlignmentMap = dict[InternalAlignmentType, GeometryIndex]
 
 FreeCADIDMap = dict[FreeCADID, FreeCADCADObject]
 """Maps FreeCAD IDs to their corresponding FreeCADCADObject."""
+FreeCADToPanCADMap = dict[FreeCADID, tuple[PanCADThing, ConstraintReference]]
+"""Maps FreeCAD IDs back to their PanCAD geometry."""

@@ -15,8 +15,10 @@ from PanCAD.geometry import (
     Extrude,
     FeatureContainer,
     LineSegment,
+    Point,
     Sketch,
 )
+from PanCAD.geometry.constants import ConstraintReference
 from . import (
     App,
     Part,
@@ -27,9 +29,11 @@ from . import (
     FreeCADGeometry,
     FreeCADLineSegment,
     FreeCADOrigin,
+    FreeCADPad,
+    FreeCADPoint,
     FreeCADSketch,
 )
-from .constants import ListName, ObjectType
+from .constants import ListName, ObjectType, PadType
 from ._map_typing import SketchElementID
 
 ################################################################################
@@ -98,43 +102,7 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     return sketch
 
 ################################################################################
-# FreeCAD ---> PanCAD Features
-################################################################################
-@staticmethod
-def _freecad_to_pancad_feature(feature: FreeCADFeature) -> AbstractFeature:
-    """Generates a contextless PanCAD feature equivalent to the FreeCAD feature.
-    """
-    match feature.TypeId:
-        # Poor man's singledispatchmethod using the FreeCAD TypeId
-        case ObjectType.BODY:
-            return _freecad_to_pancad_feature_container(feature)
-        case ObjectType.SKETCH:
-            pass
-        case ObjectType.PAD:
-            pass
-        case ObjectType.ORIGIN:
-            return _freecad_to_pancad_feature_coordinate_system(feature)
-        case _:
-            raise TypeError(f"Unrecognized TypeId '{feature.TypeId}'")
-
-def _freecad_to_pancad_feature_container(body: FreeCADBody) -> FeatureContainer:
-    return FeatureContainer(name=body.Label)
-
-def _freecad_to_pancad_feature_coordinate_system(origin: FreeCADOrigin
-                                                 ) -> FeatureContainer:
-    if len(origin.Parents) > 1:
-        raise ValueError("Unknown situation where FreeCAD object has"
-                         " two or more unique parents! Please make a"
-                         " github issue so it can be supported.")
-    
-    body, _ = origin.Parents[0]
-    location = tuple(body.Placement.Base)
-    quaternion_components = body.Placement.Rotation.Q
-    quat = np.quaternion(*quaternion_components)
-    return CoordinateSystem.from_quaternion(location, quat, name=origin.Label)
-
-################################################################################
-# FreeCAD ---> PanCAD Geometry
+# PanCAD ---> FreeCAD Geometry
 ################################################################################
 @singledispatchmethod
 @staticmethod
@@ -199,3 +167,140 @@ def _one_to_one_cases(self,
     geometry_id = (sketch.ID, ListName.GEOMETRY, index)
     self._id_map[geometry_id] = geometry
     return geometry_id
+
+################################################################################
+# FreeCAD ---> PanCAD Features
+################################################################################
+
+def _freecad_to_pancad_feature(self,
+                               feature: FreeCADFeature) -> AbstractFeature:
+    """Generates a contextless PanCAD feature equivalent to the FreeCAD feature.
+    """
+    match feature.TypeId:
+        # Poor man's singledispatchmethod using the FreeCAD TypeId
+        case ObjectType.BODY:
+            pancad_feature = _ftpf_container(self, feature)
+        case ObjectType.SKETCH:
+            pancad_feature = _ftpf_sketch(self, feature)
+        case ObjectType.PAD:
+            pancad_feature = _ftpf_extrude(self, feature)
+        case ObjectType.ORIGIN:
+            pancad_feature = _ftpf_coordinate_system(self, feature)
+        case _:
+            raise TypeError(f"Unrecognized TypeId '{feature.TypeId}'")
+    
+    # Eliminate duplicate parents
+    parent_list = list(set(feature.Parents))
+    if len(parent_list) == 1:
+        # Add PanCAD geometry to its context
+        parent, _ = parent_list[0]
+        pancad_context, _ = self._freecad_to_pancad[parent.ID]
+        pancad_context.add_feature(pancad_feature)
+    elif not parent_list and isinstance(pancad_feature, FeatureContainer):
+        # Found the top level element, can only have one right now
+        self._part_file.container = pancad_feature
+    elif not parent_list:
+        raise ValueError("Elements with no parents are expected to be"
+                         " PartFile container and expected to be"
+                         " FeatureContainers, got: "
+                         f" {pancad_feature.__class__}")
+    else:
+        raise ValueError("Unknown situation where FreeCAD object has two"
+                         " or more unique parents! Please make a github"
+                         " issue so it can be supported.")
+    return pancad_feature
+
+# ABBREVIATION
+# ftpf = freecad_to_pancad_feature
+def _ftpf_container(self, body: FreeCADBody) -> FeatureContainer:
+    self._id_map[body.ID] = body
+    return FeatureContainer(name=body.Label)
+
+def _ftpf_coordinate_system(self, origin: FreeCADOrigin) -> FeatureContainer:
+    if len(origin.Parents) > 1:
+        raise ValueError("Unknown situation where FreeCAD object has"
+                         " two or more unique parents! Please make a"
+                         " github issue so it can be supported.")
+    self._id_map[origin.ID] = origin
+    for subfeature in origin.OriginFeatures:
+        self._id_map[subfeature.ID] = subfeature
+    body, _ = origin.Parents[0]
+    location = tuple(body.Placement.Base)
+    quaternion_components = body.Placement.Rotation.Q
+    quat = np.quaternion(*quaternion_components)
+    return CoordinateSystem.from_quaternion(location, quat, name=origin.Label)
+
+def _ftpf_extrude(self, pad: FreeCADPad) -> Extrude:
+    self._id_map[pad.ID] = pad
+    freecad_profile, _ = pad.Profile
+    profile, _ = self._freecad_to_pancad[freecad_profile.ID]
+    feature_type = PadType(pad.Type).get_feature_type(pad.Midplane,
+                                                      pad.Reversed)
+    unit = pad.Length.toStr().split(" ")[-1]
+    # Up to face/feature not handled in the return, future work
+    return Extrude(profile,
+                   feature_type,
+                   length=pad.Length.Value,
+                   opposite_length=pad.Length2.Value, # Assuming the same unit
+                   is_midplane=pad.Midplane,
+                   is_reverse_direction=pad.Reversed,
+                   unit=unit,
+                   name=pad.Label)
+
+def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
+    self._id_map[freecad_sketch.ID] = freecad_sketch
+    # TODO: Add a way to reference back to sketches in pad
+    sketch = Sketch(name=freecad_sketch.Label)
+    # Ensure that all internal geometry has been added to Geometry
+    for i, freecad_geometry in enumerate(freecad_sketch.Geometry):
+        try:
+            freecad_sketch.exposeInternalGeometry(i)
+        except ValueError:
+            # FreeCAD doesn't provide a way to check whether something has 
+            # internal geometry, so this function can be run on each item and 
+            # then PanCAD can just ignore the errors
+            pass
+    
+    # Actually translate geometry
+    for i, freecad_geometry in enumerate(freecad_sketch.Geometry):
+        geometry = self._freecad_to_pancad_geometry(freecad_geometry)
+        sketch.add_geometry(geometry, freecad_sketch.getConstruction(i))
+        geometry_id = (freecad_sketch.ID, ListName.GEOMETRY, i)
+        self._id_map[geometry_id] = freecad_geometry
+        self._pancad_to_freecad[geometry.uid] = (geometry, geometry_id)
+        self._freecad_to_pancad[geometry_id] = (geometry,
+                                                ConstraintReference.CORE)
+    return sketch
+
+################################################################################
+# FreeCAD ---> PanCAD Geometry
+################################################################################
+
+@singledispatchmethod
+@staticmethod
+def _freecad_to_pancad_geometry(geometry: FreeCADGeometry) -> AbstractGeometry:
+    raise TypeError(f"Unsupported FreeCAD element type: {geometry}")
+
+@_freecad_to_pancad_geometry.register
+@staticmethod
+def _line_segment(line_segment: FreeCADLineSegment) -> LineSegment:
+    return LineSegment(line_segment.StartPoint[0:2],
+                       line_segment.EndPoint[0:2])
+
+@_freecad_to_pancad_geometry.register
+@staticmethod
+def _circle(circle: FreeCADCircle) -> Circle:
+    return Circle(circle.Center[0:2], circle.Radius)
+
+@_freecad_to_pancad_geometry.register
+@staticmethod
+def _point(point: FreeCADPoint) -> Point:
+    return Point(point.X, point.Y)
+
+@_freecad_to_pancad_geometry.register
+@staticmethod
+def _ellipse(ellipse: FreeCADEllipse) -> Ellipse:
+    return Ellipse.from_angle(ellipse.Center[0:2],
+                              ellipse.MajorRadius,
+                              ellipse.MinorRadius,
+                              ellipse.AngleXU)
