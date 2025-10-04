@@ -138,14 +138,7 @@ class FreeCADMap(MutableMapping):
         """Returns the PanCAD object and constraint reference mapped to the 
         FreeCAD ID.
         """
-        # freecad_id_type = self.get_id_type(freecad_id)
         return self._freecad_to_pancad[freecad_id]
-        # if freecad_id_type in (FeatureID, SubFeatureID):
-            # return self._feature_map[freecad_id]
-        # elif freecad_id_type in (SketchElementID, SketchSubGeometryID):
-            # return self._freecad_to_pancad[freecad_id]
-        # else:
-            # raise TypeError(f"Key {key} type not recognized")
     
     def get_references(self, key: PanCADThing) -> list[ConstraintReference]:
         """Returns a tuple of the references available for the key."""

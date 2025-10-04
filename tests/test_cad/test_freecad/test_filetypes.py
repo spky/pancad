@@ -32,7 +32,6 @@ class TestReadFile(TestReadSample):
         # 5 Coincident, 2 Vertical, 2 Horizontal,
         # 1 HorizontalDistance, 1 VerticalDistance
     
-    @unittest.skip
     def test_read_cube(self):
         file = FreeCADFile(self.filepath)
         part_file = file.to_pancad()

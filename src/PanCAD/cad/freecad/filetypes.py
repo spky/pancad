@@ -10,10 +10,11 @@ from typing import Self
 import numpy as np
 import quaternion
 
-from PanCAD.cad.freecad import App, PartDesign, Sketcher, Part
-from PanCAD.cad.freecad.constants import ObjectType, PadType
-from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
-from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
+from . import App, PartDesign, Sketcher, Part
+from .constants import ObjectType, PadType
+from .feature_mappers import FreeCADMap
+from .sketch_geometry import get_pancad_sketch_geometry
+from .to_part_file import add_feature_to_freecad
 
 from PanCAD.filetypes import PartFile
 from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
@@ -131,27 +132,7 @@ class FreeCADFile:
     
     def to_pancad(self) -> PartFile:
         """Returns a PanCAD filetype object from the FreeCAD file."""
-        feature_map = dict()
-        coordinate_system = self._get_part_file_coordinate_system()
-        filename = self.stem
-        part_file = PartFile(filename, coordinate_system=coordinate_system)
-        
-        feature_map.update(
-            map_freecad(coordinate_system, self._body.Origin, from_freecad=True)
-        )
-        for feature in self._features:
-            match feature.TypeId:
-                case ObjectType.SKETCH:
-                    feature_map = self._translate_sketch_from_freecad(
-                        feature, feature_map
-                    )
-                    sketch, *_ = feature_map[feature]
-                    part_file.add_feature(sketch)
-                case ObjectType.PAD:
-                    feature_map = self._translate_pad(feature, feature_map)
-                    extrude = feature_map[feature]
-                    part_file.add_feature(extrude)
-        return part_file
+        return self._part_file
     
     # Private Methods #
     def _get_bodies(self) -> list[Part.BodyBase]:
@@ -179,27 +160,10 @@ class FreeCADFile:
         """Initializes a part-like file from FreeCAD."""
         # The body and origin of a part file is the context everything else is 
         # defined under, so they will be consistent between part files
-        self._body = self._get_bodies()[0]
-        self._origin = self._body.Origin
-        not_features = [self._body, self._origin]
-        objects = filter(
-            lambda obj: all(obj is not nf for nf in not_features),
-            self._document.Objects
-        )
-        
-        # sub_features: origin axes/planes that are not independent features
-        sub_features = []
-        sub_features.extend(self._origin.OriginFeatures)
-        
-        self._features = []
-        for obj in objects:
-            if not any([obj is sub_feat for sub_feat in sub_features]):
-                match obj.TypeId:
-                    case ObjectType.ORIGIN:
-                        self._features.append(obj)
-                        sub_features.extend(obj.OriginFeatures)
-                    case _:
-                        self._features.append(obj)
+        self._part_file = PartFile(self.stem)
+        self._mapping = FreeCADMap(self._document, self._part_file)
+        body = self._get_bodies()[0]
+        self._mapping.add_freecad_feature(body)
     
     def _translate_pad(self, pad: Part.Feature, feature_map: dict) -> dict:
         """Adds the FreeCAD pad to the given feature map.
