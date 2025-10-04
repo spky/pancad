@@ -131,8 +131,13 @@ def _sketch(self, key: Sketch, sketch: FreeCADSketch) -> None:
     # Map the geometry inside of the sketch
     self._id_map[x_axis_id] = sketch.ExternalGeo[0]
     self._id_map[y_axis_id] = sketch.ExternalGeo[1]
-    self._geometry_map[x_axis_id] = dict.fromkeys(LineSegment.REFERENCES, 0)
-    self._geometry_map[y_axis_id] = dict.fromkeys(LineSegment.REFERENCES, 1)
+    self._geometry_map[x_axis_id] = dict.fromkeys(
+        [ConstraintReference.CORE,
+         ConstraintReference.X,
+         ConstraintReference.ORIGIN], 0
+    )
+    self._geometry_map[y_axis_id] = dict.fromkeys([ConstraintReference.CORE,
+                                                   ConstraintReference.Y], 1)
     
     for geometry, construction in zip(key.geometry, key.construction):
         _, freecad_id = self._pancad_to_freecad[geometry.uid]

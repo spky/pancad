@@ -12,20 +12,38 @@ from functools import reduce, singledispatchmethod
 from itertools import compress
 from math import degrees
 from typing import overload, Self, NoReturn
+from uuid import UUID
 
 from PanCAD.geometry import (
-    AbstractFeature, AbstractGeometry,
-    Circle, CoordinateSystem, Ellipse, Point, Line, LineSegment, Plane,
+    AbstractFeature,
+    AbstractGeometry,
+    Circle,
+    CoordinateSystem,
+    Ellipse,
+    Point,
+    Line,
+    LineSegment,
+    Plane,
 )
 from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
 from PanCAD.geometry.constraints import (
     AbstractConstraint,
-    Abstract1GeometryDistance, Abstract2GeometryDistance,
-    AbstractStateConstraint, AbstractSnapTo,
-    Coincident, Vertical, Horizontal, Equal, Parallel, Perpendicular,
-    Angle, Distance,
-    HorizontalDistance, VerticalDistance,
-    Diameter, Radius,
+    Abstract1GeometryDistance,
+    Abstract2GeometryDistance,
+    AbstractStateConstraint,
+    AbstractSnapTo,
+    Coincident,
+    Vertical,
+    Horizontal,
+    Equal,
+    Parallel,
+    Perpendicular,
+    Angle,
+    Distance,
+    HorizontalDistance,
+    VerticalDistance,
+    Diameter,
+    Radius,
 )
 from PanCAD.utils.text_formatting import get_table_string
 
@@ -254,27 +272,27 @@ class Sketch(AbstractFeature, AbstractGeometry):
     @overload
     def add_constraint_by_uid(self,
                               sketch_constraint: SketchConstraint,
-                              uid_a: str | ConstraintReference,
+                              uid_a: str | UUID,
                               reference_a: ConstraintReference,
                               **kwargs) -> Self: ...
     
     @overload
     def add_constraint_by_uid(self,
                               sketch_constraint: SketchConstraint,
-                              uid_a: str | ConstraintReference,
+                              uid_a: str | UUID,
                               reference_a: ConstraintReference,
-                              uid_b: str | ConstraintReference=None,
+                              uid_b: str | UUID=None,
                               reference_b: ConstraintReference=None,
                               **kwargs) -> Self: ...
     
     @overload
     def add_constraint_by_uid(self,
                               sketch_constraint: SketchConstraint,
-                              uid_a: str | ConstraintReference,
+                              uid_a: str | UUID,
                               reference_a: ConstraintReference,
-                              uid_b: str | ConstraintReference=None,
+                              uid_b: str | UUID=None,
                               reference_b: ConstraintReference=None,
-                              uid_c: str | ConstraintReference=None,
+                              uid_c: str | UUID=None,
                               reference_c: ConstraintReference=None,
                               **kwargs) -> Self: ...
     
@@ -317,27 +335,27 @@ class Sketch(AbstractFeature, AbstractGeometry):
     @overload
     def add_constraint_by_index(self,
                                 sketch_constraint: SketchConstraint,
-                                index_a: int | ConstraintReference,
+                                index_a: int,
                                 reference_a: ConstraintReference,
                                 **kwargs) -> Self: ...
     
     @overload
     def add_constraint_by_index(self,
                                 sketch_constraint: SketchConstraint,
-                                index_a: int | ConstraintReference,
+                                index_a: int,
                                 reference_a: ConstraintReference,
-                                index_b: int | ConstraintReference=None,
+                                index_b: int=None,
                                 reference_b: ConstraintReference=None,
                                 **kwargs) -> Self: ...
     
     @overload
     def add_constraint_by_index(self,
                                 sketch_constraint: SketchConstraint,
-                                index_a: int | ConstraintReference,
+                                index_a: int,
                                 reference_a: ConstraintReference,
-                                index_b: int | ConstraintReference=None,
+                                index_b: int=None,
                                 reference_b: ConstraintReference=None,
-                                index_c: int | ConstraintReference=None,
+                                index_c: int=None,
                                 reference_c: ConstraintReference=None,
                                 **kwargs) -> Self: ...
     
@@ -466,7 +484,16 @@ class Sketch(AbstractFeature, AbstractGeometry):
             Sketches. See :attr:`Sketch.REFERENCES`.
         :returns: The geometry corresponding to the reference.
         """
-        return self._sketch_cs.get_reference(reference)
+        match reference:
+            case ConstraintReference.CORE:
+                return self
+            case (ConstraintReference.ORIGIN
+                    | ConstraintReference.X
+                    | ConstraintReference.Y):
+                return self._sketch_cs.get_reference(reference)
+            case _:
+                raise ValueError(f"{self.__class__}s do not have any"
+                                 f" {reference.name} reference geometry")
     
     def get_sketch_coordinate_system(self) -> CoordinateSystem:
         """Returns the sketch's 2D coordinate system."""

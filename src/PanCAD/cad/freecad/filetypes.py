@@ -13,7 +13,6 @@ import quaternion
 from PanCAD.cad.freecad import App, PartDesign, Sketcher, Part
 from PanCAD.cad.freecad.constants import ObjectType, PadType
 from PanCAD.cad.freecad.sketch_geometry import get_pancad_sketch_geometry
-from PanCAD.cad.freecad.sketch_constraints import add_pancad_sketch_constraint
 from PanCAD.cad.freecad.to_part_file import add_feature_to_freecad
 
 from PanCAD.filetypes import PartFile

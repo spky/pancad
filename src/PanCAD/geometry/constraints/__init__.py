@@ -26,3 +26,5 @@ from PanCAD.geometry.constraints.distance import (
     Radius,
     VerticalDistance,
 )
+
+from ._generator import make_constraint

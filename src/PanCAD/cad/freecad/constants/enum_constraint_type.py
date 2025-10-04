@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from PanCAD.geometry.constants import SketchConstraint
 from PanCAD.geometry.constraints import (
     AbstractConstraint,
     Angle,
@@ -35,8 +36,45 @@ class ConstraintType(StrEnum):
     PERPENDICULAR = "Perpendicular"
     POINT_ON_OBJECT = "PointOnObject"
     RADIUS = "Radius"
-    VERTICAL = "Vertical"
     TANGENT = "Tangent"
+    VERTICAL = "Vertical"
+    
+    def get_sketch_constraint(self) -> SketchConstraint:
+        match self:
+            case ConstraintType.ANGLE:
+                return SketchConstraint.ANGLE
+            case ConstraintType.COINCIDENT:
+                return SketchConstraint.COINCIDENT
+            case ConstraintType.DIAMETER:
+                return SketchConstraint.DISTANCE_DIAMETER
+            case ConstraintType.DISTANCE:
+                return SketchConstraint.DISTANCE
+            case ConstraintType.DISTANCE_X:
+                return SketchConstraint.DISTANCE_HORIZONTAL
+            case ConstraintType.DISTANCE_Y:
+                return SketchConstraint.DISTANCE_VERTICAL
+            case ConstraintType.EQUAL:
+                return SketchConstraint.EQUAL
+            case ConstraintType.HORIZONTAL:
+                return SketchConstraint.HORIZONTAL
+            case ConstraintType.PARALLEL:
+                return SketchConstraint.PARALLEL
+            case ConstraintType.PERPENDICULAR:
+                return SketchConstraint.PERPENDICULAR
+            case ConstraintType.POINT_ON_OBJECT:
+                return SketchConstraint.COINCIDENT
+            case ConstraintType.RADIUS:
+                return SketchConstraint.RADIUS
+            case ConstraintType.TANGENT:
+                return SketchConstraint.TANGENT
+            case ConstraintType.VERTICAL:
+                return SketchConstraint.VERTICAL
+            case ConstraintType.INTERNAL_ALIGNMENT:
+                raise ValueError("No equivalent SketchConstraint for"
+                                 " INTERNAL_ALIGNMENT, should stay internal"
+                                 " to FreeCAD.")
+            case _:
+                raise ValueError(f"Unsupported type {self}")
     
     @classmethod
     def from_pancad(cls, constraint: AbstractConstraint) -> ConstraintType:
@@ -65,3 +103,8 @@ class ConstraintType(StrEnum):
                 return ConstraintType.VERTICAL
             case "VerticalDistance":
                 return ConstraintType.DISTANCE_Y
+            case _:
+                raise ValueError(
+                    f"Unsupported type {type(constraint).__qualname__}"
+                )
+            

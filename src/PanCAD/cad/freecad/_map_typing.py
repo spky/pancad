@@ -30,10 +30,21 @@ geometry element in the same sketch. The FeatureID has to be for a sketch.
 SubGeometryMap = dict[ConstraintReference, GeometryIndex]
 """Maps a constraint reference to another sketch index in the same sketch."""
 
+ConstraintMap = dict[SketchElementID, tuple[SketchSubGeometryID]]
+"""Maps FreeCAD constraints to their constrained portions of geometry."""
+
 SubFeatureID = tuple[FeatureID, ConstraintReference]
+"""Maps FreeCAD features that are really subfeatures of a parent feature to that 
+portion of their parent feature (example: An x-axis of an Origin element)
+"""
 SubFeatureMap = dict[ConstraintReference, FreeCADID]
 
 InternalAlignmentMap = dict[InternalAlignmentType, GeometryIndex]
+"""Maps the subgeometry type to the internally aligned geometry index."""
+InternalAlignmentConstraintMap = dict[SketchElementID, InternalAlignmentMap]
+"""Maps the parent geometry index to its subgeometry being constrained by 
+internal alignment constraints.
+"""
 
 FreeCADIDMap = dict[FreeCADID, FreeCADCADObject]
 """Maps FreeCAD IDs to their corresponding FreeCADCADObject."""

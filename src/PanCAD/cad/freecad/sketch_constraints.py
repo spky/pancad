@@ -1,11 +1,15 @@
 """A module providing functions to generate FreeCAD sketch constraints from 
 PanCAD constraints"""
+from uuid import UUID
 
 from functools import singledispatch, singledispatchmethod
 
-from PanCAD.geometry import Sketch, LineSegment
+from PanCAD.geometry import AbstractGeometry, Sketch, LineSegment
 from PanCAD.geometry.constraints import (
     AbstractConstraint,
+    AbstractStateConstraint,
+    AbstractSnapTo,
+    Abstract2GeometryDistance,
     Angle,
     Coincident,
     Diameter,
@@ -18,12 +22,16 @@ from PanCAD.geometry.constraints import (
     Radius,
     Vertical,
     VerticalDistance,
+    make_constraint,
 )
 from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
 from PanCAD.utils.trigonometry import is_clockwise
 
 from . import App, Sketcher, FreeCADConstraint, FreeCADSketch
-from .constants import ConstraintType, EdgeSubPart, ListName
+from .constants import (
+    ConstraintType, EdgeSubPart, InternalAlignmentType, ListName
+)
+from ._map_typing import SketchElementID
 
 # Primary Translation Functions ################################################
 def translate_constraint(sketch: Sketch,
@@ -40,119 +48,119 @@ def translate_constraint(sketch: Sketch,
         geometry_inputs = _get_freecad_inputs(sketch, constraint)
     return _pancad_to_freecad_constraint(constraint, geometry_inputs)
 
-def add_pancad_sketch_constraint(constraint: Sketcher.Constraint,
-                                 pancad_sketch: Sketch) -> Sketch:
-    """Adds a FreeCAD constraint to a PanCAD Sketch.
+################################################################################
+# FreeCAD ---> PanCAD Constraints
+################################################################################
+def _freecad_to_pancad_constraint(self,
+                                  constraint_id: SketchElementID
+                                  ) -> AbstractConstraint:
+    """Returns a FreeCAD constraint that can be placed into a PanCAD Sketch.
     
-    :param constraint: A FreeCAD Sketcher Constraint read from a FreeCAD model.
-    :param pancad_sketch: A PanCAD sketch.
-    :returns: The updated PanCAD sketch.
+    :param constraint: A FreeCAD constraint
+    :returns: The equivalent PanCAD constraint.
     """
-    match constraint.Type:
+    constraint_type = ConstraintType(self._id_map[constraint_id].Type)
+    match constraint_type:
         case ConstraintType.ANGLE:
             pass
-        case ConstraintType.COINCIDENT:
-            return _add_state(constraint, pancad_sketch,
-                              SketchConstraint.COINCIDENT)
-        case ConstraintType.DIAMETER:
-            return _add_distance(constraint, pancad_sketch,
-                                 SketchConstraint.DISTANCE_DIAMETER)
-        case ConstraintType.DISTANCE:
-            return _add_distance(constraint, pancad_sketch,
-                                 SketchConstraint.DISTANCE)
-        case ConstraintType.DISTANCE_X:
-            return _add_distance(constraint, pancad_sketch,
-                                 SketchConstraint.DISTANCE_HORIZONTAL)
-        case ConstraintType.DISTANCE_Y:
-            return _add_distance(constraint, pancad_sketch,
-                                 SketchConstraint.DISTANCE_VERTICAL)
-        case ConstraintType.EQUAL:
-            return _add_state(constraint, pancad_sketch,
-                              SketchConstraint.EQUAL)
-        case ConstraintType.HORIZONTAL:
-            return _add_snapto(constraint, pancad_sketch,
-                               SketchConstraint.HORIZONTAL)
-        case ConstraintType.PARALLEL:
-            return _add_state(constraint, pancad_sketch,
-                              SketchConstraint.PARALLEL)
-        case ConstraintType.PERPENDICULAR:
-            return _add_state(constraint, pancad_sketch,
-                              SketchConstraint.PERPENDICULAR)
-        case ConstraintType.POINT_ON_OBJECT:
-            pass
-        case ConstraintType.RADIUS:
-            return _add_distance(constraint, pancad_sketch,
-                                 SketchConstraint.DISTANCE_RADIUS)
-        case ConstraintType.VERTICAL:
-            return _add_snapto(constraint, pancad_sketch,
-                               SketchConstraint.VERTICAL)
-        case ConstraintType.TANGENT:
-            pass
+        case (
+                    ConstraintType.COINCIDENT
+                    | ConstraintType.EQUAL
+                    | ConstraintType.PARALLEL
+                    | ConstraintType.PERPENDICULAR
+                    | ConstraintType.POINT_ON_OBJECT
+                    | ConstraintType.TANGENT
+                    | ConstraintType.HORIZONTAL
+                    | ConstraintType.VERTICAL
+                ):
+            return _add_state_or_snapto(self, constraint_id,
+                                        constraint_type.get_sketch_constraint())
+        case (
+                    ConstraintType.DIAMETER
+                    | ConstraintType.DISTANCE
+                    | ConstraintType.DISTANCE_X
+                    | ConstraintType.DISTANCE_Y
+                    | ConstraintType.RADIUS
+                ):
+            return _add_distance(self, constraint_id,
+                                 constraint_type.get_sketch_constraint())
         case _:
             raise ValueError(f"Unsupported type {constraint.Type}")
 
-# PanCAD Constraint Functions ##################################################
+def _add_state_or_snapto(self,
+                         constraint_id: SketchElementID,
+                         constraint_type: SketchConstraint
+                         ) -> AbstractStateConstraint | AbstractSnapTo:
+    constraint_pairs = zip(
+        self._constraint_map.get_constrained_ids(constraint_id),
+        self._constraint_map.get_constrained_sub_parts(constraint_id),
+    )
+    pancad_paired_inputs = []
+    for freecad_id, sub_part in constraint_pairs:
+        pancad_paired_inputs.extend(
+            _get_pancad_pair(self, freecad_id, sub_part)
+        )
+    return make_constraint(constraint_type, *pancad_paired_inputs)
 
-def _add_state(constraint: Sketcher.Constraint,
-               pancad_sketch: Sketch,
-               state_type: SketchConstraint) -> Sketch:
-    index_a, reference_a = _get_pancad_index_pair(constraint.First,
-                                                  constraint.FirstPos)
-    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
-                                                  constraint.SecondPos)
-    pancad_sketch.add_constraint_by_index(state_type,
-                                          index_a, reference_a,
-                                          index_b, reference_b)
-    return pancad_sketch
+def _add_distance(self,
+                  constraint_id: SketchElementID,
+                  constraint_type: SketchConstraint
+                  ) -> Abstract2GeometryDistance:
+    freecad_constraint = self._id_map[constraint_id]
+    
+    constraint_pairs = zip(
+        self._constraint_map.get_constrained_ids(constraint_id),
+        self._constraint_map.get_constrained_sub_parts(constraint_id),
+    )
+    pancad_paired_inputs = []
+    for freecad_id, sub_part in constraint_pairs:
+        pancad_paired_inputs.extend(
+            _get_pancad_pair(self, freecad_id, sub_part)
+        )
+    
+    return make_constraint(constraint_type,
+                           *pancad_paired_inputs,
+                           value=freecad_constraint.Value,
+                           unit="mm")
 
-def _add_snapto(constraint: Sketcher.Constraint,
-                pancad_sketch: Sketch,
-                snap_type: SketchConstraint) -> Sketch:
-    index_a, reference_a = _get_pancad_index_pair(constraint.First,
-                                                  constraint.FirstPos)
-    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
-                                                  constraint.SecondPos)
-    pancad_sketch.add_constraint_by_index(snap_type,
-                                          index_a, reference_a,
-                                          index_b, reference_b)
-    return pancad_sketch
-
-def _add_distance(constraint: Sketcher.Constraint,
-                  pancad_sketch: Sketch,
-                  distance_type: SketchConstraint) -> Sketch:
-    index_a, reference_a = _get_pancad_index_pair(constraint.First,
-                                                  constraint.FirstPos)
-    index_b, reference_b = _get_pancad_index_pair(constraint.Second,
-                                                  constraint.SecondPos)
-    pancad_sketch.add_constraint_by_index(distance_type,
-                                          index_a, reference_a,
-                                          index_b, reference_b,
-                                          value=constraint.Value,
-                                          unit="mm")
-    return pancad_sketch
+def _get_pancad_pair(self,
+                     geometry_id: SketchElementID,
+                     sub_part: EdgeSubPart) -> tuple[UUID, ConstraintReference]:
+    if self._constraint_map.is_internal_geometry(geometry_id):
+        constrained_geometry_id = self._constraint_map \
+                                      .get_parent_geometry_id(geometry_id)
+        geometry, sub_reference = self.get_pancad(constrained_geometry_id)
+        alignment_type = InternalAlignmentType(
+            self._constraint_map.get_internal_alignment_type(sub_part)
+        )
+        reference = alignment_type.get_constraint_reference(sub_part)
+    else:
+        geometry, sub_reference = self.get_pancad(geometry_id)
+        
+        reference = sub_part.get_constraint_reference(geometry, sub_reference)
+    if geometry is None:
+        return None, None
+    else:
+        return geometry, reference
 
 ################################################################################
-# PanCAD ---> FreeCAD Constraint Addition
+# Constraint Addition
 ################################################################################
 
-# for constraint in key.constraints:
-        # constraint_index = len(sketch.Constraints)
-        # new_constraint = translate_constraint(key, constraint)
-        # sketch.addConstraint(new_constraint)
-        # constraint_id = (sketch.ID, ListName.CONSTRAINTS, constraint_index)
-        # constrained_ids = tuple()
-        # for parent, reference in zip(constraint.get_constrained(),
-                                     # constraint.get_references()):
-            # sketch_geometry_id = self.get_freecad_id(parent, reference)
-            # constrained_ids = constrained_ids + (
-                # (*sketch_geometry_id, reference),
-            # )
-        # self._pancad_to_freecad[constraint.uid] = (constraint,
-                                                   # constraint_id)
-        # self._freecad_to_pancad[constraint_id] = (constraint.uid,
-                                                  # ConstraintReference.CORE)
-        # self._id_map[constraint_id] = new_constraint
-        # self._constraint_map[constraint_id] = constrained_ids
+def _freecad_to_pancad_add_constraints(self,
+                                       freecad_sketch: FreeCADSketch,
+                                       sketch: Sketch) -> Sketch:
+    """Adds the constraints in a FreeCAD Sketch to a PanCAD Sketch."""
+    for i, freecad_constraint in enumerate(freecad_sketch.Constraints):
+        if freecad_constraint.Type == ConstraintType.INTERNAL_ALIGNMENT:
+            # Skip internal alignment constraints, not needed for PanCAD
+            continue
+        constraint_id = (freecad_sketch.ID, ListName.CONSTRAINTS, i)
+        self._id_map[constraint_id] = freecad_constraint
+        constraint = self._freecad_to_pancad_constraint(constraint_id)
+        sketch.add_constraint(constraint)
+        self._link_constraints(constraint, constraint_id)
+    return sketch
 
 def _pancad_to_freecad_add_constraints(self,
                                        pancad_sketch: Sketch, 
@@ -163,18 +171,24 @@ def _pancad_to_freecad_add_constraints(self,
         index = len(sketch.Constraints)
         sketch.addConstraint(constraint)
         constraint_id = (sketch.ID, ListName.CONSTRAINTS, index)
-        constrained_ids = tuple()
-        for geometry, reference in zip(pancad_constraint.get_constrained(),
-                                       pancad_constraint.get_references()):
-            freecad_id = self.get_freecad_id(geometry, reference)
-            constrained_ids = constrained_ids + ((*freecad_id, reference),)
         self._id_map[constraint_id] = constraint
-        self._pancad_to_freecad[pancad_constraint.uid] = (pancad_constraint,
-                                                          constraint_id)
-        self._freecad_to_pancad[constraint_id] = (pancad_constraint.uid,
-                                                  ConstraintReference.CORE)
-        self._constraint_map[constraint_id] = constrained_ids
+        self._link_constraints(pancad_constraint, constraint_id)
     return sketch
+
+def _link_constraints(self,
+                      pancad_constraint: AbstractConstraint,
+                      freecad_constraint_id: SketchElementID) -> None:
+    constrained_ids = tuple()
+    for geometry, reference in zip(pancad_constraint.get_constrained(),
+                                   pancad_constraint.get_references()):
+        freecad_id = self.get_freecad_id(geometry, reference)
+        constrained_ids = constrained_ids + ((*freecad_id, reference),)
+    self._pancad_to_freecad[pancad_constraint.uid] = (pancad_constraint,
+                                                      freecad_constraint_id)
+    self._freecad_to_pancad[freecad_constraint_id] = (pancad_constraint,
+                                                      ConstraintReference.CORE)
+    self._constraint_map[freecad_constraint_id] = constrained_ids
+
 
 ################################################################################
 # PanCAD ---> FreeCAD Constraints
