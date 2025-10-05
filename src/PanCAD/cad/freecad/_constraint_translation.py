@@ -1,52 +1,42 @@
 """A module providing functions to generate FreeCAD sketch constraints from 
 PanCAD constraints"""
-from uuid import UUID
+from __future__ import annotations
 
 from functools import singledispatch, singledispatchmethod
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry import AbstractGeometry, Sketch, LineSegment
+from PanCAD.geometry import LineSegment
 from PanCAD.geometry.constraints import (
-    AbstractConstraint,
-    AbstractStateConstraint,
-    AbstractSnapTo,
-    Abstract2GeometryDistance,
     Angle,
     Coincident,
     Diameter,
     Distance,
     Equal,
     Horizontal,
-    HorizontalDistance,
     Parallel,
     Perpendicular,
     Radius,
     Vertical,
-    VerticalDistance,
     make_constraint,
 )
-from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
-from PanCAD.utils.trigonometry import is_clockwise
+from PanCAD.geometry.constants import ConstraintReference
 
-from . import App, Sketcher, FreeCADConstraint, FreeCADSketch
+from . import App, Sketcher
+from ._application_types import FreeCADConstraint
 from .constants import (
     ConstraintType, EdgeSubPart, InternalAlignmentType, ListName
 )
-from ._map_typing import SketchElementID
 
-# Primary Translation Functions ################################################
-def translate_constraint(sketch: Sketch,
-                         constraint: AbstractConstraint) -> FreeCADConstraint:
-    """Returns a FreeCAD constraint from a PanCAD constraint.
-    
-    :param sketch: A PanCAD Sketch.
-    :param constraint: A constraint in the sketch.
-    :returns: The equivalent FreeCAD constraint.
-    """
-    if isinstance(constraint, Distance):
-        geometry_inputs = bug_fix_001_distance(sketch, constraint)
-    else:
-        geometry_inputs = _get_freecad_inputs(sketch, constraint)
-    return _pancad_to_freecad_constraint(constraint, geometry_inputs)
+if TYPE_CHECKING:
+    from uuid import UUID
+    from PanCAD.geometry import Sketch
+    from PanCAD.geometry.constants import SketchConstraint
+    from PanCAD.geometry.constraints import (AbstractConstraint,
+                                             AbstractStateConstraint,
+                                             AbstractSnapTo,
+                                             Abstract2GeometryDistance)
+    from ._application_types import FreeCADSketch
+    from ._map_typing import SketchElementID
 
 ################################################################################
 # FreeCAD ---> PanCAD Constraints
@@ -330,95 +320,6 @@ def _distance(self, constraint: Distance) -> FreeCADConstraint:
     return Sketcher.Constraint(constraint_type, *inputs, freecad_value)
 
 # Utility Functions ############################################################
-def bug_fix_001_distance(sketch: Sketch, constraint: Distance) -> tuple[int]:
-    """Returns a modified constraint input tuple that takes into account FreeCAD 
-    distance bugs.
-    
-    Known bugs
-    - Distance between two parallel lines is actually stored as a distance 
-    between the start point of the first line and the edge of the second 
-    line. This causes undefined behavior when the orientation constraint that 
-    made it possible to place the distance constraint is removed without 
-    removing the distance constraint. Additionally, this scenario takes fewer 
-    geometry inputs than normal (3 instead of 4).
-    
-    :param sketch: A PanCAD sketch.
-    :param constraint: A PanCAD Distance constraint.
-    :returns: A tuple of integer inputs to define a FreeCAD constraint.
-    """
-    original_inputs = zip(constraint.get_constrained(),
-                          constraint.get_references())
-    if all([isinstance(g, LineSegment) and r == ConstraintReference.CORE
-            for g, r in original_inputs]):
-        a_i, a_ref, b_i, b_ref = _get_freecad_inputs(sketch, constraint)
-        return (a_i, EdgeSubPart.START, b_i)
-    else:
-        return _get_freecad_inputs(sketch, constraint)
-
-def _get_freecad_inputs(sketch: Sketch,
-                        constraint: AbstractConstraint) -> tuple[int]:
-    """Returns the indices required to reference constraint geometry in FreeCAD. 
-    FreeCAD references the sketch origin, x-axis, and y-axis with hidden 
-    external geometry elements. The origin is the start point of the x-axis 
-    line, the x-axis line is at index -1, and the y-axis line is at index 
-    -2. If those elements are referenced then they need to be mapped differently 
-    than they are in PanCAD and likely other programs.
-    
-    :param sketch: A PanCAD sketch.
-    :param constraint: A PanCAD Distance constraint.
-    :returns: A tuple of integer inputs to define a FreeCAD constraint.
-    """
-    original_inputs = zip(constraint.get_constrained(),
-                          constraint.get_references())
-    freecad_inputs = tuple()
-    for constrained, reference in original_inputs:
-        if constrained is sketch.get_sketch_coordinate_system():
-            # FreeCAD keeps its sketch coordinate system in negative index 
-            # locations, so this is a special case for constraints.
-            match reference:
-                case ConstraintReference.ORIGIN:
-                    index = -1
-                    subpart = EdgeSubPart.START
-                case ConstraintReference.X:
-                    index = -1
-                    subpart = EdgeSubPart.EDGE
-                case ConstraintReference.Y:
-                    index = -2
-                    subpart = EdgeSubPart.EDGE
-                case _:
-                    raise ValueError(f"Invalid ConstraintReference {reference}")
-        else:
-            index = sketch.get_index_of(constrained)
-            subpart = reference_to_subpart(reference)
-        freecad_inputs = freecad_inputs + (index, subpart)
-    return freecad_inputs
-
-def _get_pancad_index_pair(index: int,
-                           sub_part: EdgeSubPart | int
-                           ) -> tuple[int | ConstraintReference]:
-    if index >= 0:
-        pancad_index = index
-        pancad_reference = subpart_to_reference(sub_part)
-    else:
-        if index in [-1, -2]:
-            pancad_index = -1
-            if sub_part == EdgeSubPart.START:
-                pancad_reference = ConstraintReference.ORIGIN
-            elif index == -1 and sub_part == EdgeSubPart.EDGE:
-                pancad_reference = ConstraintReference.X
-            elif index == -2 and sub_part == EdgeSubPart.EDGE:
-                pancad_reference = ConstraintReference.Y
-            else:
-                raise ValueError("Unexpected coordinate system"
-                                 f" subpart {sub_part}")
-        elif index == -2000:
-            pancad_index = None
-            pancad_reference = None
-        else:
-            raise NotImplementedError("External references have not been"
-                                      " implemented yet, see issue #87")
-    return pancad_index, pancad_reference
-
 def reference_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
     """Returns the EdgeSubPart that matches the PanCAD ConstraintReference.
     
@@ -446,22 +347,3 @@ def reference_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
             return EdgeSubPart.CENTER
         case _:
             raise ValueError(f"Unsupported reference: {reference}")
-
-def subpart_to_reference(sub_part: EdgeSubPart) -> ConstraintReference:
-    """Returns the PanCAD ConstraintReference that matches the FreeCAD 
-    EdgeSubPart.
-    
-    :param reference: A reference to a subpart of geometry.
-    :returns: The FreeCAD equivalent to the reference.
-    """
-    match sub_part:
-        case EdgeSubPart.EDGE:
-            return ConstraintReference.CORE
-        case EdgeSubPart.START:
-            return ConstraintReference.START
-        case EdgeSubPart.END:
-            return ConstraintReference.END
-        case EdgeSubPart.CENTER:
-            return ConstraintReference.CENTER
-        case _:
-            raise ValueError(f"Unsupported subpart: {sub_part}")

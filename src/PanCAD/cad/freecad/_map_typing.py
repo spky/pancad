@@ -3,8 +3,9 @@ A module providing GenericAlias constants for use in FreeCAD-PanCAD mapping.
 """
 from PanCAD.geometry import PanCADThing
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.cad.freecad import FreeCADCADObject
-from PanCAD.cad.freecad.constants import ListName, InternalAlignmentType
+
+from ._application_types import FreeCADCADObject
+from .constants import ListName, InternalAlignmentType
 
 # FreeCAD ID Typing
 FeatureID = int

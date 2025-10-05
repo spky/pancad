@@ -4,11 +4,13 @@ import unittest
 
 from PanCAD import PartFile
 from PanCAD.cad.freecad import App, Part, Sketcher
-from PanCAD.cad.freecad.feature_mappers import (FreeCADMap,
-                                                FeatureID,
-                                                SubFeatureID,
-                                                SketchElementID,
-                                                SketchSubGeometryID,)
+from PanCAD.cad.freecad._feature_mappers import FreeCADMap
+from PanCAD.cad.freecad._map_typing import (
+    FeatureID,
+    SubFeatureID,
+    SketchElementID,
+    SketchSubGeometryID,
+)
 from PanCAD.cad.freecad.constants import ListName
 from PanCAD.geometry import (LineSegment,
                              CoordinateSystem,

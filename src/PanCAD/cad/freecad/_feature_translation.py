@@ -19,9 +19,9 @@ from PanCAD.geometry import (
     Sketch,
 )
 from PanCAD.geometry.constants import ConstraintReference
-from . import (
-    App,
-    Part,
+from . import App, Part
+from .constants import ListName, ObjectType, PadType
+from ._application_types import (
     FreeCADBody,
     FreeCADCircle,
     FreeCADEllipse,
@@ -33,7 +33,6 @@ from . import (
     FreeCADPoint,
     FreeCADSketch,
 )
-from .constants import ListName, ObjectType, PadType
 from ._map_typing import SketchElementID
 
 ################################################################################

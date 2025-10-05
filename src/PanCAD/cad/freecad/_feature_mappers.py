@@ -1,50 +1,38 @@
 """A module providing functions to map PanCAD features to FreeCAD features."""
+from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import MutableMapping
-from functools import singledispatch, singledispatchmethod
-from typing import overload, Self, NoReturn
-from types import GenericAlias
+from functools import singledispatchmethod
+from typing import Self, NoReturn, TYPE_CHECKING
 from uuid import UUID
 from xml.etree import ElementTree
 
 from PanCAD import PartFile
-from PanCAD.cad.freecad import (App, Sketcher, Part,
-                                FreeCADBody,
-                                FreeCADConstraint,
-                                FreeCADFeature,
-                                FreeCADGeometry,
-                                FreeCADCADObject,
-                                FreeCADOrigin,)
-from .constants import (EdgeSubPart,
-                        ConstraintType,
-                        InternalAlignmentType,
-                        ListName,
-                        ObjectType,)
-from PanCAD.cad.freecad.sketch_constraints import translate_constraint
-from PanCAD.geometry import (PanCADThing,
-                             AbstractGeometry,
-                             AbstractFeature,
-                             Circle,
-                             CoordinateSystem,
-                             Ellipse,
-                             FeatureContainer,
-                             LineSegment,
-                             Sketch,
-                             Extrude)
-from PanCAD.geometry.constraints import AbstractConstraint
-from PanCAD.geometry.constants import ConstraintReference
-
-from ._map_typing import (
-    FeatureID,
-    FreeCADID,
-    InternalAlignmentMap,
-    SketchElementID,
-    SketchSubGeometryID,
-    SubFeatureID,
-    SubFeatureMap,
-    SubGeometryMap,
+from PanCAD.geometry import (
+    PanCADThing, AbstractGeometry, AbstractFeature, FeatureContainer, Sketch,
 )
+from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry.constraints import AbstractConstraint
+
+from ._application_types import (
+    FreeCADBody,
+    FreeCADConstraint,
+    FreeCADFeature,
+    FreeCADGeometry,
+    FreeCADCADObject,
+    FreeCADOrigin,
+)
+from .constants import (
+    EdgeSubPart, ConstraintType, InternalAlignmentType, ListName, ObjectType,
+)
+from ._map_typing import (
+    FeatureID, FreeCADID, SketchElementID, SketchSubGeometryID, SubFeatureID,
+)
+
+if TYPE_CHECKING:
+    from types import GenericAlias
+    from . import App
+    from ._map_typing import InternalAlignmentMap, SubFeatureMap, SubGeometryMap
 
 class FreeCADMap(MutableMapping):
     """A class implementing a custom mapping between PanCAD elements and FreeCAD
@@ -62,10 +50,10 @@ class FreeCADMap(MutableMapping):
         _pancad_to_freecad_geometry,
     )
     from ._element_links import (
-        _link_pancad_to_freecad_feature_geometry,
-        _link_pancad_to_freecad_geometry,
+        _link_features,
+        _link_geometry,
     )
-    from .sketch_constraints import (
+    from ._constraint_translation import (
         _freecad_to_pancad_constraint,
         _freecad_to_pancad_add_constraints,
         _pancad_to_freecad_constraint,
@@ -105,7 +93,7 @@ class FreeCADMap(MutableMapping):
             for child in children:
                 self.add_freecad_feature(child)
         elif feature.TypeId == ObjectType.SKETCH:
-            self._link_pancad_to_freecad_feature_geometry(pancad_feature,
+            self._link_features(pancad_feature,
                                                           feature)
             self._freecad_to_pancad_add_constraints(feature, pancad_feature)
         return self
@@ -129,7 +117,7 @@ class FreeCADMap(MutableMapping):
     @add_pancad_feature.register
     def _sketch(self, sketch: Sketch) -> Self:
         freecad_sketch = self._pancad_to_freecad_feature(sketch)
-        self._link_pancad_to_freecad_feature_geometry(sketch, freecad_sketch)
+        self._link_features(sketch, freecad_sketch)
         self._pancad_to_freecad_add_constraints(sketch, freecad_sketch)
         return self
     
@@ -358,7 +346,7 @@ class FreeCADMap(MutableMapping):
     
     def __setitem__(self, key: AbstractFeature, value: FreeCADFeature) -> None:
         if isinstance(key, AbstractFeature):
-            self._link_pancad_to_freecad_feature_geometry(key, value)
+            self._link_features(key, value)
         else:
             raise TypeError("Given a non-feature element"
                             f" {value.__class__}. Geometry can only be"
@@ -860,5 +848,3 @@ class _FreeCADSketchConstraintMap(MutableMapping):
                 sketch_strings.append("\n".join(list_strings))
             output_strings.append("\n".join(sketch_strings))
         return "{" + "\n".join(output_strings) + "}"
-    
-    

@@ -2,23 +2,19 @@
 A module providing functions to read FreeCAD files formatted like part files 
 into a PanCAD PartFile object.
 """
-from collections import OrderedDict
-import os
+from __future__ import annotations
+
 import pathlib
-from typing import Self
-
-import numpy as np
-import quaternion
-
-from . import App, PartDesign, Sketcher, Part
-from .constants import ObjectType, PadType
-from .feature_mappers import FreeCADMap
-from .sketch_geometry import get_pancad_sketch_geometry
-from .to_part_file import add_feature_to_freecad
+from typing import Self, TYPE_CHECKING
 
 from PanCAD.filetypes import PartFile
-from PanCAD.geometry import CoordinateSystem, Sketch, Extrude
-from PanCAD.geometry.constants import ConstraintReference, FeatureType
+
+from . import App
+from .constants import ObjectType, PadType
+from ._feature_mappers import FreeCADMap
+
+if TYPE_CHECKING:
+    from ._application_types import FreeCADBody
 
 class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
@@ -50,7 +46,6 @@ class FreeCADFile:
         :returns: The new FreeCADFile.
         :raises ValueError: When part_file is not a PartFile.
         """
-        from PanCAD.cad.freecad.feature_mappers import FreeCADMap
         if isinstance(part_file, PartFile):
             # Use __new__ to bypass the init function
             new_file = cls.__new__(cls)
@@ -135,26 +130,12 @@ class FreeCADFile:
         return self._part_file
     
     # Private Methods #
-    def _get_bodies(self) -> list[Part.BodyBase]:
+    def _get_bodies(self) -> list[FreeCADBody]:
         """Returns a list of all body objects in the file."""
         return list(
             filter(lambda obj: obj.TypeId == ObjectType.BODY,
                    self._document.Objects)
         )
-    
-    def _get_part_file_coordinate_system(self) -> CoordinateSystem:
-        """Returns the equivalent PanCAD coordinate system from the primary part 
-        file FreeCAD body origin.
-        """
-        position = list(self._body.Placement.Base)
-        quaternion = np.quaternion(
-            *list(
-                map(self._body.Placement.Rotation.Q.__getitem__, [3, 0, 1, 2])
-            )
-        )
-        uid = self._body.Label + "_coordinate_system"
-        
-        return CoordinateSystem.from_quaternion(position, quaternion, uid=uid)
     
     def _init_part_file_like(self) -> None:
         """Initializes a part-like file from FreeCAD."""
@@ -164,76 +145,6 @@ class FreeCADFile:
         self._mapping = FreeCADMap(self._document, self._part_file)
         body = self._get_bodies()[0]
         self._mapping.add_freecad_feature(body)
-    
-    def _translate_pad(self, pad: Part.Feature, feature_map: dict) -> dict:
-        """Adds the FreeCAD pad to the given feature map.
-        
-        :param pad: A FreeCAD Pad object.
-        :param feature_map: The mapping from the FreeCAD object to the 
-            equivalent PanCAD object.
-        :returns: The updated feature_map.
-        """
-        profile_sketch, *_ = pad.Profile
-        sketch, *_ = feature_map[profile_sketch]
-        feature_type = PadType(pad.Type).get_feature_type(pad.Midplane,
-                                                          pad.Reversed)
-        extrude = Extrude(sketch,
-                          uid=pad.Label,
-                          feature_type=feature_type,
-                          length=pad.Length.Value,
-                          opposite_length=pad.Length2.Value,
-                          is_midplane=pad.Midplane,
-                          is_reverse_direction=pad.Reversed,
-                          unit=self.STORED_UNIT)
-        feature_map.update(
-            map_freecad(extrude, pad, from_freecad=True)
-        )
-        return feature_map
-    
-    def _translate_sketch_from_freecad(self,
-                                       sketch: Sketcher.Sketch,
-                                       feature_map: dict) -> dict:
-        """Adds the FreeCAD sketch and its geometry to the given feature map.
-        
-        :param sketch: A FreeCAD Sketch object.
-        :param feature_map: The mapping from the FreeCAD object to the 
-            equivalent PanCAD object.
-        :returns: The updated feature_map.
-        """
-        if len(sketch.AttachmentSupport) != 1:
-            # Check whether the sketch is attached in a way that PanCAD doesn't 
-            # support
-            raise ValueError(f"Expected length of AttachmentSupport = 1,"
-                             f" given: {sketch.AttachmentSupport}")
-        elif len(sketch.AttachmentSupport[0]) != 2:
-            raise ValueError("Expected length of AttachmentSupport[0] = 2,"
-                             f" given: {sketch.AttachmentSupport[0]}")
-        
-        attachment_support = sketch.AttachmentSupport[0][0]
-        base_geometry, base_reference = feature_map[attachment_support]
-        pancad_sketch = Sketch(coordinate_system=base_geometry,
-                               plane_reference=base_reference,
-                               uid=sketch.Label)
-        feature_map.update(
-            map_freecad(pancad_sketch, sketch, from_freecad=True)
-        )
-        for i, geometry in enumerate(sketch.Geometry):
-            pancad_geometry = get_pancad_sketch_geometry(geometry)
-            pancad_sketch.add_geometry(pancad_geometry,
-                                       sketch.getConstruction(i))
-            feature_map.update(
-                map_freecad(pancad_geometry,
-                            geometry,
-                            from_freecad=True,
-                            parent_sketch=pancad_sketch,
-                            index=i)
-            )
-        
-        for constraint in sketch.Constraints:
-            temp = add_pancad_sketch_constraint(constraint, pancad_sketch)
-            if temp is not None:
-                pancad_sketch = temp
-        return feature_map
     
     # Python Dunders #
     def __fs_path__(self):
