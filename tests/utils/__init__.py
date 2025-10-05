@@ -1,0 +1,1 @@
+from ._file_cleanup import delete_all_suffix

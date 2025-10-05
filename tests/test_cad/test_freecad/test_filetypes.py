@@ -1,24 +1,16 @@
-import os
+from os.path import join
 from pathlib import Path
 import unittest
 
-import PanCAD
+from PanCAD import PartFile
 from PanCAD.cad.freecad import FreeCADFile
-from PanCAD.filetypes import PartFile
+from tests import SAMPLE_FREECAD
+from tests.utils import delete_all_suffix
 
-class TestReadSample(unittest.TestCase):
+class TestReadFile(unittest.TestCase):
     
     def setUp(self):
-        self.tests = os.path.abspath(
-            os.path.join(PanCAD.__file__, "..", "..", "..", "tests")
-        )
-        self.sample_freecad = os.path.join(self.tests, "sample_freecad")
-
-class TestReadFile(TestReadSample):
-    
-    def setUp(self):
-        super().setUp()
-        self.filepath = os.path.join(self.sample_freecad, "cube_1x1x1.FCStd")
+        self.filepath = join(SAMPLE_FREECAD, "cube_1x1x1.FCStd")
         self.filename = "cube_1x1x1"
         self.sketch_label = "cube_profile"
         
@@ -53,19 +45,16 @@ class TestReadFile(TestReadSample):
             self.assertEqual(len(sketch.constraints),
                              self.sketch_constraint_count)
     
-    @unittest.skip
     def test_set_path_with_fcstd(self):
         file = FreeCADFile(self.filepath)
         self.assertEqual(file.filepath, self.filepath)
         self.assertEqual(file.stem, Path(self.filepath).stem)
     
-    @unittest.skip
     def test_set_path_without_fcstd(self):
         file = FreeCADFile(self.filepath)
         with self.assertRaises(ValueError):
             file.filepath = Path(self.filepath).with_suffix(".pdf")
     
-    @unittest.skip
     def test_set_stem_with_fcstd(self):
         file = FreeCADFile(self.filepath)
         file.stem = "fake.FCStd"
@@ -73,7 +62,6 @@ class TestReadFile(TestReadSample):
         self.assertEqual(file.filepath,
                          str(Path(self.filepath).with_name("fake.FCStd")))
     
-    @unittest.skip
     def test_set_stem_without_fcstd(self):
         file = FreeCADFile(self.filepath)
         file.stem = "fake"
@@ -81,11 +69,14 @@ class TestReadFile(TestReadSample):
         self.assertEqual(file.filepath,
                          str(Path(self.filepath).with_name("fake.FCStd")))
     
-    @unittest.skip
     def test_set_stem_without_fcstd(self):
         file = FreeCADFile(self.filepath)
         with self.assertRaises(ValueError):
             file.stem = "fake.pdf"
+    
+    @classmethod
+    def tearDownClass(cls):
+        delete_all_suffix(SAMPLE_FREECAD, ".FCBak")
 
 if __name__ == "__main__":
     unittest.main()
