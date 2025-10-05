@@ -156,6 +156,17 @@ class PartFile(PanCADThing):
                 return feature
         raise LookupError(f"File has no feature with uid '{uid}'")
     
+    def get_feature_by_name(self, name: str) -> AbstractFeature:
+        for feature in self.container.features:
+            if feature.name == name:
+                return feature
+            elif isinstance(feature, FeatureContainer):
+                try:
+                    return feature.get_feature_by_name(name)
+                except LookupError:
+                    pass
+        raise LookupError(f"No feature named '{name}' found!")
+    
     def get_features(self) -> tuple[AbstractFeature]:
         """Returns all of the PartFile's stored features."""
         return self.container.features

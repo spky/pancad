@@ -62,6 +62,17 @@ class FeatureContainer(AbstractFeature):
         else:
             return self._features + (self.context,)
     
+    def get_feature_by_name(self, name: str) -> AbstractFeature:
+        for feature in self.features:
+            if feature.name == name:
+                return feature
+            elif isinstance(feature, FeatureContainer):
+                try:
+                    return feature.get_feature_by_name(name)
+                except LookupError:
+                    pass
+        raise LookupError(f"No feature named '{name}' found!")
+    
     # Getters #
     @property
     def context(self) -> FeatureContainer | None:

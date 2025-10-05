@@ -22,8 +22,8 @@ class TestReadFile(TestReadSample):
         self.filename = "cube_1x1x1"
         self.sketch_label = "cube_profile"
         
-        self.feature_count = 2
-        # Sketch and Pad
+        self.feature_count = 3
+        # Coordinate System, Sketch and Pad
         
         self.sketch_geometry_count = 4
         # 4 Lines
@@ -36,7 +36,6 @@ class TestReadFile(TestReadSample):
         file = FreeCADFile(self.filepath)
         part_file = file.to_pancad()
     
-    @unittest.skip
     def test_read_cube_direct(self):
         file = PartFile.from_freecad(self.filepath)
         with self.subTest("Filename mismatch"):
@@ -45,8 +44,7 @@ class TestReadFile(TestReadSample):
         with self.subTest("Feature Count !=", geometry=file.get_features()):
             self.assertEqual(len(file.get_features()), self.feature_count)
         
-        sketch = file.get_feature(self.sketch_label)
-        
+        sketch = file.get_feature_by_name(self.sketch_label)
         with self.subTest("Sketch Geometry Count !=", geometry=sketch.geometry):
             self.assertEqual(len(sketch.geometry), self.sketch_geometry_count)
         
