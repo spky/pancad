@@ -384,7 +384,8 @@ class Ellipse(AbstractGeometry):
         """
         return self._get_point_at_angle(radians(90))
     
-    def get_reference(reference: ConstraintReference) -> Self | Point | Line:
+    def get_reference(self,
+                      reference: ConstraintReference) -> Self | Point | Line:
         match reference:
             case ConstraintReference.CORE:
                 return self

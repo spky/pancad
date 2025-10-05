@@ -663,10 +663,8 @@ class _FreeCADSketchConstraintMap(MutableMapping):
         for index, constraint in enumerate(sketch.Constraints):
             if constraint.Type != ConstraintType.INTERNAL_ALIGNMENT:
                 continue
-            
-            self._id_map[(sketch_id,
-                          ListName.INTERNAL_ALIGNMENT,
-                          index)] = constraint
+            constraint_id = (sketch_id, ListName.INTERNAL_ALIGNMENT, index)
+            self._id_map[constraint_id] = constraint
             parent_geometry_index = constraint.Second
             content = ElementTree.fromstring(constraint.Content)
             internal_alignment_type = InternalAlignmentType(
@@ -676,7 +674,7 @@ class _FreeCADSketchConstraintMap(MutableMapping):
             if parent_geometry_index not in internals:
                 internals[parent_geometry_index] = dict()
             internals[parent_geometry_index].update(
-                {internal_alignment_type: index}
+                {internal_alignment_type: constraint.First}
             )
     
     def get_constrained(self,

@@ -51,7 +51,6 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         self.file.to_freecad(self.filepath)
     
     def test_create_ellipse_extrude(self):
-        # TODO: Add constraints
         filename = stack()[0].function + ".FCStd"
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)

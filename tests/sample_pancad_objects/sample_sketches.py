@@ -8,8 +8,10 @@ from PanCAD.geometry import (
     LineSegment,
     Sketch,
 )
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry.constants import (ConstraintReference as CR,
+                                       SketchConstraint as SC)
 from PanCAD.geometry.constraints import (
+    make_constraint,
     Coincident,
     Diameter,
     Distance,
@@ -18,7 +20,7 @@ from PanCAD.geometry.constraints import (
 )
 
 def circle(coordinate_system: CoordinateSystem=None,
-           plane_reference: ConstraintReference=ConstraintReference.XY,
+           plane_reference: CR=CR.XY,
            name: str="Test Circle",
            radius: Real=5,
            unit: str="mm",
@@ -34,15 +36,13 @@ def circle(coordinate_system: CoordinateSystem=None,
                     geometry=[circle],
                     name=name)
     sketch.constraints = [
-        Diameter(circle, ConstraintReference.CORE,
-                 radius, unit=unit),
-        Coincident(circle, ConstraintReference.CENTER,
-                   sketch, ConstraintReference.ORIGIN)
+        Diameter(circle, CR.CORE, radius, unit=unit),
+        Coincident(circle, CR.CENTER, sketch, CR.ORIGIN)
     ]
     return sketch
 
 def square(coordinate_system: CoordinateSystem=None,
-           plane_reference: ConstraintReference=ConstraintReference.XY,
+           plane_reference: CR=CR.XY,
            name: str="Test Square",
            side: Real=1,
            unit: str="mm",
@@ -69,48 +69,48 @@ def square(coordinate_system: CoordinateSystem=None,
     
     if include_constraints:
         sketch.constraints = [
-            Horizontal(b, ConstraintReference.CORE),
-            Vertical(r, ConstraintReference.CORE),
-            Horizontal(t, ConstraintReference.CORE),
-            Vertical(l, ConstraintReference.CORE),
-            Coincident(b, ConstraintReference.START,
-                       l, ConstraintReference.END),
-            Coincident(b, ConstraintReference.END,
-                       r, ConstraintReference.START),
-            Coincident(r, ConstraintReference.END,
-                       t, ConstraintReference.START),
-            Coincident(t, ConstraintReference.END,
-                       l, ConstraintReference.START),
-            Distance(b, ConstraintReference.CORE,
-                     t, ConstraintReference.CORE,
-                     side, unit="mm"),
-            Distance(r, ConstraintReference.CORE,
-                     l, ConstraintReference.CORE,
-                     side, unit="mm"),
-            Coincident(b, ConstraintReference.START,
-                       sketch, ConstraintReference.ORIGIN),
+            Horizontal(b, CR.CORE),
+            Vertical(r, CR.CORE),
+            Horizontal(t, CR.CORE),
+            Vertical(l, CR.CORE),
+            Coincident(b, CR.START, l, CR.END),
+            Coincident(b, CR.END, r, CR.START),
+            Coincident(r, CR.END, t, CR.START),
+            Coincident(t, CR.END, l, CR.START),
+            Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
+            Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
+            Coincident(b, CR.START, sketch, CR.ORIGIN),
         ]
     
     return sketch
 
 def ellipse(coordinate_system: CoordinateSystem=None,
-            plane_reference: ConstraintReference=ConstraintReference.XY,
+            plane_reference: CR=CR.XY,
             name: str = "Test Ellipse",
             center: tuple[Real]=None,
             semi_major_axis: Real=2,
             semi_minor_axis: Real=1,
-            angle_degrees: Real=45) -> Sketch:
+            angle_degrees: Real=0) -> Sketch:
     """Returns an angled ellipse in a sketch."""
     if center is None:
         center = (0, 0)
-    geometry = [
-        Ellipse.from_angle(center,
-                           semi_major_axis,
-                           semi_minor_axis,
+    e = Ellipse.from_angle(center,
+                           semi_major_axis, semi_minor_axis,
                            radians(angle_degrees))
-    ]
+    a = 20
+    b = 10
+    unit = "mm"
+    geometry = [e]
     sketch = Sketch(coordinate_system=coordinate_system,
                     plane_reference=plane_reference,
                     geometry=geometry,
                     name=name)
+    sketch.constraints = [
+        make_constraint(SC.COINCIDENT, e, CR.CENTER, sketch, CR.ORIGIN),
+        make_constraint(SC.HORIZONTAL, e, CR.X),
+        make_constraint(SC.DISTANCE, e, CR.X_MIN, e, CR.X_MAX,
+                        value=a, unit=unit),
+        make_constraint(SC.DISTANCE, e, CR.Y_MIN, e, CR.Y_MAX,
+                        value=b, unit=unit),
+    ]
     return sketch

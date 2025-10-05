@@ -325,9 +325,6 @@ def _distance(self, constraint: Distance) -> FreeCADConstraint:
         """
         a_index, _, b_index, _ = inputs
         inputs = (a_index, EdgeSubPart.START, b_index)
-    else:
-        # FreeCAD doesn't use the last reference in all known cases.
-        inputs.pop()
     
     freecad_value = App.Units.Quantity(f"{constraint.value} {constraint.unit}")
     return Sketcher.Constraint(constraint_type, *inputs, freecad_value)
@@ -429,23 +426,24 @@ def reference_to_subpart(reference: ConstraintReference) -> EdgeSubPart:
     :returns: The FreeCAD equivalent to the reference.
     """
     match reference:
-        case ConstraintReference.CORE:
+        case (ConstraintReference.CORE
+                | ConstraintReference.X
+                | ConstraintReference.Y):
             return EdgeSubPart.EDGE
-        case ConstraintReference.X:
-            return EdgeSubPart.EDGE
-        case ConstraintReference.Y:
-            return EdgeSubPart.EDGE
-        case ConstraintReference.START:
-            return EdgeSubPart.START
-        case ConstraintReference.END:
-            return EdgeSubPart.END
-        case ConstraintReference.CENTER:
-            return EdgeSubPart.CENTER
-        case ConstraintReference.ORIGIN:
             # The origin of sketch coordinate systems in FreeCAD is arbitrarily 
             # the start point of the sketch coordinate system's x-axis line 
             # segment located in the Sketch's ExternalGeo list index 0.
+        case (ConstraintReference.START
+                | ConstraintReference.X_MIN
+                | ConstraintReference.Y_MIN
+                | ConstraintReference.ORIGIN):
             return EdgeSubPart.START
+        case (ConstraintReference.END
+                | ConstraintReference.X_MAX
+                | ConstraintReference.Y_MAX):
+            return EdgeSubPart.END
+        case ConstraintReference.CENTER:
+            return EdgeSubPart.CENTER
         case _:
             raise ValueError(f"Unsupported reference: {reference}")
 

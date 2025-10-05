@@ -11,7 +11,7 @@ from abc import abstractmethod
 from typing import NoReturn
 
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
-from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
+from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem, Ellipse
 from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
@@ -28,7 +28,7 @@ class AbstractSnapTo(AbstractConstraint):
     :param uid: The unique id of the constraint.
     """
     # Type Tuples for checking with isinstance()
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Ellipse)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
     TWO_GEOMETRY_TYPES = (Point,)
     GEOMETRY_TYPES = ONE_GEOMETRY_TYPES + TWO_GEOMETRY_TYPES
@@ -111,8 +111,8 @@ class AbstractSnapTo(AbstractConstraint):
         """Raises an error if the portions of the constrained geometries are not 
         one of the allowed types.
         """
-        if self._b is None and not isinstance(self._a,
-                                              self.ONE_GEOMETRY_TYPES):
+        if self._b is None and not all([isinstance(g, self.ONE_GEOMETRY_TYPES)
+                                        for g in self.get_geometry()]):
             name = self.__class__.__name__
             raise ValueError(
                 f"A single geometry {self.__class__.__name__} relation can only"

@@ -14,7 +14,13 @@ from typing import NoReturn, Type
 
 from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
 from PanCAD.geometry import (
-    Point, Line, LineSegment, Plane, CoordinateSystem, Circle
+    Circle,
+    CoordinateSystem,
+    Ellipse,
+    Line,
+    LineSegment,
+    Plane,
+    Point,
 )
 from PanCAD.geometry.constants import ConstraintReference
 
@@ -157,7 +163,7 @@ class Coincident(AbstractStateConstraint):
     - :class:`~PanCAD.geometry.Plane`
     - :class:`~PanCAD.geometry.Point`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem,
+    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
                          Line, LineSegment,
                          Plane, Point)
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane, Point)
@@ -180,7 +186,7 @@ class Equal(AbstractStateConstraint):
     - :class:`~PanCAD.geometry.Circle`
     - :class:`~PanCAD.geometry.LineSegment`
     """
-    CONSTRAINED_TYPES = (LineSegment, Circle)
+    CONSTRAINED_TYPES = (LineSegment, Circle, Ellipse)
     GEOMETRY_TYPES = (LineSegment, Circle)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -198,7 +204,7 @@ class Parallel(AbstractStateConstraint):
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -215,7 +221,7 @@ class Perpendicular(AbstractStateConstraint):
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -233,7 +239,8 @@ class Tangent(AbstractStateConstraint):
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane,
+                         Ellipse)
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)

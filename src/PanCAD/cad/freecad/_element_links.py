@@ -158,7 +158,6 @@ def _ellipse(self,
                    ConstraintReference.CENTER: index}
     # Get the internal geometry and add to subgeometry
     internals = self._constraint_map.get_internal_geometry(freecad_id)
-    
     for alignment_type, index in internals.items():
         match alignment_type:
             # First element is the primary reference

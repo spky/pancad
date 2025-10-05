@@ -14,7 +14,7 @@ from typing import NoReturn
 
 from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
-    Circle, CoordinateSystem, Line, LineSegment, Plane, Point
+    Circle, CoordinateSystem, Line, LineSegment, Plane, Point, Ellipse
 )
 from PanCAD.geometry.constants import ConstraintReference
 
@@ -111,7 +111,7 @@ class Angle(AbstractValue):
     :param uid: Unique identifier of the constraint.
     :param is_radians: Whether provided value is in radians. Defaults to False.
     """
-    CONSTRAINED_TYPES = (Line, LineSegment)
+    CONSTRAINED_TYPES = (Line, LineSegment, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -351,7 +351,8 @@ class Distance(Abstract2GeometryDistance):
     - :class:`~PanCAD.geometry.CoordinateSystem`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane,
+                         Ellipse)
     GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -380,7 +381,7 @@ class Distance(Abstract2GeometryDistance):
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Ellipse)
     GEOMETRY_TYPES = (Point, Line, LineSegment)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
