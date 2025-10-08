@@ -17,6 +17,17 @@ class FeatureContainer(AbstractFeature):
     """A class representing a grouping of features in CAD applications. Strictly 
     defines only the software ownership, not what geometry the features modify 
     or create.
+    
+    :param features: The features that the new container will have inside it. 
+        Any features with their context set to None will have it set to the new 
+        FeatureContainer.
+    :param uid: The unique id of the FeatureContainer. When set to None the uid 
+        is automatically generated.
+    :param name: The name of the feature displayed to the users in CAD.
+    :param context: :param context: The feature that acts as the context for 
+        this feature, usually a :class:`~PanCAD.geometry.FeatureContainer` or 
+        None. None indicates that this FeatureContainer is a top level CAD 
+        object.
     """
     
     def __init__(self,
@@ -36,6 +47,7 @@ class FeatureContainer(AbstractFeature):
         
         :param feature: The feature to add.
         :returns: The updated FeatureContainer.
+        
         :raises LookupError: Raised if the feature's dependencies are not 
             already in the FeatureContainer.
         """
@@ -63,6 +75,11 @@ class FeatureContainer(AbstractFeature):
             return self._features + (self.context,)
     
     def get_feature_by_name(self, name: str) -> AbstractFeature:
+        """Returns a feature with the name from the FeatureContainer or its 
+        subcontainers.
+        
+        :raises LookupError: Raised if there is no feature with the name.
+        """
         for feature in self.features:
             if feature.name == name:
                 return feature
@@ -80,6 +97,13 @@ class FeatureContainer(AbstractFeature):
     
     @property
     def features(self) -> tuple[AbstractFeature]:
+        """The features inside of the FeatureContainer.
+        
+        :getter: Returns the features inside the container.
+        :setter: Sets the features inside the container and sets their context 
+            to the container if it does not already have a context.
+        """
+        
         return self._features
     
     # Setters #

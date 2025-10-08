@@ -93,6 +93,7 @@ class Angle(AbstractValue):
     
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.Ellipse`
     
     :param geometry_a: First line-like, defines the x-axis equivalent for
         quadrant selection.
@@ -345,10 +346,11 @@ class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D 
     or 3D.
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     - :class:`~PanCAD.geometry.Plane`
     """
     CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane,
@@ -403,20 +405,22 @@ class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class VerticalDistance(AbstractDistance2D):
     """A constraint that sets the vertical distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class Radius(Abstract1GeometryDistance):

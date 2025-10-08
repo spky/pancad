@@ -3,23 +3,12 @@ FreeCAD constraint types like Coincident, Vertical and other features."""
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from PanCAD.geometry.constants import SketchConstraint
-from PanCAD.geometry.constraints import (
-    AbstractConstraint,
-    Angle,
-    Coincident,
-    Diameter,
-    Distance,
-    Equal,
-    Horizontal,
-    HorizontalDistance, 
-    Parallel,
-    Perpendicular,
-    Radius,
-    Vertical,
-    VerticalDistance, 
-)
+
+if TYPE_CHECKING:
+    from PanCAD.geometry.constraints import AbstractConstraint
 
 class ConstraintType(StrEnum):
     """An enumeration used to define which FreeCAD constraints are supported."""
@@ -40,6 +29,12 @@ class ConstraintType(StrEnum):
     VERTICAL = "Vertical"
     
     def get_sketch_constraint(self) -> SketchConstraint:
+        """Returns the ConstraintType's equivalent 
+        :class:`~PanCAD.geometry.constants.SketchConstraint` \.
+        
+        :raises ValueError: When the ConstraintType does not have an equivalent 
+            SketchConstraint.
+        """
         match self:
             case ConstraintType.ANGLE:
                 return SketchConstraint.ANGLE
@@ -78,7 +73,13 @@ class ConstraintType(StrEnum):
     
     @classmethod
     def from_pancad(cls, constraint: AbstractConstraint) -> ConstraintType:
-        match type(constraint).__qualname__:
+        """Returns the PanCAD constraint's equivalent ConstraintType.
+        
+        :raises TypeError: Raised when the PanCAD constraint does not have have 
+            a ConstraintType equivalent.
+        """
+        type_ = type(constraint).__qualname__
+        match type_:
             case "Angle":
                 return ConstraintType.ANGLE
             case "Coincident":
@@ -104,7 +105,5 @@ class ConstraintType(StrEnum):
             case "VerticalDistance":
                 return ConstraintType.DISTANCE_Y
             case _:
-                raise ValueError(
-                    f"Unsupported type {type(constraint).__qualname__}"
-                )
+                raise TypeError(f"Unsupported type {type_}")
             

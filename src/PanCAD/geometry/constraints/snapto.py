@@ -147,10 +147,11 @@ class Horizontal(AbstractSnapTo):
     geometries horizontal relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class Vertical(AbstractSnapTo):
@@ -158,8 +159,9 @@ class Vertical(AbstractSnapTo):
     geometries vertical relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """

@@ -158,6 +158,7 @@ class Coincident(AbstractStateConstraint):
     
     - :class:`~PanCAD.geometry.Circle`
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
@@ -184,6 +185,7 @@ class Equal(AbstractStateConstraint):
     Can constrain:
     
     - :class:`~PanCAD.geometry.Circle`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.LineSegment`
     """
     CONSTRAINED_TYPES = (LineSegment, Circle, Ellipse)
@@ -200,6 +202,7 @@ class Parallel(AbstractStateConstraint):
     have the same distance continuously between them. Can constrain:
     
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
@@ -217,6 +220,7 @@ class Perpendicular(AbstractStateConstraint):
     relative to each other.
     
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
@@ -235,6 +239,7 @@ class Tangent(AbstractStateConstraint):
     
     - :class:`~PanCAD.geometry.Circle`
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`

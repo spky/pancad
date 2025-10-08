@@ -1,15 +1,15 @@
-"""A module providing an enumeration class for the FreeCAD constraint Internal Alignment Types 
-options.
+"""A module providing an enumeration class for the FreeCAD constraint Internal 
+Alignment Types options.
 """
 from enum import IntEnum
 
 from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.cad.freecad.constants import EdgeSubPart
 
+from . import EdgeSubPart
 
 class InternalAlignmentType(IntEnum):
-    """An enumeration class used to define FreeCAD InternalAlignment constraint 
-    types.
+    """An enumeration used to define FreeCAD InternalAlignment constraint types 
+    supported by PanCAD.
     """
     
     ELLIPSE_MAJOR_DIAMETER = 1
@@ -25,6 +25,9 @@ class InternalAlignmentType(IntEnum):
                                  sub_part: EdgeSubPart) -> ConstraintReference:
         """Returns the equivalent constraint references for the internal 
         alignment type and a provided EdgeSubPart of the internal geometry.
+        
+        :raises ValueError: Raised when provided an unexpected EdgeSubPart for 
+            the InternalAlignmentType.
         """
         match self:
             case self.ELLIPSE_MAJOR_DIAMETER:
@@ -35,6 +38,9 @@ class InternalAlignmentType(IntEnum):
                         return ConstraintReference.X_MAX
                     case EdgeSubPart.END:
                         return ConstraintReference.X_MIN
+                    case _:
+                        raise ValueError("Unexpected EdgeSubPart for an ellipse"
+                                         f" minor diameter: {sub_part}")
             case self.ELLIPSE_MINOR_DIAMETER:
                 match sub_part:
                     case EdgeSubPart.EDGE:
@@ -43,15 +49,18 @@ class InternalAlignmentType(IntEnum):
                         return ConstraintReference.Y_MAX
                     case EdgeSubPart.END:
                         return ConstraintReference.Y_MIN
+                    case _:
+                        raise ValueError("Unexpected EdgeSubPart for an ellipse"
+                                         f" minor diameter: {sub_part}")
             case self.ELLIPSE_FOCUS_1:
                 if sub_part == EdgeSubPart.START:
                     return ConstraintReference.FOCAL_PLUS
                 else:
-                    raise ValueError("Unexpected EdgeSubPart for positive focal"
-                                     f" point: {sub_part}")
+                    raise ValueError("Unexpected EdgeSubPart for a positive"
+                                     f" focal point: {sub_part}")
             case self.ELLIPSE_FOCUS_2:
                 if sub_part == EdgeSubPart.START:
                     return ConstraintReference.FOCAL_MINUS
                 else:
-                    raise ValueError("Unexpected EdgeSubPart for positive focal"
-                                     f" point: {sub_part}")
+                    raise ValueError("Unexpected EdgeSubPart for a negative"
+                                     f" focal point: {sub_part}")

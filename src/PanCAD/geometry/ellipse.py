@@ -60,7 +60,7 @@ class Ellipse(AbstractGeometry):
                  semi_major_axis: Real,
                  semi_minor_axis: Real,
                  major_direction: VectorLike,
-                 uid: str=None) -> None: ...
+                 uid: str | None=None) -> None: ...
     
     @overload
     def __init__(self,
@@ -69,7 +69,7 @@ class Ellipse(AbstractGeometry):
                  semi_minor_axis: Real,
                  major_direction: VectorLike,
                  minor_direction: VectorLike,
-                 uid: str=None) -> None: ...
+                 uid: str | None=None) -> None: ...
     
     def __init__(self, center, semi_major_axis, semi_minor_axis,
                  major_direction, minor_direction=None, uid=None):

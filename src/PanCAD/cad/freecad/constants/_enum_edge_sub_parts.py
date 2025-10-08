@@ -2,10 +2,16 @@
 options. See the following link for more information:
 https://wiki.freecad.org/Sketcher_scripting#Identifying_the_numbering_of_the_sub-parts_of_a_line
 """
-from enum import IntEnum
+from __future__ import annotations
 
-from PanCAD.geometry import AbstractGeometry, Sketch
+from enum import IntEnum
+from typing import TYPE_CHECKING
+
+from PanCAD.geometry import Sketch
 from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractGeometry
 
 class EdgeSubPart(IntEnum):
     """An enumeration class used to define FreeCAD constraints with the 
@@ -29,14 +35,24 @@ class EdgeSubPart(IntEnum):
                                  geometry: AbstractGeometry,
                                  reference: ConstraintReference,
                                  ) -> ConstraintReference:
-        """Returns the equivalent subpart's equivalent constraint reference based 
-        on the part of the geometry it's applied to.
+        """Returns the EdgeSubPart's equivalent
+        :class:`PanCAD.geometry.constants.ConstraintReference` based on the part 
+        of the equivalent PanCAD geometry that it's applied to.
         
         :param geometry: The parent geometry.
-        :param reference: A ConstraintReference to the portion of geometry.
-        :returns: The equivalent ConstraintReference.
+        :param reference: A ConstraintReference to the portion of the parent 
+            geometry.
+        :returns: The equivalent ConstraintReference for the parent's child 
+            geometry.
+        :raises ValueError: Raised when there is not an equivalent 
+            ConstraintReference.
         """
         if isinstance(geometry, Sketch):
+            # Handle Sketches as a special case. FreeCAD sketches have their 
+            # origin and axes defined using the first two line segments in their 
+            # ExternalGeo list. The EdgeSubPart for the corresponding part of 
+            # those line segments needs to return those corresponding 
+            # ConstraintReferences
             if reference == ConstraintReference.X:
                 match self:
                     case EdgeSubPart.EDGE:
@@ -44,13 +60,13 @@ class EdgeSubPart(IntEnum):
                     case EdgeSubPart.START:
                         return ConstraintReference.ORIGIN
                     case _:
-                        raise ValueError(f"Unsupported subpart: {sub_part}")
+                        raise ValueError(f"Unsupported reference: {reference}")
             elif reference == ConstraintReference.Y:
                 match self:
                     case EdgeSubPart.EDGE:
                         return ConstraintReference.Y
                     case _:
-                        raise ValueError(f"Unsupported subpart: {sub_part}")
+                        raise ValueError(f"Unsupported reference: {reference}")
             else:
                 raise ValueError(f"Unsupported reference: {reference}")
         else:
@@ -64,4 +80,4 @@ class EdgeSubPart(IntEnum):
                 case EdgeSubPart.CENTER:
                     return ConstraintReference.CENTER
                 case _:
-                    raise ValueError(f"Unsupported subpart: {sub_part}")
+                    raise ValueError(f"Unsupported reference: {reference}")

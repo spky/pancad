@@ -6,6 +6,9 @@ from enum import StrEnum
 from PanCAD.geometry.constants import FeatureType
 
 class PadType(StrEnum):
+    """An enumeration used to define the FreeCAD Pad options supported by 
+    PanCAD.
+    """
     LENGTH = "Length"
     UP_TO_LAST = "UpToLast"
     UP_TO_FIRST = "UpToFirst"
@@ -18,6 +21,12 @@ class PadType(StrEnum):
                          reversed_pad: bool) -> FeatureType:
         """Returns the equivalent FeatureType based upon the settings of a 
         FreeCAD Pad.
+        
+        :param midplane: Whether the Pad is a midplane extrusion.
+        :param reversed_pad: Whether the Pad is a reversed extrusion.
+        :returns: The equivalent :class:`~PanCAD.geometry.constants.FeatureType` 
+            for the FreeCAD Pad settings.
+        :raises ValueError: When an unsupported PadType executes this function.
         """
         match self:
             case PadType.LENGTH:

@@ -6,7 +6,8 @@ from enum import StrEnum
 
 class ListName(StrEnum):
     """An enumeration class used to reference FreeCAD lists inside of features 
-    list sketches.
+    list sketches. Used to define a unique id to map FreeCAD features to PanCAD 
+    features.
     """
     
     CONSTRAINTS = "Constraints"

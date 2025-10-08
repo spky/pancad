@@ -14,14 +14,18 @@ in another application).
 """
 from __future__ import annotations
 
-from collections import defaultdict
 from pathlib import Path
-from typing import Sequence, Self
-from pprint import pformat
+from typing import Sequence, Self, TYPE_CHECKING
 
-from PanCAD.geometry import (CoordinateSystem, FeatureContainer, Sketch,
-                             AbstractFeature, PanCADThing)
-from PanCAD.filetypes.constants import SoftwareName
+from PanCAD.geometry import (
+    CoordinateSystem,
+    FeatureContainer,
+    PanCADThing,
+    Sketch,
+)
+
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractFeature
 
 class PartFile(PanCADThing):
     """A class representing a part file in CAD applications. PanCAD defines a 
@@ -53,10 +57,14 @@ class PartFile(PanCADThing):
     <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>`_ 
     for definitions of the 'dcterms' fields.
     """
+    DEFAULT_COORDINATE_SYSTEM_NAME = "Coordinate System"
+    """The name that auto-added coordinate systems are given if not externally 
+    provided when features are added.
+    """
     
     def __init__(self,
                  filename: str="New_PartFile",
-                 container: FeatureContainer=None,
+                 container: FeatureContainer | None=None,
                  *,
                  uid: str=None) -> None:
         self.filename = filename
@@ -69,8 +77,8 @@ class PartFile(PanCADThing):
         """Reads a FreeCAD file and returns it as a PanCAD PartFile.
         
         :param filepath: The filepath to a FreeCAD file structured like a 
-            PartFile.
-        :returns: The PanCAD equivalent of the FreeCAD file.
+            part file.
+        :returns: The PanCAD equivalent of the FreeCAD part file.
         """
         # Local import here to avoid circular imports
         from PanCAD.cad.freecad import FreeCADFile
@@ -80,7 +88,12 @@ class PartFile(PanCADThing):
     # Getters #
     @property
     def container(self) -> FeatureContainer:
-        """The primary FeatureContainer for the PartFile."""
+        """The primary FeatureContainer for the PartFile.
+        
+        :param getter: Returns the FeatureContainer.
+        :param setter: Sets the container to a new FeatureContainer. If set to 
+            None, an empty FeatureContainer is initialized.
+        """
         return self._container
     
     @property
@@ -95,12 +108,18 @@ class PartFile(PanCADThing):
     
     @property
     def features(self) -> tuple[AbstractFeature]:
-        """The features inside the PartFile"""
+        """The features inside the PartFile.
+        
+        :getter: Returns the features inside the PartFile's FeatureContainer.
+        :setter: Replaces the features inside the feature's FeatureContainer. 
+            Adds a default settings coordinate system if the first element in 
+            the input is not a coordinate system.
+        """
         return self.container.features
     
     # Setters #
     @container.setter
-    def container(self, feature_container: FeatureContainer) -> None:
+    def container(self, feature_container: FeatureContainer | None) -> None:
         if feature_container is None:
             self._container = FeatureContainer()
         else:
@@ -112,9 +131,9 @@ class PartFile(PanCADThing):
     
     @features.setter
     def features(self, new_features: tuple[AbstractFeature]) -> None:
-        if not isinstance(new_features[0], CoordinateSystem):
-            new_features = (CoordinateSystem(),) + new_features
-        self.container.features = new_features
+        self.container.features = None
+        for feature in new_features:
+            self.add_feature(feature)
     
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:
@@ -132,7 +151,7 @@ class PartFile(PanCADThing):
             # the FeatureContainer level since it only applies to PartFiles 
             # and not things like Folders.
             self.container.add_feature(
-                CoordinateSystem(name="Coordinate System")
+                CoordinateSystem(name=self.DEFAULT_COORDINATE_SYSTEM_NAME)
             )
         
         if isinstance(feature, Sketch) and feature.coordinate_system is None:
@@ -148,7 +167,8 @@ class PartFile(PanCADThing):
     def get_feature(self, uid: str) -> AbstractFeature:
         """Returns the feature with the given uid.
         
-        :raises LookupError: When no feature with the uid is in the file.
+        :raises LookupError: When no feature with the uid is in the file or its 
+            subcontainers.
         """
         
         for feature in self.container.features:
@@ -157,6 +177,11 @@ class PartFile(PanCADThing):
         raise LookupError(f"File has no feature with uid '{uid}'")
     
     def get_feature_by_name(self, name: str) -> AbstractFeature:
+        """Returns the feature with the given name.
+        
+        :raises LookupError: When no feature with the name is in the file or its 
+            subcontainers.
+        """
         for feature in self.container.features:
             if feature.name == name:
                 return feature
@@ -199,7 +224,7 @@ class PartFile(PanCADThing):
             dependency_lines = []
             for dependency in feature.get_dependencies():
                 dependency_lines.append(
-                    f"{dependency.__class__.__name__} '{dependency.uid}'"
+                    f"{dependency.__class__.__name__} '{dependency.name}'"
                 )
             
             preface = "Dependencies: "

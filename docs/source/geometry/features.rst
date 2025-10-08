@@ -9,6 +9,10 @@ Features
     :show-inheritance:
     :members:
 
+.. autoclass:: PanCAD.geometry.FeatureContainer
+    :show-inheritance:
+    :members:
+
 .. autoclass:: PanCAD.geometry.Sketch
     :show-inheritance:
     :members:

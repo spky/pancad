@@ -22,7 +22,8 @@ class Extrude(AbstractFeature):
     :param profile: The sketch defining the extrusion 2D shape.
     :param feature_type: The FeatureType defining the active direction(s) and 
         end conditions of the extrusion.
-    :param uid: The unique id of the Extrude. Defaults to None.
+    :param uid: The unique id of the Extrude. When set to None the uid is 
+        automatically generated.
     :param length: The length of the extrusion in the normal direction of the 
         plane of the profile sketch. Defaults to None.
     :param opposite_length: The length of the extrusion in the anti-normal 
@@ -36,6 +37,8 @@ class Extrude(AbstractFeature):
     :param unit: The unit of the length and opposite_length values. Defaults 
         to None.
     :param name: The name of the feature displayed to the users in CAD.
+    :param context: The feature that acts as the context for this feature, 
+        usually a :class:`~PanCAD.geometry.FeatureContainer`
     :raises ValueError: Raised for 
         :attr:`~PanCAD.geometry.constants.FeatureType.DIMENSION_TYPE` extrudes 
         if it is midplane and also has an opposite length defined or if length 

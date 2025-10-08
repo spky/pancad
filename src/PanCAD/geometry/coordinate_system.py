@@ -45,6 +45,8 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     :param context: The feature defining the context that the CoordinateSystem 
         exists inside of.
     :param name: The name of the feature displayed to the users in CAD.
+    :param context: The feature that acts as the context for this feature, 
+        usually a :class:`~PanCAD.geometry.FeatureContainer`
     """
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,

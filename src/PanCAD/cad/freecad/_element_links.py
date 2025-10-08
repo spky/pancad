@@ -1,4 +1,6 @@
-"""A module containing element linking methods for FreeCADMap."""
+"""A module containing element linking methods for FreeCADMap. These methods are 
+meant to be imported into the FreeCADMap class and used there or by each other.
+"""
 from __future__ import annotations
 
 from functools import singledispatchmethod
@@ -22,18 +24,16 @@ from ._application_types import (
 from ._map_typing import SketchElementID
 
 if TYPE_CHECKING:
-    from ._application_types import (
-        FreeCADCADObject,
-        FreeCADConstraint,
-        FreeCADFeature,
-        FreeCADGeometry,
-    )
+    from ._application_types import FreeCADFeature
 
 # Single Dispatches ############################################################
 @singledispatchmethod
-def _link_features(self, key: AbstractFeature, value: FreeCADCADObject) -> None:
+def _link_features(self, key: AbstractFeature, value: FreeCADFeature) -> None:
     """Adds a PanCAD parent and FreeCAD child feature pairing to the map along 
     with any geometry elements inside the feature.
+    
+    :param key: The PanCAD Feature to link.
+    :param value: The FreeCAD Feature to link.
     """
     raise TypeError(f"Unrecognized PanCAD geometry type {key.__class__}")
 
@@ -83,7 +83,7 @@ def _coordinate_system(self,
     for reference, feature_id in subelements.items():
         if feature_id not in reversed_subelements:
             # Will skip the ORIGIN reference since that is a duplicate.
-            reversed_subelements.update({feature_id: (key.uid, reference)})
+            reversed_subelements.update({feature_id: (key, reference)})
     self._freecad_to_pancad.update(reversed_subelements)
 
 @_link_features.register
@@ -102,10 +102,10 @@ def _feature_container(self,
 
 @_link_features.register
 def _sketch(self, key: Sketch, sketch: FreeCADSketch) -> None:
-    
-    # Map Feature
+    # First, map the Feature
     self._pancad_to_freecad[key.uid] = (key, sketch.ID)
     
+    # Link FreeCAD sketch origin/axes definition in its ExternalGeo list.
     y_axis_id = (sketch.ID, ListName.EXTERNALS, 1)
     x_axis_id = (sketch.ID, ListName.EXTERNALS, 0)
     subelements = {ConstraintReference.CORE: sketch.ID,
@@ -118,16 +118,15 @@ def _sketch(self, key: Sketch, sketch: FreeCADSketch) -> None:
          for reference, freecad_id in subelements.items()}
     )
     
-    # Map the geometry inside of the sketch
+    # Second, map the geometry inside of the sketch
     self._id_map[x_axis_id] = sketch.ExternalGeo[0]
     self._id_map[y_axis_id] = sketch.ExternalGeo[1]
-    self._geometry_map[x_axis_id] = dict.fromkeys(
-        [ConstraintReference.CORE,
-         ConstraintReference.X,
-         ConstraintReference.ORIGIN], 0
-    )
-    self._geometry_map[y_axis_id] = dict.fromkeys([ConstraintReference.CORE,
-                                                   ConstraintReference.Y], 1)
+    x_line_references = [ConstraintReference.CORE,
+                         ConstraintReference.X,
+                         ConstraintReference.ORIGIN]
+    y_line_references = [ConstraintReference.CORE, ConstraintReference.Y]
+    self._geometry_map[x_axis_id] = dict.fromkeys(x_line_references, 0)
+    self._geometry_map[y_axis_id] = dict.fromkeys(y_line_references, 1)
     
     for geometry, construction in zip(key.geometry, key.construction):
         _, freecad_id = self._pancad_to_freecad[geometry.uid]
@@ -173,5 +172,4 @@ def _ellipse(self,
         self._geometry_map[sub_id] = {ConstraintReference.CORE: index}
         for reference in references:
             subgeometry[reference] = index
-    
     self._geometry_map[freecad_id] = subgeometry

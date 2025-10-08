@@ -225,8 +225,9 @@ def _ftpf_coordinate_system(self, origin: FreeCADOrigin) -> FeatureContainer:
         self._id_map[subfeature.ID] = subfeature
     body, _ = origin.Parents[0]
     location = tuple(body.Placement.Base)
-    quaternion_components = body.Placement.Rotation.Q
-    quat = np.quaternion(*quaternion_components)
+    components = body.Placement.Rotation.Q
+    components =(components[-1],) + components[0:3]
+    quat = np.quaternion(*components)
     return CoordinateSystem.from_quaternion(location, quat, name=origin.Label)
 
 def _ftpf_extrude(self, pad: FreeCADPad) -> Extrude:
@@ -249,7 +250,11 @@ def _ftpf_extrude(self, pad: FreeCADPad) -> Extrude:
 def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
     self._id_map[freecad_sketch.ID] = freecad_sketch
     # TODO: Add a way to reference back to sketches in pad
-    sketch = Sketch(name=freecad_sketch.Label)
+    support, _ = freecad_sketch.AttachmentSupport[0]
+    coordinate_system, reference = self.get_pancad(support.ID)
+    sketch = Sketch(coordinate_system=coordinate_system,
+                    plane_reference=reference,
+                    name=freecad_sketch.Label)
     # Ensure that all internal geometry has been added to Geometry
     for i, freecad_geometry in enumerate(freecad_sketch.Geometry):
         try:

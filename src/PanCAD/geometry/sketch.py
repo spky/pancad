@@ -4,7 +4,6 @@ space. PanCAD's sketch definition aims to be as general as possible, so the
 base implementation of this class does not include appearance information since 
 that is application specific.
 """
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -69,6 +68,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
     :param uid: The unique id of the Sketch. Defaults to None.
     :param name: The name of the Sketch that will be used wherever a CAD 
         application requires a human-readable name for the sketch element.
+    :param context: The feature that acts as the context for this feature, 
+        usually a :class:`~PanCAD.geometry.FeatureContainer`
     """
     # Class Constants
     REFERENCES = (ConstraintReference.ORIGIN,
@@ -79,6 +80,9 @@ class Sketch(AbstractFeature, AbstractGeometry):
                      ConstraintReference.XZ,
                      ConstraintReference.YZ)
     """Allowable ConstraintReferences for the sketch's plane_reference."""
+    
+    CONSTRAINT_GEOMETRY_TYPE_STR = "{0}-{1}"
+    """Sets the format of constraint constrained geometry summaries."""
     
     # Type Tuples for checking with isinstance()
     GEOMETRY_TYPES = (Circle, Ellipse, Line, LineSegment, Point)
@@ -542,10 +546,15 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """
         from textwrap import indent
         summary_strings = []
+        UID_KEYS = ["UID", "a UID", "b UID"]
         for title, type_ in title_to_type.items():
             info = []
             for e in filter(lambda e: isinstance(e, type_), element_list):
-                info.append(self._get_summary_info(e))
+                element_info = self._get_summary_info(e)
+                if not self.STR_VERBOSE:
+                    element_info = {k: v for k, v in element_info.items()
+                                    if k not in UID_KEYS}
+                info.append(element_info)
             if len(info) > 0:
                 summary_strings.append(title)
                 summary_strings.append(
@@ -558,11 +567,11 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def _generate_location_string(self) -> str:
         """Returns a string describing where the sketch is located."""
         if self.coordinate_system is None:
-            system_uid = None
+            system_name = None
         else:
-            system_uid = self.coordinate_system.uid
+            system_name = self.coordinate_system.name
         location_str = (f"On the {self.plane_reference.name} plane"
-                        f" in coordinate system  with uid '{system_uid}'")
+                        f" in coordinate system  with name '{system_name}'")
         return location_str
     
     def _generate_quantity_string(self) -> str:
@@ -686,95 +695,120 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def _state_constraint(self, constraint: AbstractStateConstraint) -> dict:
         geometry_a, geometry_b = constraint.get_constrained()
         reference_a, reference_b = constraint.get_references()
-        TYPE_STR = "{0}_{1}"
         return {"Index": self.get_index_of(constraint),
                 "Type": constraint.__class__.__name__,
                 "a Index": self.get_index_of(geometry_a),
                 "a UID": geometry_a.uid,
-                "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                          reference_a.name.title()),
+                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    geometry_a.__class__.__name__,
+                    reference_a.name.title(),
+                ),
                 "b Index": self.get_index_of(geometry_b),
                 "b UID": geometry_b.uid,
-                "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
-                                          reference_b.name.title())}
+                "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    geometry_b.__class__.__name__,
+                    reference_b.name.title()
+                )}
     
     @_get_summary_info.register
     def _state_constraint(self, constraint: AbstractSnapTo) -> dict:
         geometry = constraint.get_constrained()
         references = constraint.get_references()
-        TYPE_STR = "{0}_{1}"
         if len(geometry) == 1:
             geometry_a = geometry[0]
             reference_a = references[0]
-            return {"Index": self.get_index_of(constraint),
-                    "Type": constraint.__class__.__name__,
-                    "a Index": self.get_index_of(geometry_a),
-                    "a UID": geometry_a.uid,
-                    "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                              reference_a.name.title()),
-                    "b Index": None,
-                    "b UID": None,
-                    "b Type": None,}
+            return {
+                "Index": self.get_index_of(constraint),
+                "Type": constraint.__class__.__name__,
+                "a Index": self.get_index_of(geometry_a),
+                "a UID": geometry_a.uid,
+                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    geometry_a.__class__.__name__,
+                    reference_a.name.title()
+                ),
+                "b Index": None,
+                "b UID": None,
+                "b Type": None,
+            }
         else:
             geometry_a, geometry_b = geometry
             reference_a, reference_b = references
-            return {"Index": self.get_index_of(constraint),
-                    "Type": constraint.__class__.__name__,
-                    "a Index": self.get_index_of(geometry_a),
-                    "a UID": geometry_a.uid,
-                    "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                              reference_a.name.title()),
-                    "b Index": self.get_index_of(geometry_b),
-                    "b UID": geometry_b.uid,
-                    "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
-                                              reference_b.name.title())}
+            return {
+                "Index": self.get_index_of(constraint),
+                "Type": constraint.__class__.__name__,
+                "a Index": self.get_index_of(geometry_a),
+                "a UID": geometry_a.uid,
+                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    geometry_a.__class__.__name__,
+                    reference_a.name.title()
+                ),
+                "b Index": self.get_index_of(geometry_b),
+                "b UID": geometry_b.uid,
+                "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    geometry_b.__class__.__name__,
+                    reference_b.name.title()
+                ),
+            }
     
     @_get_summary_info.register
     def _1_geo_distance(self, constraint: Abstract1GeometryDistance) -> dict:
         geometry_a = constraint.get_constrained()[0]
         reference_a = constraint.get_references()[0]
-        TYPE_STR = "{0}_{1}"
-        return {"Index": self.get_index_of(constraint),
-                "Type": constraint.__class__.__name__,
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                          reference_a.name.title()),
-                "Value": constraint.get_value_string()}
+        return {
+            "Index": self.get_index_of(constraint),
+            "Type": constraint.__class__.__name__,
+            "a Index": self.get_index_of(geometry_a),
+            "a UID": geometry_a.uid,
+            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                geometry_a.__class__.__name__,
+                reference_a.name.title()
+            ),
+            "Value": constraint.get_value_string(),
+        }
     
     @_get_summary_info.register
     def _2_geo_distance(self, constraint: Abstract2GeometryDistance) -> dict:
         geometry_a, geometry_b = constraint.get_constrained()
         reference_a, reference_b = constraint.get_references()
-        TYPE_STR = "{0}_{1}"
-        return {"Index": self.get_index_of(constraint),
-                "Type": constraint.__class__.__name__,
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                          reference_a.name.title()),
-                "b Index": self.get_index_of(geometry_b),
-                "b UID": geometry_b.uid,
-                "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
-                                          reference_b.name.title()),
-                "Value": constraint.get_value_string()}
+        return {
+            "Index": self.get_index_of(constraint),
+            "Type": constraint.__class__.__name__,
+            "a Index": self.get_index_of(geometry_a),
+            "a UID": geometry_a.uid,
+            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                geometry_a.__class__.__name__,
+                reference_a.name.title()
+            ),
+            "b Index": self.get_index_of(geometry_b),
+            "b UID": geometry_b.uid,
+            "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                geometry_b.__class__.__name__,
+                reference_b.name.title()
+            ),
+            "Value": constraint.get_value_string(),
+        }
     
     @_get_summary_info.register
     def _angle(self, constraint: Angle) -> dict:
         geometry_a, geometry_b = constraint.get_constrained()
         reference_a, reference_b = constraint.get_references()
-        TYPE_STR = "{0}_{1}"
-        return {"Index": self.get_index_of(constraint),
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": TYPE_STR.format(geometry_a.__class__.__name__,
-                                          reference_a.name.title()),
-                "b Index": self.get_index_of(geometry_b),
-                "b UID": geometry_b.uid,
-                "b Type": TYPE_STR.format(geometry_b.__class__.__name__,
-                                          reference_b.name.title()),
-                "Value": constraint.get_value_string(),
-                "Quadrant": constraint.quadrant,}
+        return {
+            "Index": self.get_index_of(constraint),
+            "a Index": self.get_index_of(geometry_a),
+            "a UID": geometry_a.uid,
+            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                geometry_a.__class__.__name__,
+                reference_a.name.title()
+            ),
+            "b Index": self.get_index_of(geometry_b),
+            "b UID": geometry_b.uid,
+            "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                geometry_b.__class__.__name__,
+                reference_b.name.title()
+            ),
+            "Value": constraint.get_value_string(),
+            "Quadrant": constraint.quadrant,
+        }
     
     # Python Dunders #
     def __copy__(self) -> Sketch:
@@ -803,9 +837,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         from textwrap import indent
         sketch_summary = []
         sketch_summary.append(f"Sketch '{self.name}'")
-        sketch_summary.append(
-            indent(f"Sketch uid: {self.uid}", "  ")
-        )
+        if self.STR_VERBOSE:
+            sketch_summary.append(indent(f"Sketch uid: {self.uid}", "  "))
         
         # Location/Plane Summary
         sketch_summary.append(
