@@ -5,7 +5,7 @@ https://wiki.freecad.org/Sketcher_scripting#Identifying_the_numbering_of_the_sub
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from PanCAD.geometry import Sketch
 from PanCAD.geometry.constants import ConstraintReference
@@ -30,6 +30,38 @@ class EdgeSubPart(IntEnum):
     """Constraint affects the end point of an edge."""
     CENTER = 3
     """Constraint affects the center point of an edge."""
+    
+    @classmethod
+    def from_constraint_reference(self, reference: ConstraintReference) -> Self:
+        """Returns the EdgeSubPart that matches the PanCAD ConstraintReference 
+        when translating from PanCAD to FreeCAD.
+        
+        :param reference: A ConstraintReference to a portion of geometry.
+        :returns: The FreeCAD equivalent to the reference.
+        """
+        match reference:
+            case (ConstraintReference.CORE
+                    | ConstraintReference.X
+                    | ConstraintReference.Y):
+                # The origin of sketch coordinate systems in FreeCAD is 
+                # arbitrarily the start point of the sketch coordinate system's 
+                # x-axis line segment located in the Sketch's ExternalGeo list 
+                # index 0.
+                return EdgeSubPart.EDGE
+            case (ConstraintReference.START
+                    | ConstraintReference.X_MIN
+                    | ConstraintReference.Y_MIN
+                    | ConstraintReference.ORIGIN):
+                return EdgeSubPart.START
+            case (ConstraintReference.END
+                    | ConstraintReference.X_MAX
+                    | ConstraintReference.Y_MAX):
+                return EdgeSubPart.END
+            case ConstraintReference.CENTER:
+                return EdgeSubPart.CENTER
+            case _:
+                raise ValueError(f"Unsupported reference: {reference}")
+        
     
     def get_constraint_reference(self,
                                  geometry: AbstractGeometry,

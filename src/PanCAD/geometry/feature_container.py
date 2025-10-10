@@ -24,7 +24,7 @@ class FeatureContainer(AbstractFeature):
     :param uid: The unique id of the FeatureContainer. When set to None the uid 
         is automatically generated.
     :param name: The name of the feature displayed to the users in CAD.
-    :param context: :param context: The feature that acts as the context for 
+    :param context: The feature that acts as the context for 
         this feature, usually a :class:`~PanCAD.geometry.FeatureContainer` or 
         None. None indicates that this FeatureContainer is a top level CAD 
         object.
@@ -47,7 +47,6 @@ class FeatureContainer(AbstractFeature):
         
         :param feature: The feature to add.
         :returns: The updated FeatureContainer.
-        
         :raises LookupError: Raised if the feature's dependencies are not 
             already in the FeatureContainer.
         """

@@ -86,3 +86,15 @@ class TestFreeCADtoPanCADCube1x1x1(unittest.TestCase):
     def test_add_cube_body(self):
         body = self.document.Objects[0]
         self.test_map.add_freecad_feature(body)
+    
+    def test_str_dunder(self):
+        # Checking if str errors out
+        body = self.document.Objects[0]
+        self.test_map.add_freecad_feature(body)
+        out = str(self.test_map)
+        print(out)
+    
+    def test_repr_dunder(self):
+        body = self.document.Objects[0]
+        self.test_map.add_freecad_feature(body)
+        out = repr(self.test_map)

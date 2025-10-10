@@ -64,7 +64,7 @@ class FreeCADFile:
         else:
             raise ValueError(f"Filetype {file.__class__} not recognized")
     
-    # Properties #
+    # Getters #
     @property
     def document(self) -> App.Document:
         """The FreeCAD python object for the document.
@@ -93,6 +93,7 @@ class FreeCADFile:
         """
         return self._stem
     
+    # Setters #
     @filepath.setter
     def filepath(self, filepath: str):
         pypath = pathlib.Path(filepath)
@@ -119,7 +120,7 @@ class FreeCADFile:
     def save(self) -> Self:
         """Recomputes and saves the FreeCAD file to its path.
         
-        :returns: The FreeCADFile object to enable method chaining.
+        :returns: The same FreeCADFile object.
         """
         self._document.recompute()
         self._document.save()

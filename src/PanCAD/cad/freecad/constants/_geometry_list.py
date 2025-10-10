@@ -1,7 +1,5 @@
-"""A module providing an enumeration class for the FreeCAD constraint sub-part 
-options. See the following link for more information:
-https://wiki.freecad.org/Sketcher_scripting#Identifying_the_numbering_of_the_sub-parts_of_a_line
-"""
+"""A module providing an enumeration class for the lists in a FreeCAD sketch."""
+
 from enum import StrEnum
 
 class ListName(StrEnum):

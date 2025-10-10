@@ -827,10 +827,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
     
     def __repr__(self) -> str:
         """Returns the short string representation of the sketch"""
-        n_geo = len(self.geometry)
-        n_cons = len(self.constraints)
-        n_ext = len(self.externals)
-        return f"<Sketch'{self.name}'(g{n_geo},c{n_cons},e{n_ext})>"
+        return f"<Sketch'{self.name}'>"
     
     def __str__(self) -> str:
         """Returns the longer string representation of the sketch"""

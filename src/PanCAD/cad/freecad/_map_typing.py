@@ -1,5 +1,4 @@
-"""
-A module providing GenericAlias constants for use in FreeCAD-PanCAD mapping.
+"""A module providing GenericAlias constants for use in FreeCAD-PanCAD mapping.
 """
 from PanCAD.geometry import PanCADThing
 from PanCAD.geometry.constants import ConstraintReference

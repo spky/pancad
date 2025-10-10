@@ -1,5 +1,4 @@
-"""
-A module providing methods for FreeCADMap to translate features to and from 
+"""A module providing methods for FreeCADMap to translate features to and from 
 FreeCAD.
 """
 from functools import singledispatchmethod
@@ -42,7 +41,8 @@ from ._map_typing import SketchElementID
 def _pancad_to_freecad_feature(self,
                                feature: AbstractFeature) -> FreeCADFeature:
     """Creates a FreeCAD equivalent to the PanCAD feature and adds its id to the 
-    id map.
+    id map. Will also create geometry inside of features if any exist and add 
+    them to the map.
     """
     raise TypeError(f"Unrecognized PanCAD feature type {key.__class__}")
 
@@ -75,6 +75,7 @@ def _feature_container(self, container: FeatureContainer) -> FreeCADBody:
 
 @_pancad_to_freecad_feature.register
 def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
+    # Creates both the feature and the equivalent geometry inside the sketch.
     sketch = self._document.addObject(ObjectType.SKETCH, pancad_sketch.name)
     sketch_plane = self[pancad_sketch.coordinate_system,
                         pancad_sketch.plane_reference]
@@ -106,6 +107,7 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
 @singledispatchmethod
 @staticmethod
 def _pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
+    """Returns an equivalent FreeCAD geometry element from PanCAD Geometry."""
     raise TypeError(f"Unsupported PanCAD element type: {geometry}")
 
 @_pancad_to_freecad_geometry.register
@@ -249,7 +251,6 @@ def _ftpf_extrude(self, pad: FreeCADPad) -> Extrude:
 
 def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
     self._id_map[freecad_sketch.ID] = freecad_sketch
-    # TODO: Add a way to reference back to sketches in pad
     support, _ = freecad_sketch.AttachmentSupport[0]
     coordinate_system, reference = self.get_pancad(support.ID)
     sketch = Sketch(coordinate_system=coordinate_system,
@@ -283,6 +284,7 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
 @singledispatchmethod
 @staticmethod
 def _freecad_to_pancad_geometry(geometry: FreeCADGeometry) -> AbstractGeometry:
+    """Returns PanCAD geometry from FreeCAD geometry elements."""
     raise TypeError(f"Unsupported FreeCAD element type: {geometry}")
 
 @_freecad_to_pancad_geometry.register

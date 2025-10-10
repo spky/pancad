@@ -1,5 +1,5 @@
-"""A module providing an enumeration class for the string constants that define 
-FreeCAD object types like sketches, bodies, and other features.
+"""A module providing an enumeration class for the string TypeID constants that 
+define FreeCAD object types like sketches, bodies, and other features.
 """
 
 from enum import StrEnum

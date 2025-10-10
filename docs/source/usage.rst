@@ -97,7 +97,7 @@ to make a square, but we have to pick one so we'll just choose to constrain:
 3. The distances between the top/bottom and left/right pairs of lines.
 4. The bottom left corner to the sketch's origin point.
 
-We'll need the :meth:`~PanCAD.geometry.constraints.make_constraint` method
+We'll need the :func:`~PanCAD.geometry.constraints.make_constraint` method
 and a PanCAD enumeration called
 a :class:`~PanCAD.geometry.constants.ConstraintReference` to fully 
 constrain the lines using the strategy above. ConstraintReferences tell PanCAD 

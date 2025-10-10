@@ -2,7 +2,7 @@
 FreeCAD constraint types like Coincident, Vertical and other features."""
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import StrEnum, Flag
 from typing import TYPE_CHECKING
 
 from PanCAD.geometry.constants import SketchConstraint
