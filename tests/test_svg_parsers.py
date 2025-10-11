@@ -246,9 +246,47 @@ class TestSVGPath(unittest.TestCase):
                 i = t[0]
                 out = sp.arc_to_dict(i[0], i[1], i[2], i[3], i[4])
                 self.assertCountEqual(out, t[1])
+
+class TestNumberParsing(unittest.TestCase):
     
-    def test_lineto_to_dict(self):
-        pass
+    def test_to_number_decimal(self):
+        tests = [
+            ("100.0", 100.0),
+            ("1.1e2", 110.0),
+            ("+1.1e2", 110.0),
+            ("-1.1e2", -110.0),
+            ("-1.1e-2", -.011),
+        ]
+        for string, value in tests:
+            with self.subTest(string=string, value=value):
+                number = sp.to_number(string)
+                self.assertAlmostEqual(number, value)
+    
+    def test_to_number_int_decimal(self):
+        tests = [
+            ("100.", 100.0),
+            ("1.e2", 100.0),
+            ("+1.e2", 100.0),
+            ("-1.e2", -100.0),
+            ("-1.e-2", -.01),
+        ]
+        for string, value in tests:
+            with self.subTest(string=string, value=value):
+                number = sp.to_number(string)
+                self.assertAlmostEqual(number, value)
+    
+    def test_to_number_integer_exp(self):
+        tests = [
+            ("100", 100),
+            ("1e2", 100),
+            ("+1e2", 100),
+            ("-1e2", -100),
+            ("-1e-2", -.01),
+        ]
+        for string, value in tests:
+            with self.subTest(string=string, value=value):
+                number = sp.to_number(string)
+                self.assertAlmostEqual(number, value)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
