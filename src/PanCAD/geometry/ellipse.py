@@ -7,7 +7,6 @@ from functools import partial
 from math import atan2, cos, radians, sin, sqrt
 from numbers import Real
 from typing import overload, Self
-from uuid import uuid4
 
 import numpy as np
 
@@ -16,8 +15,6 @@ from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.pancad_types import VectorLike
 from PanCAD.utils.trigonometry import (angle_mod,
-                                       get_unit_vector,
-                                       get_vector_angle,
                                        rotation_2)
 
 _isclose = partial(comparison.isclose, nan_equal=False)
@@ -100,7 +97,7 @@ class Ellipse(AbstractGeometry):
                    semi_major_axis: Real,
                    semi_minor_axis: Real,
                    rotation_angle: Real,
-                   uid: str=None) -> Self:
+                   uid: str | None=None) -> Self:
         """Returns a 2D ellipse using a rotation angle instead of a direction 
         vector.
         
@@ -361,7 +358,7 @@ class Ellipse(AbstractGeometry):
         self._semi_minor_axis = length
     
     # Public Methods #
-    def copy(self) -> Point:
+    def copy(self) -> Ellipse:
         """Returns a copy of the Ellipse.
         
         :returns: A new Ellipse at the same position, size, and orientation as 

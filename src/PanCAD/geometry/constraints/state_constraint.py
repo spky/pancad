@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from functools import reduce
-from typing import NoReturn, Type
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
     Circle,
     CoordinateSystem,
@@ -22,7 +22,11 @@ from PanCAD.geometry import (
     Plane,
     Point,
 )
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import NoReturn, Type
+    
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry 

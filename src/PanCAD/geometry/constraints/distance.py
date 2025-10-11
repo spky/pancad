@@ -10,13 +10,23 @@ from abc import abstractmethod
 from functools import reduce
 import math
 from numbers import Real
-from typing import NoReturn
+from typing import TYPE_CHECKING
 
 from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
-    Circle, CoordinateSystem, Line, LineSegment, Plane, Point, Ellipse
+    Circle,
+    CoordinateSystem,
+    Ellipse,
+    Line,
+    LineSegment,
+    Plane,
+    Point,
 )
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import NoReturn
+    
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 

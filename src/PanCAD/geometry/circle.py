@@ -4,8 +4,7 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial
-from numbers import Real
-from typing import Self
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,6 +13,10 @@ from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import get_unit_vector
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from numbers import Real
+    from typing import Self
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)

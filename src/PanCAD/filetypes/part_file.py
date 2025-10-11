@@ -25,7 +25,8 @@ from PanCAD.geometry import (
 )
 
 if TYPE_CHECKING:
-    from PanCAD.geometry import AbstractFeature
+    from uuid import UUID
+    from PanCAD.geometry import AbstractFeature, AbstractGeometry
 
 class PartFile(PanCADThing):
     """A class representing a part file in CAD applications. PanCAD defines a 
@@ -33,11 +34,12 @@ class PartFile(PanCADThing):
     geometry configurations of that object.
     
     :param filename: The name of the file. Any extension at the end of the file 
-        will be removed. Defaults to "New_PartFile".
+        will be removed. Defaults to 'New_PartFile'.
     :param container: The primary container for the PartFile. Contains all 
         features inside the file. Usually represented as a FeatureTree inside 
         of a file, but can also be something like a Body or Part object in 
         software like FreeCAD.
+    :param uid: The unique id for the PanCAD object.
     """
     
     PANCAD_METADATA = [
@@ -55,7 +57,8 @@ class PartFile(PanCADThing):
     defined where available to improve the interoperability of the 
     metadata. See `DCMI Metadata Terms 
     <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>`_ 
-    for definitions of the 'dcterms' fields.
+    for definitions of the 'dcterms' fields. The dcterms namespace uri is 
+    'http://purl.org/dc/terms/'
     """
     DEFAULT_COORDINATE_SYSTEM_NAME = "Coordinate System"
     """The name that auto-added coordinate systems are given if not externally 
@@ -66,7 +69,7 @@ class PartFile(PanCADThing):
                  filename: str="New_PartFile",
                  container: FeatureContainer | None=None,
                  *,
-                 uid: str=None) -> None:
+                 uid: str | None=None) -> None:
         self.filename = filename
         self.uid = uid
         self.container = container
@@ -137,7 +140,11 @@ class PartFile(PanCADThing):
     
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:
-        """Adds a feature to the PartFile.
+        """Adds a feature to the PartFile. If the container is empty and the 
+        first feature added is not a coordinate system, a coordinate system 
+        is added before adding the feature. If a sketch without a coordinate 
+        system is provided, the coordinate system at index 0 will be 
+        assigned to it.
         
         :param feature: The feature to add.
         :returns: The updated PartFile.
@@ -161,10 +168,9 @@ class PartFile(PanCADThing):
             feature.coordinate_system = self.container.features[0]
         
         self.container.add_feature(feature)
-        
         return self
     
-    def get_feature(self, uid: str) -> AbstractFeature:
+    def get_feature(self, uid: str | UUID) -> AbstractFeature:
         """Returns the feature with the given uid.
         
         :raises LookupError: When no feature with the uid is in the file or its 
@@ -177,7 +183,7 @@ class PartFile(PanCADThing):
         raise LookupError(f"File has no feature with uid '{uid}'")
     
     def get_feature_by_name(self, name: str) -> AbstractFeature:
-        """Returns the feature with the given name.
+        """Returns the first feature with the given name.
         
         :raises LookupError: When no feature with the name is in the file or its 
             subcontainers.
@@ -193,7 +199,7 @@ class PartFile(PanCADThing):
         raise LookupError(f"No feature named '{name}' found!")
     
     def get_features(self) -> tuple[AbstractFeature]:
-        """Returns all of the PartFile's stored features."""
+        """Returns all of the PartFile's top level container features."""
         return self.container.features
     
     def to_freecad(self, filepath: str) -> None:
@@ -206,11 +212,11 @@ class PartFile(PanCADThing):
         file = FreeCADFile.from_partfile(self, filepath)
     
     # Python Dunders #
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: AbstractFeature | AbstractGeometry) -> bool:
         return item in self.container
     
     def __repr__(self) -> str:
-        n_features = len(self.container.features)
+        n_features = len(self.features)
         return f"<PanCADPartFile'{self.filename}'({n_features}feats)>"
     
     def __str__(self) -> str:

@@ -3,28 +3,32 @@ graphics, and other geometry use cases."""
 from __future__ import annotations
 
 from functools import partial
-import math
-from uuid import uuid4
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry import Point
-from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.utils import trigonometry as trig, comparison
+from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from numbers import Real
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Plane(AbstractGeometry):
+    """A class representing planes in 3D space."""
     
-    def __init__(self, point: Point | tuple | np.ndarray = None,
-                 normal_vector: list | tuple | np.ndarray = None,
-                 uid: str = None):
+    def __init__(self,
+                 point: Point | VectorLike=None,
+                 normal_vector: VectorLike=None,
+                 uid: str=None):
         self.uid = uid
         self._references = (ConstraintReference.CORE,)
         
-        if isinstance(point, (tuple, np.ndarray)):
+        if isinstance(point, VectorLike):
             point = Point(point)
         
         if isinstance(point, Point):
@@ -56,7 +60,7 @@ class Plane(AbstractGeometry):
         return trig.cartesian_to_spherical(self.normal)
     
     @property
-    def phi(self) -> float:
+    def phi(self) -> Real:
         """The spherical azimuth component of the plane's normal vector in 
         radians.
         
@@ -76,7 +80,7 @@ class Plane(AbstractGeometry):
         return self._point_closest_to_origin.copy()
     
     @property
-    def theta(self) -> float:
+    def theta(self) -> Real:
         """The spherical inclination component of the plane's normal vector in 
         radians.
         
@@ -87,22 +91,22 @@ class Plane(AbstractGeometry):
     
     # Setters #
     @normal.setter
-    def normal(self, vector: list | tuple | np.ndarray):
+    def normal(self, vector: VectorLike):
         if vector is not None:
             self._normal = trig.to_1D_tuple(trig.get_unit_vector(vector))
         else:
             self._normal = None
     
     @phi.setter
-    def phi(self, value: float):
+    def phi(self, value: Real):
         raise NotImplementedError
     
     @theta.setter
-    def theta(self, value: float):
+    def theta(self, value: Real):
         raise NotImplementedError
     
     # Public Methods #
-    def get_d(self) -> float:
+    def get_d(self) -> Real:
         """Returns the Plane's Point-Normal form constant d (equation of form 
         ax + by + cz + d = 0)
         """
@@ -119,8 +123,7 @@ class Plane(AbstractGeometry):
         vector = np.array(self.normal)
         return vector.reshape(3, 1) if vertical else vector
     
-    def get_reference(self, reference: ConstraintReference
-                      ) -> Plane:
+    def get_reference(self, reference: ConstraintReference) -> Plane:
         """Returns reference geometry for use in external modules like 
         constraints. Warning: Unlike some common PanCAD functions this one does 
         not return a copy of geometry, but the a reference to the internal 
@@ -141,7 +144,7 @@ class Plane(AbstractGeometry):
         return self._references
     
     def move_to_point(self, point: Point,
-                      normal_vector: list | tuple | np.ndarray = None) -> Plane:
+                      normal_vector: VectorLike = None) -> Plane:
         """Moves the plane to the point. Sets the normal vector at that point if 
         it is given. If no normal vector is given, the plane is moved to be 
         coincident with the point while maintaining the same normal 
@@ -170,7 +173,10 @@ class Plane(AbstractGeometry):
     
     # Class Methods #
     @classmethod
-    def from_point_and_angles(cls, point: Point, phi: float, theta: float,
+    def from_point_and_angles(cls,
+                              point: Point,
+                              phi: Real,
+                              theta: Real,
                               uid: str=None) -> Plane:
         """Return a Plane from a given point, phi, and theta.
         

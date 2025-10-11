@@ -8,7 +8,6 @@ import math
 from functools import partial, singledispatchmethod
 from numbers import Real
 from typing import overload, NoReturn, Self
-from uuid import uuid4
 
 import numpy as np
 
@@ -79,10 +78,7 @@ class Point(AbstractGeometry):
                  unit: str=None) -> None: ...
     
     def __init__(self, cartesian=None, y=None, z=None, *, uid=None, unit=None):
-        if uid is None:
-            self.uid = uuid4()
-        else:
-            self.uid = uid
+        self.uid = uid
         
         if all([isinstance(n, Real) for n in [cartesian, y, z]]):
             self.cartesian = (cartesian, y, z)

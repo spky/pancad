@@ -4,9 +4,12 @@ PanCAD feature classes.
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing, AbstractGeometry
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry import PanCADThing
+
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractFeature, AbstractGeometry
 
 class AbstractFeature(PanCADThing):
     
@@ -23,14 +26,15 @@ class AbstractFeature(PanCADThing):
     @abstractmethod
     def context(self) -> AbstractFeature | None:
         """Returns the feature that contains the feature. If context is None, 
-        then the feature's context is the file that the feature is in.
+        then the feature's context is the top level of the file that the feature 
+        is inside of.
         """
     
     # Getters #
     @property
     def name(self) -> str:
         """The name of the feature. Usually user assigned or automatically 
-        generated.
+        generated. Does not need to be unique.
         """
         if hasattr(self, "_name"):
             return self._name

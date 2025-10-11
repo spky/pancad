@@ -4,10 +4,8 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial, singledispatchmethod
-import math
-from numbers import Real
 from textwrap import indent
-from typing import overload, Self, NoReturn
+from typing import TYPE_CHECKING, overload, Self
 
 import numpy as np
 import quaternion
@@ -24,6 +22,10 @@ from PanCAD.utils.trigonometry import (yaw_pitch_roll,
                                        to_1D_tuple,
                                        cartesian_to_spherical)
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from typing import NoReturn
+    from numbers import Real
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -64,9 +66,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                  origin: Point | VectorLike,
                  alpha: Real=0,
                  *,
-                 uid: str=None,
-                 context: AbstractFeature=None,
-                 name: str=None) -> None: ...
+                 uid: str | None=None,
+                 context: AbstractFeature | None=None,
+                 name: str | None=None) -> None: ...
     
     @overload
     def __init__(self,
@@ -76,9 +78,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                  gamma: Real=0,
                  *,
                  right_handed: bool=True,
-                 uid: str=None,
-                 context: AbstractFeature=None,
-                 name: str=None) -> None: ...
+                 uid: str | None=None,
+                 context: AbstractFeature | None=None,
+                 name: str | None=None) -> None: ...
     
     def __init__(self, origin=None, alpha=0, beta=0, gamma=0,
                  *, right_handed=True, uid=None, context=None, name=None):

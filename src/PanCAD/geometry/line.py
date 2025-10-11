@@ -7,9 +7,7 @@ from __future__ import annotations
 
 from functools import partial
 import math
-from numbers import Real
-from typing import Self
-from uuid import uuid4
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -17,6 +15,10 @@ from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison, trigonometry as trig
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from numbers import Real
+    from typing import Self
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)

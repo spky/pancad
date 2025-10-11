@@ -9,9 +9,12 @@ between applications.
 from __future__ import annotations
 
 from textwrap import indent
-from typing import Sequence, Self
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing, AbstractFeature, Sketch
+from PanCAD.geometry import AbstractFeature, Sketch
+
+if TYPE_CHECKING:
+    from typing import Sequence, Self
 
 class FeatureContainer(AbstractFeature):
     """A class representing a grouping of features in CAD applications. Strictly 

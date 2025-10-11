@@ -1,14 +1,21 @@
 """A module providing a class defining the required properties and interfaces of 
 PanCAD constraint classes.
 """
+from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing, AbstractGeometry
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry import PanCADThing
 
-class AbstractConstraint(PanCADThing):
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractGeometry
+    from PanCAD.geometry.constants import ConstraintReference
     
+class AbstractConstraint(PanCADThing):
+    """A class defining the interfaces provided by all PanCAD Constraint 
+    Elements.
+    """
     
     # Abstract Properties #
     @property

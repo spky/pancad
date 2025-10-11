@@ -4,10 +4,14 @@ PanCAD geometry classes.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Self
+from typing import TYPE_CHECKING
 
 from PanCAD.geometry import PanCADThing
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import Self
+    
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractGeometry(PanCADThing):
     """A class defining the interfaces provided by PanCAD Geometry Elements."""
@@ -25,7 +29,7 @@ class AbstractGeometry(PanCADThing):
     def update(self, other: AbstractGeometry) -> Self:
         """Takes geometry of the same type as the calling geometry and updates 
         the calling geometry to match the new geometry while maintaining its 
-        memory location (Python id). Should return itself afterwards.
+        uid. Should return itself afterwards.
         """
     
     # Python Dunders #

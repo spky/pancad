@@ -3,10 +3,10 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-import math
+from math import copysign
 from functools import partial
 from numbers import Real
-from typing import overload, Self
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -14,6 +14,9 @@ from PanCAD.geometry import AbstractGeometry, Point, Line
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison, trigonometry as trig
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from typing import Self
 
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
@@ -403,7 +406,7 @@ class LineSegment(AbstractGeometry):
         :returns: The updated LineSegment.
         """
         new_vector_ab = self.get_vector_ab()
-        new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])
+        new_vector_ab[axis] = value * copysign(1, self.direction[axis])
         if from_point_a:
             self.point_b.cartesian = (np.array(self.point_a.cartesian)
                                       + new_vector_ab)

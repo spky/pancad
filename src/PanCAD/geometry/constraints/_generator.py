@@ -40,20 +40,20 @@ def make_constraint(self,
                     constraint_type: SketchConstraint,
                     a: AbstractGeometry,
                     reference_a: ConstraintReference,
-                    b: AbstractGeometry | None=None,
-                    reference_b: ConstraintReference | None=None,
+                    b: AbstractGeometry,
+                    reference_b: ConstraintReference,
                     *,
-                    uid: UUID | str=None) -> AbstractSnapTo: ...
+                    uid: UUID | str=None) -> AbstractStateConstraint: ...
 
 @overload
 def make_constraint(self,
                     constraint_type: SketchConstraint,
                     a: AbstractGeometry,
                     reference_a: ConstraintReference,
-                    b: AbstractGeometry,
-                    reference_b: ConstraintReference,
+                    b: AbstractGeometry | None=None,
+                    reference_b: ConstraintReference | None=None,
                     *,
-                    uid: UUID | str=None) -> AbstractStateConstraint: ...
+                    uid: UUID | str=None) -> AbstractSnapTo: ...
 
 @overload
 def make_constraint(self,

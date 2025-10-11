@@ -7,12 +7,14 @@ geometry.
 from __future__ import annotations
 
 from functools import reduce
-from abc import abstractmethod
-from typing import NoReturn
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem, Ellipse
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import NoReturn
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
     """An abstract class of constraints that can be applied to a set of **one 

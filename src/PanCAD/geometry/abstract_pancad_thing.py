@@ -1,9 +1,14 @@
 """A module defining the properties and methods that all PanCAD elements 
 share.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
+from uuid import uuid4
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 class PanCADThing(ABC):
     """An abstract class defining the properties and methods that all PanCAD 
@@ -11,7 +16,7 @@ class PanCADThing(ABC):
     """
     
     STR_VERBOSE = False
-    """A Flag allowing PanCAD objects to print more verbose strings and reprs.
+    """A Flag allowing PanCAD objects to print more detailed strings and reprs.
     """
     
     # Getters #
@@ -25,7 +30,7 @@ class PanCADThing(ABC):
     
     # Setters #
     @uid.setter
-    def uid(self, value: str | None) -> None:
+    def uid(self, value: str | UUID | None) -> None:
         if value is None:
             self._uid = uuid4()
         else:

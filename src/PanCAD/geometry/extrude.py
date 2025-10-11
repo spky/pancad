@@ -3,13 +3,18 @@ starting from a sketch profile.
 """
 from __future__ import annotations
 
-import textwrap
 from numbers import Real
-from typing import NoReturn, overload, Self
+from textwrap import indent
+from typing import TYPE_CHECKING, overload
 
-from PanCAD.geometry import AbstractFeature, AbstractGeometry, Sketch
+from PanCAD.geometry import AbstractFeature
 from PanCAD.geometry.constants import FeatureType
 from PanCAD.utils.text_formatting import get_table_string
+
+if TYPE_CHECKING:
+    from typing import NoReturn, Self
+    
+    from PanCAD.geometry import AbstractGeometry, Sketch
 
 class Extrude(AbstractFeature):
     """A class representing linear extrusions starting from a sketch profile in 
@@ -280,7 +285,5 @@ class Extrude(AbstractFeature):
             "Midplane": self.is_midplane,
             "Reversed": self.is_reverse_direction,
         }
-        summary.append(
-            textwrap.indent(get_table_string(summary_info), "  ")
-        )
+        summary.append(indent(get_table_string(summary_info), "  "))
         return "\n".join(summary)
