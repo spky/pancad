@@ -4,14 +4,17 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial, singledispatchmethod
-import math
-from numbers import Real
-from typing import overload, Self, NoReturn
+from textwrap import indent
+from typing import TYPE_CHECKING, overload, Self
 
 import numpy as np
 import quaternion
 
-from PanCAD.geometry import AbstractGeometry, Point, Line, Plane
+from PanCAD.geometry import (AbstractFeature,
+                             AbstractGeometry,
+                             Point,
+                             Line,
+                             Plane)
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import (yaw_pitch_roll,
@@ -20,10 +23,14 @@ from PanCAD.utils.trigonometry import (yaw_pitch_roll,
                                        cartesian_to_spherical)
 from PanCAD.utils.pancad_types import VectorLike
 
+if TYPE_CHECKING:
+    from typing import NoReturn
+    from numbers import Real
+
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-class CoordinateSystem(AbstractGeometry):
+class CoordinateSystem(AbstractGeometry, AbstractFeature):
     """A class representing coordinate systems in 2D and 3D space. Initial 
     rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
     
@@ -37,15 +44,12 @@ class CoordinateSystem(AbstractGeometry):
     :param right_handed: Whether the coordinate system is right-handed. 
         Right-handed if True, left-handed if False. Defaults to False.
     :param uid: The unique ID of the coordinate system.
+    :param context: The feature defining the context that the CoordinateSystem 
+        exists inside of.
+    :param name: The name of the feature displayed to the users in CAD.
+    :param context: The feature that acts as the context for this feature, 
+        usually a :class:`~PanCAD.geometry.FeatureContainer`
     """
-    UID_SEPARATOR = "_"
-    XLINE_UID = "xline"
-    YLINE_UID = "yline"
-    ZLINE_UID = "zline"
-    XYPLANE_UID = "xyplane"
-    XZPLANE_UID = "xzplane"
-    YZPLANE_UID = "yzplane"
-    ORIGIN_UID = "origin"
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,
                   ConstraintReference.Y,
@@ -62,7 +66,9 @@ class CoordinateSystem(AbstractGeometry):
                  origin: Point | VectorLike,
                  alpha: Real=0,
                  *,
-                 uid: str=None) -> None: ...
+                 uid: str | None=None,
+                 context: AbstractFeature | None=None,
+                 name: str | None=None) -> None: ...
     
     @overload
     def __init__(self,
@@ -72,10 +78,12 @@ class CoordinateSystem(AbstractGeometry):
                  gamma: Real=0,
                  *,
                  right_handed: bool=True,
-                 uid: str=None) -> None: ...
+                 uid: str | None=None,
+                 context: AbstractFeature | None=None,
+                 name: str | None=None) -> None: ...
     
     def __init__(self, origin=None, alpha=0, beta=0, gamma=0,
-                 *, right_handed: bool=True, uid: str=None):
+                 *, right_handed=True, uid=None, context=None, name=None):
         if origin is None:
             origin = (0, 0, 0)
         if isinstance(origin, VectorLike):
@@ -94,6 +102,8 @@ class CoordinateSystem(AbstractGeometry):
         else:
             self._init_3d(origin, alpha, beta, gamma)
         
+        self.name = name
+        self.context = context
         self.uid = uid
     
     # Class Methods #
@@ -103,7 +113,9 @@ class CoordinateSystem(AbstractGeometry):
                         quat: np.quaternion=None,
                         *,
                         right_handed: bool=True,
-                        uid: str=None) -> CoordinateSystem:
+                        uid: str=None,
+                        name: str=None,
+                        context: AbstractFeature=None) -> CoordinateSystem:
         """Returns a 3D coordinate system defined with a quaternion.
         
         :param origin: A 3D center Point of the coordinate system. Defaults to 
@@ -128,21 +140,16 @@ class CoordinateSystem(AbstractGeometry):
             coordinate_system = cls(origin,
                                     0, 0, 0,
                                     right_handed=right_handed,
-                                    uid=uid)
+                                    uid=uid,
+                                    context=context,
+                                    name=name)
         coordinate_system._rotate_axes(quat)
         return coordinate_system
     
     # Getters #
     @property
-    def uid(self) -> str:
-        """The unique id of the coordinate system. Can also be interpreted as 
-        the name of the coordinate system
-        
-        :getter: Returns the unique id as a string.
-        :setter: Sets the unique id of the coordinate system and updates the 
-            internal geometry uids of the origin, axes, and planes accordingly.
-        """
-        return self._uid
+    def context(self) -> AbstractFeature | None:
+        return self._context
     
     @property
     def origin(self) -> Point:
@@ -170,6 +177,10 @@ class CoordinateSystem(AbstractGeometry):
         return self._z_vector
     
     # Setters #
+    @context.setter
+    def context(self, context_feature: AbstractFeature | None) -> None:
+        self._context = context_feature
+    
     @origin.setter
     def origin(self, point: Point | VectorLike):
         if isinstance(point, Point):
@@ -177,37 +188,15 @@ class CoordinateSystem(AbstractGeometry):
         else:
             self._origin.cartesian = point
     
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        if uid is None:
-            self._x_axis_line.uid = self.XLINE_UID
-            self._y_axis_line.uid = self.YLINE_UID
-            self._origin.uid = self.ORIGIN_UID
-        else:
-            self._x_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.XLINE_UID])
-            self._y_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.YLINE_UID])
-            self._origin.uid = self.UID_SEPARATOR.join([uid, self.ORIGIN_UID])
-            
-        if len(self.origin) == 3 and uid is None:
-            self._z_axis_line.uid = self.ZLINE_UID
-            self._xy_plane.uid = self.XYPLANE_UID
-            self._xz_plane.uid = self.XZPLANE_UID
-            self._yz_plane.uid = self.YZPLANE_UID
-        elif len(self.origin) == 3:
-            self._z_axis_line.uid = self.UID_SEPARATOR.join([uid,
-                                                             self.ZLINE_UID])
-            self._xy_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.XYPLANE_UID])
-            self._xz_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.XZPLANE_UID])
-            self._yz_plane.uid = self.UID_SEPARATOR.join([uid,
-                                                          self.YZPLANE_UID])
-        
-        self._uid = uid
-    
     # Public Methods #
+    def copy(self) -> CoordinateSystem:
+        """Returns a copy of the CoordinateSystem.
+        
+        :returns: the same origin, axes, planes and context, but not the same 
+            uid.
+        """
+        return self.__copy__()
+    
     def get_all_references(self) -> tuple[ConstraintReference]:
         """Returns all ConstraintReferences applicable to CoordinateSystems. See 
         :attr:`CoordinateSystem.REFERENCES`.
@@ -216,6 +205,12 @@ class CoordinateSystem(AbstractGeometry):
             return self.REFERENCES[0:3]
         else:
             return self.REFERENCES
+    
+    def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
+        if self.context is None:
+            return tuple()
+        else:
+            return (self.context,)
     
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""
@@ -380,7 +375,7 @@ class CoordinateSystem(AbstractGeometry):
         self._set_axes(new_axis_matrix)
         return self
     
-    def _set_axes(self, axis_matrix: list|tuple|np.ndarray) -> None:
+    def _set_axes(self, axis_matrix: list | tuple | np.ndarray) -> None:
         """Used to set the axes all at once while ensuring they are tuples. 
         Assumes that the axes are still unit vectors, perpendicular, and 
         linearly independent (that's why this is private).
@@ -410,6 +405,21 @@ class CoordinateSystem(AbstractGeometry):
             self._yz_plane.update(Plane(self.origin, self._x_vector))
     
     # Python Dunders #
+    def __copy__(self) -> CoordinateSystem:
+        """Returns a copy of the CoordinateSystem that has the same origin, 
+        axes, planes and context, but not the same uid. Can be used with the 
+        python copy module.
+        """
+        if len(self) == 3:
+            return CoordinateSystem.from_quaternion(self.origin,
+                                                    self.get_quaternion(),
+                                                    context=self.context)
+        else:
+            new_system = CoordinateSystem(self.origin, context=self.context)
+            new_initial_axis_matrix = (self._x_vector, self._y_vector)
+            new_system._set_axes(new_initial_axis_matrix)
+            return new_system
+    
     def __repr__(self) -> str:
         pt_strs, axis_strs = [], []
         for i in range(0, len(self.origin)):
@@ -432,7 +442,7 @@ class CoordinateSystem(AbstractGeometry):
             axis_strs.append(axis_name + "(" + component_str + ")")
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
-        return f"<PanCADCoordSys'{self.uid}'({point_str}){axis_str}>"
+        return f"<PanCADCoordSys'{self.name}'({point_str}){axis_str}>"
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by 
@@ -441,6 +451,7 @@ class CoordinateSystem(AbstractGeometry):
         return len(self.origin)
     
     def __str__(self) -> str:
+        INDENTATION = "    "
         pt_strs, axis_strs = [], []
         for i in range(0, len(self.origin)):
             if isclose0(self.origin[i]):
@@ -462,5 +473,9 @@ class CoordinateSystem(AbstractGeometry):
             axis_strs.append(f"{axis_name.upper()}-Axis ({component_str})")
         axis_str = " ".join(axis_strs)
         point_str = ", ".join(pt_strs)
-        return (f"PanCAD '{self.uid}' CoordinateSystem with origin"
-                f" ({point_str}) and axes {axis_str}")
+        
+        summary = [f"CoordinateSystem '{self.name}'",
+                   "Origin and Axes:",
+                   indent(f"Origin ({point_str})", INDENTATION),
+                   indent("\n".join(axis_strs), INDENTATION),]
+        return "\n".join(summary)

@@ -2,14 +2,19 @@
 representations while avoiding the need for circular imports. Example: a 
 LineSegment can be used to define a Line.
 """
-import math
+from __future__ import annotations
+
 from functools import partial
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry import Point, Line, LineSegment, Plane
+from PanCAD.utils import trigonometry
+from PanCAD.geometry import Point
 from PanCAD.utils import comparison
+
+if TYPE_CHECKING:
+    from PanCAD.geometry import Line, LineSegment, Plane
 
 isclose = partial(comparison.isclose, nan_equal=True)
 
@@ -38,8 +43,8 @@ def get_2_vectors_on_plane(plane: Plane) -> tuple[tuple, tuple]:
         a1 = 0
         b1 = b + 1
         c1 = c + 1
-    vector_1 = trig.get_unit_vector((a1, b1, c1))
-    vector_2 = trig.get_unit_vector(
+    vector_1 = trigonometry.get_unit_vector((a1, b1, c1))
+    vector_2 = trigonometry.get_unit_vector(
         np.cross(plane.normal, vector_1)
     )
     return vector_1, vector_2

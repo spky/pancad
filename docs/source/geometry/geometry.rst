@@ -13,6 +13,10 @@ Geometry
     :show-inheritance:
     :members:
 
+.. autoclass:: PanCAD.geometry.Ellipse
+    :show-inheritance:
+    :members:
+
 .. autoclass:: PanCAD.geometry.Line
     :show-inheritance:
     :members:

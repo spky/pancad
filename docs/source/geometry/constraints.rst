@@ -1,6 +1,8 @@
 Constraints
 ===========
 
+.. autofunction:: PanCAD.geometry.constraints.make_constraint
+
 .. autoclass:: PanCAD.geometry.constraints.AbstractConstraint
     :show-inheritance:
     :members:

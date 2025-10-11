@@ -1,7 +1,8 @@
 import unittest
+from math import radians
 
 from PanCAD.geometry import (
-    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle
+    Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle, Ellipse,
 )
 from PanCAD.geometry.constraints import (
     Coincident, Vertical, Horizontal, Equal, Angle,
@@ -32,8 +33,7 @@ class TestDunder(unittest.TestCase):
         cs = CoordinateSystem((0, 0, 0))
         geom = [Point(1,1), LineSegment((-1,-1),(-1,1))]
         cons = [Coincident(geom[0], ConstraintReference.CORE, geom[1], ConstraintReference.CORE)]
-        uid = "TestSketch"
-        self.sketch = Sketch(cs, geometry=geom, constraints=cons, uid=uid)
+        self.sketch = Sketch(cs, geometry=geom, constraints=cons)
     
     def test_repr(self):
         # Checks whether repr errors out
@@ -73,7 +73,8 @@ class TestSummary(unittest.TestCase):
                      geometry[0], ConstraintReference.END,
                      value=side_length, unit=unit),
             Coincident(geometry[0], ConstraintReference.START,
-                       sketch.get_sketch_coordinate_system(),
+                       # sketch.get_sketch_coordinate_system(),
+                       sketch,
                        ConstraintReference.ORIGIN),
             Diameter(geometry[4], ConstraintReference.CORE, 1, unit=unit),
             Angle(geometry[0], ConstraintReference.CORE,
@@ -83,8 +84,20 @@ class TestSummary(unittest.TestCase):
         sketch.constraints = constraints
         return sketch
     
+    def make_ellipse_sketch(self) -> Sketch:
+        geometry = [
+            Ellipse.from_angle((0, 0), 2, 1, radians(45))
+        ]
+        sketch = Sketch(geometry=geometry, uid="test_sketch")
+        return sketch
+    
     def test_square_sketch_summary(self):
         sketch = self.make_square_sketch()
+        sketch_str = str(sketch)
+        # print(); print(sketch_str)
+    
+    def test_ellipse_sketch_summary(self):
+        sketch = self.make_ellipse_sketch()
         sketch_str = str(sketch)
         # print(); print(sketch_str)
 
@@ -112,39 +125,6 @@ class TestGeometrySetting(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.sketch.geometry = geometry
 
-class TestUID(unittest.TestCase):
-    
-    def setUp(self):
-        self.cs = CoordinateSystem((0, 0, 0))
-        self.sketch_uid = "TestSketch"
-        self.special_uid = "Special"
-        self.test_geo = [
-            Point(1, 1),
-            Line.from_two_points((0, 0), (0, 1)),
-            Line.from_two_points((0, 0), (0, 1)),
-            LineSegment((-1, -1), (-1, 1)),
-            LineSegment((-1, -1), (-1, 1), uid=self.special_uid),
-            LineSegment((-1, -1), (-1, 1), uid="2"),
-            LineSegment((-1, -1), (-1, 1), uid=""),
-        ]
-    
-    def test_uid_sync(self):
-        expected = [Sketch.UID_SEPARATOR.join([self.sketch_uid, str(i)])
-                    for i, _ in enumerate(self.test_geo)]
-        expected[4] = self.special_uid
-        sketch = Sketch(self.cs, geometry=self.test_geo, uid=self.sketch_uid)
-        uids = [g.uid for g in sketch.geometry]
-        self.assertCountEqual(uids, expected)
-    
-    def test_uid_update_sync(self):
-        sketch = Sketch(self.cs, geometry=self.test_geo, uid=self.sketch_uid)
-        uid = "ModifiedSketch"
-        sketch.uid = uid
-        uids = [g.uid for g in sketch.geometry]
-        expected = [Sketch.UID_SEPARATOR.join([uid, str(i)])
-                    for i, _ in enumerate(self.test_geo)]
-        expected[4] = self.special_uid
-        self.assertCountEqual(uids, expected)
 
 class TestConstraints(unittest.TestCase):
     
@@ -232,11 +212,11 @@ class TestConstraints(unittest.TestCase):
     def test_add_constraint_to_sketch_cs(self):
         sketch = Sketch(self.cs, geometry=self.geo)
         expected_constraint = Coincident(
-            sketch.get_sketch_coordinate_system(), ConstraintReference.ORIGIN,
+            sketch, ConstraintReference.ORIGIN,
             self.geo[0], ConstraintReference.CORE
         )
         sketch.add_constraint_by_uid(SketchConstraint.COINCIDENT,
-                                     ConstraintReference.COORDINATE_SYSTEM, ConstraintReference.ORIGIN,
+                                     sketch.uid, ConstraintReference.ORIGIN,
                                      self.geo[0].uid, ConstraintReference.CORE)
         self.assertEqual(sketch.constraints[0], expected_constraint)
 

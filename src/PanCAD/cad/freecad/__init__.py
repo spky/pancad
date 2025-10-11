@@ -15,5 +15,4 @@ import FreeCAD as App
 import Sketcher
 import Part
 import PartDesign
-
-from PanCAD.cad.freecad.filetypes import FreeCADFile
+from ._filetypes import FreeCADFile

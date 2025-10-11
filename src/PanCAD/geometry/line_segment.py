@@ -3,10 +3,10 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-import math
+from math import copysign
 from functools import partial
 from numbers import Real
-from typing import overload, Self
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -14,6 +14,9 @@ from PanCAD.geometry import AbstractGeometry, Point, Line
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison, trigonometry as trig
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from typing import Self
 
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
@@ -202,16 +205,6 @@ class LineSegment(AbstractGeometry):
         """
         return trig.theta_of_cartesian(self.direction)
     
-    @property
-    def uid(self) -> str:
-        """The unique id of the LineSegment.
-        
-        :getter: Returns the unique id of the LineSegment.
-        :setter: Sets the unique id of the LineSegment and updates the uid of 
-            the internal points a and b unique ids accordingly.
-        """
-        return self._uid
-    
     # Setters #
     @point_a.setter
     def point_a(self, pt: Point) -> None:
@@ -220,12 +213,6 @@ class LineSegment(AbstractGeometry):
     @point_b.setter
     def point_b(self, pt: Point) -> None:
         self.update_points(self.point_a, pt)
-    
-    @uid.setter
-    def uid(self, value: str) -> None:
-        self._uid = value
-        self.point_a.uid = f"{self._uid}_point_a"
-        self.point_b.uid = f"{self._uid}_point_b"
     
     # Public Methods #
     def copy(self) -> LineSegment:
@@ -419,7 +406,7 @@ class LineSegment(AbstractGeometry):
         :returns: The updated LineSegment.
         """
         new_vector_ab = self.get_vector_ab()
-        new_vector_ab[axis] = value * math.copysign(1, self.direction[axis])
+        new_vector_ab[axis] = value * copysign(1, self.direction[axis])
         if from_point_a:
             self.point_b.cartesian = (np.array(self.point_a.cartesian)
                                       + new_vector_ab)
@@ -457,7 +444,7 @@ class LineSegment(AbstractGeometry):
         """
         return len(self.point_a)
     
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
             if isclose0(self.point_a[i]):
@@ -470,20 +457,6 @@ class LineSegment(AbstractGeometry):
                 pt_b_strs.append("{:g}".format(self.point_b[i]))
         pt_a_str = ",".join(pt_a_strs)
         pt_b_str = ",".join(pt_b_strs)
-        return f"<PanCADLineSegment'{self.uid}'({pt_a_str})({pt_b_str})>"
-    
-    def __str__(self) -> str:
-        pt_a_strs, pt_b_strs = [], []
-        for i in range(0, len(self)):
-            if isclose0(self.point_a[i]):
-                pt_a_strs.append("0")
-            else:
-                pt_a_strs.append("{:g}".format(self.point_a[i]))
-            if isclose0(self.point_b[i]):
-                pt_b_strs.append("0")
-            else:
-                pt_b_strs.append("{:g}".format(self.point_b[i]))
-        pt_a_str = ", ".join(pt_a_strs)
-        pt_b_str = ", ".join(pt_b_strs)
-        return (f"PanCAD LineSegment with start ({pt_a_str})"
-                f" and end ({pt_b_str})")
+        
+        prefix = super().__str__()
+        return f"{prefix}({pt_a_str})({pt_b_str})>"

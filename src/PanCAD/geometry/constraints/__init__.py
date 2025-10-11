@@ -1,6 +1,6 @@
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from .abstract_constraint import AbstractConstraint
 
-from PanCAD.geometry.constraints.state_constraint import (
+from .state_constraint import (
     AbstractStateConstraint,
     Coincident,
     Equal,
@@ -8,13 +8,13 @@ from PanCAD.geometry.constraints.state_constraint import (
     Perpendicular,
     Tangent,
 )
-from PanCAD.geometry.constraints.snapto import (
+from .snapto import (
     AbstractSnapTo,
     Horizontal,
     Vertical,
 )
 
-from PanCAD.geometry.constraints.distance import (
+from .distance import (
     AbstractValue,
     Abstract1GeometryDistance,
     Abstract2GeometryDistance,
@@ -26,3 +26,5 @@ from PanCAD.geometry.constraints.distance import (
     Radius,
     VerticalDistance,
 )
+
+from ._generator import make_constraint

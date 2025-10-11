@@ -4,8 +4,7 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial
-from numbers import Real
-from typing import Self
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,6 +13,10 @@ from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison
 from PanCAD.utils.trigonometry import get_unit_vector
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from numbers import Real
+    from typing import Self
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -29,7 +32,6 @@ class Circle(AbstractGeometry):
         to None, but is required for a 3D circle.
     :param uid: The unique ID of the circle.
     """
-    CENTER_UID_FORMAT = "{uid}_center"
     REFERENCES = (ConstraintReference.CORE, ConstraintReference.CENTER)
     """All relevant ConstraintReferences for Circles."""
     
@@ -69,18 +71,9 @@ class Circle(AbstractGeometry):
         """
         return self._radius
     
-    @property
-    def uid(self) -> str:
-        """Unique id of the circle.
-        
-        :getter: Returns the unique id.
-        :setter: Updates the circle and its center point's unique ids.
-        """
-        return self._uid
-    
     # Setters #
     @center.setter
-    def center(self, point: Point):
+    def center(self, point: Point) -> None:
         if len(point) == len(self):
             self._center.update(point)
         else:
@@ -88,19 +81,11 @@ class Circle(AbstractGeometry):
                              f" {len(point)}D, Circle is {len(self)}D")
     
     @radius.setter
-    def radius(self, value: int | float):
+    def radius(self, value: Real) -> None:
         if value >= 0:
             self._radius = value
         else:
             raise ValueError(f"Radius cannot be < 0. Given: {value}")
-    
-    @uid.setter
-    def uid(self, value: str):
-        self._uid = value
-        if self._uid is None:
-            self.center.uid = None
-        else:
-            self.center.uid = self.CENTER_UID_FORMAT.format(uid=self._uid)
     
     # Public Methods #
     def get_reference(self, reference: ConstraintReference) -> Point | Self:

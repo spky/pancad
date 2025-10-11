@@ -3,18 +3,15 @@ PanCAD feature classes.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry import PanCADThing
 
-class AbstractFeature(ABC):
-    
-    # Properties #
-    @property
-    @abstractmethod
-    def uid(self) -> str:
-        """The unique id of the feature, usually used as its name."""
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractFeature, AbstractGeometry
+
+class AbstractFeature(PanCADThing):
     
     # Public Methods #
     @abstractmethod
@@ -23,3 +20,28 @@ class AbstractFeature(ABC):
         :class:`~PanCAD.geometry.Sketch` returns the sketch's coordinate 
         system and its external geometry references.
         """
+    
+    # Abstract Properties
+    @property
+    @abstractmethod
+    def context(self) -> AbstractFeature | None:
+        """Returns the feature that contains the feature. If context is None, 
+        then the feature's context is the top level of the file that the feature 
+        is inside of.
+        """
+    
+    # Getters #
+    @property
+    def name(self) -> str:
+        """The name of the feature. Usually user assigned or automatically 
+        generated. Does not need to be unique.
+        """
+        if hasattr(self, "_name"):
+            return self._name
+        else:
+            return None
+    
+    # Setters #
+    @name.setter
+    def name(self, value: str) -> str | None:
+        self._name = value

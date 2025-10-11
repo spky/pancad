@@ -1,2 +1,1 @@
-from PanCAD.filetypes.constants.enum_file_extensions import FileExtension
 from PanCAD.filetypes.constants.enum_software_name import SoftwareName

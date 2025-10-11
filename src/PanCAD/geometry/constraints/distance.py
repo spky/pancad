@@ -10,13 +10,23 @@ from abc import abstractmethod
 from functools import reduce
 import math
 from numbers import Real
-from typing import NoReturn
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
-    Circle, CoordinateSystem, Line, LineSegment, Plane, Point
+    Circle,
+    CoordinateSystem,
+    Ellipse,
+    Line,
+    LineSegment,
+    Plane,
+    Point,
 )
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import NoReturn
+    
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 
@@ -82,10 +92,9 @@ class AbstractValue(AbstractConstraint):
         else:
             return NotImplemented
     
-    def __repr__(self) -> str:
-        geometry_reprs = "".join([repr(g) for g in self.get_constrained()])
-        return (f"<{self.__class__.__name__}'{self.uid}'"
-                f"{geometry_reprs}v{self.value}>")
+    def __str__(self) -> str:
+        super_str = super().__str__().removesuffix(">")
+        return f"{super_str}[{self.value}{self.unit}]>"
 
 class Angle(AbstractValue):
     """A class representing angle value constraints between lines. Stores and 
@@ -94,6 +103,7 @@ class Angle(AbstractValue):
     
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~PanCAD.geometry.Ellipse`
     
     :param geometry_a: First line-like, defines the x-axis equivalent for
         quadrant selection.
@@ -112,7 +122,7 @@ class Angle(AbstractValue):
     :param uid: Unique identifier of the constraint.
     :param is_radians: Whether provided value is in radians. Defaults to False.
     """
-    CONSTRAINED_TYPES = (Line, LineSegment)
+    CONSTRAINED_TYPES = (Line, LineSegment, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -210,12 +220,6 @@ class Angle(AbstractValue):
         if not isinstance(self.value, (int, float)):
             raise ValueError("Value must be an int or float,"
                              f" given: {value.__class__}")
-    
-    # Dunder Methods #
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)} as"
-                f" geometry b and value {self.value}")
 
 class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more 
@@ -287,11 +291,6 @@ class Abstract2GeometryDistance(AbstractDistance):
     
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference, self._b_reference)
-    
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)} as"
-                f" geometry b and value {self.value}")
 
 class Abstract1GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly one** 
@@ -339,10 +338,6 @@ class Abstract1GeometryDistance(AbstractDistance):
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference,)
     
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and value {self.value}")
-    
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the geometries are not one of the allowed 
@@ -361,13 +356,15 @@ class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D 
     or 3D.
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane,
+                         Ellipse)
     GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -396,7 +393,7 @@ class Distance(Abstract2GeometryDistance):
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Ellipse)
     GEOMETRY_TYPES = (Point, Line, LineSegment)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -418,20 +415,22 @@ class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class VerticalDistance(AbstractDistance2D):
     """A constraint that sets the vertical distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class Radius(Abstract1GeometryDistance):

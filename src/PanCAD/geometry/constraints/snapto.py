@@ -7,12 +7,14 @@ geometry.
 from __future__ import annotations
 
 from functools import reduce
-from abc import abstractmethod
-from typing import NoReturn
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
-from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry.constraints import AbstractConstraint
+from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem, Ellipse
+
+if TYPE_CHECKING:
+    from typing import NoReturn
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
     """An abstract class of constraints that can be applied to a set of **one 
@@ -28,7 +30,7 @@ class AbstractSnapTo(AbstractConstraint):
     :param uid: The unique id of the constraint.
     """
     # Type Tuples for checking with isinstance()
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem)
+    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Ellipse)
     ONE_GEOMETRY_TYPES = (Line, LineSegment)
     TWO_GEOMETRY_TYPES = (Point,)
     GEOMETRY_TYPES = ONE_GEOMETRY_TYPES + TWO_GEOMETRY_TYPES
@@ -111,8 +113,8 @@ class AbstractSnapTo(AbstractConstraint):
         """Raises an error if the portions of the constrained geometries are not 
         one of the allowed types.
         """
-        if self._b is None and not isinstance(self._a,
-                                              self.ONE_GEOMETRY_TYPES):
+        if self._b is None and not all([isinstance(g, self.ONE_GEOMETRY_TYPES)
+                                        for g in self.get_geometry()]):
             name = self.__class__.__name__
             raise ValueError(
                 f"A single geometry {self.__class__.__name__} relation can only"
@@ -141,34 +143,17 @@ class AbstractSnapTo(AbstractConstraint):
             return all([g is other_g for g, other_g in geometry_zip])
         else:
             return NotImplemented
-    
-    def __repr__(self) -> str:
-        name = self.__class__.__name__
-        if self._b is None:
-            return (f"<{name}'{self.uid}'"
-                    f"{repr(self._a)}{self._a_reference.name}>")
-        else:
-            return f"<{name}'{self.uid}'{repr(self._a)}{repr(self._b)}>"
-    
-    def __str__(self) -> str:
-        name = self.__class__.__name__
-        if self._b is None:
-            return (f"PanCAD {name} Constraint '{self.uid}' constraining"
-                    f" {repr(self._a)}")
-        else:
-            return (f"PanCAD {name} Constraint '{self.uid}' with"
-                    f" {repr(self._a)} as constrained a and {repr(self._b)}"
-                    " as constrained b")
 
 class Horizontal(AbstractSnapTo):
     """A constraint that sets either a single geometry horizontal or a pair of 
     geometries horizontal relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """
 
 class Vertical(AbstractSnapTo):
@@ -176,8 +161,9 @@ class Vertical(AbstractSnapTo):
     geometries vertical relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Point`
     """

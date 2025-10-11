@@ -10,13 +10,23 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from functools import reduce
-from typing import NoReturn, Type
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints.abstract_constraint import AbstractConstraint
+from PanCAD.geometry.constraints import AbstractConstraint
 from PanCAD.geometry import (
-    Point, Line, LineSegment, Plane, CoordinateSystem, Circle
+    Circle,
+    CoordinateSystem,
+    Ellipse,
+    Line,
+    LineSegment,
+    Plane,
+    Point,
 )
-from PanCAD.geometry.constants import ConstraintReference
+
+if TYPE_CHECKING:
+    from typing import NoReturn, Type
+    
+    from PanCAD.geometry.constants import ConstraintReference
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry 
@@ -38,14 +48,10 @@ class AbstractStateConstraint(AbstractConstraint):
                  uid: str=None) -> None:
         self.uid = uid
         
-        if len(constrain_a) == len(constrain_b):
-            self._a = constrain_a
-            self._a_reference = reference_a
-            self._b = constrain_b
-            self._b_reference = reference_b
-        else:
-            raise ValueError("Geometry a and b must have the same number"
-                             " of dimensions")
+        self._a = constrain_a
+        self._a_reference = reference_a
+        self._b = constrain_b
+        self._b_reference = reference_b
         
         self._validate_parent_geometry()
         self._validate_geometry()
@@ -149,15 +155,6 @@ class AbstractStateConstraint(AbstractConstraint):
             return all([g is other_g for g, other_g in geometry_zip])
         else:
             return NotImplemented
-    
-    def __repr__(self) -> str:
-        return (f"<{self.__class__.__name__}'{self.uid}'"
-                f"{repr(self._a)}{repr(self._b)}>")
-    
-    def __str__(self) -> str:
-        return (f"PanCAD {self.__class__.__name__} Constraint '{self.uid}'"
-                f" with {repr(self._a)} as geometry a and {repr(self._b)}"
-                " as geometry b")
 
 class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same 
@@ -165,12 +162,13 @@ class Coincident(AbstractStateConstraint):
     
     - :class:`~PanCAD.geometry.Circle`
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     - :class:`~PanCAD.geometry.Point`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem,
+    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
                          Line, LineSegment,
                          Plane, Point)
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane, Point)
@@ -191,9 +189,10 @@ class Equal(AbstractStateConstraint):
     Can constrain:
     
     - :class:`~PanCAD.geometry.Circle`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.LineSegment`
     """
-    CONSTRAINED_TYPES = (LineSegment, Circle)
+    CONSTRAINED_TYPES = (LineSegment, Circle, Ellipse)
     GEOMETRY_TYPES = (LineSegment, Circle)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -207,11 +206,12 @@ class Parallel(AbstractStateConstraint):
     have the same distance continuously between them. Can constrain:
     
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -224,11 +224,12 @@ class Perpendicular(AbstractStateConstraint):
     relative to each other.
     
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -242,11 +243,13 @@ class Tangent(AbstractStateConstraint):
     
     - :class:`~PanCAD.geometry.Circle`
     - :class:`~PanCAD.geometry.CoordinateSystem`
+    - :class:`~PanCAD.geometry.Ellipse`
     - :class:`~PanCAD.geometry.Line`
     - :class:`~PanCAD.geometry.LineSegment`
     - :class:`~PanCAD.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane,
+                         Ellipse)
     GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)

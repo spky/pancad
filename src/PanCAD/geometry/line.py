@@ -7,8 +7,7 @@ from __future__ import annotations
 
 from functools import partial
 import math
-from numbers import Real
-from typing import Self
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -16,6 +15,10 @@ from PanCAD.geometry import AbstractGeometry, Point
 from PanCAD.geometry.constants import ConstraintReference
 from PanCAD.utils import comparison, trigonometry as trig
 from PanCAD.utils.pancad_types import VectorLike
+
+if TYPE_CHECKING:
+    from numbers import Real
+    from typing import Self
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -252,15 +255,6 @@ class Line(AbstractGeometry):
         return trig.theta_of_cartesian(self.direction)
     
     @property
-    def uid(self) -> str:
-        """The unique id of the line.
-        
-        :getter: Returns the unique id as a string.
-        :setter: Sets the unique id.
-        """
-        return self._uid
-    
-    @property
     def x_intercept(self) -> Real:
         """The x-intercept of the 2D line (x when y = 0 in y = mx + b), raises
         a ValueError if the line is 3D.
@@ -314,10 +308,6 @@ class Line(AbstractGeometry):
     @direction_spherical.setter
     def direction_spherical(self, vector: VectorLike) -> None:
         self.direction = trig.spherical_to_cartesian(vector)
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        self._uid = uid
     
     # Public Methods #
     def copy(self) -> Line:
@@ -407,7 +397,7 @@ class Line(AbstractGeometry):
         :param other: The line to update to.
         :returns: The updated Line.
         """
-        self._point_closest_to_origin = other.reference_point
+        self._point_closest_to_origin.update(other.reference_point)
         self.direction = other.direction
         return self
     
@@ -477,7 +467,7 @@ class Line(AbstractGeometry):
     # Python Dunders #
     def __copy__(self) -> Line:
         """Returns a copy of the line that has the same closest to origin 
-        point and direction, but no assigned uid. Can be used with the python 
+        point and direction, but a different uid. Can be used with the python 
         copy module.
         """
         return Line(self.reference_point, self.direction)

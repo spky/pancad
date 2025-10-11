@@ -16,63 +16,70 @@ left = LineSegment(top_left, bottom_left)
 
 # [sketch-definition-start]
 from PanCAD.geometry import Sketch
-sketch = Sketch(geometry=[bottom, right, top, left],
-                uid="square_sketch")
+sketch = Sketch(geometry=[bottom, right, top, left], name="square_sketch")
 # [sketch-definition-end]
 
-# from PanCAD import PartFile
-# filename = "tutorial_cube"
-# sketch_name = "square_sketch"
-
 # [constraint-definition-start]
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.geometry.constraints import (Coincident, Distance,
-                                         Horizontal, Vertical)
+from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
+from PanCAD.geometry.constraints import make_constraint
+
 sketch.constraints = [
     # Corner Coincidence
-    Coincident(bottom, ConstraintReference.START,
-               left, ConstraintReference.END),
-    Coincident(bottom, ConstraintReference.END,
-               right, ConstraintReference.START),
-    Coincident(right, ConstraintReference.END,
-               top, ConstraintReference.START),
-    Coincident(left, ConstraintReference.START,
-               top, ConstraintReference.END),
+    make_constraint(SketchConstraint.COINCIDENT,
+                    bottom, ConstraintReference.START,
+                    left, ConstraintReference.END),
+    make_constraint(SketchConstraint.COINCIDENT,
+                    bottom, ConstraintReference.END,
+                    right, ConstraintReference.START),
+    make_constraint(SketchConstraint.COINCIDENT,
+                    right, ConstraintReference.END,
+                    top, ConstraintReference.START),
+    make_constraint(SketchConstraint.COINCIDENT,
+                    left, ConstraintReference.START,
+                    top, ConstraintReference.END),
     
     # Line Segment Orientations
-    Horizontal(bottom, ConstraintReference.CORE),
-    Horizontal(top, ConstraintReference.CORE),
-    Vertical(right, ConstraintReference.CORE),
-    Vertical(left, ConstraintReference.CORE),
+    make_constraint(SketchConstraint.HORIZONTAL,
+                    bottom, ConstraintReference.CORE),
+    make_constraint(SketchConstraint.HORIZONTAL,
+                    top,  ConstraintReference.CORE),
+    make_constraint(SketchConstraint.VERTICAL,
+                    right, ConstraintReference.CORE),
+    make_constraint(SketchConstraint.VERTICAL,
+                    left, ConstraintReference.CORE),
     
     # Top/Bottom and Left/Right Distances
-    Distance(bottom, ConstraintReference.CORE,
-             top, ConstraintReference.CORE,
-             side_length, unit="mm"),
-    Distance(left, ConstraintReference.CORE,
-             right, ConstraintReference.CORE,
-             side_length, unit="mm"),
+    make_constraint(SketchConstraint.DISTANCE,
+                    bottom, ConstraintReference.CORE,
+                    top, ConstraintReference.CORE,
+                    value=side_length, unit="mm"),
+    make_constraint(SketchConstraint.DISTANCE,
+                    left, ConstraintReference.CORE,
+                    right, ConstraintReference.CORE,
+                    value=side_length, unit="mm"),
     
     # Constrain one corner to the origin
-    Coincident(bottom,
-               ConstraintReference.START,
-               sketch.get_sketch_coordinate_system(),
-               ConstraintReference.ORIGIN),
+    make_constraint(SketchConstraint.COINCIDENT,
+                    bottom, ConstraintReference.START,
+                    sketch, ConstraintReference.ORIGIN),
 ]
 # [constraint-definition-end]
 
 # [extrude-definition-start]
 from PanCAD.geometry import Extrude
-extrude = Extrude.from_length(sketch, side_length, "cube_extrude")
+extrude = Extrude.from_length(sketch, side_length, name="cube_extrude")
 # [extrude-definition-end]
 
 # [file-definition-start]
 from PanCAD import PartFile
 file = PartFile("tutorial_cube")
-file.add_feature(sketch)
-file.add_feature(extrude)
+file.features = [sketch, extrude]
 file.to_freecad("tutorial_cube.FCStd")
 # [file-definition-end]
 
+# Clean up after tutorial
 import os
 os.remove(file.filename + ".FCStd")
+for filename in os.listdir():
+    if filename.endswith(".FCBak"):
+        os.remove(filename)

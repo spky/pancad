@@ -1,16 +1,23 @@
 """A module providing a class defining the required properties and interfaces of 
 PanCAD constraint classes.
 """
+from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from PanCAD.geometry.abstract_geometry import AbstractGeometry
-from PanCAD.geometry.constants import ConstraintReference
+from PanCAD.geometry import PanCADThing
 
-class AbstractConstraint(ABC):
+if TYPE_CHECKING:
+    from PanCAD.geometry import AbstractGeometry
+    from PanCAD.geometry.constants import ConstraintReference
     
-    # Properties #
+class AbstractConstraint(PanCADThing):
+    """A class defining the interfaces provided by all PanCAD Constraint 
+    Elements.
+    """
     
+    # Abstract Properties #
     @property
     @abstractmethod
     def ConstrainedType(self) -> tuple[AbstractGeometry]:
@@ -28,7 +35,7 @@ class AbstractConstraint(ABC):
         the start point of a :class:`~PanCAD.geometry.LineSegment`.
         """
     
-    # Public Methods #
+    # Abstract Public Methods #
     @abstractmethod
     def get_constrained(self) -> tuple[AbstractGeometry]:
         """Returns the geometry or geometries being constrained."""
@@ -46,3 +53,25 @@ class AbstractConstraint(ABC):
         """Returns a tuple of the constrained geometrys' ConstraintReferences in 
         the same order as the tuple returned by :meth:`get_constrained`.
         """
+    
+    def __repr__(self) -> str:
+        return str(self)
+    
+    def __str__(self) -> str:
+        strings = ["<", self.__class__.__name__]
+        
+        if self.STR_VERBOSE:
+            strings.append(f"'{self.uid}'")
+        strings.append("-")
+        
+        constrained = self.get_constrained()
+        references = self.get_references()
+        geometry_strings = []
+        for geometry, reference in zip(constrained, references):
+            geometry_strings.append(
+                repr(geometry).replace("<", "").replace(">", "")
+            )
+            geometry_strings[-1] += reference.name
+        strings.append(",".join(geometry_strings))
+        strings.append(">")
+        return "".join(strings)

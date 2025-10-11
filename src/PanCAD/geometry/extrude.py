@@ -3,13 +3,18 @@ starting from a sketch profile.
 """
 from __future__ import annotations
 
-import textwrap
 from numbers import Real
-from typing import NoReturn, overload, Self
+from textwrap import indent
+from typing import TYPE_CHECKING, overload
 
-from PanCAD.geometry import AbstractFeature, AbstractGeometry, Sketch
+from PanCAD.geometry import AbstractFeature
 from PanCAD.geometry.constants import FeatureType
 from PanCAD.utils.text_formatting import get_table_string
+
+if TYPE_CHECKING:
+    from typing import NoReturn, Self
+    
+    from PanCAD.geometry import AbstractGeometry, Sketch
 
 class Extrude(AbstractFeature):
     """A class representing linear extrusions starting from a sketch profile in 
@@ -22,7 +27,8 @@ class Extrude(AbstractFeature):
     :param profile: The sketch defining the extrusion 2D shape.
     :param feature_type: The FeatureType defining the active direction(s) and 
         end conditions of the extrusion.
-    :param uid: The unique id of the Extrude. Defaults to None.
+    :param uid: The unique id of the Extrude. When set to None the uid is 
+        automatically generated.
     :param length: The length of the extrusion in the normal direction of the 
         plane of the profile sketch. Defaults to None.
     :param opposite_length: The length of the extrusion in the anti-normal 
@@ -35,6 +41,9 @@ class Extrude(AbstractFeature):
         defined by features.
     :param unit: The unit of the length and opposite_length values. Defaults 
         to None.
+    :param name: The name of the feature displayed to the users in CAD.
+    :param context: The feature that acts as the context for this feature, 
+        usually a :class:`~PanCAD.geometry.FeatureContainer`
     :raises ValueError: Raised for 
         :attr:`~PanCAD.geometry.constants.FeatureType.DIMENSION_TYPE` extrudes 
         if it is midplane and also has an opposite length defined or if length 
@@ -63,7 +72,9 @@ class Extrude(AbstractFeature):
                  is_midplane: bool=False,
                  is_reverse_direction: bool=False,
                  end_feature: object=None,
-                 unit: str=None) -> None:
+                 unit: str=None,
+                 name: str=None,
+                 context: AbstractFeature=None,) -> None:
         self.profile = profile
         self.feature_type = feature_type
         self.uid = uid
@@ -73,6 +84,8 @@ class Extrude(AbstractFeature):
         self.is_reverse_direction = is_reverse_direction
         self.end_feature = end_feature
         self.unit = unit
+        self.name = name
+        self.context = context
         # if self.feature_type in self.LENGTH_TYPE_ENUMS:
         if self.feature_type in FeatureType.DIMENSION_TYPE:
             self._validate_length_extrude()
@@ -95,7 +108,9 @@ class Extrude(AbstractFeature):
                     uid: str=None,
                     *,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @overload
     @classmethod
@@ -105,7 +120,9 @@ class Extrude(AbstractFeature):
                     uid: str=None,
                     *,
                     is_midplane: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @overload
     @classmethod
@@ -116,7 +133,9 @@ class Extrude(AbstractFeature):
                     *,
                     opposite_length: Real,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self: ...
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self: ...
     
     @classmethod
     def from_length(cls,
@@ -127,7 +146,9 @@ class Extrude(AbstractFeature):
                     opposite_length: Real=None,
                     is_midplane: bool=False,
                     is_reverse_direction: bool=False,
-                    unit: str=None) -> Self:
+                    unit: str=None,
+                    name: str=None,
+                    context: AbstractFeature=None,) -> Self:
         """Initializes an extrude from length dimensions. Determines the correct 
         FeatureType based on the input combination.
         
@@ -170,7 +191,9 @@ class Extrude(AbstractFeature):
                    is_midplane,
                    is_reverse_direction,
                    end_feature=None,
-                   unit=unit)
+                   unit=unit,
+                   name=name,
+                   context=context,)
     
     @classmethod
     def from_end_condition(cls,
@@ -194,13 +217,13 @@ class Extrude(AbstractFeature):
     
     # Getters #
     @property
-    def uid(self) -> str:
-        return self._uid
+    def context(self) -> AbstractFeature | None:
+        return self._context
     
     # Setters #
-    @uid.setter
-    def uid(self, uid: str):
-        self._uid = uid
+    @context.setter
+    def context(self, context_feature: AbstractFeature | None) -> None:
+        self._context = context_feature
     
     # Public Methods #
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
@@ -243,8 +266,7 @@ class Extrude(AbstractFeature):
     
     # Python Dunders #
     def __repr__(self) -> str:
-        return (f"<PanCAD_{repr(self.feature_type)}_Extrude'{self.uid}'"
-                f"p'{self.profile.uid}'>")
+        return (f"<PanCAD{repr(self.feature_type)}Extrude'{self.name}'>")
     
     def __str__(self) -> str:
         type_name = self.feature_type.name \
@@ -255,7 +277,7 @@ class Extrude(AbstractFeature):
         else:
             end_feature_uid = self.end_feature.uid
         summary = []
-        summary.append(f"Extrude '{self.uid}' of profile '{self.profile.uid}'")
+        summary.append(f"Extrude '{self.name}' of profile '{self.profile.uid}'")
         summary_info = {
             "Active Type": type_name,
             "Length": self.get_length_string(),
@@ -263,7 +285,5 @@ class Extrude(AbstractFeature):
             "Midplane": self.is_midplane,
             "Reversed": self.is_reverse_direction,
         }
-        summary.append(
-            textwrap.indent(get_table_string(summary_info), "  ")
-        )
+        summary.append(indent(get_table_string(summary_info), "  "))
         return "\n".join(summary)

@@ -189,15 +189,6 @@ class Point(AbstractGeometry):
                    uid=uid, unit=unit)
     
     # Getters #
-    @property
-    def uid(self) -> str:
-        """The unique id of the point.
-        
-        :getter: Returns the unique id.
-        :setter: Sets the unique id.
-        """
-        return self._uid
-    
     # Cartesian Coordinates #
     @property
     def cartesian(self) -> tuple[Real]:
@@ -298,10 +289,6 @@ class Point(AbstractGeometry):
             self._cartesian = value
         else:
             raise ValueError(f"Given cartesian {value} needs 2 or 3 elements")
-    
-    @uid.setter
-    def uid(self, uid: str) -> None:
-        self._uid = uid
     
     @x.setter
     def x(self, value: Real) -> None:
@@ -475,7 +462,6 @@ class Point(AbstractGeometry):
         """
         if isinstance(other, (np.ndarray, tuple)):
             if len(self) == len(other):
-                print(self)
                 numpy_array = np.array(self) + np.array(other)
                 return tuple(map(lambda x: x.item(), numpy_array))
             else:
@@ -555,17 +541,6 @@ class Point(AbstractGeometry):
         else:
             raise StopIteration
     
-    def __repr__(self) -> str:
-        """Returns the short string representation of the point."""
-        pt_strs = []
-        for i in range(0, len(self.cartesian)):
-            if isclose0(self.cartesian[i]):
-                pt_strs.append("0")
-            else:
-                pt_strs.append("{:g}".format(self.cartesian[i]))
-        point_str = ",".join(pt_strs)
-        return f"<PanCADPoint'{self.uid}'({point_str})>"
-    
     def __str__(self) -> str:
         pt_strs = []
         for i in range(0, len(self.cartesian)):
@@ -574,7 +549,8 @@ class Point(AbstractGeometry):
             else:
                 pt_strs.append("{:g}".format(self.cartesian[i]))
         point_str = ",".join(pt_strs)
-        return f"<PanCADPoint'{self.uid}'({point_str})>"
+        prefix = super().__str__()
+        return f"{prefix}({point_str})>"
     
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

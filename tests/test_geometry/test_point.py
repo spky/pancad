@@ -67,7 +67,7 @@ class TestPointInit(unittest.TestCase):
     
     def test_point_str_dunder(self):
         pt = Point(self.coordinate1, uid="test")
-        self.assertEqual(str(pt), "<PanCADPoint'test'(1,1,1)>")
+        self.assertEqual(str(pt), "<Point(1,1,1)>")
     
     def test_point_len_dunder(self):
         tests = [
