@@ -1,7 +1,6 @@
 """A module with functions to initialize PanCAD. Intended to be called when 
 PanCAD is imported"""
 
-import os
 from os.path import expandvars
 import shutil
 import logging
@@ -12,7 +11,6 @@ from pathlib import Path
 from PanCAD import config
 from PanCAD.constants import SoftwareName
 
-# APPDATA = os.path.expandvars(os.path.join("%appdata%", "PanCAD"))
 APPDATA = Path(expandvars("%appdata%"))
 PANCAD_CONFIG_DIR = APPDATA / "PanCAD"
 CONFIG_NAME = "config.toml"
@@ -63,7 +61,7 @@ def check_cache() -> None:
 def delete_pancad_settings() -> None:
     """Deletes all PanCAD user specific settings. Useful for uninstallation.
     """
-    if os.path.exists(PANCAD_CONFIG_DIR):
+    if PANCAD_CONFIG_DIR.is_dir():
         shutil.rmtree(PANCAD_CONFIG_DIR)
     else:
         logger.warning(f"Attempted '{PANCAD_CONFIG_DIR}' config deletion,"
@@ -73,8 +71,8 @@ def get_application_paths() -> dict[str, Path]:
     """Returns a dictionary of configuration file setting filepaths"""
     check_appdata_folder()
     with open(CONFIG_FILEPATH, "rb") as file:
-        config = tomllib.load(file)
-    return config["application_paths"]
+        config_data = tomllib.load(file)
+    return config_data["application_paths"]
 
 def get_cache() -> dict:
     """Reads or creates the PanCAD cache and returns it as a dictionary."""
