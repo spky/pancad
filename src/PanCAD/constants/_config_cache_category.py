@@ -1,10 +1,10 @@
-"""A module providing an enumeration for PanCAD cache and configuration 
+"""A module providing an enumeration for pancad cache and configuration 
 categories.
 """
 from enum import StrEnum, auto
 
 class ConfigCategory(StrEnum):
-    """An enumeration used for PanCAD cache and configuration category options.
+    """An enumeration used for pancad cache and configuration category options.
     """
     
     APPLICATION_PATHS = auto()

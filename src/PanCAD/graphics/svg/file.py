@@ -4,10 +4,10 @@ elements to be written to files.
 
 import xml.etree.ElementTree as ET
 
-from PanCAD.graphics.svg import element_utils as seu
-from PanCAD.graphics.svg.elements import SVGElement
-from PanCAD.utils import file_handlers
-from PanCAD.utils.file_handlers import InvalidAccessModeError
+from pancad.graphics.svg import element_utils as seu
+from pancad.graphics.svg.elements import SVGElement
+from pancad.utils import file_handlers
+from pancad.utils.file_handlers import InvalidAccessModeError
 
 class SVGFile(ET.ElementTree):
     """A class for svg files with a single svg element at the top that 
@@ -181,7 +181,7 @@ class SVGFile(ET.ElementTree):
         return element
 
 def read_svg(filepath: str, mode: str = "r") -> SVGFile:
-    """Returns a PanCAD SVGFile class instance after reading a svg file.
+    """Returns a pancad SVGFile class instance after reading a svg file.
     
     :param filepath: The filepath of the svg file
     :returns: An SVGFile instance describing the svg file at the filepath

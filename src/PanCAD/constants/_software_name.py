@@ -1,11 +1,11 @@
-"""A module providing an enumeration for the software that PanCAD is compatible 
+"""A module providing an enumeration for the software that pancad is compatible 
 with.
 """
 from enum import StrEnum, auto
 
 class SoftwareName(StrEnum):
     """An enumeration used to refer to software applications by standardizing 
-    the spacing, capitalization, and spelling used by PanCAD.
+    the spacing, capitalization, and spelling used by pancad.
     """
     
     FREECAD = auto()
@@ -17,9 +17,9 @@ class SoftwareName(StrEnum):
     `OpenSCAD website <https://openscad.org/downloads.html>`_.
     """
     PANCAD = auto()
-    """References PanCAD, presumably the software that you're using! See 
-    and download PanCAD's source code from the `PanCAD GitHub page 
-    <https://github.com/spky/PanCAD>`_.
+    """References pancad, presumably the software that you're using! See 
+    and download pancad's source code from the `pancad GitHub page 
+    <https://github.com/spky/pancad>`_.
     """
     SOLVESPACE = auto()
     """References the SolveSpace CAD application. Download it from the 

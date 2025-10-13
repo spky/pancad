@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry, Point
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison, trigonometry as trig
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.geometry import AbstractGeometry, Point
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison, trigonometry as trig
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -66,8 +66,8 @@ class Line(AbstractGeometry):
         produce 2D lines, 3D produce 3D lines, and 2D and 3D points cannot 
         be mixed.
         
-        :param a: A PanCAD Point on the line.
-        :param b: A PanCAD Point on the line that is not the same as point a.
+        :param a: A pancad Point on the line.
+        :param b: A pancad Point on the line that is not the same as point a.
         :param uid: The unique ID of the line.
         :returns: A Line that is coincident with points a and b.
         """
@@ -77,7 +77,7 @@ class Line(AbstractGeometry):
             b = Point(b)
         
         if not isinstance(a, Point) or not isinstance(b, Point):
-            raise ValueError("a and b must be VectorLikes or PanCAD Points."
+            raise ValueError("a and b must be VectorLikes or pancad Points."
                              f" Classes - a: {a.__class__}, b:{b.__class__}")
         
         if a != b:
@@ -168,7 +168,7 @@ class Line(AbstractGeometry):
     def direction(self) -> tuple[Real]:
         """The unique direction of the line with cartesian components.
         
-        PanCAD Line Directions in 2D are defined to be unique since infinite 
+        pancad Line Directions in 2D are defined to be unique since infinite 
         lines do not have a true direction. For a given vector, the unique 
         direction is defined by these rules:
         
@@ -509,7 +509,7 @@ class Line(AbstractGeometry):
                 direction_strs.append("{:g}".format(self.direction[i]))
         point_str = ",".join(pt_strs)
         direction_str = ",".join(direction_strs)
-        return f"<PanCADLine'{self.uid}'({point_str})({direction_str})>"
+        return f"<pancadLine'{self.uid}'({point_str})({direction_str})>"
     
     def __str__(self) -> str:
         """String function to output the line's description, closest 
@@ -528,5 +528,5 @@ class Line(AbstractGeometry):
                 direction_strs.append("{:g}".format(self.direction[i]))
         point_str = ", ".join(pt_strs)
         direction_str = ", ".join(direction_strs)
-        return (f"PanCAD Line with a point closest to the origin at"
+        return (f"pancad Line with a point closest to the origin at"
                 + f" ({point_str}) and in the direction ({direction_str})")

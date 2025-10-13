@@ -1,5 +1,5 @@
 """A module providing functions to check for spatial relations between objects. 
-PanCAD defines a spatial relation to be a relation that defines how an object 
+pancad defines a spatial relation to be a relation that defines how an object 
 is located in space relative to another object. Many of these also exist as 
 constraints in CAD programs.
 
@@ -10,9 +10,9 @@ import math
 
 import numpy as np
 
-from PanCAD.constants import AngleConvention as AC
-from PanCAD.geometry import Point, Line, LineSegment, Plane, conversion
-from PanCAD.utils import trigonometry as trig, comparison
+from pancad.constants import AngleConvention as AC
+from pancad.geometry import Point, Line, LineSegment, Plane, conversion
+from pancad.utils import trigonometry as trig, comparison
 
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9
@@ -142,7 +142,7 @@ def get_angle_between(geometry_a, geometry_b) -> float | None:
         the other two/four quadrants. Note: If the elements are parallel, this 
         will cause the function to return pi/tau
     :param convention: The angle convention selection from the 
-        PanCAD.constants.angle_convention.AngleConvention enumeration. Used to 
+        pancad.constants.angle_convention.AngleConvention enumeration. Used to 
         select how the returned angle should be represented (0 to 2pi, -pi to pi, 
         etc).
     :returns: The value of the angle between the geometries in radians. If the 

@@ -1,8 +1,8 @@
 import unittest
 
-from PanCAD.geometry import Point, LineSegment, Circle
-from PanCAD.geometry.constraints import Coincident
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry import Point, LineSegment, Circle
+from pancad.geometry.constraints import Coincident
+from pancad.geometry.constants import ConstraintReference
 
 class TestInit(unittest.TestCase):
     

@@ -3,9 +3,9 @@ import unittest
 
 import numpy as np
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.utils import verification, comparison
-from PanCAD.geometry import Point, Line, LineSegment, Plane, conversion
+from pancad.utils import trigonometry as trig
+from pancad.utils import verification, comparison
+from pancad.geometry import Point, Line, LineSegment, Plane, conversion
 
 ROUNDING_PLACES = 10
 
@@ -51,7 +51,7 @@ class TestPlaneUpdate(unittest.TestCase):
         plane = Plane((0, 0, 0), (0, 0, 1))
         new = Plane((1, 1, 1), (1, 1, 1))
         plane.update(new)
-        verification.assertPanCADAlmostEqual(self, plane, new, ROUNDING_PLACES)
+        verification.assertPancadAlmostEqual(self, plane, new, ROUNDING_PLACES)
 
 class TestPlaneConversion(unittest.TestCase):
     def test_get_3_points_on_plane(self):

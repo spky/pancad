@@ -1,4 +1,4 @@
-"""A module to provide provide PanCAD functions to consistently compare values"""
+"""A module to provide provide pancad functions to consistently compare values"""
 
 from functools import singledispatch, partial
 import math

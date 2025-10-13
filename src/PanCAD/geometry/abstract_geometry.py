@@ -1,20 +1,20 @@
 """A module providing a class defining the required properties and interfaces of 
-PanCAD geometry classes.
+pancad geometry classes.
 """
 from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing
+from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
     from typing import Self
     
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry.constants import ConstraintReference
 
-class AbstractGeometry(PanCADThing):
-    """A class defining the interfaces provided by PanCAD Geometry Elements."""
+class AbstractGeometry(PancadThing):
+    """A class defining the interfaces provided by pancad Geometry Elements."""
     
     # Public Methods #
     @abstractmethod

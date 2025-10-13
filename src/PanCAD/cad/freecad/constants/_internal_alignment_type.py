@@ -3,13 +3,13 @@ Alignment Types options.
 """
 from enum import IntEnum
 
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 
 from . import EdgeSubPart
 
 class InternalAlignmentType(IntEnum):
     """An enumeration used to define FreeCAD InternalAlignment constraint types 
-    supported by PanCAD.
+    supported by pancad.
     """
     
     ELLIPSE_MAJOR_DIAMETER = 1

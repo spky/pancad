@@ -4,8 +4,8 @@ other formats
 
 import re
 
-from PanCAD.utils.regex import capture_re
-from PanCAD.graphics.svg.grammar_regex import DIGIT_SEQUENCE, SIGN
+from pancad.utils.regex import capture_re
+from pancad.graphics.svg.grammar_regex import DIGIT_SEQUENCE, SIGN
 
 def parse_coordinate_string(coordinate: str) -> list:
     """Uses re to figure out what string of coordinates are in path 

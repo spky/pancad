@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.append('src')
 
-import PanCAD
+import pancad
 
 class TestSVGInterface(unittest.TestCase):
     
@@ -29,7 +29,7 @@ class TestSVGInterface(unittest.TestCase):
     def test_read_write_svg(self):
         """Read an svg file and then write it to a folder."""
         out_path = os.path.join(self.OUT_DIR, "test_read_write_svg.svg")
-        svg_file = PanCAD.read_svg(self.SVG_0)
+        svg_file = pancad.read_svg(self.SVG_0)
         svg_file.write(out_path)
         os.remove(out_path) # Clean up if no errors occurred
     
@@ -44,9 +44,9 @@ class TestSVGInterface(unittest.TestCase):
         sketch_label = "xz_rounded_rectangle_with_circle"
         out_path = os.path.join(self.OUT_DIR,
                                 "test_export_freecad_sketch_to_svg.svg")
-        freecad_file = PanCAD.read_freecad(self.FC_0)
+        freecad_file = pancad.read_freecad(self.FC_0)
         freecad_sketch = freecad_file.get_sketch(sketch_label)
-        sketch_svg_file = PanCAD.freecad_sketch_to_svg(freecad_sketch)
+        sketch_svg_file = pancad.freecad_sketch_to_svg(freecad_sketch)
         sketch_svg_file.write(out_path)
         os.remove(out_path) # Clean up if no errors occurred
     
@@ -55,9 +55,9 @@ class TestSVGInterface(unittest.TestCase):
         """Read a svg file and add it to a freecad model as a sketch."""
         out_path = os.path.join(self.OUT_DIR,
                                 "test_import_svg_to_freecad_file.FCStd")
-        import_svg_file = PanCAD.read_svg(self.SVG_0)
-        freecad_sketch = PanCAD.svg_to_freecad_sketch(import_svg_file)
-        freecad_file = PanCAD.read_freecad(out_path, "w")
+        import_svg_file = pancad.read_svg(self.SVG_0)
+        freecad_sketch = pancad.svg_to_freecad_sketch(import_svg_file)
+        freecad_file = pancad.read_freecad(out_path, "w")
         freecad_file.new_sketch(freecad_sketch)
         freecad_file.save()
         os.remove(out_path) # Clean up if no errors occurred

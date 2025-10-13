@@ -1,16 +1,16 @@
 from math import radians
 from numbers import Real
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     Circle,
     CoordinateSystem,
     Ellipse,
     LineSegment,
     Sketch,
 )
-from PanCAD.geometry.constants import (ConstraintReference as CR,
+from pancad.geometry.constants import (ConstraintReference as CR,
                                        SketchConstraint as SC)
-from PanCAD.geometry.constraints import (
+from pancad.geometry.constraints import (
     make_constraint,
     Coincident,
     Diameter,

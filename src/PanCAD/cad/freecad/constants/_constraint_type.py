@@ -5,10 +5,10 @@ from __future__ import annotations
 from enum import StrEnum, Flag
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constants import SketchConstraint
+from pancad.geometry.constants import SketchConstraint
 
 if TYPE_CHECKING:
-    from PanCAD.geometry.constraints import AbstractConstraint
+    from pancad.geometry.constraints import AbstractConstraint
 
 class ConstraintType(StrEnum):
     """An enumeration used to define which FreeCAD constraints are supported."""
@@ -30,7 +30,7 @@ class ConstraintType(StrEnum):
     
     def get_sketch_constraint(self) -> SketchConstraint:
         """Returns the ConstraintType's equivalent 
-        :class:`~PanCAD.geometry.constants.SketchConstraint` \.
+        :class:`~pancad.geometry.constants.SketchConstraint` \.
         
         :raises ValueError: When the ConstraintType does not have an equivalent 
             SketchConstraint.
@@ -73,9 +73,9 @@ class ConstraintType(StrEnum):
     
     @classmethod
     def from_pancad(cls, constraint: AbstractConstraint) -> ConstraintType:
-        """Returns the PanCAD constraint's equivalent ConstraintType.
+        """Returns the pancad constraint's equivalent ConstraintType.
         
-        :raises TypeError: Raised when the PanCAD constraint does not have have 
+        :raises TypeError: Raised when the pancad constraint does not have have 
             a ConstraintType equivalent.
         """
         type_ = type(constraint).__qualname__

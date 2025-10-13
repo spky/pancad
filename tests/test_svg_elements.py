@@ -6,7 +6,7 @@ import os
 
 sys.path.append('src')
 
-from PanCAD.graphics.svg import elements as se
+from pancad.graphics.svg import elements as se
 
 class TestSVG(unittest.TestCase):
     

@@ -1,4 +1,4 @@
-"""A module providing functions to convert parts of PanCAD geometry into other 
+"""A module providing functions to convert parts of pancad geometry into other 
 representations while avoiding the need for circular imports. Example: a 
 LineSegment can be used to define a Line.
 """
@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.utils import trigonometry
-from PanCAD.geometry import Point
-from PanCAD.utils import comparison
+from pancad.utils import trigonometry
+from pancad.geometry import Point
+from pancad.utils import comparison
 
 if TYPE_CHECKING:
-    from PanCAD.geometry import Line, LineSegment, Plane
+    from pancad.geometry import Line, LineSegment, Plane
 
 isclose = partial(comparison.isclose, nan_equal=True)
 

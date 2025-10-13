@@ -4,17 +4,17 @@ information in them into equvalent SVGs
 
 from __future__ import annotations
 
-import PanCAD
-from PanCAD.graphics.svg import elements
-from PanCAD.graphics.svg import element_utils as seu
-from PanCAD.graphics.svg.file import SVGFile
-from PanCAD.graphics.svg.generators import SVGStyle
-from PanCAD.cad.freecad import sketch_readers as fsr
-from PanCAD.cad.freecad.object_wrappers import File as FreeCADFile
-from PanCAD.cad.freecad.object_wrappers import Sketch as FreeCADSketch
-from PanCAD.utils.config import Config, SettingsMissingError
-from PanCAD.translators import freecad_sketcher_to_svg as fc_to_svg
-from PanCAD.translators import svg_to_freecad_sketcher as svg_to_fc
+import pancad
+from pancad.graphics.svg import elements
+from pancad.graphics.svg import element_utils as seu
+from pancad.graphics.svg.file import SVGFile
+from pancad.graphics.svg.generators import SVGStyle
+from pancad.cad.freecad import sketch_readers as fsr
+from pancad.cad.freecad.object_wrappers import File as FreeCADFile
+from pancad.cad.freecad.object_wrappers import Sketch as FreeCADSketch
+from pancad.utils.config import Config, SettingsMissingError
+from pancad.translators import freecad_sketcher_to_svg as fc_to_svg
+from pancad.translators import svg_to_freecad_sketcher as svg_to_fc
 
 import Sketcher
 
@@ -101,7 +101,7 @@ class SketchSVG(elements.svg):
         :param label: The label for the sketch, defaults to None which will 
                       cause the svg id to be assigned as the sketch label.
                       If the svg id is also None, a ValueError will be raised.
-        :returns: A PanCAD.freecad.object_wrappers.Sketch object
+        :returns: A pancad.freecad.object_wrappers.Sketch object
         """
         if label is not None:
             sketch_label = label
@@ -208,7 +208,7 @@ def svg_to_freecad_sketch(
                      svg element must be a SketchSVG instance since the 
                      geometry has to be marked as construction or 
                      non-construction.
-    :returns: A PanCAD.freecad.object_wrappers.File instance
+    :returns: A pancad.freecad.object_wrappers.File instance
     """
     if isinstance(svg, elements.svg):
         svg_element = svg

@@ -7,11 +7,11 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import TYPE_CHECKING, Self
 
-from PanCAD.geometry import Sketch
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry import Sketch
+from pancad.geometry.constants import ConstraintReference
 
 if TYPE_CHECKING:
-    from PanCAD.geometry import AbstractGeometry
+    from pancad.geometry import AbstractGeometry
 
 class EdgeSubPart(IntEnum):
     """An enumeration class used to define FreeCAD constraints with the 
@@ -33,8 +33,8 @@ class EdgeSubPart(IntEnum):
     
     @classmethod
     def from_constraint_reference(self, reference: ConstraintReference) -> Self:
-        """Returns the EdgeSubPart that matches the PanCAD ConstraintReference 
-        when translating from PanCAD to FreeCAD.
+        """Returns the EdgeSubPart that matches the pancad ConstraintReference 
+        when translating from pancad to FreeCAD.
         
         :param reference: A ConstraintReference to a portion of geometry.
         :returns: The FreeCAD equivalent to the reference.
@@ -68,8 +68,8 @@ class EdgeSubPart(IntEnum):
                                  reference: ConstraintReference,
                                  ) -> ConstraintReference:
         """Returns the EdgeSubPart's equivalent
-        :class:`PanCAD.geometry.constants.ConstraintReference` based on the part 
-        of the equivalent PanCAD geometry that it's applied to.
+        :class:`pancad.geometry.constants.ConstraintReference` based on the part 
+        of the equivalent pancad geometry that it's applied to.
         
         :param geometry: The parent geometry.
         :param reference: A ConstraintReference to the portion of the parent 

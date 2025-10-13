@@ -1,4 +1,4 @@
-"""A module providing utility methods to make unit testing PanCAD easier by 
+"""A module providing utility methods to make unit testing pancad easier by 
 deleting or otherwise working with files when tests are complete.
 """
 from os import listdir, remove

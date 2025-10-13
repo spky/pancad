@@ -5,7 +5,7 @@ import re
 
 sys.path.append('src')
 
-from PanCAD.graphics.svg import validators as sv
+from pancad.graphics.svg import validators as sv
 
 class TestSVGValidators(unittest.TestCase):
     

@@ -1,9 +1,9 @@
 [general]
-# Settings used by PanCAD application-wide
+# Settings used by pancad application-wide
 default_save_path = '%homepath%'
 
 [application_paths]
-# Paths to external executables used by PanCAD
+# Paths to external executables used by pancad
 freecad = ''
 
 [svg]

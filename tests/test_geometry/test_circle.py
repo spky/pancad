@@ -1,7 +1,7 @@
 import unittest
 
-from PanCAD.geometry import Circle, Point
-from PanCAD.utils.verification import assertPanCADAlmostEqual
+from pancad.geometry import Circle, Point
+from pancad.utils.verification import assertPancadAlmostEqual
 
 ROUNDING_PLACES = 10
 
@@ -21,7 +21,7 @@ class TestInit(unittest.TestCase):
         
         with self.subTest(expected_center=center_point,
                           test_center=test_circle.center):
-            assertPanCADAlmostEqual(self, test_circle.center, center_point,
+            assertPancadAlmostEqual(self, test_circle.center, center_point,
                                     ROUNDING_PLACES)
         with self.subTest(expected_radius=radius,
                           test_radius=test_circle.radius):
@@ -31,7 +31,7 @@ class TestInit(unittest.TestCase):
             if vector_1 is None:
                 self.assertEqual(test_vector_1, vector_1)
             else:
-                assertPanCADAlmostEqual(self, test_vector_1, vector_1,
+                assertPancadAlmostEqual(self, test_vector_1, vector_1,
                                         ROUNDING_PLACES)
 
 class Test2DCircle(TestInit):

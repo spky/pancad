@@ -1,5 +1,5 @@
 """A module providing constraint classes for state constraints between strictly 
-two geometry elements. PanCAD defines state constraints to be constraints 
+two geometry elements. pancad defines state constraints to be constraints 
 between 2 elements that have a constant implied value or no value associated 
 with them. Perpendicular constraints that force lines to be angled 90 degrees to 
 each other and equal constraints that force lines to be the same length are 
@@ -12,8 +12,8 @@ from abc import abstractmethod
 from functools import reduce
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints import AbstractConstraint
-from PanCAD.geometry import (
+from pancad.geometry.constraints import AbstractConstraint
+from pancad.geometry import (
     Circle,
     CoordinateSystem,
     Ellipse,
@@ -26,7 +26,7 @@ from PanCAD.geometry import (
 if TYPE_CHECKING:
     from typing import NoReturn, Type
     
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry.constants import ConstraintReference
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry 
@@ -160,13 +160,13 @@ class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same 
     location. Can constrain:
     
-    - :class:`~PanCAD.geometry.Circle`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Plane`
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Plane`
+    - :class:`~pancad.geometry.Point`
     """
     CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
                          Line, LineSegment,
@@ -188,9 +188,9 @@ class Equal(AbstractStateConstraint):
     context-specific value, such as two line segments sharing the same length. 
     Can constrain:
     
-    - :class:`~PanCAD.geometry.Circle`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.LineSegment`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.LineSegment`
     """
     CONSTRAINED_TYPES = (LineSegment, Circle, Ellipse)
     GEOMETRY_TYPES = (LineSegment, Circle)
@@ -205,11 +205,11 @@ class Parallel(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be side by side and 
     have the same distance continuously between them. Can constrain:
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Plane`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Plane`
     """
     CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
@@ -223,11 +223,11 @@ class Perpendicular(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be angled 90 degrees 
     relative to each other.
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Plane`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Plane`
     """
     CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
@@ -241,12 +241,12 @@ class Tangent(AbstractStateConstraint):
     """A constraint that forces a line to touch a curve at a point while not 
     also crossing the curve at that point.
     
-    - :class:`~PanCAD.geometry.Circle`
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Plane`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Plane`
     """
     CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane,
                          Ellipse)

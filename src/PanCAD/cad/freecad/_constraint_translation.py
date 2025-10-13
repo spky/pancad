@@ -1,12 +1,12 @@
 """A module providing functions to generate FreeCAD sketch constraints from 
-PanCAD constraints"""
+pancad constraints"""
 from __future__ import annotations
 
 from functools import singledispatch, singledispatchmethod
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry import LineSegment
-from PanCAD.geometry.constraints import (
+from pancad.geometry import LineSegment
+from pancad.geometry.constraints import (
     Angle,
     Coincident,
     Diameter,
@@ -21,7 +21,7 @@ from PanCAD.geometry.constraints import (
     VerticalDistance,
     make_constraint,
 )
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 
 from . import App, Sketcher
 from ._application_types import FreeCADConstraint
@@ -31,9 +31,9 @@ from .constants import (
 
 if TYPE_CHECKING:
     from uuid import UUID
-    from PanCAD.geometry import Sketch, AbstractGeometry, AbstractFeature
-    from PanCAD.geometry.constants import SketchConstraint
-    from PanCAD.geometry.constraints import (AbstractConstraint,
+    from pancad.geometry import Sketch, AbstractGeometry, AbstractFeature
+    from pancad.geometry.constants import SketchConstraint
+    from pancad.geometry.constraints import (AbstractConstraint,
                                              AbstractStateConstraint,
                                              AbstractSnapTo,
                                              Abstract2GeometryDistance)
@@ -41,15 +41,15 @@ if TYPE_CHECKING:
     from ._map_typing import SketchElementID
 
 ################################################################################
-# FreeCAD ---> PanCAD Constraints
+# FreeCAD ---> pancad Constraints
 ################################################################################
 def _freecad_to_pancad_constraint(self,
                                   constraint_id: SketchElementID
                                   ) -> AbstractConstraint:
-    """Returns a FreeCAD constraint that can be placed into a PanCAD Sketch.
+    """Returns a FreeCAD constraint that can be placed into a pancad Sketch.
     
     :param constraint_id: A FreeCAD constraint FreeCADID.
-    :returns: The equivalent PanCAD constraint.
+    :returns: The equivalent pancad constraint.
     """
     constraint_type = ConstraintType(self._id_map[constraint_id].Type)
     match constraint_type:
@@ -85,7 +85,7 @@ def _add_state_or_snapto(self,
                          constraint_id: SketchElementID,
                          constraint_type: SketchConstraint
                          ) -> AbstractStateConstraint | AbstractSnapTo:
-    """Returns a PanCAD state or snapto equivalent constraint from a FreeCAD 
+    """Returns a pancad state or snapto equivalent constraint from a FreeCAD 
     constraint.
     
     :param constraint_id: The FreeCADID for the FreeCAD constraint.
@@ -108,7 +108,7 @@ def _add_distance(self,
                   constraint_id: SketchElementID,
                   constraint_type: SketchConstraint
                   ) -> Abstract2GeometryDistance:
-    """Returns a PanCAD distance equivalent constraint from a FreeCAD
+    """Returns a pancad distance equivalent constraint from a FreeCAD
     constraint.
     
     :param constraint_id: The FreeCADID for the FreeCAD constraint.
@@ -138,13 +138,13 @@ def _get_pancad_pair(self,
                      sub_part: EdgeSubPart
                      ) -> tuple[AbstractGeometry | AbstractFeature,
                                 ConstraintReference]:
-    """Returns the equivalent PanCAD geometry and mapped constraint reference 
+    """Returns the equivalent pancad geometry and mapped constraint reference 
     for a given FreeCAD geometry and subpart.
     
     :param geometry_id: The FreeCADID for a FreeCAD geometry element.
     :param sub_part: The EdgeSubPart referring to the portion of the FreeCAD 
         geometry.
-    :returns: A tuple of the PanCAD geometry and its associated 
+    :returns: A tuple of the pancad geometry and its associated 
         ConstraintReference
     """
     if self._constraint_map.is_internal_geometry(geometry_id):
@@ -171,15 +171,15 @@ def _get_pancad_pair(self,
 def _freecad_to_pancad_add_constraints(self,
                                        freecad_sketch: FreeCADSketch,
                                        sketch: Sketch) -> Sketch:
-    """Adds the constraints in a FreeCAD Sketch to a PanCAD Sketch.
+    """Adds the constraints in a FreeCAD Sketch to a pancad Sketch.
     
     :param freecad_sketch: The FreeCAD sketch to read constraints from.
-    :param sketch: The PanCAD sketch to add constraints to.
-    :returns: The updated PanCAD sketch.
+    :param sketch: The pancad sketch to add constraints to.
+    :returns: The updated pancad sketch.
     """
     for i, freecad_constraint in enumerate(freecad_sketch.Constraints):
         if freecad_constraint.Type == ConstraintType.INTERNAL_ALIGNMENT:
-            # Skip internal alignment constraints, not needed for PanCAD
+            # Skip internal alignment constraints, not needed for pancad
             continue
         constraint_id = (freecad_sketch.ID, ListName.CONSTRAINTS, i)
         self._id_map[constraint_id] = freecad_constraint
@@ -191,9 +191,9 @@ def _freecad_to_pancad_add_constraints(self,
 def _pancad_to_freecad_add_constraints(self,
                                        pancad_sketch: Sketch, 
                                        sketch: FreeCADSketch) -> FreeCADSketch:
-    """Adds the constraints in a PanCAD Sketch to a FreeCAD Sketch.
+    """Adds the constraints in a pancad Sketch to a FreeCAD Sketch.
     
-    :param pancad_sketch: The PanCAD sketch to read constraints from.
+    :param pancad_sketch: The pancad sketch to read constraints from.
     :param sketch: The FreeCAD sketch to add constraints to.
     :returns: The updated FreeCAD sketch.
     """
@@ -209,10 +209,10 @@ def _pancad_to_freecad_add_constraints(self,
 def _link_constraints(self,
                       pancad_constraint: AbstractConstraint,
                       freecad_constraint_id: SketchElementID) -> None:
-    """Creates a link between a PanCAD constraint and a FreeCAD constraint. This 
+    """Creates a link between a pancad constraint and a FreeCAD constraint. This 
     linking is the same regardless of which software the map is originating from.
     
-    :param pancad_constraint: The PanCAD constraint to link.
+    :param pancad_constraint: The pancad constraint to link.
     :param freecad_constraint: The FreeCADID for the FreeCAD constraint to link.
     """
     constrained_ids = tuple()
@@ -227,14 +227,14 @@ def _link_constraints(self,
     self._constraint_map[freecad_constraint_id] = constrained_ids
 
 ################################################################################
-# PanCAD ---> FreeCAD Constraints
+# pancad ---> FreeCAD Constraints
 ################################################################################
 @singledispatchmethod
 def _pancad_to_freecad_constraint(self, constraint: AbstractConstraint
                                   ) -> FreeCADConstraint:
     """Returns a FreeCAD constraint that can be placed in a FreeCAD Sketch.
     
-    :param constraint: A PanCAD constraint.
+    :param constraint: A pancad constraint.
     """
     raise NotImplementedError(f"Unsupported 1st type {constraint.__class__}")
 

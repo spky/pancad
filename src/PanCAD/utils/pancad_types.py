@@ -1,4 +1,4 @@
-"""A module providing common types for use throughout PanCAD."""
+"""A module providing common types for use throughout pancad."""
 
 from collections.abc import Sequence
 from typing import Union

@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry, Point
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison
-from PanCAD.utils.trigonometry import get_unit_vector
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.geometry import AbstractGeometry, Point
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison
+from pancad.utils.trigonometry import get_unit_vector
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -209,7 +209,7 @@ class Circle(AbstractGeometry):
     
     def __repr__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
-        string = f"<PanCADCircle'{self.uid}'{center_str}r{self.radius}"
+        string = f"<pancadCircle'{self.uid}'{center_str}r{self.radius}"
         if len(self) == 3:
             x_vector, y_vector = self.get_orientation_vectors()
             x_vector_str = str(x_vector).replace(" ","")
@@ -218,7 +218,7 @@ class Circle(AbstractGeometry):
         return string + ">"
     
     def __str__(self) -> str:
-        string = (f"PanCAD Circle '{self.uid}' with center"
+        string = (f"pancad Circle '{self.uid}' with center"
                   f" {self.center.cartesian} and radius {self.radius}")
         if len(self) == 3:
             x_vector, y_vector = self.get_orientation_vectors()

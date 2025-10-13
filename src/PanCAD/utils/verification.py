@@ -1,9 +1,9 @@
-"""A module to provide functions used to verify that PanCAD is operating 
+"""A module to provide functions used to verify that pancad is operating 
 correctly."""
 from functools import singledispatch
 import math
 
-from PanCAD.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
+from pancad.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
 
 def assertTupleAlmostEqual(self_input, 
                            tuple_a: tuple, tuple_b: tuple, places: int = 7):
@@ -47,7 +47,7 @@ def assertCoordinateSystemsAlmostEqual(self_input, cs_a: CoordinateSystem,
     b = tuple(cs_a.origin) + b_x + b_y + b_z
     assertTupleAlmostEqual(self_input, a, b, places)
 
-def assertPanCADAlmostEqual(self_input, object_a, object_b, places):
+def assertPancadAlmostEqual(self_input, object_a, object_b, places):
     if isinstance(object_a, Point) and isinstance(object_b, Point):
         assertPointsAlmostEqual(self_input, object_a, object_b, places)
     elif isinstance(object_a, Line) and isinstance(object_b, Line):

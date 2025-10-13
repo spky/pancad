@@ -10,11 +10,11 @@ from typing import overload, Self
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry, Point, Line
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison
-from PanCAD.utils.pancad_types import VectorLike
-from PanCAD.utils.trigonometry import (angle_mod,
+from pancad.geometry import AbstractGeometry, Point, Line
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison
+from pancad.utils.pancad_types import VectorLike
+from pancad.utils.trigonometry import (angle_mod,
                                        rotation_2)
 
 _isclose = partial(comparison.isclose, nan_equal=False)
@@ -27,7 +27,7 @@ class Ellipse(AbstractGeometry):
         semidiameter. This length will continue to represent the same axis 
         orientation even if the user changes the value to be shorter than the 
         semi-minor axis since the alternative would be semantically correct but 
-        very confusing to modify. The lengths will not be compared by PanCAD 
+        very confusing to modify. The lengths will not be compared by pancad 
         since this could be read from an already defined ellipse that has 
         already switched the values.
     :param semi_minor_axis: The length of the ellipse's **initial** shortest 
@@ -107,7 +107,7 @@ class Ellipse(AbstractGeometry):
             even if the user changes the length to be shorter than the 
             semi-minor axis since the alternative would be semantically correct 
             but very confusing for users to modify. The lengths will not be 
-            compared by PanCAD since this could be read from an already defined 
+            compared by pancad since this could be read from an already defined 
             ellipse that has already switched the values.
         :param semi_minor_axis: The length of the ellipse's **initial**
             shortest semidiameter. Same caveats as the semi_major_axis

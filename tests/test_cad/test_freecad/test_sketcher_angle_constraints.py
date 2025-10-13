@@ -4,12 +4,12 @@ from numbers import Real
 from inspect import stack
 import unittest
 
-import PanCAD
-from PanCAD.filetypes import PartFile
-from PanCAD.geometry import Sketch, LineSegment, Point
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.geometry.constraints import Angle, Coincident, Distance, Equal
-from PanCAD.cad.freecad import FreeCADFile
+import pancad
+from pancad.filetypes import PartFile
+from pancad.geometry import Sketch, LineSegment, Point
+from pancad.geometry.constants import ConstraintReference
+from pancad.geometry.constraints import Angle, Coincident, Distance, Equal
+from pancad.cad.freecad import FreeCADFile
 
 from . import dump
 

@@ -4,9 +4,9 @@ from math import radians
 import numpy as np
 import quaternion
 
-from PanCAD.geometry import CoordinateSystem, Point, Line, Plane
-from PanCAD.utils.verification import assertPanCADAlmostEqual
-from PanCAD.utils.trigonometry import rotation_x, rotation_y, rotation_z
+from pancad.geometry import CoordinateSystem, Point, Line, Plane
+from pancad.utils.verification import assertPancadAlmostEqual
+from pancad.utils.trigonometry import rotation_x, rotation_y, rotation_z
 
 ROUNDING_PLACES = 10
 
@@ -29,7 +29,7 @@ class TestCSInit(unittest.TestCase):
         cs = CoordinateSystem(pt, alpha)
         expected = ((0, 1), (-1, 0))
         for cs_axis, exp_axis in zip(cs.get_axis_vectors(), expected):
-            assertPanCADAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
+            assertPancadAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
     
     def test_point_angle_init_3d(self):
         pt = Point(0, 0, 0)
@@ -37,7 +37,7 @@ class TestCSInit(unittest.TestCase):
         cs = CoordinateSystem(pt, alpha)
         expected = ((0, 1, 0), (-1, 0, 0), (0, 0, 1))
         for cs_axis, exp_axis in zip(cs.get_axis_vectors(), expected):
-            assertPanCADAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
+            assertPancadAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
 
 class TestCSStringDunders(unittest.TestCase):
     
@@ -70,7 +70,7 @@ class TestCSReferenceGeometry(unittest.TestCase):
         ]
         for cs_line, exp in zip(lines, expected):
             with self.subTest(coordinate_sys_line=cs_line, expected=exp):
-                assertPanCADAlmostEqual(self, cs_line, exp, ROUNDING_PLACES)
+                assertPancadAlmostEqual(self, cs_line, exp, ROUNDING_PLACES)
     
     def test_planes(self):
         planes = [
@@ -85,7 +85,7 @@ class TestCSReferenceGeometry(unittest.TestCase):
         ]
         for cs_plane, exp in zip(planes, expected):
             with self.subTest(coordinate_sys_line=cs_plane, expected=exp):
-                assertPanCADAlmostEqual(self, cs_plane, exp, ROUNDING_PLACES)
+                assertPancadAlmostEqual(self, cs_plane, exp, ROUNDING_PLACES)
 
 class TestCSUpdate(unittest.TestCase):
     
@@ -93,7 +93,7 @@ class TestCSUpdate(unittest.TestCase):
         cs = CoordinateSystem((0, 0, 0))
         new = CoordinateSystem((2, 2, 2), radians(45), radians(45), radians(45))
         cs.update(new)
-        assertPanCADAlmostEqual(self, cs, new, ROUNDING_PLACES)
+        assertPancadAlmostEqual(self, cs, new, ROUNDING_PLACES)
 
 class TestCSWithQuaternions(unittest.TestCase):
     

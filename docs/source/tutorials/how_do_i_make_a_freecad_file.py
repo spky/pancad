@@ -7,7 +7,7 @@ top_left = (0, side_length)
 # [corner-definition-end]
 
 # [line-definition-start]
-from PanCAD.geometry import LineSegment
+from pancad.geometry import LineSegment
 bottom = LineSegment(bottom_left, bottom_right)
 right = LineSegment(bottom_right, top_right)
 top = LineSegment(top_right, top_left)
@@ -15,13 +15,13 @@ left = LineSegment(top_left, bottom_left)
 # [line-definition-end]
 
 # [sketch-definition-start]
-from PanCAD.geometry import Sketch
+from pancad.geometry import Sketch
 sketch = Sketch(geometry=[bottom, right, top, left], name="square_sketch")
 # [sketch-definition-end]
 
 # [constraint-definition-start]
-from PanCAD.geometry.constants import ConstraintReference, SketchConstraint
-from PanCAD.geometry.constraints import make_constraint
+from pancad.geometry.constants import ConstraintReference, SketchConstraint
+from pancad.geometry.constraints import make_constraint
 
 sketch.constraints = [
     # Corner Coincidence
@@ -66,12 +66,12 @@ sketch.constraints = [
 # [constraint-definition-end]
 
 # [extrude-definition-start]
-from PanCAD.geometry import Extrude
+from pancad.geometry import Extrude
 extrude = Extrude.from_length(sketch, side_length, name="cube_extrude")
 # [extrude-definition-end]
 
 # [file-definition-start]
-from PanCAD import PartFile
+from pancad import PartFile
 file = PartFile("tutorial_cube")
 file.features = [sketch, extrude]
 file.to_freecad("tutorial_cube.FCStd")

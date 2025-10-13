@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from xml.etree import ElementTree as ET
 
-from PanCAD.graphics.svg import validators as sv
-from PanCAD.graphics.svg import parsers as sp
-from PanCAD.utils import trigonometry as trig
+from pancad.graphics.svg import validators as sv
+from pancad.graphics.svg import parsers as sp
+from pancad.utils import trigonometry as trig
 
 class SVGElement(ET.Element):
     """A class representing the common properties and methods of all SVG 

@@ -6,7 +6,7 @@ from enum import StrEnum
 
 class ObjectType(StrEnum):
     """An enumeration to used to define the FreeCAD feature TypeIDs supported by 
-    PanCAD.
+    pancad.
     """
     BODY = "PartDesign::Body"
     """FreeCAD's 3D geometry collection and FeatureContainer-like objects."""
@@ -19,5 +19,5 @@ class ObjectType(StrEnum):
     PART = "App::Part"
     """Both a geometry collection and collection of bodies in FreeCAD. Requires 
     more user input to define how they are being used inside of FreeCAD 
-    prior to PanCAD interpretation.
+    prior to pancad interpretation.
     """

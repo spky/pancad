@@ -3,11 +3,11 @@ from inspect import stack
 import os
 import unittest
 
-from PanCAD import PartFile
-from PanCAD.geometry import CoordinateSystem, Extrude
-from PanCAD.geometry.constants import (ConstraintReference as CR,
+from pancad import PartFile
+from pancad.geometry import CoordinateSystem, Extrude
+from pancad.geometry.constants import (ConstraintReference as CR,
                                        SketchConstraint as SC)
-from PanCAD.geometry.constraints import make_constraint
+from pancad.geometry.constraints import make_constraint
 
 from tests.sample_pancad_objects import sample_sketches
 from tests.utils import delete_all_suffix

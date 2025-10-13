@@ -5,9 +5,9 @@ import unittest
 
 import numpy as np
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.geometry import Point, Line, spatial_relations
-from PanCAD.utils import verification
+from pancad.utils import trigonometry as trig
+from pancad.geometry import Point, Line, spatial_relations
+from pancad.utils import verification
 
 ROUNDING_PLACES = 10
 
@@ -34,7 +34,7 @@ class TestLineInit(unittest.TestCase):
     
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
-        expected = ("PanCAD Line with a point closest to the origin at"
+        expected = ("pancad Line with a point closest to the origin at"
                     + " (1, 0, 0) and in the direction (0, 1, 0)")
         self.assertEqual(str(test), expected)
 
@@ -408,7 +408,7 @@ class TestLineUpdate(unittest.TestCase):
         line = Line(Point(0, 0, 0), (1, 0, 0))
         new = Line(Point(1, 1, 0), (1, 1, 1))
         line.update(new)
-        verification.assertPanCADAlmostEqual(self, line, new, ROUNDING_PLACES)
+        verification.assertPancadAlmostEqual(self, line, new, ROUNDING_PLACES)
 
 if __name__ == "__main__":
     unittest.main()

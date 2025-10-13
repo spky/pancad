@@ -1,6 +1,6 @@
-"""A module providing a class to represent sketches in 3D space. PanCAD defines a 
+"""A module providing a class to represent sketches in 3D space. pancad defines a 
 sketch as a set of 2D geometry on a coordinate system's plane oriented in 3D 
-space. PanCAD's sketch definition aims to be as general as possible, so the 
+space. pancad's sketch definition aims to be as general as possible, so the 
 base implementation of this class does not include appearance information since 
 that is application specific.
 """
@@ -11,7 +11,7 @@ from itertools import compress
 from math import degrees
 from typing import TYPE_CHECKING, overload, Self, NoReturn
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
     Circle,
@@ -21,8 +21,8 @@ from PanCAD.geometry import (
     Line,
     LineSegment,
 )
-from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
-from PanCAD.geometry.constraints import (
+from pancad.geometry.constants import SketchConstraint, ConstraintReference
+from pancad.geometry.constraints import (
     Abstract1GeometryDistance,
     Abstract2GeometryDistance,
     AbstractStateConstraint,
@@ -30,14 +30,14 @@ from PanCAD.geometry.constraints import (
     Angle,
     make_constraint,
 )
-from PanCAD.utils.text_formatting import get_table_string
+from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
     from uuid import UUID
     from collections.abc import Sequence
     
-    from PanCAD.geometry import Plane
-    from PanCAD.geometry.constraints import AbstractConstraint
+    from pancad.geometry import Plane
+    from pancad.geometry.constraints import AbstractConstraint
 
 class Sketch(AbstractFeature, AbstractGeometry):
     """A class representing a set of 2D geometry placed onto a coordinate system 
@@ -48,8 +48,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         (0, 0, 0).
     :param plane_reference: The ConstraintReference to one of the 
         coordinate_system's planes. Defaults to
-        :attr:`~PanCAD.geometry.constants.ConstraintReference.XY`.
-    :param geometry: A sequence of 2D PanCAD geometry. Defaults to an empty 
+        :attr:`~pancad.geometry.constants.ConstraintReference.XY`.
+    :param geometry: A sequence of 2D pancad geometry. Defaults to an empty 
         tuple.
     :param construction: A sequence of booleans that determines whether the 
         corresponding geometry index is construction. Defaults to a tuple 
@@ -62,7 +62,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
     :param name: The name of the Sketch that will be used wherever a CAD 
         application requires a human-readable name for the sketch element.
     :param context: The feature that acts as the context for this feature, 
-        usually a :class:`~PanCAD.geometry.FeatureContainer`
+        usually a :class:`~pancad.geometry.FeatureContainer`
     """
     # Class Constants
     REFERENCES = (ConstraintReference.ORIGIN,
@@ -173,7 +173,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def plane_reference(self) -> ConstraintReference:
         """The ConstraintReference for the CoordinateSystem plane that contains 
         the sketch's geometry. Must be one of the enumeration values in 
-        :class:`~PanCAD.geometry.constants.ConstraintReference`.
+        :class:`~pancad.geometry.constants.ConstraintReference`.
         
         :getter: Returns the reference of the plane.
         :setter: Checks reference validity and then sets the plane reference.
@@ -290,7 +290,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """Adds a sketch constraint between two geometry elements selected by 
         their uids. Prefixes the new constraint's uid with the sketch's uid. All 
         geometry must already be in the sketch's geometry.
-        :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` can be used 
+        :attr:`~pancad.geometry.constants.ConstraintReference.CS` can be used 
         instead of any of the uid inputs to refer to the sketch's coordinate 
         system.
         
@@ -354,7 +354,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """Adds a sketch constraint between two geometry elements selected by 
         their indices. Prefixes the new constraint's uid with the sketch's uid. 
         All geometry must already be in the sketch's geometry.
-        :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` can be used 
+        :attr:`~pancad.geometry.constants.ConstraintReference.CS` can be used 
         instead of any of the index inputs to refer to the sketch's coordinate 
         system.
         
@@ -420,7 +420,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """Returns a sketch geometry element based on its uid.
         
         :param uid: The uid of the geometry or
-            :attr:`~PanCAD.geometry.constants.ConstraintReference.CS` to 
+            :attr:`~pancad.geometry.constants.ConstraintReference.CS` to 
             reference the sketch's 2D coordinate system.
         :returns: The geometry element with the specified uid.
         """

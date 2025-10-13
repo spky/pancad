@@ -1,4 +1,4 @@
-"""A module providing classes to map PanCAD files to FreeCAD files."""
+"""A module providing classes to map pancad files to FreeCAD files."""
 from __future__ import annotations
 
 from collections.abc import MutableMapping
@@ -8,15 +8,15 @@ from typing import Self, NoReturn, TYPE_CHECKING
 from uuid import UUID
 from xml.etree import ElementTree
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
     FeatureContainer,
-    PanCADThing,
+    PancadThing,
     Sketch,
 )
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.geometry.constraints import AbstractConstraint
+from pancad.geometry.constants import ConstraintReference
+from pancad.geometry.constraints import AbstractConstraint
 
 from ._application_types import (
     FreeCADBody,
@@ -45,16 +45,16 @@ from ._map_typing import (
 if TYPE_CHECKING:
     from types import GenericAlias
     
-    from PanCAD import PartFile
+    from pancad import PartFile
     
     from ._application_types import FreeCADDocument
     from ._map_typing import InternalAlignmentMap, SubFeatureMap, SubGeometryMap
 
 class FreeCADMap(MutableMapping):
-    """A class implementing a mapping to and from PanCAD and FreeCAD elements.
+    """A class implementing a mapping to and from pancad and FreeCAD elements.
     
     :param document: The FreeCAD document being mapped to or from.
-    :param part_file: The PanCAD PartFile being mapped to or from.
+    :param part_file: The pancad PartFile being mapped to or from.
     """
     PREFIX = " "
     """The string added before lines in map summaries."""
@@ -82,9 +82,9 @@ class FreeCADMap(MutableMapping):
         self._document = document
         self._part_file = part_file
         self._pancad_to_freecad = dict()
-        # Maps from PanCAD objects to their associated FreeCAD objects
+        # Maps from pancad objects to their associated FreeCAD objects
         self._freecad_to_pancad = dict()
-        # Maps from FreeCAD IDs to their associated PanCAD objects
+        # Maps from FreeCAD IDs to their associated pancad objects
         
         self._id_map = _FreeCADIDMap()
         # Maps FreeCAD IDs to their objects
@@ -100,7 +100,7 @@ class FreeCADMap(MutableMapping):
     # Public Methods #
     def add_freecad_feature(self, feature: FreeCADFeature) -> Self:
         """Adds a FreeCAD feature to the map by generating and linking new 
-        PanCAD objects. Returns the updated map.
+        pancad objects. Returns the updated map.
         """
         pancad_feature = self._freecad_to_pancad_feature(feature)
         self[pancad_feature] = feature
@@ -132,7 +132,7 @@ class FreeCADMap(MutableMapping):
     
     @singledispatchmethod
     def add_pancad_feature(self, feature: AbstractFeature) -> Self:
-        """Adds a PanCAD feature to the map by generating and linking new 
+        """Adds a pancad feature to the map by generating and linking new 
         FreeCAD objects. Returns the updated map.
         """
         freecad_feature = self._pancad_to_freecad_feature(feature)
@@ -140,14 +140,14 @@ class FreeCADMap(MutableMapping):
         return self
     
     def get_freecad_id(self,
-                       key: PanCADThing,
+                       key: PancadThing,
                        reference: ConstraintReference=ConstraintReference.CORE,
                        ) -> FreeCADID:
-        """Returns the FreeCADID mapped to the PanCAD object and constraint 
+        """Returns the FreeCADID mapped to the pancad object and constraint 
         reference.
         
-        :param key: The PanCAD object.
-        :param reference: The ConstraintReference for the portion of the PanCAD 
+        :param key: The pancad object.
+        :param reference: The ConstraintReference for the portion of the pancad 
             object. Defaults to CORE to provide the parent FreeCAD object.
         :returns: The associated FreeCADID.
         """
@@ -159,9 +159,9 @@ class FreeCADMap(MutableMapping):
         else:
             return freecad_id
     
-    def get_pancad(self, freecad_id: FreeCADID) -> tuple[PanCADThing,
+    def get_pancad(self, freecad_id: FreeCADID) -> tuple[PancadThing,
                                                          ConstraintReference]:
-        """Returns the PanCAD object and constraint reference mapped to the 
+        """Returns the pancad object and constraint reference mapped to the 
         FreeCAD ID.
         """
         return self._freecad_to_pancad[freecad_id]
@@ -267,14 +267,14 @@ class FreeCADMap(MutableMapping):
             id_str = f"({sketch_id},{list_name.value},{index})"
             return f"<ID:{id_str} {default_repr}>"
     
-    def _get_pancad_by_uid(self, uid: UUID) -> PanCADThing:
-        """Returns a PanCAD object from the map that has the uid."""
+    def _get_pancad_by_uid(self, uid: UUID) -> PancadThing:
+        """Returns a pancad object from the map that has the uid."""
         pancad_object, *_ = self._pancad_to_freecad[uid]
         return pancad_object
     
     # Python Dunders #
-    def __contains__(self, key: PanCADThing) -> bool:
-        if isinstance(key, PanCADThing):
+    def __contains__(self, key: PancadThing) -> bool:
+        if isinstance(key, PancadThing):
             return key.uid in self._pancad_to_freecad
         else:
             return key in self._pancad_to_freecad
@@ -283,12 +283,12 @@ class FreeCADMap(MutableMapping):
         del self._pancad_to_freecad[key.uid]
     
     def __getitem__(self,
-                    key: (PanCADThing
+                    key: (PancadThing
                           | tuple[AbstractFeature | AbstractGeometry,
                                   ConstraintReference]
                           | UUID),
                     ) -> FreeCADCADObject:
-        """Get item will only ever return FreeCAD objects from PanCAD objects
+        """Get item will only ever return FreeCAD objects from pancad objects
         and FreeCADIDs.
         """
         if isinstance(key, int):
@@ -296,8 +296,8 @@ class FreeCADMap(MutableMapping):
         elif isinstance(key, tuple):
             # A tuple leads to a specific portion of a feature or geometry
             dispatch_key, *_ = key
-            if isinstance(dispatch_key, PanCADThing):
-                # Get the freecad id corresponding to the PanCADThing
+            if isinstance(dispatch_key, PancadThing):
+                # Get the freecad id corresponding to the PancadThing
                 pancad_object, reference = key
                 _, freecad_id = self._pancad_to_freecad[pancad_object.uid]
                 if isinstance(freecad_id, int):
@@ -340,7 +340,7 @@ class FreeCADMap(MutableMapping):
             return self._constraint_map[freecad_id]
         elif isinstance(key, UUID):
             # A UUID by itself returns the CORE ConstraintReference of the
-            # PanCAD object it refers to.
+            # pancad object it refers to.
             pancad_object = self._get_pancad_by_uid(key)
             return self[pancad_object]
         else:
@@ -378,7 +378,7 @@ class FreeCADMap(MutableMapping):
                 f"*'{basename(self._document.FileName)}'>")
     
     def __str__(self) -> str:
-        """Returns a string summary of the FreeCAD mapping between PanCAD and 
+        """Returns a string summary of the FreeCAD mapping between pancad and 
         FreeCAD.
         """
         strings = []

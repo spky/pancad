@@ -1,11 +1,11 @@
 import unittest
 
-from PanCAD.geometry import CoordinateSystem, LineSegment, Sketch, Extrude
-from PanCAD.geometry.constraints import (
+from pancad.geometry import CoordinateSystem, LineSegment, Sketch, Extrude
+from pancad.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance,
 )
-from PanCAD.geometry.constants import FeatureType, ConstraintReference as CR
+from pancad.geometry.constants import FeatureType, ConstraintReference as CR
 
 class TestExtrudeInit(unittest.TestCase):
     

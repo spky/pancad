@@ -1,4 +1,4 @@
-"""A module defining the properties and methods that all PanCAD elements 
+"""A module defining the properties and methods that all pancad elements 
 share.
 """
 from __future__ import annotations
@@ -10,13 +10,13 @@ from uuid import uuid4
 if TYPE_CHECKING:
     from uuid import UUID
 
-class PanCADThing(ABC):
-    """An abstract class defining the properties and methods that all PanCAD 
+class PancadThing(ABC):
+    """An abstract class defining the properties and methods that all pancad 
     elements, constraints, or whatever must have with no exceptions.
     """
     
     STR_VERBOSE = False
-    """A Flag allowing PanCAD objects to print more detailed strings and reprs.
+    """A Flag allowing pancad objects to print more detailed strings and reprs.
     """
     
     # Getters #

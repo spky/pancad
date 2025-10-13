@@ -11,10 +11,10 @@ from typing import Any
 import numpy as np
 from numpy.linalg import norm
 
-from PanCAD.constants import AngleConvention
-from PanCAD.utils import comparison
-from PanCAD.utils.comparison import isclose
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.constants import AngleConvention
+from pancad.utils import comparison
+from pancad.utils.comparison import isclose
+from pancad.utils.pancad_types import VectorLike
 
 def angle_mod(angle: Real) -> float:
     """Returns the angle bounded from -2π to +2π since python's modulo 
@@ -64,7 +64,7 @@ def get_vector_angle(vector1: VectorLike,
     :param opposite: Sets whether to return the supplement/explement of the angle 
         between vector1 and vector2.
     :param convention: The angle convention the output will follow. See 
-        :class:`~PanCAD.constants.AngleConvention` for 
+        :class:`~pancad.constants.AngleConvention` for 
         available options.
     :returns: The angle between vector1 and vector2.
     """
