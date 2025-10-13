@@ -47,5 +47,5 @@ dependencies = [
     "urllib3==2.2.3",
 ]
 [project.urls]
-Homepage = "https://github.com/spky/PanCAD"
-Issues = "https://github.com/spky/PanCAD/issues"
+Homepage = "https://github.com/spky/pancad"
+Issues = "https://github.com/spky/pancad/issues"
