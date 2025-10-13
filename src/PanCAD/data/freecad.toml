@@ -1,0 +1,11 @@
+[default_install]
+Windows = [
+    'C:/Program Files/FreeCAD 1.0/bin',
+    'C:/Program Files/FreeCAD/bin',
+]
+
+[folders]
+install_dir = [
+    "FreeCAD 1.0",
+    "FreeCAD",
+]

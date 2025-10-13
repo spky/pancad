@@ -1,7 +1,5 @@
-from PanCAD.utils import initialize, config
+from PanCAD.utils.initialize import PANCAD_CONFIG_DIR, check_config
 
-initialize.settings()
-
-CONFIG = config.Config()
+check_config()
 
 from PanCAD.filetypes import PartFile

@@ -10,7 +10,7 @@ sys.path.append('src')
 
 from PanCAD.utils import trigonometry as trig
 from PanCAD.graphics.svg import parsers as sp
-from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.constants import AngleConvention as AC
 
 class TestTrigonometry(unittest.TestCase):
     

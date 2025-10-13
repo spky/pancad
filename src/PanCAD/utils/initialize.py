@@ -2,46 +2,90 @@
 PanCAD is imported"""
 
 import os
+from os.path import expandvars
 import shutil
 import logging
+import tomllib
+import json
+from pathlib import Path
 
-APPDATA = os.path.expandvars(os.path.join("%appdata%", "PanCAD"))
-SETTINGS_FILENAME = "settings.ini"
-DEFAULTS_FILENAME = "defaults.ini"
-USER_SETTINGS = os.path.join(APPDATA, SETTINGS_FILENAME)
-DEFAULTS = os.path.join(os.getcwd(), "src", "PanCAD", DEFAULTS_FILENAME)
+from PanCAD import config
+from PanCAD.constants import SoftwareName
 
-def appdata_folder() -> None:
+# APPDATA = os.path.expandvars(os.path.join("%appdata%", "PanCAD"))
+APPDATA = Path(expandvars("%appdata%"))
+PANCAD_CONFIG_DIR = APPDATA / "PanCAD"
+CONFIG_NAME = "config.toml"
+CONFIG_FILEPATH = PANCAD_CONFIG_DIR / CONFIG_NAME
+CACHE_NAME = "cache.json"
+CACHE_FILEPATH = PANCAD_CONFIG_DIR / CACHE_NAME
+
+logger = logging.getLogger(__name__)
+
+def check_appdata_folder() -> None:
     """Checks whether the PanCAD appdata folder is available and creates it 
     if it isn't.
     """
-    if os.path.exists(APPDATA):
-        logging.info(f"PanCAD folder found here: {APPDATA}")
+    if PANCAD_CONFIG_DIR.is_dir():
+        logger.info(f"PanCAD folder found here: {PANCAD_CONFIG_DIR}")
     else:
-        logging.info(f"No PanCAD folder found, creating one here: {APPDATA}")
-        os.mkdir(APPDATA)
-        settings() # Call to replace the missing settings file
+        logger.info("No PanCAD folder found, creating one here:"
+                    f" '{PANCAD_CONFIG_DIR}'")
+        PANCAD_CONFIG_DIR.mkdir()
+        check_config() # Call to replace the missing settings file
 
-def settings() -> None:
+def check_config() -> None:
     """Checks whether the PanCAD settings file is available and creates it 
     if it isn't.
     """
-    if os.path.isfile(USER_SETTINGS):
-        logging.info(f"PanCAD user settings file found here: {USER_SETTINGS}")
+    if CONFIG_FILEPATH.is_file():
+        logger.info(f"PanCAD user settings file found here: {CONFIG_FILEPATH}")
     else:
-        logging.info(f"No PanCAD {SETTINGS_FILENAME} found, copying defaults"
-                     + f"here: {USER_SETTINGS}")
-        if os.path.isfile(DEFAULTS):
-            appdata_folder()
-            shutil.copyfile(DEFAULTS, USER_SETTINGS)
-        else:
-            raise FileNotFoundError(f"No {DEFAULTS_FILENAME} found, please "
-                                    + f"replace it or reinstall PanCAD")
+        logger.info(f"No PanCAD {CONFIG_NAME} found, copying defaults"
+                     + f"here: {CONFIG_FILEPATH}")
+        check_appdata_folder()
+        defaults_dir = Path(config.__file__).parent
+        shutil.copyfile(defaults_dir / CONFIG_NAME, CONFIG_FILEPATH)
+
+def check_cache() -> None:
+    """Checks whether the PanCAD cache file is available and creates it 
+    if it isn't.
+    """
+    if CACHE_FILEPATH.is_file():
+        logger.info(f"PanCAD user cache file found here: {CACHE_FILEPATH}")
+    else:
+        logger.info(f"No PanCAD {CACHE_NAME} found, creating empty one"
+                     + f"here: {CACHE_FILEPATH}")
+        check_appdata_folder()
+        with open(CACHE_FILEPATH, "w") as file:
+            json.dump({}, file)
 
 def delete_pancad_settings() -> None:
     """Deletes all PanCAD user specific settings. Useful for uninstallation.
     """
-    if os.path.exists(APPDATA):
-        shutil.rmtree(APPDATA)
+    if os.path.exists(PANCAD_CONFIG_DIR):
+        shutil.rmtree(PANCAD_CONFIG_DIR)
     else:
-        logging.warning(f"Attempted {APPDATA} deletion, but no folder found")
+        logger.warning(f"Attempted '{PANCAD_CONFIG_DIR}' config deletion,"
+                       " but no folder found")
+
+def get_application_paths() -> dict[str, Path]:
+    """Returns a dictionary of configuration file setting filepaths"""
+    check_appdata_folder()
+    with open(CONFIG_FILEPATH, "rb") as file:
+        config = tomllib.load(file)
+    return config["application_paths"]
+
+def get_cache() -> dict:
+    """Reads or creates the PanCAD cache and returns it as a dictionary."""
+    check_cache()
+    with open(CACHE_FILEPATH) as file:
+        return json.load(file)
+
+def write_cache(cache: dict) -> None:
+    """Writes a new cache to the PanCAD config directory. Intended to be used 
+    shortly after a get_cache call to update the cache.
+    """
+    check_cache()
+    with open(CACHE_FILEPATH, "w") as file:
+        json.dump(cache, file, indent=2)
