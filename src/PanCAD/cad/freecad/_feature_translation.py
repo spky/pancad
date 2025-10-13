@@ -5,7 +5,7 @@ from functools import singledispatchmethod
 
 import numpy as np
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
     Circle,
@@ -17,7 +17,7 @@ from PanCAD.geometry import (
     Point,
     Sketch,
 )
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 from . import App, Part
 from .constants import ListName, ObjectType, PadType
 from ._application_types import (
@@ -35,16 +35,16 @@ from ._application_types import (
 from ._map_typing import SketchElementID
 
 ################################################################################
-# PanCAD ---> FreeCAD Features
+# pancad ---> FreeCAD Features
 ################################################################################
 @singledispatchmethod
 def _pancad_to_freecad_feature(self,
                                feature: AbstractFeature) -> FreeCADFeature:
-    """Creates a FreeCAD equivalent to the PanCAD feature and adds its id to the 
+    """Creates a FreeCAD equivalent to the pancad feature and adds its id to the 
     id map. Will also create geometry inside of features if any exist and add 
     them to the map.
     """
-    raise TypeError(f"Unrecognized PanCAD feature type {key.__class__}")
+    raise TypeError(f"Unrecognized pancad feature type {key.__class__}")
 
 @_pancad_to_freecad_feature.register
 def _coordinate_system(self, system: CoordinateSystem) -> FreeCADOrigin:
@@ -102,13 +102,13 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     return sketch
 
 ################################################################################
-# PanCAD ---> FreeCAD Geometry
+# pancad ---> FreeCAD Geometry
 ################################################################################
 @singledispatchmethod
 @staticmethod
 def _pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
-    """Returns an equivalent FreeCAD geometry element from PanCAD Geometry."""
-    raise TypeError(f"Unsupported PanCAD element type: {geometry}")
+    """Returns an equivalent FreeCAD geometry element from pancad Geometry."""
+    raise TypeError(f"Unsupported pancad element type: {geometry}")
 
 @_pancad_to_freecad_geometry.register
 @staticmethod
@@ -138,11 +138,11 @@ def _freecad_add_to_sketch(self,
                            geometry: FreeCADGeometry,
                            sketch: FreeCADSketch,
                            construction: bool) -> SketchElementID:
-    """Adds the geometry to the FreeCAD sketch and returns its unique PanCAD 
+    """Adds the geometry to the FreeCAD sketch and returns its unique pancad 
     derived id. Updates the internal FreeCADMap's id map to include the new 
     geometry and any sub geometry.
     """
-    raise TypeError(f"Unsupported PanCAD element type: {geometry}")
+    raise TypeError(f"Unsupported pancad element type: {geometry}")
 
 @_freecad_add_to_sketch.register
 def _ellipse(self,
@@ -170,12 +170,12 @@ def _one_to_one_cases(self,
     return geometry_id
 
 ################################################################################
-# FreeCAD ---> PanCAD Features
+# FreeCAD ---> pancad Features
 ################################################################################
 
 def _freecad_to_pancad_feature(self,
                                feature: FreeCADFeature) -> AbstractFeature:
-    """Generates a contextless PanCAD feature equivalent to the FreeCAD feature.
+    """Generates a contextless pancad feature equivalent to the FreeCAD feature.
     """
     match feature.TypeId:
         # Poor man's singledispatchmethod using the FreeCAD TypeId
@@ -193,7 +193,7 @@ def _freecad_to_pancad_feature(self,
     # Eliminate duplicate parents
     parent_list = list(set(feature.Parents))
     if len(parent_list) == 1:
-        # Add PanCAD geometry to its context
+        # Add pancad geometry to its context
         parent, _ = parent_list[0]
         pancad_context, _ = self._freecad_to_pancad[parent.ID]
         pancad_context.add_feature(pancad_feature)
@@ -263,7 +263,7 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
         except ValueError:
             # FreeCAD doesn't provide a way to check whether something has 
             # internal geometry, so this function can be run on each item and 
-            # then PanCAD can just ignore the errors
+            # then pancad can just ignore the errors
             pass
     
     # Actually translate geometry
@@ -278,13 +278,13 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
     return sketch
 
 ################################################################################
-# FreeCAD ---> PanCAD Geometry
+# FreeCAD ---> pancad Geometry
 ################################################################################
 
 @singledispatchmethod
 @staticmethod
 def _freecad_to_pancad_geometry(geometry: FreeCADGeometry) -> AbstractGeometry:
-    """Returns PanCAD geometry from FreeCAD geometry elements."""
+    """Returns pancad geometry from FreeCAD geometry elements."""
     raise TypeError(f"Unsupported FreeCAD element type: {geometry}")
 
 @_freecad_to_pancad_geometry.register

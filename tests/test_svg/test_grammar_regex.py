@@ -1,7 +1,7 @@
 import unittest
 import re
 
-import PanCAD.graphics.svg.grammar_regex as gre
+import pancad.graphics.svg.grammar_regex as gre
 
 class TestWhiteSpace(unittest.TestCase):
     

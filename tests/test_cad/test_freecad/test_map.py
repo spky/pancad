@@ -2,22 +2,22 @@ from os.path import join
 from math import radians
 import unittest
 
-from PanCAD import PartFile
-from PanCAD.cad.freecad import App, Part, Sketcher
-from PanCAD.cad.freecad._feature_mappers import FreeCADMap
-from PanCAD.cad.freecad._map_typing import (
+from pancad import PartFile
+from pancad.cad.freecad import App, Part, Sketcher
+from pancad.cad.freecad._feature_mappers import FreeCADMap
+from pancad.cad.freecad._map_typing import (
     FeatureID,
     SubFeatureID,
     SketchElementID,
     SketchSubGeometryID,
 )
-from PanCAD.cad.freecad.constants import ListName
-from PanCAD.geometry import (LineSegment,
+from pancad.cad.freecad.constants import ListName
+from pancad.geometry import (LineSegment,
                              CoordinateSystem,
                              Sketch,
                              FeatureContainer,
                              Extrude,)
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 
 from tests.sample_pancad_objects import sample_sketches
 from tests import sample_freecad
@@ -40,7 +40,7 @@ class TestMapIDTypes(unittest.TestCase):
                 self.assertEqual(FreeCADMap.get_id_type(freecad_id),
                                  expected_type)
 
-class TestPanCADtoFreeCAD(unittest.TestCase):
+class TestPancadtoFreeCAD(unittest.TestCase):
     
     def setUp(self):
         self.file = PartFile("Testing Mapping")
@@ -73,7 +73,7 @@ class TestPanCADtoFreeCAD(unittest.TestCase):
         container.features = [cs, sketch, extrude]
         self.test_map.add_pancad_feature(container)
 
-class TestFreeCADtoPanCADCube1x1x1(unittest.TestCase):
+class TestFreeCADtoPancadCube1x1x1(unittest.TestCase):
     
     def setUp(self):
         sample_dir = sample_freecad.__path__[0]

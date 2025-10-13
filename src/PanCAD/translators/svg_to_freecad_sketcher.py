@@ -7,8 +7,8 @@ pass' point, where all the work before this was dealing with SVG
 and everything after this is dealing with FreeCAD.
 """
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.graphics.svg import parsers as sp
+from pancad.utils import trigonometry as trig
+from pancad.graphics.svg import parsers as sp
 
 def line(svg_properties: dict) -> dict:
     """Returns a dictionary of equivalent FreeCAD properties to recreate 

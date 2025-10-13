@@ -7,14 +7,14 @@ from numbers import Real
 from textwrap import indent
 from typing import TYPE_CHECKING, overload
 
-from PanCAD.geometry import AbstractFeature
-from PanCAD.geometry.constants import FeatureType
-from PanCAD.utils.text_formatting import get_table_string
+from pancad.geometry import AbstractFeature
+from pancad.geometry.constants import FeatureType
+from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
     from typing import NoReturn, Self
     
-    from PanCAD.geometry import AbstractGeometry, Sketch
+    from pancad.geometry import AbstractGeometry, Sketch
 
 class Extrude(AbstractFeature):
     """A class representing linear extrusions starting from a sketch profile in 
@@ -43,9 +43,9 @@ class Extrude(AbstractFeature):
         to None.
     :param name: The name of the feature displayed to the users in CAD.
     :param context: The feature that acts as the context for this feature, 
-        usually a :class:`~PanCAD.geometry.FeatureContainer`
+        usually a :class:`~pancad.geometry.FeatureContainer`
     :raises ValueError: Raised for 
-        :attr:`~PanCAD.geometry.constants.FeatureType.DIMENSION_TYPE` extrudes 
+        :attr:`~pancad.geometry.constants.FeatureType.DIMENSION_TYPE` extrudes 
         if it is midplane and also has an opposite length defined or if length 
         value is less than or equal to zero.
     """
@@ -266,7 +266,7 @@ class Extrude(AbstractFeature):
     
     # Python Dunders #
     def __repr__(self) -> str:
-        return (f"<PanCAD{repr(self.feature_type)}Extrude'{self.name}'>")
+        return (f"<pancad{repr(self.feature_type)}Extrude'{self.name}'>")
     
     def __str__(self) -> str:
         type_name = self.feature_type.name \

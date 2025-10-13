@@ -8,9 +8,9 @@ import numpy as np
 
 sys.path.append('src')
 
-from PanCAD.utils import trigonometry as trig
-from PanCAD.graphics.svg import parsers as sp
-from PanCAD.constants import AngleConvention as AC
+from pancad.utils import trigonometry as trig
+from pancad.graphics.svg import parsers as sp
+from pancad.constants import AngleConvention as AC
 
 class TestTrigonometry(unittest.TestCase):
     

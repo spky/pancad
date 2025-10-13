@@ -1,14 +1,14 @@
 import unittest
 from math import radians
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     Sketch, CoordinateSystem, Plane, Line, LineSegment, Point, Circle, Ellipse,
 )
-from PanCAD.geometry.constraints import (
+from pancad.geometry.constraints import (
     Coincident, Vertical, Horizontal, Equal, Angle,
     Distance, HorizontalDistance, VerticalDistance, Diameter
 )
-from PanCAD.geometry.constants import SketchConstraint, ConstraintReference
+from pancad.geometry.constants import SketchConstraint, ConstraintReference
 
 class TestSketchInit(unittest.TestCase):
     

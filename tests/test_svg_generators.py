@@ -4,8 +4,8 @@ import unittest
 
 sys.path.append('src')
 
-from PanCAD.graphics.svg.enum_color_keywords import Color
-from PanCAD.graphics.svg import generators as sg
+from pancad.graphics.svg.enum_color_keywords import Color
+from pancad.graphics.svg import generators as sg
 
 class TestSVGgenerators(unittest.TestCase):
     

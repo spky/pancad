@@ -1,16 +1,16 @@
 File Types
 ==========
 
-.. autoclass:: PanCAD.filetypes.PartFile
+.. autoclass:: pancad.filetypes.PartFile
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: PanCAD.constants.SoftwareName
+.. autoclass:: pancad.constants.SoftwareName
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.constants.ConfigCategory
+.. autoclass:: pancad.constants.ConfigCategory
     :show-inheritance:
     :members:

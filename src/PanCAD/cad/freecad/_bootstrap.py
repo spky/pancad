@@ -1,4 +1,4 @@
-"""A module providing functions for ensuring PanCAD's access to the FreeCAD 
+"""A module providing functions for ensuring pancad's access to the FreeCAD 
 application.
 """
 
@@ -9,9 +9,9 @@ from shutil import which
 from tkinter import messagebox, filedialog
 import tomllib
 
-from PanCAD import data
-from PanCAD.constants import ConfigCategory, SoftwareName
-from PanCAD.utils.initialize import (
+from pancad import data
+from pancad.constants import ConfigCategory, SoftwareName
+from pancad.utils.initialize import (
     get_application_paths, get_cache, write_cache
 )
 
@@ -46,7 +46,7 @@ def find_app_dir() -> Path:
         logger.warning("Could not find any candidate FreeCADs, asking user.")
         messagebox.showerror(
             title="FreeCAD Not Found",
-            message=("PanCAD couldn't find your FreeCAD installation."
+            message=("pancad couldn't find your FreeCAD installation."
                      "\n\nPress OK to browse for a FreeCAD 'bin' folder or"
                      " press cancel and install FreeCAD")
         )
@@ -60,7 +60,7 @@ def find_app_dir() -> Path:
     return path
 
 def _ask_for_freecad() -> Path:
-    """Asks the user for the bin path. Exits PanCAD if they cancel."""
+    """Asks the user for the bin path. Exits pancad if they cancel."""
     path_string = filedialog.askdirectory(mustexist=True,
                                           title="Select FreeCAD bin folder")
     if path_string == "":
@@ -69,7 +69,7 @@ def _ask_for_freecad() -> Path:
     return Path(path_string)
 
 def _check_cache() -> Path | None:
-    """Checks the PanCAD cache file to see if an application path was saved 
+    """Checks the pancad cache file to see if an application path was saved 
     there.
     """
     cache = get_cache()
@@ -81,7 +81,7 @@ def _check_cache() -> Path | None:
         return None
 
 def _check_config() -> Path | None:
-    """Checks the PanCAD config file to see if an application path is there."""
+    """Checks the pancad config file to see if an application path is there."""
     app_paths = get_application_paths()
     if SoftwareName.FREECAD in app_paths:
         # Check if the path is in the config file and if it has been defined

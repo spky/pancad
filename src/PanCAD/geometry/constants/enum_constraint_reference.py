@@ -13,7 +13,7 @@ class ConstraintReference(Flag):
     
     Example: Focal point 1 of an ellipse would be ambiguous since nothing 
     inherently differentiates the sides of an ellipse, so 
-    ConstraintReferences and PanCAD have to define one side of the Ellipse 
+    ConstraintReferences and pancad have to define one side of the Ellipse 
     "Positive" and one "Negative" to be able to unambiguously refer to focal 
     points.
     """

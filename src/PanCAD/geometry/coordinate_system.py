@@ -10,18 +10,18 @@ from typing import TYPE_CHECKING, overload, Self
 import numpy as np
 import quaternion
 
-from PanCAD.geometry import (AbstractFeature,
+from pancad.geometry import (AbstractFeature,
                              AbstractGeometry,
                              Point,
                              Line,
                              Plane)
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison
-from PanCAD.utils.trigonometry import (yaw_pitch_roll,
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison
+from pancad.utils.trigonometry import (yaw_pitch_roll,
                                        rotation_2,
                                        to_1D_tuple,
                                        cartesian_to_spherical)
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import NoReturn
@@ -48,7 +48,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         exists inside of.
     :param name: The name of the feature displayed to the users in CAD.
     :param context: The feature that acts as the context for this feature, 
-        usually a :class:`~PanCAD.geometry.FeatureContainer`
+        usually a :class:`~pancad.geometry.FeatureContainer`
     """
     REFERENCES = (ConstraintReference.ORIGIN,
                   ConstraintReference.X,
@@ -442,7 +442,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             axis_strs.append(axis_name + "(" + component_str + ")")
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
-        return f"<PanCADCoordSys'{self.name}'({point_str}){axis_str}>"
+        return f"<pancadCoordSys'{self.name}'({point_str}){axis_str}>"
     
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by 

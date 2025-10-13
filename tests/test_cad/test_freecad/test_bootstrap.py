@@ -2,7 +2,7 @@ import sys
 import unittest
 import logging
 
-from PanCAD.cad.freecad._bootstrap import find_app_dir
+from pancad.cad.freecad._bootstrap import find_app_dir
 
 logger = logging.getLogger()
 logger.level = logging.INFO

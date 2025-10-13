@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry, Point, Line
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import comparison, trigonometry as trig
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.geometry import AbstractGeometry, Point, Line
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison, trigonometry as trig
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import Self

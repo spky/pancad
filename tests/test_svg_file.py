@@ -6,13 +6,13 @@ import os
 
 sys.path.append('src')
 
-import PanCAD
-from PanCAD.graphics.svg import element_utils as seu
-from PanCAD.graphics.svg import elements as se
-from PanCAD.graphics.svg import file as sf
-from PanCAD.graphics.svg import generators as sg
+import pancad
+from pancad.graphics.svg import element_utils as seu
+from pancad.graphics.svg import elements as se
+from pancad.graphics.svg import file as sf
+from pancad.graphics.svg import generators as sg
 
-from PanCAD.utils.file_handlers import InvalidAccessModeError
+from pancad.utils.file_handlers import InvalidAccessModeError
 
 
 class TestSVGFileInternal(unittest.TestCase):
@@ -110,7 +110,7 @@ class TestSVGPublicInterface(unittest.TestCase):
     @unittest.skip("Skipping to work on freecad refactor")
     def test_read_svg(self):
         filepath = os.path.join(self.SAMPLE_FOLDER,"input_sketch_test.svg")
-        file_instance = PanCAD.read_svg(filepath)
+        file_instance = pancad.read_svg(filepath)
 
 if __name__ == "__main__":
     with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:

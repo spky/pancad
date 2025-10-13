@@ -1,1 +1,1 @@
-from PanCAD.filetypes.part_file import PartFile
+from pancad.filetypes.part_file import PartFile

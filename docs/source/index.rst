@@ -1,12 +1,12 @@
-.. PanCAD documentation master file, created by
+.. pancad documentation master file, created by
    sphinx-quickstart on Sat Dec  7 12:27:19 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-PanCAD documentation
+pancad documentation
 ==========================
 
-**PanCAD** is a Python library for makers to generate, read, and convert CAD 
+**pancad** is a Python library for makers to generate, read, and convert CAD 
 files and their associated information to any other file format.
 
 .. note::

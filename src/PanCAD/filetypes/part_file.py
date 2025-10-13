@@ -1,4 +1,4 @@
-"""A module providing a class to represent a part file in CAD. PanCAD defines a 
+"""A module providing a class to represent a part file in CAD. pancad defines a 
 part file as a CAD file that contains the geometry definition information for 
 one object and potentially different configurations of that object. 
 
@@ -9,7 +9,7 @@ each other (e.g. Assemblies).
 This file defines what metadata is standard between all part files, though not 
 all standard metadata is guaranteed to be filled out. Functions going from and 
 to other applications need to map the standard metadata to the client 
-application's name for the data (Ex: "identifier" in PanCAD can map to "PartNo" 
+application's name for the data (Ex: "identifier" in pancad can map to "PartNo" 
 in another application).
 """
 from __future__ import annotations
@@ -17,19 +17,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence, Self, TYPE_CHECKING
 
-from PanCAD.geometry import (
+from pancad.geometry import (
     CoordinateSystem,
     FeatureContainer,
-    PanCADThing,
+    PancadThing,
     Sketch,
 )
 
 if TYPE_CHECKING:
     from uuid import UUID
-    from PanCAD.geometry import AbstractFeature, AbstractGeometry
+    from pancad.geometry import AbstractFeature, AbstractGeometry
 
-class PartFile(PanCADThing):
-    """A class representing a part file in CAD applications. PanCAD defines a 
+class PartFile(PancadThing):
+    """A class representing a part file in CAD applications. pancad defines a 
     part file that contains geometry definition for one object and different 
     geometry configurations of that object.
     
@@ -39,7 +39,7 @@ class PartFile(PanCADThing):
         features inside the file. Usually represented as a FeatureTree inside 
         of a file, but can also be something like a Body or Part object in 
         software like FreeCAD.
-    :param uid: The unique id for the PanCAD object.
+    :param uid: The unique id for the pancad object.
     """
     
     PANCAD_METADATA = [
@@ -77,14 +77,14 @@ class PartFile(PanCADThing):
     # Class Methods #
     @classmethod
     def from_freecad(cls, filepath: str) -> Self:
-        """Reads a FreeCAD file and returns it as a PanCAD PartFile.
+        """Reads a FreeCAD file and returns it as a pancad PartFile.
         
         :param filepath: The filepath to a FreeCAD file structured like a 
             part file.
-        :returns: The PanCAD equivalent of the FreeCAD part file.
+        :returns: The pancad equivalent of the FreeCAD part file.
         """
         # Local import here to avoid circular imports
-        from PanCAD.cad.freecad import FreeCADFile
+        from pancad.cad.freecad import FreeCADFile
         file = FreeCADFile(filepath)
         return file.to_pancad()
     
@@ -208,7 +208,7 @@ class PartFile(PanCADThing):
         :param filepath: The filepath to save the new FreeCAD file into.
         """
         # Local import here to avoid circular imports
-        from PanCAD.cad.freecad import FreeCADFile
+        from pancad.cad.freecad import FreeCADFile
         file = FreeCADFile.from_partfile(self, filepath)
     
     # Python Dunders #
@@ -217,7 +217,7 @@ class PartFile(PanCADThing):
     
     def __repr__(self) -> str:
         n_features = len(self.features)
-        return f"<PanCADPartFile'{self.filename}'({n_features}feats)>"
+        return f"<pancadPartFile'{self.filename}'({n_features}feats)>"
     
     def __str__(self) -> str:
         """Prints a summary of the part file's contents."""

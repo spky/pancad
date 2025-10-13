@@ -3,8 +3,8 @@ import math
 
 import numpy as np
 
-from PanCAD.geometry import Point
-from PanCAD.utils import verification
+from pancad.geometry import Point
+from pancad.utils import verification
 
 ROUNDING_PLACES = 10
 
@@ -130,7 +130,7 @@ class TestPointUpdate(unittest.TestCase):
         pt = Point(0, 0, 0)
         new = Point(1, 1, 1)
         pt.update(new)
-        verification.assertPanCADAlmostEqual(self, pt, new, ROUNDING_PLACES)
+        verification.assertPancadAlmostEqual(self, pt, new, ROUNDING_PLACES)
 
 class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 

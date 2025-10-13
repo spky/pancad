@@ -1,19 +1,19 @@
 """A module providing a class defining the required properties and interfaces of 
-PanCAD constraint classes.
+pancad constraint classes.
 """
 from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing
+from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
-    from PanCAD.geometry import AbstractGeometry
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry import AbstractGeometry
+    from pancad.geometry.constants import ConstraintReference
     
-class AbstractConstraint(PanCADThing):
-    """A class defining the interfaces provided by all PanCAD Constraint 
+class AbstractConstraint(PancadThing):
+    """A class defining the interfaces provided by all pancad Constraint 
     Elements.
     """
     
@@ -29,10 +29,10 @@ class AbstractConstraint(PanCADThing):
         """Types of geometry portions that can be constrained by this 
         constraint. Geometry portions refer to the subgeometry inside of a 
         ConstrainedType geometry that can be referred to using a 
-        :class:`~PanCAD.geometry.constants.ConstraintReference`.
+        :class:`~pancad.geometry.constants.ConstraintReference`.
         
-        Examples: The x axis of a :class:`~PanCAD.geometry.CoordinateSystem` or 
-        the start point of a :class:`~PanCAD.geometry.LineSegment`.
+        Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or 
+        the start point of a :class:`~pancad.geometry.LineSegment`.
         """
     
     # Abstract Public Methods #
@@ -44,8 +44,8 @@ class AbstractConstraint(PanCADThing):
     def get_geometry(self) -> tuple[AbstractGeometry]:
         """Returns the portions of the constrained geometry being constrained. 
         
-        Examples: The x axis of a :class:`~PanCAD.geometry.CoordinateSystem` or 
-        the start point of a :class:`~PanCAD.geometry.LineSegment`.
+        Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or 
+        the start point of a :class:`~pancad.geometry.LineSegment`.
         """
     
     @abstractmethod

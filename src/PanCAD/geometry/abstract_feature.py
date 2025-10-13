@@ -1,23 +1,23 @@
 """A module providing a class defining the required properties and interfaces of 
-PanCAD feature classes.
+pancad feature classes.
 """
 from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry import PanCADThing
+from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
-    from PanCAD.geometry import AbstractFeature, AbstractGeometry
+    from pancad.geometry import AbstractFeature, AbstractGeometry
 
-class AbstractFeature(PanCADThing):
+class AbstractFeature(PancadThing):
     
     # Public Methods #
     @abstractmethod
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
         """Returns the feature's external dependencies. Example: A 
-        :class:`~PanCAD.geometry.Sketch` returns the sketch's coordinate 
+        :class:`~pancad.geometry.Sketch` returns the sketch's coordinate 
         system and its external geometry references.
         """
     

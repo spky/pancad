@@ -6,9 +6,9 @@ import shutil
 
 sys.path.append('src')
 
-from PanCAD.utils import initialize as init
+from pancad.utils import initialize as init
 
-class TestPanCADInit(unittest.TestCase):
+class TestPancadInit(unittest.TestCase):
     def setUp(self):
         self.pancad_appdata = init.APPDATA
         self.user_settings_file = init.USER_SETTINGS

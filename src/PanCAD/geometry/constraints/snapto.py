@@ -1,5 +1,5 @@
 """A module providing a constraint classes for snapto constraints in 2D 
-geometry contexts. PanCAD defines a snapto constraint as one that can be applied 
+geometry contexts. pancad defines a snapto constraint as one that can be applied 
 to geometry with no additional arguments but still meaningfully constrain the 
 geometry.
 """
@@ -9,12 +9,12 @@ from __future__ import annotations
 from functools import reduce
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints import AbstractConstraint
-from PanCAD.geometry import Point, Line, LineSegment, CoordinateSystem, Ellipse
+from pancad.geometry.constraints import AbstractConstraint
+from pancad.geometry import Point, Line, LineSegment, CoordinateSystem, Ellipse
 
 if TYPE_CHECKING:
     from typing import NoReturn
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
     """An abstract class of constraints that can be applied to a set of **one 
@@ -149,11 +149,11 @@ class Horizontal(AbstractSnapTo):
     geometries horizontal relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Point`
     """
 
 class Vertical(AbstractSnapTo):
@@ -161,9 +161,9 @@ class Vertical(AbstractSnapTo):
     geometries vertical relative to each other in a 2D coordinate system. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Point`
     """

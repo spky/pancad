@@ -5,7 +5,7 @@ browser.
 
 import re
 
-from PanCAD.graphics.svg import enum_color_keywords
+from pancad.graphics.svg import enum_color_keywords
 
 float_re = "[+-]?[0-9]*\.[0-9]+"
 integer_re = "[+-]?[0-9]+"

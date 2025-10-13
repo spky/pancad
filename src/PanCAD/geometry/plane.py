@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry, Point
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import trigonometry as trig, comparison
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.geometry import AbstractGeometry, Point
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import trigonometry as trig, comparison
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -125,7 +125,7 @@ class Plane(AbstractGeometry):
     
     def get_reference(self, reference: ConstraintReference) -> Plane:
         """Returns reference geometry for use in external modules like 
-        constraints. Warning: Unlike some common PanCAD functions this one does 
+        constraints. Warning: Unlike some common pancad functions this one does 
         not return a copy of geometry, but the a reference to the internal 
         geometry object.
         
@@ -261,7 +261,7 @@ class Plane(AbstractGeometry):
                 normal_strs.append("{:g}".format(self.normal[i]))
         point_str = ",".join(pt_strs)
         normal_str = ",".join(normal_strs)
-        return f"<PanCAD_Plane({point_str})({normal_str})>"
+        return f"<pancad_Plane({point_str})({normal_str})>"
     
     def __str__(self) -> str:
         """String function to output the plane's description, closest 
@@ -279,5 +279,5 @@ class Plane(AbstractGeometry):
                 normal_strs.append("{:g}".format(self.normal[i]))
         point_str = ", ".join(pt_strs)
         normal_str = ", ".join(normal_strs)
-        return (f"PanCAD Plane with a point closest to the origin at"
+        return (f"pancad Plane with a point closest to the origin at"
                 + f" ({point_str}) and with normal vector ({normal_str})")

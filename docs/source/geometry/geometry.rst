@@ -1,37 +1,37 @@
 Geometry
 ========
 
-.. autoclass:: PanCAD.geometry.AbstractGeometry
+.. autoclass:: pancad.geometry.AbstractGeometry
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Circle
+.. autoclass:: pancad.geometry.Circle
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.CoordinateSystem
+.. autoclass:: pancad.geometry.CoordinateSystem
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Ellipse
+.. autoclass:: pancad.geometry.Ellipse
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Line
+.. autoclass:: pancad.geometry.Line
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.LineSegment
+.. autoclass:: pancad.geometry.LineSegment
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Point
+.. autoclass:: pancad.geometry.Point
     :show-inheritance:
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: PanCAD.geometry.constants.ConstraintReference
+.. autoclass:: pancad.geometry.constants.ConstraintReference
     :show-inheritance:
     :members:

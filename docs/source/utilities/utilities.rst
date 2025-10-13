@@ -4,12 +4,12 @@ Utilities
 Trigonometry
 ------------
 
-.. automodule:: PanCAD.utils.trigonometry
+.. automodule:: pancad.utils.trigonometry
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: PanCAD.constants.AngleConvention
+.. autoclass:: pancad.constants.AngleConvention
     :show-inheritance:
     :members:

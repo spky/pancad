@@ -1,4 +1,4 @@
-"""A module providing functions to generate PanCAD constraints without calling
+"""A module providing functions to generate pancad constraints without calling
 each constraint class individually.
 """
 from __future__ import annotations
@@ -6,7 +6,7 @@ from __future__ import annotations
 from numbers import Real
 from typing import overload, TYPE_CHECKING
 
-from PanCAD.geometry.constants import SketchConstraint
+from pancad.geometry.constants import SketchConstraint
 
 from . import (
     AbstractConstraint,
@@ -32,8 +32,8 @@ from . import (
 
 if TYPE_CHECKING:
     from uuid import UUID
-    from PanCAD.geometry import AbstractGeometry
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry import AbstractGeometry
+    from pancad.geometry.constants import ConstraintReference
 
 @overload
 def make_constraint(self,
@@ -104,7 +104,7 @@ def make_constraint(constraint_type,
                     quadrant=None,
                     is_radians=False,
                     ) -> AbstractConstraint:
-    """Creates a new PanCAD constraint.
+    """Creates a new pancad constraint.
     
     :param constraint_type: The SketchConstraint value for the constraint to be 
         created.
@@ -126,7 +126,7 @@ def make_constraint(constraint_type,
         to None but must be given for angle constraints.
     :param is_radians: Whether the value provided for an angle constraint is 
         provided in radians. Defaults to False.
-    :returns: The new PanCAD constraint.
+    :returns: The new pancad constraint.
     :raises ValueError: Raised if the SketchConstraint is not recognized.
     :raises NotImplementedError: Raised if a SketchConstraint for a constraint 
         that is not yet implemented is provided.

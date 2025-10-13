@@ -1,29 +1,29 @@
 Features
 ========
 
-.. autoclass:: PanCAD.geometry.AbstractFeature
+.. autoclass:: pancad.geometry.AbstractFeature
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Extrude
+.. autoclass:: pancad.geometry.Extrude
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.FeatureContainer
+.. autoclass:: pancad.geometry.FeatureContainer
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.Sketch
+.. autoclass:: pancad.geometry.Sketch
     :show-inheritance:
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: PanCAD.geometry.constants.FeatureType
+.. autoclass:: pancad.geometry.constants.FeatureType
     :show-inheritance:
     :members:
 
-.. autoclass:: PanCAD.geometry.constants.SketchConstraint
+.. autoclass:: pancad.geometry.constants.SketchConstraint
     :show-inheritance:
     :members:

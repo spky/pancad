@@ -9,11 +9,11 @@ Installation
     This project is under active development. and has not been placed into the 
     Python Package Index yet.
 
-To use PanCAD, first install it using pip:
+To use pancad, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install PanCAD
+   (.venv) $ pip install pancad
 
 Getting Started Tutorials
 -------------------------
@@ -21,7 +21,7 @@ Getting Started Tutorials
 How do I read from a FreeCAD file?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A FreeCAD file can be read into a :class:`~PanCAD.filetypes.PartFile` like this:
+A FreeCAD file can be read into a :class:`~pancad.filetypes.PartFile` like this:
 
 .. literalinclude:: tutorials/how_to_read_from_a_freecad_file.py
     :linenos:
@@ -42,7 +42,7 @@ The PartFile will have a tabular summary output to the command line:
 How do I make a FreeCAD file?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A :class:`~PanCAD.filetypes.PartFile` can generate a FreeCAD file, allowing CAD 
+A :class:`~pancad.filetypes.PartFile` can generate a FreeCAD file, allowing CAD 
 to be finely version controlled.
 
 Let's make a 1 mm cube as a first step. We'll start by defining the corners of 
@@ -53,7 +53,7 @@ the a square as tuples:
     :end-before: [corner-definition-end]
 
 With the corner points defined, we can create 
-4 :class:`~PanCAD.geometry.LineSegment` elements to act as the bottom, right,
+4 :class:`~pancad.geometry.LineSegment` elements to act as the bottom, right,
 top and left sides of a square CAD sketch. We'll constrain them into place later.
 The line segments can be created like this:
 
@@ -67,7 +67,7 @@ The line segments can be created like this:
     :end-before: [line-definition-end]
 
 Now that we have our square's line segments, they need to be put into 
-a :class:`~PanCAD.geometry.Sketch` element. We'll also name the sketch using the 
+a :class:`~pancad.geometry.Sketch` element. We'll also name the sketch using the 
 'name' keyword argument:
 
 .. literalinclude:: tutorials/how_do_i_make_a_freecad_file.py
@@ -97,15 +97,15 @@ to make a square, but we have to pick one so we'll just choose to constrain:
 3. The distances between the top/bottom and left/right pairs of lines.
 4. The bottom left corner to the sketch's origin point.
 
-We'll need the :func:`~PanCAD.geometry.constraints.make_constraint` method
-and a PanCAD enumeration called
-a :class:`~PanCAD.geometry.constants.ConstraintReference` to fully 
-constrain the lines using the strategy above. ConstraintReferences tell PanCAD 
+We'll need the :func:`~pancad.geometry.constraints.make_constraint` method
+and a pancad enumeration called
+a :class:`~pancad.geometry.constants.ConstraintReference` to fully 
+constrain the lines using the strategy above. ConstraintReferences tell pancad 
 which part of the geometry you want to constrain, such as 'the end point of 
 this line segment' (equivalent to
-:class:`~PanCAD.geometry.constants.ConstraintReference.END`\) or 'the line of 
+:class:`~pancad.geometry.constants.ConstraintReference.END`\) or 'the line of 
 this line segment' (equivalent to 
-:class:`~PanCAD.geometry.constants.ConstraintReference.CORE`\ ). We'll also need 
+:class:`~pancad.geometry.constants.ConstraintReference.CORE`\ ). We'll also need 
 to add in the side length we defined earlier and define its unit as millimeters.
 
 .. literalinclude:: tutorials/how_do_i_make_a_freecad_file.py
@@ -113,9 +113,9 @@ to add in the side length we defined earlier and define its unit as millimeters.
     :end-before: [constraint-definition-end]
 
 The sketch constraints were the hard part, so now all that's left is to extrude 
-the sketch to finish off the cube. We'll do this by making a PanCAD 
-:class:`~PanCAD.geometry.Extrude` using its 
-:meth:`~PanCAD.geometry.Extrude.from_length` method. Using from_length's default 
+the sketch to finish off the cube. We'll do this by making a pancad 
+:class:`~pancad.geometry.Extrude` using its 
+:meth:`~pancad.geometry.Extrude.from_length` method. Using from_length's default 
 arguments will extrude the sketch directly from the plane it's defined on.
 
 .. literalinclude:: tutorials/how_do_i_make_a_freecad_file.py
@@ -123,9 +123,9 @@ arguments will extrude the sketch directly from the plane it's defined on.
     :end-before: [extrude-definition-end]
 
 The cube CAD's done! Now to add the sketch and extrude to a 
-:class:`~PanCAD.filetypes.PartFile` by setting its
-:attr:`~PanCAD.filetypes.PartFile.features` property to the list of features.
-We can save it to FreeCAD using :meth:`~PanCAD.filetypes.PartFile.to_freecad`\ .
+:class:`~pancad.filetypes.PartFile` by setting its
+:attr:`~pancad.filetypes.PartFile.features` property to the list of features.
+We can save it to FreeCAD using :meth:`~pancad.filetypes.PartFile.to_freecad`\ .
 Make sure to add the sketch before the extrude, since the extrude depends on the 
 sketch. You should find the FreeCAD '.FCStd' file in the same directory that you 
 ran the script in.
@@ -139,7 +139,7 @@ ran the script in.
     that the geometry doesn't appear in the window. Don't worry, it's there 
     but invisible! (no, really)
     
-    The PanCAD-to-FreeCAD interface does not yet support initializing the 
+    The pancad-to-FreeCAD interface does not yet support initializing the 
     visualization of the model, so you need to go into Model tab and click 
     the eye symbols next to the pad and body features to see the geometry.
 

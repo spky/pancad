@@ -1,4 +1,4 @@
-"""A module providing a functions defining how PanCAD opens, reads, 
+"""A module providing a functions defining how pancad opens, reads, 
 writes, overwrites, and appends to files by default.
 """
 

@@ -1,5 +1,5 @@
-"""A modules providing a TurtleWindow class that can draw PanCAD geometry. 
-Intended primarily for developing and testing PanCAD, but can also be 
+"""A modules providing a TurtleWindow class that can draw pancad geometry. 
+Intended primarily for developing and testing pancad, but can also be 
 used to view the quality of CAD sketch imports.
 """
 
@@ -8,14 +8,14 @@ import turtle
 
 import numpy as np
 
-from PanCAD.geometry.point import Point
-from PanCAD.geometry.line import Line
-from PanCAD.geometry.line_segment import LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
 
 class TurtleWindow:
     """A class representing the window that python's turtle library creates. 
     This class extends turtle's functionality so that it can also draw 
-    PanCAD objects.
+    pancad objects.
     
     :param screen_title: The turtle window's title
     :param screen_size: The turtle window's screen size
@@ -197,9 +197,9 @@ class TurtleWindow:
         self.reset_undo_buffer()
     
     def draw_line(self, line: Line) -> None:
-        """Draws an infinite line using a PanCAD Line object.
+        """Draws an infinite line using a pancad Line object.
         
-        :param line: An infinite line represented by a PanCAD Line
+        :param line: An infinite line represented by a pancad Line
         """
         intersections = []
         norms = []
@@ -226,9 +226,9 @@ class TurtleWindow:
         self.turtle.setposition(initial_position)
     
     def draw_line_segment(self, line_segment: LineSegment) -> None:
-        """Draws a line segment using a PanCAD LineSegment object.
+        """Draws a line segment using a pancad LineSegment object.
         
-        :param line_segment: An finite line represented by a PanCAD Line
+        :param line_segment: An finite line represented by a pancad Line
         """
         initial_position = self.turtle.pos()
         self.turtle.penup()
@@ -239,9 +239,9 @@ class TurtleWindow:
         self.turtle.setposition(initial_position)
     
     def draw_pancad(self, geometry: Line | LineSegment) -> None:
-        """Draws the given PanCAD object on turtle's screen.
+        """Draws the given pancad object on turtle's screen.
         
-        :param geometry: A PanCAD geometry object
+        :param geometry: A pancad geometry object
         """
         if isinstance(geometry, Line):
             self.draw_line(geometry)
@@ -253,9 +253,9 @@ class TurtleWindow:
             raise ValueError(f"{geometry.__class__} is not supported")
     
     def draw_point(self, point: Point) -> None:
-        """Draws a point using a PanCAD Point object.
+        """Draws a point using a pancad Point object.
         
-        :param point: A point represented by a PanCAD Point
+        :param point: A point represented by a pancad Point
         """
         initial_position = self.turtle.pos()
         self.turtle.penup()

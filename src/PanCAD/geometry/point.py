@@ -11,10 +11,10 @@ from typing import overload, NoReturn, Self
 
 import numpy as np
 
-from PanCAD.geometry import AbstractGeometry
-from PanCAD.geometry.constants import ConstraintReference
-from PanCAD.utils import trigonometry as trig, comparison
-from PanCAD.utils.pancad_types import VectorLike
+from pancad.geometry import AbstractGeometry
+from pancad.geometry.constants import ConstraintReference
+from pancad.utils import trigonometry as trig, comparison
+from pancad.utils.pancad_types import VectorLike
 
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
@@ -113,7 +113,7 @@ class Point(AbstractGeometry):
     def from_polar(cls, arg, uid: str=None, unit: str=None) -> NoReturn:
         """Initializes a point from polar coordinates.
         
-        :warning: The PanCAD Sphinx documentation has a bug that causes the type 
+        :warning: The pancad Sphinx documentation has a bug that causes the type 
             hint annotations of singledispatchmethods to fail and the function 
             definition to multiply. Point.from_polar accepts a single VectorLike 
             for vector or 2 Reals for r and phi. See issue #104.
@@ -150,7 +150,7 @@ class Point(AbstractGeometry):
     def from_spherical(cls, arg, *, uid: str=None, unit: str=None) -> NoReturn:
         """Initializes a point from spherical coordinates.
         
-        :warning: The PanCAD Sphinx documentation has a bug that causes the type 
+        :warning: The pancad Sphinx documentation has a bug that causes the type 
             hint annotations of singledispatchmethods to fail and the function 
             definition to multiply. Point.from_spherical accepts a single 
             VectorLike for vector or 3 Reals for r, phi, and theta.

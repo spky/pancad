@@ -1,7 +1,7 @@
 """ A module providing the SVG path element class that converts path elements 
-into PanCAD geometry and vice-versa.
+into pancad geometry and vice-versa.
 
-The Path class is primarily intended to generate PanCAD geometry using its 
+The Path class is primarily intended to generate pancad geometry using its 
 initialization 'd' (the string representing the path's path data) argument.
 
 """
@@ -10,21 +10,21 @@ from itertools import islice
 
 import numpy as np
 
-from PanCAD.graphics.svg import (
+from pancad.graphics.svg import (
     PathParameterType, PathCommandCharacter as CmdChar
 )
-from PanCAD.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
-from PanCAD.graphics.svg.parsers import to_number
+from pancad.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
+from pancad.graphics.svg.parsers import to_number
 
-from PanCAD.geometry import LineSegment, Point, Line, Plane, CoordinateSystem
+from pancad.geometry import LineSegment, Point, Line, Plane, CoordinateSystem
 
 class Path:
-    """A class that represents svg path elements and syncs them with PanCAD 
+    """A class that represents svg path elements and syncs them with pancad 
     geometry.
     
     :param svg_id: The id of the svg path element. Will be prepended to each 
         geometry element's id
-    :param d: The path element's path data string. Will be translated into PanCAD 
+    :param d: The path element's path data string. Will be translated into pancad 
         geometry
     """
     
@@ -50,10 +50,10 @@ class Path:
     
     @property
     def geometry(self) -> list:
-        """The PanCAD geometry elements that represent the path data
+        """The pancad geometry elements that represent the path data
         
-        :getter: Returns a list of PanCAD geometry
-        :setter: Sets the PanCAD geometry and syncs the path data
+        :getter: Returns a list of pancad geometry
+        :setter: Sets the pancad geometry and syncs the path data
         """
         return self._geometry
     
@@ -85,7 +85,7 @@ class Path:
     # Class Methods #
     @classmethod
     def from_geometry(cls, svg_id: str, geometry_list: list):
-        """Initializes a Path element purely from PanCAD elements"""
+        """Initializes a Path element purely from pancad elements"""
         explicit_cmds = cls._geometry_to_explicit(geometry_list)
         implicit_cmds = cls._to_implicit(explicit_cmds)
         path_data = cls._implicit_to_string(implicit_cmds)
@@ -95,7 +95,7 @@ class Path:
     @staticmethod
     def _geometry_to_explicit(geometry_list: list) -> list[tuple[str, str]]:
         """Creates a list of explicit (i.e. one parameter per command) path data 
-        commands from a list of PanCAD geometry.
+        commands from a list of pancad geometry.
         """
         cmds = []
         previous_pt = None
@@ -263,7 +263,7 @@ class Path:
     
     @staticmethod
     def _to_geometry(explicit_cmds: list[tuple]) -> list:
-        """Returns a list of PanCAD geometry from a list of explicit svg path 
+        """Returns a list of pancad geometry from a list of explicit svg path 
         data commands. Here, explicit commands are defined as svg path data 
         commands that only contain a single set of their parameters with no 
         implied continuation parameters. Ex: M 1 1 L 2 2 and not M 1 1 2 2
@@ -271,7 +271,7 @@ class Path:
         :param explicit_cmds: A list of 2 length tuples containing the command 
             character as the first element and its parameters as the second 
             element
-        :returns: A list of equivalent PanCAD Geometry
+        :returns: A list of equivalent pancad Geometry
         """
         geometry = []
         _, coordinate = explicit_cmds.pop(0)

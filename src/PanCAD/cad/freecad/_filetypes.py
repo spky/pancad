@@ -1,13 +1,13 @@
 """
 A module providing functions to read FreeCAD files formatted like part files 
-into a PanCAD PartFile object.
+into a pancad PartFile object.
 """
 from __future__ import annotations
 
 import pathlib
 from typing import Self, TYPE_CHECKING
 
-from PanCAD.filetypes import PartFile
+from pancad.filetypes import PartFile
 
 from . import App
 from .constants import ObjectType, PadType
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
-    the file to a PanCAD filetype.
+    the file to a pancad filetype.
     
     :param filepath: The location of the FreeCAD file.
     """
@@ -39,9 +39,9 @@ class FreeCADFile:
     # Class Methods #
     @classmethod
     def from_partfile(cls, part_file: PartFile, filepath: str) -> Self:
-        """Creates and saves a FreeCAD file from a PanCAD PartFile.
+        """Creates and saves a FreeCAD file from a pancad PartFile.
         
-        :param part_file: A PanCAD PartFile.
+        :param part_file: A pancad PartFile.
         :param filepath: The filepath to save the new FreeCAD file to.
         :returns: The new FreeCADFile.
         :raises ValueError: When part_file is not a PartFile.
@@ -127,7 +127,7 @@ class FreeCADFile:
         return self
     
     def to_pancad(self) -> PartFile:
-        """Returns a PanCAD filetype object from the FreeCAD file."""
+        """Returns a pancad filetype object from the FreeCAD file."""
         return self._part_file
     
     # Private Methods #

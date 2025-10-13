@@ -12,8 +12,8 @@ import math
 from numbers import Real
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry.constraints import AbstractConstraint
-from PanCAD.geometry import (
+from pancad.geometry.constraints import AbstractConstraint
+from pancad.geometry import (
     Circle,
     CoordinateSystem,
     Ellipse,
@@ -26,7 +26,7 @@ from PanCAD.geometry import (
 if TYPE_CHECKING:
     from typing import NoReturn
     
-    from PanCAD.geometry.constants import ConstraintReference
+    from pancad.geometry.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 
@@ -101,9 +101,9 @@ class Angle(AbstractValue):
     returns angles in degrees by default since nearly all CAD programs take user 
     angle inputs in degrees. Can constrain:
     
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Ellipse`
     
     :param geometry_a: First line-like, defines the x-axis equivalent for
         quadrant selection.
@@ -356,12 +356,12 @@ class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D 
     or 3D.
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Point`
-    - :class:`~PanCAD.geometry.Plane`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Point`
+    - :class:`~pancad.geometry.Plane`
     """
     CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane,
                          Ellipse)
@@ -415,32 +415,32 @@ class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Point`
     """
 
 class VerticalDistance(AbstractDistance2D):
     """A constraint that sets the vertical distance between two elements. Can 
     constrain:
     
-    - :class:`~PanCAD.geometry.CoordinateSystem`
-    - :class:`~PanCAD.geometry.Ellipse`
-    - :class:`~PanCAD.geometry.Line`
-    - :class:`~PanCAD.geometry.LineSegment`
-    - :class:`~PanCAD.geometry.Point`
+    - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Ellipse`
+    - :class:`~pancad.geometry.Line`
+    - :class:`~pancad.geometry.LineSegment`
+    - :class:`~pancad.geometry.Point`
     """
 
 class Radius(Abstract1GeometryDistance):
     """A constraint that sets the radius of a curve. Can constrain:
     
-    - :class:`~PanCAD.geometry.Circle`
+    - :class:`~pancad.geometry.Circle`
     """
 
 class Diameter(Abstract1GeometryDistance):
     """A constraint that sets the diameter of a curve. Can constrain:
     
-    - :class:`~PanCAD.geometry.Circle`
+    - :class:`~pancad.geometry.Circle`
     """

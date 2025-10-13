@@ -1,14 +1,14 @@
 import unittest
 
-import PanCAD
-from PanCAD.geometry import (Circle,
+import pancad
+from pancad.geometry import (Circle,
                              CoordinateSystem,
                              Ellipse,
                              Extrude,
                              FeatureContainer,
                              LineSegment,
                              Sketch,)
-from PanCAD.geometry.constraints import (Coincident,
+from pancad.geometry.constraints import (Coincident,
                                          Equal,
                                          Diameter,
                                          Distance,
@@ -19,7 +19,7 @@ from PanCAD.geometry.constraints import (Coincident,
                                          Radius,
                                          Vertical,
                                          VerticalDistance,)
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 
 class TestFeatureContainerInit(unittest.TestCase):
     

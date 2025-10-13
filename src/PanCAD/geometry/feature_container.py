@@ -11,7 +11,7 @@ from __future__ import annotations
 from textwrap import indent
 from typing import TYPE_CHECKING
 
-from PanCAD.geometry import AbstractFeature, Sketch
+from pancad.geometry import AbstractFeature, Sketch
 
 if TYPE_CHECKING:
     from typing import Sequence, Self
@@ -28,7 +28,7 @@ class FeatureContainer(AbstractFeature):
         is automatically generated.
     :param name: The name of the feature displayed to the users in CAD.
     :param context: The feature that acts as the context for 
-        this feature, usually a :class:`~PanCAD.geometry.FeatureContainer` or 
+        this feature, usually a :class:`~pancad.geometry.FeatureContainer` or 
         None. None indicates that this FeatureContainer is a top level CAD 
         object.
     """
@@ -147,7 +147,7 @@ class FeatureContainer(AbstractFeature):
     
     def __repr__(self) -> str:
         n_features = len(self.features)
-        return f"<PanCADFeatureContainer'{self.name}'({n_features}feats)>"
+        return f"<pancadFeatureContainer'{self.name}'({n_features}feats)>"
     
     def __str__(self) -> str:
         """Returns a summary of what is inside of the FeatureContainer."""

@@ -42,7 +42,7 @@ SVG_CMD_TYPES: A dictionary containing the lists of what commands fall into the
     4 types of parameter formats: pairs, singles, arcs, closepath
 
 ## Grammar Component NamedTuples
-**NOTE**: Reference PanCAD.utils.regex for tuple names
+**NOTE**: Reference pancad.utils.regex for tuple names
 WSP: Finds path data whitespace, defined as a space, tab, newline, or carriage 
     return.
 SIGN: Finds signs: + or -.
@@ -56,8 +56,8 @@ coordinate_pair: Finds pairs of numbers in a string.
 import re
 from collections import namedtuple
 
-from PanCAD.graphics.svg import PathParameterType, PathCommandCharacter
-from PanCAD.utils.regex import capture_re
+from pancad.graphics.svg import PathParameterType, PathCommandCharacter
+from pancad.utils.regex import capture_re
 
 # Manual Constants
 

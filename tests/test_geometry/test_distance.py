@@ -1,11 +1,11 @@
 import unittest
 
-from PanCAD.geometry import Point, Line, LineSegment, Plane, Circle
-from PanCAD.geometry.constraints import (
+from pancad.geometry import Point, Line, LineSegment, Plane, Circle
+from pancad.geometry.constraints import (
     HorizontalDistance, VerticalDistance, Distance,
     Radius, Diameter, Angle
 )
-from PanCAD.geometry.constants import ConstraintReference
+from pancad.geometry.constants import ConstraintReference
 
 class TestAngleDistanceInit(unittest.TestCase):
     def test_angle_nominal_init(self):
