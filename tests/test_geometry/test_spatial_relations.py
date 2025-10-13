@@ -7,7 +7,7 @@ import unittest
 
 from PanCAD.geometry import Point, Line, LineSegment, Plane, spatial_relations
 from PanCAD.utils import verification, trigonometry as trig
-from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.constants import AngleConvention as AC
 
 ROUNDING_PLACES = 10
 

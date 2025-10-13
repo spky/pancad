@@ -7,6 +7,10 @@ File Types
 Enumerations
 ------------
 
-.. autoclass:: PanCAD.filetypes.constants.SoftwareName
+.. autoclass:: PanCAD.constants.SoftwareName
+    :show-inheritance:
+    :members:
+
+.. autoclass:: PanCAD.constants.ConfigCategory
     :show-inheritance:
     :members:

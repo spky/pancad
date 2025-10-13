@@ -10,7 +10,7 @@ import math
 
 import numpy as np
 
-from PanCAD.constants.angle_convention import AngleConvention as AC
+from PanCAD.constants import AngleConvention as AC
 from PanCAD.geometry import Point, Line, LineSegment, Plane, conversion
 from PanCAD.utils import trigonometry as trig, comparison
 
