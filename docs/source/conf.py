@@ -9,7 +9,6 @@
 project = 'pancad'
 copyright = '2024, spky'
 author = 'spky'
-release = '0.0.0'
 
 import pancad.constants
 import pancad.geometry
@@ -17,6 +16,9 @@ import pancad.geometry.constants
 import pancad.geometry.constraints
 import pancad.filetypes
 import pancad.utils
+
+from pancad.__about__ import __version__
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

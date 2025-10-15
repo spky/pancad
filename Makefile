@@ -24,8 +24,8 @@ else
 endif
 
 VENV_ACTIVATE = $(VENV)/Scripts/activate
-PYTHON = $(VENV)/Scripts/python
-PIP = $(VENV)/Scripts/pip
+PYTHON = python
+PIP = pip
 
 INIT_PY := $(call rwildcard, $(SRC), *__init__.py)
 SRC_PYTHON := $(call rwildcard, $(SRC), *.py)
@@ -48,7 +48,7 @@ PYCACHES := $(call rwildcard, $(SRC) $(TESTS), *__pycache__)
 all: docs
 
 test:
-	$(PYTHON) -m unittest discover tests
+	$(PYTHON) -m unittest discover
 
 docs: $(DOCS_INDEX_HTML)
 
