@@ -5,7 +5,7 @@ into a pancad PartFile object.
 from __future__ import annotations
 
 import pathlib
-from typing import Self, TYPE_CHECKING
+from typing import Self, NoReturn, TYPE_CHECKING
 
 from pancad.filetypes import PartFile
 
@@ -129,6 +129,11 @@ class FreeCADFile:
     def to_pancad(self) -> PartFile:
         """Returns a pancad filetype object from the FreeCAD file."""
         return self._part_file
+    
+    def validate(self) -> NoReturn:
+        """Checks whether the FreeCAD document has any errors."""
+        
+        
     
     # Private Methods #
     def _get_bodies(self) -> list[FreeCADBody]:
