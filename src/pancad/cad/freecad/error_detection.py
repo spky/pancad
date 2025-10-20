@@ -1,15 +1,33 @@
 """A module providing functions to check whether a FreeCAD document contains 
 errors or unattached geometry. These functions must be independent of other 
 pancad FreeCAD functionality to allow them to be called using the FreeCAD 
-version of Python.
+version of Python. This module is meant to be called as a script, so it is one 
+of the freecad module's public modules.
 """
 
 import argparse
+from enum import StrEnum, auto
 import json
 
 import FreeCAD as App
 
+class ErrorCategory(StrEnum):
+    """An enumeration used to define FreeCAD error categories for model validation.
+    """
+    
+    DETACHED = auto()
+    """When a sketch is not properly attached to geometry"""
+    ERROR = auto()
+    """When a feature has an explicit error. Can include solver errors, 
+    conflicting constraints, open profile pads, etc.
+    """
+    UNCONSTRAINED = auto()
+    """When a sketch contains geometry that is not fully constrained. Is not an 
+    error, but is usually bad practice.
+    """
+
 def _parse_args() -> argparse.Namespace:
+    """Reads the command line arguments given to the script."""
     parser = argparse.ArgumentParser(
         prog="PancadFreeCADErrorDetection",
         description=("pancad's script for detecting whether a FreeCAD file"
@@ -23,6 +41,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 def _key(freecad_object: App.DocumentObject) -> str:
+    """Returns the report key for the FreeCAD object/"""
     return "{0}: {1}".format(freecad_object.ID, freecad_object.Label)
 
 def main():
@@ -38,14 +57,14 @@ def main():
         if not obj.isValid():
             # Log errors on features
             data.append(
-                ("error", (_key(obj), obj.getStatusString()))
+                (ErrorCategory.ERROR, (_key(obj), obj.getStatusString()))
             )
         if hasattr(obj, "AttachmentSupport") and not obj.AttachmentSupport:
             # Log objects detached from geometry
-            data.append(("detached", _key(obj)))
+            data.append((ErrorCategory.DETACHED, _key(obj)))
         if hasattr(obj, "FullyConstrained") and not obj.FullyConstrained:
             # Log sketches that are not fully constrained
-            data.append(("unconstrained", _key(obj)))
+            data.append((ErrorCategory.UNCONSTRAINED, _key(obj)))
     
     report = {}
     for category, item in data:

@@ -1,7 +1,9 @@
 from pathlib import Path
 import unittest
 
-from pancad.cad.freecad.freecad_python import call_freecad_python
+from pancad.cad.freecad.freecad_python import (
+    call_freecad_python, validate_freecad
+)
 from pancad.cad.freecad import error_detection
 from tests import sample_freecad
 
@@ -30,6 +32,10 @@ class TestErrorDetection(unittest.TestCase):
         with self.subTest(expected_errors=NO_ERRORS):
             self.assertEqual(len(test["error"]), NO_ERRORS)
     
+    def test_invalid_sketches_validation(self):
+        with self.assertRaises(ValueError):
+            validate_freecad(self.sample_dir / "invalid_sketches.FCStd")
+    
     def test_invalid_pads(self):
         filename = "invalid_pads.FCStd"
         test = call_freecad_python(error_detection.__file__,
@@ -38,3 +44,7 @@ class TestErrorDetection(unittest.TestCase):
             self.assertEqual(len(test["unconstrained"]), 1)
         with self.subTest(expected_errors=1):
             self.assertEqual(len(test["error"]), 1)
+    
+    def test_invalid_pads_validation(self):
+        with self.assertRaises(ValueError):
+            validate_freecad(self.sample_dir / "invalid_pads.FCStd")

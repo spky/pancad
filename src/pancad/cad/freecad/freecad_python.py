@@ -1,14 +1,18 @@
-"""A module used to call FreeCAD's Python executable"""
+"""A module used to call FreeCAD's Python executable and perform 
+pancad-independent actions on those models.
+"""
 
 from os import close, remove
 from pathlib import Path
+from pprint import pformat
 from subprocess import Popen
 import tempfile
 import json
 
+from . import error_detection
 from ._bootstrap import find_app_dir
 
-def call_freecad_python(program: Path, *args) -> dict:
+def call_freecad_python(program: str | Path, *args) -> dict:
     """Calls a python program using the FreeCAD python executable. Assumes that 
     the python program creates a json file for its outputs.
     
@@ -22,8 +26,31 @@ def call_freecad_python(program: Path, *args) -> dict:
     
     proc = Popen([exe, program, temp_file_name, *args])
     proc.communicate()
+    
     with open(temp_file_name) as file:
         result = json.load(file)
     remove(temp_file_name)
     
     return result
+
+def validate_freecad(fcstd_filepath: str | Path,
+                     unconstrained_error: bool=False) -> None:
+    """Uses the FreeCAD Python executable to raise an error if a FreeCAD model 
+    has errors.
+    
+    :param fcstd_filepath: Path to a FCStd
+    :param unconstrained_error: Sets whether containing an unconstrained sketch 
+        counts as an error.
+    :raises ValueError: Raised when the FreeCAD file contains an error.
+    """
+    report = call_freecad_python(error_detection.__file__, fcstd_filepath)
+    if not unconstrained_error:
+        report.pop(error_detection.ErrorCategory.UNCONSTRAINED, None)
+    
+    for _, values in report.items():
+        if values:
+            report_str = pformat(report)
+            path = Path(fcstd_filepath)
+            raise ValueError("Errors found in FreeCAD file"
+                             f" {fcstd_filepath.name}! Report:\n{report_str}")
+    return None

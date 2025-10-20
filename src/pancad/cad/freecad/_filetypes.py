@@ -11,6 +11,7 @@ from pancad.filetypes import PartFile
 
 from . import App
 from .constants import ObjectType, PadType
+from .freecad_python import validate_freecad
 from ._feature_mappers import FreeCADMap
 
 if TYPE_CHECKING:
@@ -130,10 +131,16 @@ class FreeCADFile:
         """Returns a pancad filetype object from the FreeCAD file."""
         return self._part_file
     
-    def validate(self) -> NoReturn:
-        """Checks whether the FreeCAD document has any errors."""
+    def validate(self, unconstrained_error: bool=False) -> None:
+        """Checks whether the FreeCAD document has any errors. Only checks the 
+        document that is saved at the filepath, so if any modifications have 
+        happened since the last save they will not be checked.
         
-        
+        :param unconstrained_error: Sets whether containing an unconstrained 
+        sketch counts as an error.
+        :raises ValueError: Raised when the FreeCAD file contains an error.
+        """
+        return validate_freecad(self.filepath, unconstrained_error)
     
     # Private Methods #
     def _get_bodies(self) -> list[FreeCADBody]:
