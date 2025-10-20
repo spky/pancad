@@ -8,6 +8,7 @@ from pancad.geometry import CoordinateSystem, Extrude
 from pancad.geometry.constants import (ConstraintReference as CR,
                                        SketchConstraint as SC)
 from pancad.geometry.constraints import make_constraint
+from pancad.cad.freecad.freecad_python import validate_freecad
 
 from tests.sample_pancad_objects import sample_sketches
 from tests.utils import delete_all_suffix
@@ -29,6 +30,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)
         self.file.to_freecad(self.filepath)
+        validate_freecad(self.filepath)
     
     def test_create_cube(self):
         filename = stack()[0].function + ".FCStd"
@@ -39,6 +41,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]
         self.file.to_freecad(self.filepath)
+        validate_freecad(self.filepath)
     
     def test_create_cylinder(self):
         filename = stack()[0].function + ".FCStd"
@@ -49,6 +52,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]
         self.file.to_freecad(self.filepath)
+        validate_freecad(self.filepath)
     
     def test_create_ellipse_extrude(self):
         filename = stack()[0].function + ".FCStd"
@@ -59,6 +63,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]
         self.file.to_freecad(self.filepath)
+        validate_freecad(self.filepath)
 
 class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
     
@@ -89,6 +94,7 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.sketch.constraints = self.constraints
         self.file.add_feature(self.sketch)
         self.file.to_freecad(filepath)
+        validate_freecad(filepath)
     
     def test_two_equal_square_with_horizontal_vertical(self):
         self.file = PartFile(stack()[0].function + ".FCStd")
