@@ -10,13 +10,12 @@ from pathlib import Path
 
 from pancad import config
 from pancad.constants import SoftwareName
-
-APPDATA = Path(expandvars("%appdata%"))
-PANCAD_CONFIG_DIR = APPDATA / "pancad"
-CONFIG_NAME = "config.toml"
-CONFIG_FILEPATH = PANCAD_CONFIG_DIR / CONFIG_NAME
-CACHE_NAME = "cache.json"
-CACHE_FILEPATH = PANCAD_CONFIG_DIR / CACHE_NAME
+from pancad.constants.config_paths import (
+    CACHE_FILEPATH,
+    CONFIG_FILEPATH,
+    DEFAULTS_DIR,
+    PANCAD_CONFIG_DIR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +38,10 @@ def check_config() -> None:
     if CONFIG_FILEPATH.is_file():
         logger.info(f"pancad user settings file found here: {CONFIG_FILEPATH}")
     else:
-        logger.info(f"No pancad {CONFIG_NAME} found, copying defaults"
-                     + f"here: {CONFIG_FILEPATH}")
+        logger.info(f"No pancad {CONFIG_FILEPATH.name} found, copying defaults"
+                     + f"here: {DEFAULTS_DIR}")
         check_appdata_folder()
-        defaults_dir = Path(config.__file__).parent
-        shutil.copyfile(defaults_dir / CONFIG_NAME, CONFIG_FILEPATH)
+        shutil.copyfile(DEFAULTS_DIR / CONFIG_FILEPATH.name, CONFIG_FILEPATH)
 
 def check_cache() -> None:
     """Checks whether the pancad cache file is available and creates it 
@@ -52,7 +50,7 @@ def check_cache() -> None:
     if CACHE_FILEPATH.is_file():
         logger.info(f"pancad user cache file found here: {CACHE_FILEPATH}")
     else:
-        logger.info(f"No pancad {CACHE_NAME} found, creating empty one"
+        logger.info(f"No pancad {CACHE_FILEPATH.name} found, creating empty one"
                      + f"here: {CACHE_FILEPATH}")
         check_appdata_folder()
         with open(CACHE_FILEPATH, "w") as file:
