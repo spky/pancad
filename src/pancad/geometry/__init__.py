@@ -13,6 +13,7 @@ from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.plane import Plane
 from pancad.geometry.circle import Circle
+from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.ellipse import Ellipse
 from pancad.geometry.coordinate_system import CoordinateSystem
 
