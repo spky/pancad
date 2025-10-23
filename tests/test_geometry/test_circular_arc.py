@@ -35,7 +35,11 @@ class InitAndChangeTest(unittest.TestCase):
         # print("uid", test.uid)
         for name, expected, result in tests:
             with self.subTest(name=name, expected=expected, result=result):
-                self.assertEqual(result, expected)
+                if isinstance(result, tuple):
+                    assert_allclose(result, expected, atol=1e-9)
+                else:
+                    self.assertEqual(result, expected)
+                    
         with self.subTest(expected="uid is a UUID"):
             self.assertTrue(isinstance(test.uid, UUID))
     
@@ -96,6 +100,26 @@ class InitAndChangeTest(unittest.TestCase):
         self.check_values(
             self.test, self.center, new_radius, self.start_vector,
             self.end_vector,
+            self.is_clockwise,
+        )
+    
+    def test_change_start_angle(self):
+        new_angle = radians(90)
+        new_vector = (0, 1)
+        self.test.start_angle = new_angle
+        self.check_values(
+            self.test, self.center, self.radius,
+            new_vector,
+            self.end_vector, self.is_clockwise,
+        )
+    
+    def test_change_end_angle(self):
+        new_angle = radians(0)
+        new_vector = (1, 0)
+        self.test.end_angle = new_angle
+        self.check_values(
+            self.test, self.center, self.radius, self.start_vector,
+            new_vector,
             self.is_clockwise,
         )
 

@@ -149,6 +149,11 @@ class CircularArc(AbstractGeometry):
     def end_angle(self) -> Real:
         """The angle from the positive horizontal axis to the end_vector in 
         radians. Bounded -pi < angle <= pi.
+        
+        :getter: Returns the calculated angle of the end_vector relative to the 
+            positive horizontal axis in radians.
+        :setter: Sets the end_vector based on the value given in radians.
+        :raises ValueError: Raised if accessed on a 3D arc.
         """
         if len(self) == 3:
             raise ValueError("3D arcs cannot be defined by axis angles")
@@ -202,6 +207,11 @@ class CircularArc(AbstractGeometry):
     def start_angle(self) -> Real:
         """The angle from the positive horizontal axis to the start_vector.
         Bounded -pi < angle <= pi.
+        
+        :getter: Returns the calculated angle of the start_vector relative to the 
+            positive horizontal axis in radians.
+        :setter: Sets the end_vector based on the value given in radians.
+        :raises ValueError: Raised if accessed on a 3D arc.
         """
         if len(self) == 3:
             raise ValueError("3D arcs cannot be defined by axis angles")
@@ -242,6 +252,12 @@ class CircularArc(AbstractGeometry):
     def diameter(self, value: Real) -> None:
         self.radius = value / 2
     
+    @end_angle.setter
+    def end_angle(self, angle: Real) -> None:
+        if len(self) == 3:
+            raise ValueError("3D arcs cannot be defined by axis angles")
+        self.end_vector = polar_to_cartesian((1, angle))
+    
     @end_vector.setter
     def end_vector(self, vector: VectorLike) -> None:
         if len(vector) != len(self):
@@ -262,6 +278,12 @@ class CircularArc(AbstractGeometry):
             self._normal_vector = vector
         else:
             raise ValueError(f"2D Arc normals must be None. Given: {vector}")
+    
+    @start_angle.setter
+    def start_angle(self, angle: Real) -> None:
+        if len(self) == 3:
+            raise ValueError("3D arcs cannot be defined by axis angles")
+        self.start_vector = polar_to_cartesian((1, angle))
     
     @start_vector.setter
     def start_vector(self, vector: VectorLike) -> None:
