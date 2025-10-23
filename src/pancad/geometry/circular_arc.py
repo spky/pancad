@@ -10,8 +10,12 @@ from numpy import array
 from pancad.geometry import AbstractGeometry, Point
 from pancad.geometry.constants import ConstraintReference
 from pancad.utils.pancad_types import VectorLike
-from pancad.utils.trigonometry import get_unit_vector, to_1D_tuple
-
+from pancad.utils.trigonometry import (
+    get_unit_vector,
+    to_1D_tuple,
+    phi_of_cartesian,
+    polar_to_cartesian,
+)
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -71,12 +75,36 @@ class CircularArc(AbstractGeometry):
         self.uid = uid
     
     @classmethod
-    def from_start_and_end_angles(cls):
-        pass
-    
-    @classmethod
-    def from_three_points(cls):
-        pass
+    def from_angles(cls,
+                    center: Point | VectorLike,
+                    radius: Real,
+                    start_angle: Real,
+                    end_angle: Real,
+                    is_clockwise: bool,
+                    uid: str=None) -> None:
+        """Initializes a 2D CircularArc using start and end angles instead of 
+        vectors.
+        
+        :param center: The center point of the arc.
+        :param radius: The radius dimension of the arc.
+        :param start_angle: The angle from the horizontal axis to the line 
+            between the center and the start of the arc in radians.
+        :param end_angle: A vector pointing to the end of the arc.
+        :param is_clockwise: Sets whether the arc travels clockwise from the 
+            start point to the end point.
+        :param uid: The unique ID of the circle.
+        :raises ValueError: Raised if the center point is 3D since 3D arcs
+            cannot be defined by angles.
+        """
+        if len(center) == 3:
+            raise ValueError("3D CircularArcs cannot be initialized by angles")
+        
+        if isinstance(center, VectorLike):
+            center = Point(center)
+        start_vector = polar_to_cartesian((1, start_angle))
+        end_vector = polar_to_cartesian((1, end_angle))
+        return cls(center, radius, start_vector, end_vector, is_clockwise,
+                   uid=uid)
     
     # Getters #
     @property
@@ -98,6 +126,16 @@ class CircularArc(AbstractGeometry):
         return self._is_clockwise
     
     @property
+    def diameter(self) -> Real:
+        """Diameter of the arc.
+        
+        :getter: Returns the twice the arc's radius value.
+        :setter: Updates the arc's radius value with half the provided value.
+        :raises ValueError: Raised if provided a value less than 0.
+        """
+        return 2 * self.radius
+    
+    @property
     def end(self) -> Point:
         """The end point of the arc.
         
@@ -108,8 +146,17 @@ class CircularArc(AbstractGeometry):
         return self._end
     
     @property
+    def end_angle(self) -> Real:
+        """The angle from the positive horizontal axis to the end_vector in 
+        radians. Bounded -pi < angle <= pi.
+        """
+        if len(self) == 3:
+            raise ValueError("3D arcs cannot be defined by axis angles")
+        return phi_of_cartesian(self.end_vector)
+    
+    @property
     def end_vector(self) -> tuple:
-        """The unit vector pointing to the end of the arc.
+        """The unit vector pointing to the end of the arc from its center.
         
         :getter: Returns the vector.
         :setter: Sets the unit vector of the provided vector to the end vector 
@@ -136,7 +183,8 @@ class CircularArc(AbstractGeometry):
         
         :getter: Returns the arc's radius value.
         :setter: Updates the arc's radius if the given value is greater than 
-            or equal to 0. Raises a ValueError if the radius is less than 0.
+            or equal to 0.
+        :raises ValueError: Raised if provided a value less than 0.
         """
         return self._radius
     
@@ -151,8 +199,17 @@ class CircularArc(AbstractGeometry):
         return self._start
     
     @property
+    def start_angle(self) -> Real:
+        """The angle from the positive horizontal axis to the start_vector.
+        Bounded -pi < angle <= pi.
+        """
+        if len(self) == 3:
+            raise ValueError("3D arcs cannot be defined by axis angles")
+        return phi_of_cartesian(self.start_vector)
+    
+    @property
     def start_vector(self) -> tuple:
-        """The unit vector pointing to the start of the arc.
+        """The unit vector pointing to the start of the arc from its center.
         
         :getter: Returns the vector.
         :setter: Sets the unit vector of the provided vector to the end vector 
@@ -171,7 +228,7 @@ class CircularArc(AbstractGeometry):
         
         self._center.update(point)
         start_location = self._center + self.radius * array(self.start_vector)
-        end_location = self._center + value * array(self.end_vector)
+        end_location = self._center + self.radius * array(self.end_vector)
         
         # Vectors stay the same, points are just translated
         self._start.update(Point(start_location))
@@ -180,6 +237,10 @@ class CircularArc(AbstractGeometry):
     @is_clockwise.setter
     def is_clockwise(self, value: bool) -> None:
         self._is_clockwise = value
+    
+    @diameter.setter
+    def diameter(self, value: Real) -> None:
+        self.radius = value / 2
     
     @end_vector.setter
     def end_vector(self, vector: VectorLike) -> None:
@@ -294,6 +355,6 @@ class CircularArc(AbstractGeometry):
         start_str = str(self.start.cartesian).replace(" ","")
         end_str = str(self.end.cartesian).replace(" ","")
         prefix = super().__str__()
-        string = (f"{prefix}r{self.radius}"
-                  f"c{center_str}s{start_str}e{end_str}")
+        string = (f"{prefix}"
+                  f"{center_str}c{start_str}s{end_str}e{self.radius}r")
         return string + ">"
