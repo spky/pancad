@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from pancad.geometry.constraints import AbstractConstraint
 from pancad.geometry import (
     Circle,
+    CircularArc,
     CoordinateSystem,
     Ellipse,
     Line,
@@ -101,6 +102,7 @@ class Angle(AbstractValue):
     returns angles in degrees by default since nearly all CAD programs take user 
     angle inputs in degrees. Can constrain:
     
+    - :class:`~pancad.geometry.CoordinateSystem`
     - :class:`~pancad.geometry.Line`
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Ellipse`
@@ -122,7 +124,12 @@ class Angle(AbstractValue):
     :param uid: Unique identifier of the constraint.
     :param is_radians: Whether provided value is in radians. Defaults to False.
     """
-    CONSTRAINED_TYPES = (Line, LineSegment, Ellipse)
+    CONSTRAINED_TYPES = (
+        CoordinateSystem,
+        Line,
+        LineSegment,
+        Ellipse,
+    )
     GEOMETRY_TYPES = (Line, LineSegment)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -307,8 +314,14 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     """
-    CONSTRAINED_TYPES = (Circle,)
-    GEOMETRY_TYPES = (Circle,)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CircularArc,
+    )
+    GEOMETRY_TYPES = (
+        Circle,
+        CircularArc,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
@@ -357,14 +370,24 @@ class Distance(Abstract2GeometryDistance):
     or 3D.
     
     - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CircularArc`
     - :class:`~pancad.geometry.Ellipse`
     - :class:`~pancad.geometry.Line`
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Point`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Plane,
-                         Ellipse)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CircularArc,
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Plane,
+        Point,
+    )
     GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -393,8 +416,20 @@ class Distance(Abstract2GeometryDistance):
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    CONSTRAINED_TYPES = (Point, Line, LineSegment, CoordinateSystem, Ellipse)
-    GEOMETRY_TYPES = (Point, Line, LineSegment)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CircularArc,
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Point,
+    )
+    GEOMETRY_TYPES = (
+        Line,
+        LineSegment,
+        Point,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
@@ -416,6 +451,8 @@ class HorizontalDistance(AbstractDistance2D):
     constrain:
     
     - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CircularArc`
     - :class:`~pancad.geometry.Ellipse`
     - :class:`~pancad.geometry.Line`
     - :class:`~pancad.geometry.LineSegment`
@@ -427,6 +464,8 @@ class VerticalDistance(AbstractDistance2D):
     constrain:
     
     - :class:`~pancad.geometry.CoordinateSystem`
+    - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CircularArc`
     - :class:`~pancad.geometry.Ellipse`
     - :class:`~pancad.geometry.Line`
     - :class:`~pancad.geometry.LineSegment`
@@ -437,10 +476,12 @@ class Radius(Abstract1GeometryDistance):
     """A constraint that sets the radius of a curve. Can constrain:
     
     - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CircularArc`
     """
 
 class Diameter(Abstract1GeometryDistance):
     """A constraint that sets the diameter of a curve. Can constrain:
     
     - :class:`~pancad.geometry.Circle`
+    - :class:`~pancad.geometry.CircularArc`
     """

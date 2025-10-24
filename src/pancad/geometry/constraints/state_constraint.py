@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 from pancad.geometry.constraints import AbstractConstraint
 from pancad.geometry import (
     Circle,
+    CircularArc,
     CoordinateSystem,
     Ellipse,
     Line,
@@ -168,18 +169,32 @@ class Coincident(AbstractStateConstraint):
     - :class:`~pancad.geometry.Plane`
     - :class:`~pancad.geometry.Point`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
-                         Line, LineSegment,
-                         Plane, Point)
-    GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane, Point)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CircularArc,
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Plane,
+        Point,
+    )
+    GEOMETRY_TYPES = (
+        Circle,
+        CircularArc,
+        Line,
+        LineSegment,
+        Plane,
+        Point,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
     def _validate_combination(self) -> NoReturn:
         if self._is_combination((CoordinateSystem, Line, LineSegment),
                                 (LineSegment, Line),
-                                Circle,
-                                Circle):
+                                (Circle, CircularArc),
+                                (Circle, CircularArc)):
             raise TypeError("Line edges cannot be made coincident with"
                             " circle edges.")
 
@@ -192,13 +207,25 @@ class Equal(AbstractStateConstraint):
     - :class:`~pancad.geometry.Ellipse`
     - :class:`~pancad.geometry.LineSegment`
     """
-    CONSTRAINED_TYPES = (LineSegment, Circle, Ellipse)
-    GEOMETRY_TYPES = (LineSegment, Circle)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CircularArc,
+        Ellipse,
+        LineSegment,
+    )
+    GEOMETRY_TYPES = (
+        Circle,
+        CircularArc,
+        LineSegment,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
     def _validate_combination(self) -> NoReturn:
-        if self._is_combination(LineSegment, LineSegment, Circle, Circle):
+        if self._is_combination(LineSegment,
+                                LineSegment,
+                                (Circle, CircularArc),
+                                (Circle, CircularArc)):
             raise TypeError("Line Segments cannot be made equal to circles.")
 
 class Parallel(AbstractStateConstraint):
@@ -211,7 +238,13 @@ class Parallel(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
+    CONSTRAINED_TYPES = (
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Plane,
+    )
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
@@ -229,8 +262,18 @@ class Perpendicular(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Plane, Ellipse)
-    GEOMETRY_TYPES = (Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Plane,
+    )
+    GEOMETRY_TYPES = (
+        Line,
+        LineSegment,
+        Plane,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     
@@ -248,9 +291,21 @@ class Tangent(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Line, LineSegment, Plane,
-                         Ellipse)
-    GEOMETRY_TYPES = (Circle, Line, LineSegment, Plane)
+    CONSTRAINED_TYPES = (
+        Circle,
+        CoordinateSystem,
+        Ellipse,
+        Line,
+        LineSegment,
+        Plane,
+    )
+    GEOMETRY_TYPES = (
+        Circle,
+        CircularArc,
+        Line,
+        LineSegment,
+        Plane,
+    )
     ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
     GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
     

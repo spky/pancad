@@ -3,6 +3,7 @@ from numbers import Real
 
 from pancad.geometry import (
     Circle,
+    CircularArc,
     CoordinateSystem,
     Ellipse,
     LineSegment,
@@ -80,6 +81,76 @@ def square(coordinate_system: CoordinateSystem=None,
             Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
             Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
             Coincident(b, CR.START, sketch, CR.ORIGIN),
+        ]
+    
+    return sketch
+
+def rounded_square(coordinate_system: CoordinateSystem=None,
+                   plane_reference: CR=CR.XY,
+                   name: str="Test Rounded Rectangle",
+                   side: Real=3,
+                   radius: Real=1,
+                   unit: str="mm",
+                   include_constraints: bool=True) -> Sketch:
+    # All lines and arcs start from the top left of the bottom left arc and 
+    # travel counter clockwise in a full loop.
+    
+    # Define straight line length
+    straight = side - 2 * radius
+    
+    # Line Segment Points
+    # t/b = top/bottom | l/r = left/right
+    b_l = (radius, 0)
+    b_r = (radius + straight, 0)
+    r_b = (side, radius)
+    r_t = (side, radius + straight)
+    l_b = (0, radius)
+    l_t = (0, radius + straight)
+    t_l = (radius, side)
+    t_r = (radius + straight, side)
+    
+    
+    # ls = line segment
+    b = LineSegment(b_l, b_r)
+    r = LineSegment(r_b, r_t)
+    t = LineSegment(t_l, b_l)
+    l = LineSegment(l_b, l_t)
+    
+    # Arc Center Points, c = center
+    c_bl = (radius, radius)
+    c_br = (radius + straight, radius)
+    c_tl = (radius, radius + straight)
+    c_tr = (radius + straight, radius + straight)
+    
+    # a = arc
+    a_bl = CircularArc(c_bl, radius, (-1, 0), (0, -1), False)
+    a_br = CircularArc(c_br, radius, (0, -1), (1, 0), False)
+    a_tr = CircularArc(c_tr, radius, (1, 0), (0, 1), False)
+    a_tl = CircularArc(c_tl, radius, (0, 1), (-1, 0), False)
+    geometry = [b, r, t, l, a_bl, a_br, a_tr, a_tl]
+    sketch = Sketch(coordinate_system=coordinate_system,
+                    plane_reference=plane_reference,
+                    geometry=geometry,
+                    name=name)
+    
+    if include_constraints:
+        sketch.constraints = [
+            Horizontal(b, CR.CORE),
+            Vertical(r, CR.CORE),
+            Horizontal(t, CR.CORE),
+            Vertical(l, CR.CORE),
+            Coincident(l, CR.END, a_bl, CR.START),
+            Coincident(a_bl, CR.END, b, CR.START),
+            Coincident(b, CR.END, a_br, CR.START),
+            Coincident(a_br, CR.END, r, CR.START),
+            Coincident(r, CR.END, a_tr, CR.START),
+            Coincident(a_tr, CR.END, t, CR.START),
+            Coincident(t, CR.END, a_tl, CR.START),
+            Coincident(a_tl, CR.END, l, CR.START),
+            Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
+            Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
+            Coincident(b, CR.CORE, sketch, CR.ORIGIN),
+            Coincident(l, CR.CORE, sketch, CR.ORIGIN),
         ]
     
     return sketch
