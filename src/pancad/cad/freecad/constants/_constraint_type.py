@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import StrEnum, Flag
 from typing import TYPE_CHECKING
 
+from pancad.geometry import Point
 from pancad.geometry.constants import SketchConstraint
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class ConstraintType(StrEnum):
     
     def get_sketch_constraint(self) -> SketchConstraint:
         """Returns the ConstraintType's equivalent 
-        :class:`~pancad.geometry.constants.SketchConstraint` \.
+        :class:`~pancad.geometry.constants.SketchConstraint`
         
         :raises ValueError: When the ConstraintType does not have an equivalent 
             SketchConstraint.
@@ -83,7 +84,16 @@ class ConstraintType(StrEnum):
             case "Angle":
                 return ConstraintType.ANGLE
             case "Coincident":
-                return ConstraintType.COINCIDENT
+                geometries = constraint.get_geometry()
+                if all([isinstance(g, Point) for g in geometries]):
+                    # Point on Point -> Coincident
+                    return ConstraintType.COINCIDENT
+                elif any([isinstance(g, Point) for g in geometries]):
+                    # Point on Curve/Line -> PointOnObject
+                    return ConstraintType.POINT_ON_OBJECT
+                else:
+                    # Curve/Line on Curve/Line -> Tangent
+                    return ConstraintType.TANGENT
             case "Diameter":
                 return ConstraintType.DIAMETER
             case "Distance":
@@ -106,4 +116,3 @@ class ConstraintType(StrEnum):
                 return ConstraintType.DISTANCE_Y
             case _:
                 raise TypeError(f"Unsupported type {type_}")
-            
