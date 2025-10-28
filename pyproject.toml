@@ -31,7 +31,11 @@ path = "src/pancad/__about__.py"
 [tool.hatch.envs.default]
 python = "3.11"
 
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.11"]
+
 [tool.hatch.envs.docs]
+python = "3.11"
 dependencies = [
     "alabaster==1.0.0",
     "babel==2.16.0",
