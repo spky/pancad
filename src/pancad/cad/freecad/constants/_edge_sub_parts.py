@@ -7,7 +7,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import TYPE_CHECKING, Self
 
-from pancad.geometry import Sketch
+from pancad.geometry import Sketch, CircularArc
 from pancad.geometry.constants import ConstraintReference
 
 if TYPE_CHECKING:
@@ -32,7 +32,9 @@ class EdgeSubPart(IntEnum):
     """Constraint affects the center point of an edge."""
     
     @classmethod
-    def from_constraint_reference(self, reference: ConstraintReference) -> Self:
+    def from_constraint_reference(self,
+                                  geometry: AbstractGeometry,
+                                  reference: ConstraintReference) -> Self:
         """Returns the EdgeSubPart that matches the pancad ConstraintReference 
         when translating from pancad to FreeCAD.
         
@@ -52,11 +54,19 @@ class EdgeSubPart(IntEnum):
                     | ConstraintReference.X_MIN
                     | ConstraintReference.Y_MIN
                     | ConstraintReference.ORIGIN):
-                return EdgeSubPart.START
+                if isinstance(geometry, CircularArc) and geometry.is_clockwise:
+                    # All FreeCAD arcs are counterclockwise
+                    return EdgeSubPart.END
+                else:
+                    return EdgeSubPart.START
             case (ConstraintReference.END
                     | ConstraintReference.X_MAX
                     | ConstraintReference.Y_MAX):
-                return EdgeSubPart.END
+                if isinstance(geometry, CircularArc) and geometry.is_clockwise:
+                    # All FreeCAD arcs are counterclockwise
+                    return EdgeSubPart.START
+                else:
+                    return EdgeSubPart.END
             case ConstraintReference.CENTER:
                 return EdgeSubPart.CENTER
             case _:
@@ -101,6 +111,26 @@ class EdgeSubPart(IntEnum):
                         raise ValueError(f"Unsupported reference: {reference}")
             else:
                 raise ValueError(f"Unsupported reference: {reference}")
+        elif isinstance(geometry, CircularArc):
+            match self:
+                case EdgeSubPart.EDGE:
+                    return ConstraintReference.CORE
+                case EdgeSubPart.START:
+                    if geometry.is_clockwise:
+                        # All FreeCAD circular arcs are counterclockwise
+                        return ConstraintReference.END
+                    else:
+                        return ConstraintReference.START
+                case EdgeSubPart.END:
+                    if geometry.is_clockwise:
+                        # All FreeCAD circular arcs are counterclockwise
+                        return ConstraintReference.START
+                    else:
+                        return ConstraintReference.END
+                case EdgeSubPart.CENTER:
+                    return ConstraintReference.CENTER
+                case _:
+                    raise ValueError(f"Unsupported reference: {reference}")
         else:
             match self:
                 case EdgeSubPart.EDGE:

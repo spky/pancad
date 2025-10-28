@@ -3,12 +3,14 @@ FreeCAD.
 """
 from functools import singledispatchmethod
 
+from math import pi
 import numpy as np
 
 from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
     Circle,
+    CircularArc,
     CoordinateSystem,
     Ellipse,
     Extrude,
@@ -23,6 +25,7 @@ from .constants import ListName, ObjectType, PadType
 from ._application_types import (
     FreeCADBody,
     FreeCADCircle,
+    FreeCADCircularArc,
     FreeCADEllipse,
     FreeCADFeature,
     FreeCADGeometry,
@@ -132,6 +135,31 @@ def _circle(circle: Circle) -> FreeCADCircle:
     normal = App.Vector((0, 0, 1))
     return Part.Circle(center, normal, circle.radius)
 
+@_pancad_to_freecad_geometry.register
+@staticmethod
+def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
+    center = App.Vector(tuple(arc.center) + (0,))
+    normal = App.Vector((0, 0, 1))
+    circle =  Part.Circle(center, normal, arc.radius)
+    
+    if arc.is_clockwise:
+        # All FreeCAD circular arcs are drawn counterclockwise
+        end = arc.start_angle
+        start = arc.end_angle
+    else:
+        start = arc.start_angle
+        end = arc.end_angle
+    
+    # FreeCAD's circular arc angles are all positive
+    if start < 0:
+        start += 2 * pi
+    if end < 0:
+        end += 2 * pi
+    if end < start:
+        # FreeCAD forces the end angle to be larger than the start angle
+        end += 2 * pi
+    return Part.ArcOfCircle(circle, start, end)
+
 # Adding FreeCAD Geometry to Sketch and setting internal id
 @singledispatchmethod
 def _freecad_add_to_sketch(self,
@@ -160,7 +188,9 @@ def _ellipse(self,
 
 @_freecad_add_to_sketch.register
 def _one_to_one_cases(self,
-                      geometry: FreeCADLineSegment | FreeCADCircle,
+                      geometry: (FreeCADLineSegment
+                                 | FreeCADCircle
+                                 | FreeCADCircularArc),
                       sketch: FreeCADSketch,
                       construction: bool) -> SketchElementID:
     index = len(sketch.Geometry)
@@ -297,6 +327,14 @@ def _line_segment(line_segment: FreeCADLineSegment) -> LineSegment:
 @staticmethod
 def _circle(circle: FreeCADCircle) -> Circle:
     return Circle(circle.Center[0:2], circle.Radius)
+
+@_freecad_to_pancad_geometry.register
+@staticmethod
+def _circular_arc(arc: FreeCADCircularArc) -> CircularArc:
+    center = np.array(arc.Center[0:2])
+    start_vector = np.array(arc.StartPoint[0:2]) - center
+    end_vector = np.array(arc.EndPoint[0:2]) - center
+    return CircularArc(center, arc.Radius, start_vector, end_vector, False)
 
 @_freecad_to_pancad_geometry.register
 @staticmethod

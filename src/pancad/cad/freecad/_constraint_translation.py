@@ -279,7 +279,7 @@ def _index_and_subpart(self, constraint: Coincident) -> FreeCADConstraint:
         # Needs pairs of indices and edge sub parts
         freecad_id = self.get_freecad_id(geometry, reference)
         index = self._constraint_map.get_constraint_index(freecad_id)
-        sub_part = EdgeSubPart.from_constraint_reference(reference)
+        sub_part = EdgeSubPart.from_constraint_reference(geometry, reference)
         inputs.extend([index, sub_part])
     return Sketcher.Constraint(constraint_type, *inputs)
 
@@ -317,7 +317,8 @@ def _index_and_subpart_optional(self, constraint: Horizontal | Vertical
             # Needs pairs of indices and edge sub parts
             freecad_id = self.get_freecad_id(geometry, reference)
             index = self._constraint_map.get_constraint_index(freecad_id)
-            sub_part = EdgeSubPart.from_constraint_reference(reference)
+            sub_part = EdgeSubPart.from_constraint_reference(geometry,
+                                                             reference)
             inputs.extend([index, sub_part])
         return Sketcher.Constraint(constraint_type, *inputs)
 
@@ -333,7 +334,7 @@ def _index_only(self, constraint: Equal | Parallel | Perpendicular
         # Needs list of indices
         freecad_id = self.get_freecad_id(geometry, reference)
         index = self._constraint_map.get_constraint_index(freecad_id)
-        sub_part = EdgeSubPart.from_constraint_reference(reference)
+        sub_part = EdgeSubPart.from_constraint_reference(geometry, reference)
         inputs.append(index)
     return Sketcher.Constraint(constraint_type, *inputs)
 
@@ -353,7 +354,7 @@ def _distance(self,
         # Needs pairs of indices and edge sub parts
         freecad_id = self.get_freecad_id(geometry, reference)
         index = self._constraint_map.get_constraint_index(freecad_id)
-        sub_part = EdgeSubPart.from_constraint_reference(reference)
+        sub_part = EdgeSubPart.from_constraint_reference(geometry, reference)
         inputs.extend([index, sub_part])
     
     is_freecad_bug_001 = all(

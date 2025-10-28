@@ -19,6 +19,7 @@ FreeCADFeature = FreeCADPad | FreeCADOrigin | FreeCADSketch | FreeCADBody
 
 FreeCADLineSegment = Part.LineSegment
 FreeCADCircle = Part.Circle
+FreeCADCircularArc = Part.ArcOfCircle
 FreeCADPoint = Part.Point
 FreeCADEllipse = Part.Ellipse
 FreeCADGeometry = (FreeCADLineSegment

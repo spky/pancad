@@ -55,16 +55,17 @@ class CircularArc(AbstractGeometry):
         # Initialize center first to establish 2D or 3D
         self._center = center.copy()
         if len(self) == 2:
-            self._start = Point(1, 0)
-            self._start_vector = (1, 0)
-            self._end = Point(1, 0)
-            self._end_vector = (1, 0)
+            # 999 set so it's obvious if these are not changed
+            self._start = Point(999, 0)
+            self._start_vector = (999, 0)
+            self._end = Point(999, 0)
+            self._end_vector = (999, 0)
             self._normal_vector = None
         else:
-            self._start = Point(1, 0, 0)
-            self._start_vector = (1, 0, 0)
-            self._end = Point(1, 0, 0)
-            self._end_vector = (1, 0, 0)
+            self._start = Point(999, 0, 0)
+            self._start_vector = (999, 0, 0)
+            self._end = Point(999, 0, 0)
+            self._end_vector = (999, 0, 0)
             self._normal_vector = (0, 0, 1)
         
         self.radius = radius
@@ -160,7 +161,7 @@ class CircularArc(AbstractGeometry):
         return phi_of_cartesian(self.end_vector)
     
     @property
-    def end_vector(self) -> tuple:
+    def end_vector(self) -> tuple[Real]:
         """The unit vector pointing to the end of the arc from its center.
         
         :getter: Returns the vector.
@@ -170,7 +171,7 @@ class CircularArc(AbstractGeometry):
         return self._end_vector
     
     @property
-    def normal_vector(self) -> tuple | None:
+    def normal_vector(self) -> tuple[Real] | None:
         """The unit vector defining the direction of clockwise.
         
         :getter: Returns the vector.
@@ -218,7 +219,7 @@ class CircularArc(AbstractGeometry):
         return phi_of_cartesian(self.start_vector)
     
     @property
-    def start_vector(self) -> tuple:
+    def start_vector(self) -> tuple[Real]:
         """The unit vector pointing to the start of the arc from its center.
         
         :getter: Returns the vector.
@@ -292,7 +293,6 @@ class CircularArc(AbstractGeometry):
         
         unit_vector = get_unit_vector(vector)
         self._start_vector = to_1D_tuple(unit_vector)
-        
         # Everything but the start point stays the same
         start_location = self.center + self.radius * unit_vector
         self._start.update(Point(start_location))

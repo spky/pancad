@@ -9,6 +9,10 @@ Geometry
     :show-inheritance:
     :members:
 
+.. autoclass:: pancad.geometry.CircularArc
+    :show-inheritance:
+    :members:
+
 .. autoclass:: pancad.geometry.CoordinateSystem
     :show-inheritance:
     :members:

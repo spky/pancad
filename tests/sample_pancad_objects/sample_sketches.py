@@ -113,7 +113,7 @@ def rounded_square(coordinate_system: CoordinateSystem=None,
     # ls = line segment
     b = LineSegment(b_l, b_r)
     r = LineSegment(r_b, r_t)
-    t = LineSegment(t_l, b_l)
+    t = LineSegment(t_l, t_r)
     l = LineSegment(l_b, l_t)
     
     # Arc Center Points, c = center
@@ -149,8 +149,8 @@ def rounded_square(coordinate_system: CoordinateSystem=None,
             Coincident(a_tl, CR.END, l, CR.START),
             Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
             Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
-            Coincident(b, CR.CORE, sketch, CR.ORIGIN),
-            Coincident(l, CR.CORE, sketch, CR.ORIGIN),
+            # Coincident(b, CR.CORE, sketch, CR.ORIGIN),
+            # Coincident(l, CR.CORE, sketch, CR.ORIGIN),
         ]
     
     return sketch

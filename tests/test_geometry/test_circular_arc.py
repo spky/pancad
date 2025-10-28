@@ -6,8 +6,9 @@ from numpy import array
 from numpy.testing import assert_allclose
 
 from pancad.geometry import CircularArc, Point
+from pancad.utils.text_formatting import get_table_string
 
-class InitAndChangeTest(unittest.TestCase):
+class ArcTest(unittest.TestCase):
     
     def check_values(self,
                      test: CircularArc,
@@ -42,6 +43,9 @@ class InitAndChangeTest(unittest.TestCase):
                     
         with self.subTest(expected="uid is a UUID"):
             self.assertTrue(isinstance(test.uid, UUID))
+
+
+class InitAndChangeTest(ArcTest):
     
     def setUp(self):
         self.center = (0, 0)
@@ -123,6 +127,26 @@ class InitAndChangeTest(unittest.TestCase):
             self.is_clockwise,
         )
 
+class InitVariations(ArcTest):
+    
+    def test_bottom_left_init(self):
+        center = (0, 0)
+        radius = 1
+        start_vector = (-1, 0)
+        end_vector = (0, -1)
+        is_clockwise = False
+        test = CircularArc(
+            center,
+            radius,
+            start_vector,
+            end_vector,
+            is_clockwise,
+        )
+        self.check_values(
+            test, center, radius, start_vector, end_vector, is_clockwise,
+        )
+
+
 class AngleTests(unittest.TestCase):
     
     def test_angle_sweep(self):
@@ -133,14 +157,25 @@ class AngleTests(unittest.TestCase):
         angles.extend([-a for a in angles])
         end_vector = (1, 0)
         is_clockwise = False
+        data = []
+        i = 0
         for angle in map(radians, angles):
             start_vector = (cos(angle), sin(angle))
             test = CircularArc(
                 center, radius, start_vector, end_vector, is_clockwise
             )
             with self.subTest(expected=angle, expected_degrees=degrees(angle)):
-                # print("result: ", test.start_angle, "expected: ", angle)
+                test_output = {
+                    "test #": i,
+                    "start_angle": round(degrees(test.start_angle)),
+                    "start_point": [round(c, 3) for c in test.start.cartesian],
+                    "end_angle": round(degrees(test.end_angle)),
+                }
+                data.append(test_output)
+                
                 self.assertAlmostEqual(test.start_angle, angle)
+            i += 1
+        # print(get_table_string(data))
     
     def test_from_angles(self):
         center = (0, 0)

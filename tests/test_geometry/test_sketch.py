@@ -109,7 +109,6 @@ class TestSummary(unittest.TestCase):
     def test_rounded_square_summary(self):
         sketch = sample_sketches.rounded_square()
         sketch_str = str(sketch)
-        print(); print(sketch_str)
 
 class TestGeometrySetting(unittest.TestCase):
     def setUp(self):

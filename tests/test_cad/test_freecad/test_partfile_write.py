@@ -64,6 +64,15 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         self.file.features = [cs, sketch, extrude]
         self.file.to_freecad(self.filepath)
         validate_freecad(self.filepath)
+    
+    def test_create_rounded_square_extrude(self):
+        filename = stack()[0].function + ".FCStd"
+        self.filepath = os.path.join(self.dump, filename)
+        self.file = PartFile(filename)
+        sketch = sample_sketches.rounded_square()
+        self.file.features = [sketch]
+        self.file.to_freecad(self.filepath)
+        validate_freecad(self.filepath)
 
 class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
     
