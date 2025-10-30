@@ -166,6 +166,12 @@ class FreeCADMap(MutableMapping):
         """
         return self._freecad_to_pancad[freecad_id]
     
+    def get_constrained(self,
+                        constraint_id: SketchElementID
+                        ) -> tuple[FreeCADFeature | FreeCADGeometry]:
+        """Returns the freecad objects constrained by a freecad constraint."""
+        return self._constraint_map.get_constrained(constraint_id)
+    
     def get_references(self,
                        key: AbstractFeature | AbstractGeometry
                        ) -> list[ConstraintReference]:

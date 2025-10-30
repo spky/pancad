@@ -51,7 +51,11 @@ def _freecad_to_pancad_constraint(self,
     :param constraint_id: A FreeCAD constraint FreeCADID.
     :returns: The equivalent pancad constraint.
     """
-    constraint_type = ConstraintType(self._id_map[constraint_id].Type)
+    constraint = self._id_map[constraint_id]
+    constraint_type = ConstraintType(constraint.Type)
+    sketch_constraint = constraint_type.get_sketch_constraint(self,
+                                                              constraint,
+                                                              constraint_id)
     match constraint_type:
         case ConstraintType.ANGLE:
             pass
@@ -65,9 +69,7 @@ def _freecad_to_pancad_constraint(self,
                     | ConstraintType.HORIZONTAL
                     | ConstraintType.VERTICAL
                 ):
-            return _add_state_or_snapto(self,
-                                        constraint_id,
-                                        constraint_type.get_sketch_constraint())
+            return _add_state_or_snapto(self, constraint_id, sketch_constraint)
         case (
                     ConstraintType.DIAMETER
                     | ConstraintType.DISTANCE
@@ -75,9 +77,7 @@ def _freecad_to_pancad_constraint(self,
                     | ConstraintType.DISTANCE_Y
                     | ConstraintType.RADIUS
                 ):
-            return _add_distance(self,
-                                 constraint_id,
-                                 constraint_type.get_sketch_constraint())
+            return _add_distance(self, constraint_id, sketch_constraint)
         case _:
             raise ValueError(f"Unsupported type {constraint.Type}")
 

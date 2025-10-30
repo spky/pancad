@@ -32,7 +32,7 @@ class EdgeSubPart(IntEnum):
     """Constraint affects the center point of an edge."""
     
     @classmethod
-    def from_constraint_reference(self, reference: ConstraintReference) -> Self:
+    def from_constraint_reference(cls, reference: ConstraintReference) -> Self:
         """Returns the EdgeSubPart that matches the pancad ConstraintReference 
         when translating from pancad to FreeCAD.
         
