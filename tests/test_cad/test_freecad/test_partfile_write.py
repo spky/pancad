@@ -70,7 +70,8 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)
         sketch = sample_sketches.rounded_square()
-        self.file.features = [sketch]
+        extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
+        self.file.features = [sketch, extrude]
         self.file.to_freecad(self.filepath)
         validate_freecad(self.filepath)
 
