@@ -41,7 +41,7 @@ class TestGeometrySetting(unittest.TestCase):
             LineSegment((5, 5), (10, 10)),
         ]
         path = Path.from_geometry(self.path_id, geo_list)
-        self.assertEqual(path.d, "M 1,1 2,2 5,5 10,10")
+        self.assertEqual(path.d, "M1,1 2,2 5,5 10,10")
     
     def test_set_geometry_line_segments_unequal_points(self):
         geo_list = [
@@ -49,7 +49,7 @@ class TestGeometrySetting(unittest.TestCase):
             LineSegment((3, 3), (5, 5)),
         ]
         path = Path.from_geometry(self.path_id, geo_list)
-        self.assertEqual(path.d, "M 1,1 2,2 M 3,3 5,5")
+        self.assertEqual(path.d, "M1,1 2,2 M3,3 5,5")
     
     def test_geometry_uids(self):
         geo_list = []

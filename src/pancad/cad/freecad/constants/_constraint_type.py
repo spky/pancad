@@ -5,10 +5,15 @@ from __future__ import annotations
 from enum import StrEnum, Flag
 from typing import TYPE_CHECKING
 
+from pancad.geometry import Point
 from pancad.geometry.constants import SketchConstraint
+
+from pancad.cad.freecad._application_types import FreeCADLineSegment
 
 if TYPE_CHECKING:
     from pancad.geometry.constraints import AbstractConstraint
+    from pancad.cad.freecad._feature_mappers import FreeCADMap
+    from pancad.cad.freecad._application_types import FreeCADConstraint
 
 class ConstraintType(StrEnum):
     """An enumeration used to define which FreeCAD constraints are supported."""
@@ -28,14 +33,22 @@ class ConstraintType(StrEnum):
     TANGENT = "Tangent"
     VERTICAL = "Vertical"
     
-    def get_sketch_constraint(self) -> SketchConstraint:
+    def get_sketch_constraint(self,
+                              mapping: FreeCADMap,
+                              constraint: FreeCADConstraint,
+                              constraint_id: SketchElementID,
+                              ) -> SketchConstraint:
         """Returns the ConstraintType's equivalent 
-        :class:`~pancad.geometry.constants.SketchConstraint` \.
+        :class:`~pancad.geometry.constants.SketchConstraint`
         
+        :param constraint: The freecad constraint to get the equivalent 
+            SketchConstraint from.
+        :param constraint_id: The freecad id of the constraint.
         :raises ValueError: When the ConstraintType does not have an equivalent 
             SketchConstraint.
         """
-        match self:
+        
+        match constraint.Type:
             case ConstraintType.ANGLE:
                 return SketchConstraint.ANGLE
             case ConstraintType.COINCIDENT:
@@ -61,7 +74,13 @@ class ConstraintType(StrEnum):
             case ConstraintType.RADIUS:
                 return SketchConstraint.RADIUS
             case ConstraintType.TANGENT:
-                return SketchConstraint.TANGENT
+                geometry = mapping.get_constrained(constraint_id)
+                if all(isinstance(g, FreeCADLineSegment) for g in geometry):
+                    # FreeCAD uses Tangent to mean coincident or collinear when 
+                    # applied to two line segments.
+                    return SketchConstraint.COINCIDENT
+                else:
+                    return SketchConstraint.TANGENT
             case ConstraintType.VERTICAL:
                 return SketchConstraint.VERTICAL
             case ConstraintType.INTERNAL_ALIGNMENT:
@@ -83,7 +102,16 @@ class ConstraintType(StrEnum):
             case "Angle":
                 return ConstraintType.ANGLE
             case "Coincident":
-                return ConstraintType.COINCIDENT
+                geometries = constraint.get_geometry()
+                if all([isinstance(g, Point) for g in geometries]):
+                    # Point on Point -> Coincident
+                    return ConstraintType.COINCIDENT
+                elif any([isinstance(g, Point) for g in geometries]):
+                    # Point on Curve/Line -> PointOnObject
+                    return ConstraintType.POINT_ON_OBJECT
+                else:
+                    # Curve/Line on Curve/Line -> Tangent
+                    return ConstraintType.TANGENT
             case "Diameter":
                 return ConstraintType.DIAMETER
             case "Distance":
@@ -106,4 +134,3 @@ class ConstraintType(StrEnum):
                 return ConstraintType.DISTANCE_Y
             case _:
                 raise TypeError(f"Unsupported type {type_}")
-            

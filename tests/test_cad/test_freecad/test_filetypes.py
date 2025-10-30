@@ -7,7 +7,7 @@ from pancad.cad.freecad import FreeCADFile
 from tests import SAMPLE_FREECAD
 from tests.utils import delete_all_suffix
 
-class TestReadFile(unittest.TestCase):
+class TestReadCube1x1x1(unittest.TestCase):
     
     def setUp(self):
         self.filepath = join(SAMPLE_FREECAD, "cube_1x1x1.FCStd")
@@ -77,6 +77,14 @@ class TestReadFile(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         delete_all_suffix(SAMPLE_FREECAD, ".FCBak")
+
+class TestReadChallengeModels(unittest.TestCase):
+    
+    def test_read_cube_1x1x1_pointonobject(self):
+        filepath = join(SAMPLE_FREECAD, "cube_1x1x1_PointOnObject.FCStd")
+        file = FreeCADFile(filepath)
+        part_file = file.to_pancad()
+        print(part_file)
 
 if __name__ == "__main__":
     unittest.main()
