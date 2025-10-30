@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import singledispatch, singledispatchmethod
 from typing import TYPE_CHECKING
 
-from pancad.geometry import LineSegment
+from pancad.geometry import LineSegment, Point
 from pancad.geometry.constraints import (
     Angle,
     Coincident,
@@ -51,7 +51,11 @@ def _freecad_to_pancad_constraint(self,
     :param constraint_id: A FreeCAD constraint FreeCADID.
     :returns: The equivalent pancad constraint.
     """
-    constraint_type = ConstraintType(self._id_map[constraint_id].Type)
+    constraint = self._id_map[constraint_id]
+    constraint_type = ConstraintType(constraint.Type)
+    sketch_constraint = constraint_type.get_sketch_constraint(self,
+                                                              constraint,
+                                                              constraint_id)
     match constraint_type:
         case ConstraintType.ANGLE:
             pass
@@ -65,9 +69,7 @@ def _freecad_to_pancad_constraint(self,
                     | ConstraintType.HORIZONTAL
                     | ConstraintType.VERTICAL
                 ):
-            return _add_state_or_snapto(self,
-                                        constraint_id,
-                                        constraint_type.get_sketch_constraint())
+            return _add_state_or_snapto(self, constraint_id, sketch_constraint)
         case (
                     ConstraintType.DIAMETER
                     | ConstraintType.DISTANCE
@@ -75,9 +77,7 @@ def _freecad_to_pancad_constraint(self,
                     | ConstraintType.DISTANCE_Y
                     | ConstraintType.RADIUS
                 ):
-            return _add_distance(self,
-                                 constraint_id,
-                                 constraint_type.get_sketch_constraint())
+            return _add_distance(self, constraint_id, sketch_constraint)
         case _:
             raise ValueError(f"Unsupported type {constraint.Type}")
 
@@ -269,18 +269,44 @@ def _angle(self, constraint: Angle) -> FreeCADConstraint:
                                freecad_value)
 
 @_pancad_to_freecad_constraint.register
-def _index_and_subpart(self, constraint: Coincident) -> FreeCADConstraint:
-    # Constraints that always need pairs of indexes and subparts
-    
+def _coincident(self, constraint: Coincident) -> FreeCADConstraint:
+    # Coincident constraints holding two geometry elements together.
     constraint_type = ConstraintType.from_pancad(constraint)
+    print(constraint_type)
     inputs = []
-    for geometry, reference in zip(constraint.get_constrained(),
-                                   constraint.get_references()):
-        # Needs pairs of indices and edge sub parts
-        freecad_id = self.get_freecad_id(geometry, reference)
-        index = self._constraint_map.get_constraint_index(freecad_id)
-        sub_part = EdgeSubPart.from_constraint_reference(reference)
-        inputs.extend([index, sub_part])
+    pairs = zip(constraint.get_constrained(), constraint.get_references())
+    match constraint_type:
+        case ConstraintType.COINCIDENT:
+            # Points being constrained to other points
+            for geometry, reference in pairs:
+                # Needs pairs of indices and edge sub parts
+                freecad_id = self.get_freecad_id(geometry, reference)
+                index = self._constraint_map.get_constraint_index(freecad_id)
+                sub_part = EdgeSubPart.from_constraint_reference(reference)
+                inputs.extend([index, sub_part])
+        case ConstraintType.POINT_ON_OBJECT:
+            # Points being placed onto another object like a line or curve
+            for geometry, reference in pairs:
+                # Needs the parent index, point subpart, and target index
+                freecad_id = self.get_freecad_id(geometry, reference)
+                index = self._constraint_map.get_constraint_index(freecad_id)
+                if isinstance(geometry.get_reference(reference), Point):
+                    sub_part = EdgeSubPart.from_constraint_reference(reference)
+                    point_input = [index, sub_part]
+                else:
+                    object_index = index
+            inputs = point_input + [object_index]
+        case ConstraintType.TANGENT:
+            # Two objects being placed onto each other
+            for geometry, reference in pairs:
+                # Needs the target indices.
+                freecad_id = self.get_freecad_id(geometry, reference)
+                index = self._constraint_map.get_constraint_index(freecad_id)
+                inputs.append(index)
+        case _:
+            raise ValueError(f"Unsupported Coincident"
+                             f" ConstraintType {constraint_type}")
+    
     return Sketcher.Constraint(constraint_type, *inputs)
 
 @_pancad_to_freecad_constraint.register
