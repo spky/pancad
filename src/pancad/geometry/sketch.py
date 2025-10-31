@@ -15,6 +15,7 @@ from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
     Circle,
+    CircularArc,
     CoordinateSystem,
     Ellipse,
     Point,
@@ -583,6 +584,19 @@ class Sketch(AbstractFeature, AbstractGeometry):
                 "Construction": self.construction[self.get_index_of(geometry)]}
     
     @_get_summary_info.register
+    def _circular_arc(self, geometry: CircularArc) -> dict:
+        return {
+            "Index": self.get_index_of(geometry),
+            "UID": geometry.uid,
+            "Center": geometry.center.cartesian,
+            "Radius": geometry.radius,
+            "Start": geometry.start.cartesian,
+            "End": geometry.end.cartesian,
+            "Is Clockwise": geometry.is_clockwise,
+            "Construction": self.construction[self.get_index_of(geometry)],
+        }
+    
+    @_get_summary_info.register
     def _ellipse(self, geometry: Ellipse) -> dict:
         return {"Index": self.get_index_of(geometry),
                 "UID": geometry.uid,
@@ -769,6 +783,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         sketch_summary.append("Geometry")
         summaries = {
             "Circles": Circle,
+            "Circular Arcs": CircularArc,
             "Ellipses": Ellipse,
             "Line Segments": LineSegment,
             "Infinite Lines": Line,
