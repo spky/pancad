@@ -16,6 +16,7 @@ from pancad.geometry import (
     Extrude,
 )
 from pancad.geometry.constants import ConstraintReference
+from pancad.utils.relations import OneToOne, OneToMany
 
 from .constants import InternalAlignmentType, ListName, SketchNumber
 from ._application_types import (
@@ -55,6 +56,7 @@ def _link_geometry(self,
     # This default handles cases where the geometry in pancad is one to one with 
     # geometry in FreeCAD.
     sketch_id, list_name, index = freecad_id
+    relation = OneToOne(geometry.uid, freecad_id, ConstraintReference.CORE)
     self._pancad_to_freecad[geometry.uid] = (geometry, freecad_id)
     self._freecad_to_pancad[freecad_id] = (geometry,
                                            ConstraintReference.CORE)
