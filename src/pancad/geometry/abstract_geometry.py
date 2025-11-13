@@ -11,10 +11,28 @@ from pancad.geometry import PancadThing
 if TYPE_CHECKING:
     from typing import Self
     
+    from pancad.geometry import AbstractFeature
     from pancad.geometry.constants import ConstraintReference
 
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""
+    
+    @property
+    def context(self) -> AbstractFeature:
+        """The feature containing the geometry, usually
+        a :class:`~pancad.geometry.Sketch`.
+        
+        :getter: Returns the feature containing the geometry.
+        :setter: Sets the feature containing the geometry, should only be set by 
+            a method inside the containing feature.
+        :raises AttributeError: Raised when the context getter is called when
+            the context has not been set.
+        """
+        return self._context
+    
+    @context.setter
+    def context(self, feature: AbstractFeature) -> None:
+        self._context = feature
     
     # Public Methods #
     @abstractmethod

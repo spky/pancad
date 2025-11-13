@@ -91,6 +91,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         # Initialize private uid since uid and geometry sync with each other
         self.uid = uid
         self._constraints = tuple()
+        self._geometry = tuple()
+        self._construction = tuple()
         
         if geometry is None:
             geometry = tuple()
@@ -98,14 +100,17 @@ class Sketch(AbstractFeature, AbstractGeometry):
             constraints = tuple()
         if externals is None:
             externals = tuple()
+        if construction is None:
+            construction = tuple([False] * len(geometry))
         
         self._sketch_cs = CoordinateSystem((0, 0), context=self)
         
         self.coordinate_system = coordinate_system
-            
-        self.geometry = geometry
+        
+        for geometry_element, is_construction in zip(geometry, construction):
+            self.add_geometry(geometry_element, is_construction)
+        
         self.externals = externals
-        self.construction = construction
         self.plane_reference = plane_reference
         self.constraints = constraints
         self.name = name
@@ -166,7 +171,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         
         :getter: Returns the tuple of geometry in the sketch.
         :setter: Sets the tuple of geometry in the sketch after checking the new
-            lists' validity.
+            lists' validity. Geometry set this way is assumed to always be 
+            non-construction.
         """
         return self._geometry
     
@@ -227,7 +233,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         if non_2d_geometry != []:
             raise ValueError(f"2D Geometry only, given 3D: {non_2d_geometry}")
         else:
-            self._geometry = tuple(geometry)
+            for g in geometry:
+                self.add_geometry(g)
     
     @plane_reference.setter
     def plane_reference(self, reference: ConstraintReference):
@@ -239,7 +246,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
     
     # Public Functions #
     def add_constraint(self, constraint: AbstractConstraint) -> Self:
-        """Adds an already generated constraint to the sketch.
+        """Adds an already generated constraint to the sketch. Sets the 
+        constraint's context to the Sketch.
         
         :param constraint: A constraint referring to geometry that is already in 
             the sketch.
@@ -249,6 +257,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """
         dependencies = constraint.get_constrained()
         if all([d in self for d in dependencies]):
+            constraint.context = self
             self._constraints = self._constraints + (constraint,)
             return self
         else:
@@ -387,7 +396,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def add_geometry(self,
                      geometry: AbstractGeometry,
                      construction: bool=False) -> Self:
-        """Adds an already generated geometry element to the sketch.
+        """Adds an already generated geometry element to the sketch. Sets the 
+        geometry's context to the Sketch.
         
         :param geometry: A 2D geometry element.
         :param construction: Whether the geometry is construction. Defaults to 
@@ -396,7 +406,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """
         if len(geometry) != 2:
             raise ValueError(f"2D Geometry only, given 3D: {geometry}")
-        self.geometry = self.geometry + (geometry,)
+        geometry.context = self
+        self._geometry = self._geometry + (geometry,)
         self.construction = self.construction + (construction,)
         return self
     

@@ -9,13 +9,30 @@ from typing import TYPE_CHECKING
 from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
-    from pancad.geometry import AbstractGeometry
+    from pancad.geometry import AbstractGeometry, AbstractFeature
     from pancad.geometry.constants import ConstraintReference
     
 class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint 
     Elements.
     """
+    
+    @property
+    def context(self) -> AbstractFeature:
+        """The feature containing the constraint, usually
+        a :class:`~pancad.geometry.Sketch`.
+        
+        :getter: Returns the feature containing the constraint.
+        :setter: Sets the feature containing the constraint, should only be set 
+            by a method inside the containing feature.
+        :raises AttributeError: Raised when the context getter is called when
+            the context has not been set.
+        """
+        return self._context
+    
+    @context.setter
+    def context(self, feature: AbstractFeature) -> None:
+        self._context = feature
     
     # Abstract Properties #
     @property
