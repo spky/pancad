@@ -102,8 +102,6 @@ class OneToMany(Mapping):
             self._center =  tuple(self.target)[0]
         
         self._set_duplicate_marker_map()
-        self._iter_map = {k: v for k, v in self._map.items()
-                          if isinstance(k, tuple)}
     
     # Properties #
     @property
@@ -190,7 +188,7 @@ class OneToMany(Mapping):
         return tuple(sorted(self._map[key]))
     
     def __iter__(self):
-        return iter(self._iter_map)
+        return iter(self._map)
     
     def __len__(self):
         """Returns the number of relations represented by the relation."""
@@ -214,11 +212,10 @@ class ManyToMany(Mapping):
     
     def __init__(self,
                  relations: Sequence[OneToOne | OneToMany],
-                 marker: Hashable,
-                 markers_unique: bool=True):
-        self._markers_unique = markers_unique
+                 marker: Hashable):
         self._marker = marker
-        self._ends = set()
+        self._source = set()
+        self._target = set()
         self._relations = frozenset(relations)
         if self.markers_unique:
             self._map = {}
@@ -226,7 +223,7 @@ class ManyToMany(Mapping):
             self._map = defaultdict(lambda: defaultdict(set))
         
         for relation in relations:
-            self.add_relation(relation)
+            self.add(relation)
     
     @property
     def marker(self) -> Hashable:
