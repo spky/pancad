@@ -271,5 +271,16 @@ class TestConstruction(unittest.TestCase):
             [g for g, c in zip(self.geo, self.construction) if not c]
         )
 
+class ConstraintsOn(unittest.TestCase):
+    
+    def test_bottom_square_sketch_line(self):
+        sketch = sample_sketches.square()
+        bottom_line = sketch.geometry[0]
+        constraints = sketch.get_constraints_on(bottom_line)
+        self.assertEqual(len(constraints), 5)
+        constraints = sketch.get_constraints_on(bottom_line,
+                                                ConstraintReference.START)
+        self.assertEqual(len(constraints), 2)
+
 if __name__ == "__main__":
     unittest.main()

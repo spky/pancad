@@ -421,6 +421,30 @@ class Sketch(AbstractFeature, AbstractGeometry):
         """Returns the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
     
+    def get_constraints_on(self,
+                           geometry: AbstractGeometry,
+                           reference: ConstraintReference=None,
+                           ) -> list[AbstractConstraint]:
+        """Returns all constraints applied to the geometry element.
+        
+        :param geometry: The geometry in the sketch.
+        :param reference: The portion of the geometry to filter by.
+        :returns: A list of constraints applied to the geometry. If reference is 
+            provided, returns the constraints applied specifically to that part 
+            of the geometry.
+        """
+        constraints_on = []
+        for constraint in self.constraints:
+            constrained_uids = [g.uid for g in constraint.get_constrained()]
+            if reference:
+                pairs = zip(constrained_uids, constraint.get_references())
+                if (geometry.uid, reference) in list(pairs):
+                    constraints_on.append(constraint)
+            else:
+                if geometry.uid in constrained_uids:
+                    constraints_on.append(constraint)
+        return constraints_on
+    
     def get_dependencies(self) -> tuple[AbstractGeometry]:
         if self.coordinate_system is None:
             return self.externals
