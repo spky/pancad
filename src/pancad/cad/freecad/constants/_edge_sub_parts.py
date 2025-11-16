@@ -143,3 +143,6 @@ class EdgeSubPart(IntEnum):
                     return ConstraintReference.CENTER
                 case _:
                     raise ValueError(f"Unsupported reference: {reference}")
+    
+    def __repr__(self):
+        return f"EdgeSubPart.{self.name}({self.value})"

@@ -64,3 +64,6 @@ class InternalAlignmentType(IntEnum):
                 else:
                     raise ValueError("Unexpected EdgeSubPart for a negative"
                                      f" focal point: {sub_part}")
+        
+    def __repr__(self):
+        return f"{self.name}({self.value})"

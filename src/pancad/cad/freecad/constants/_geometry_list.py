@@ -19,3 +19,5 @@ class ListName(StrEnum):
     InternalAlignment constraints that are used to define other parts of the 
     geometry.
     """
+    def __repr__(self):
+        return f"ListName.{self.name}"
