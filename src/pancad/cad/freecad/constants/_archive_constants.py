@@ -54,6 +54,7 @@ class XMLTag(StrEnum):
     """Grouping of Extension elements."""
     EXTENSION = "Extension"
     """Element containing information about an extension of an Object."""
+    FLOAT = "Float"
     GEOMETRY_LIST = "GeometryList"
     GEOMETRY = "Geometry"
     GEOMETRY_EXTENSIONS = "GeoExtensions"
@@ -93,6 +94,9 @@ class XMLTag(StrEnum):
     VIEW_PROVIDER = "ViewProvider"
     VIEW_PROVIDER_DATA = "ViewProviderData"
     UUID = "Uuid"
+    
+    def __repr__(self):
+        return self.name
 
 class XMLObjectType(StrEnum):
     PART_DESIGN_BODY = "PartDesign::Body"
@@ -101,6 +105,9 @@ class XMLObjectType(StrEnum):
     APP_LINE = "App::Line"
     APP_PLANE = "App::Plane"
     SKETCHER_SKETCH_OBJECT = "Sketcher::SketchObject"
+    
+    def __repr__(self):
+        return self.name
 
 class XMLPropertyType(StrEnum):
     APP_ANGLE = "App::PropertyAngle"
@@ -111,6 +118,8 @@ class XMLPropertyType(StrEnum):
     APP_LENGTH = "App::PropertyLength"
     APP_LINK = "App::PropertyLink"
     APP_LINK_SUB = "App::PropertyLinkSub"
+    APP_LINK_SUBLIST = "App::PropertyLinkSubList"
+    APP_LINK_LIST_HIDDEN = "App::PropertyLinkListHidden"
     APP_MAP = "App::PropertyMap"
     APP_PERCENT = "App::PropertyPercent"
     APP_PLACEMENT = "App::PropertyPlacement"
@@ -125,11 +134,31 @@ class XMLPropertyType(StrEnum):
     PART_PART_SHAPE = "Part::PropertyPartShape"
     
     MATERIALS_MATERIAL = "Materials::PropertyMaterial"
+    
+    SKETCHER_CONSTRAINT_LIST = "Sketcher::PropertyConstraintList"
+    
+    def __repr__(self):
+        return self.name
 
 class XMLAttr(StrEnum):
+    COUNT = "count"
     ID = "id"
+    LINK_SUB = "sub"
     NAME = "name"
-    CAPITALIZED_NAME = "Name"
+    NAME_CAPITALIZED = "Name"
+    OBJECT = "obj"
+    POSITION_X = "Px"
+    POSITION_Y = "Py"
+    POSITION_Z = "Pz"
+    QUAT_0 = "Q0"
+    QUAT_1 = "Q1"
+    QUAT_2 = "Q2"
+    QUAT_3 = "Q3"
     STATUS = "status"
     TYPE = "type"
+    TYPE_CAPITALIZED = "Type"
     VALUE = "value"
+    VALUE_CAPITALIZED = "Value"
+    
+    def __repr__(self):
+        return self.name
