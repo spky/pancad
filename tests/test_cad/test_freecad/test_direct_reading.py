@@ -23,5 +23,20 @@ class Cube1x1x1(TestCase):
         sketch_element = test.objects[2674][XMLTag.OBJECT_DATA]
         properties = sketch_element.find(XMLTag.PROPERTIES)
         result = read_properties(sketch_element, XMLTag.PROPERTY)
-        print()
         pp(result)
+        # empty = [r for r in result if r[3] is None]
+        # print()
+        # pp(empty)
+
+class Empty(TestCase):
+    
+    def setUp(self):
+        sample_dir = Path(sample_freecad.__file__).parent
+        self.path = sample_dir / "empty.FCStd"
+    
+    def test_init(self):
+        test = Document(self.path)
+        print("\nProperties")
+        pp(test.properties)
+        print("\nPrivate Properties")
+        pp(test.private)

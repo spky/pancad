@@ -55,10 +55,10 @@ class XMLTag(StrEnum):
     EXTENSION = "Extension"
     """Element containing information about an extension of an Object."""
     FLOAT = "Float"
-    GEOMETRY_LIST = "GeometryList"
     GEOMETRY = "Geometry"
-    GEOMETRY_EXTENSIONS = "GeoExtensions"
     GEOMETRY_EXTENSION = "GeoExtension"
+    GEOMETRY_EXTENSIONS = "GeoExtensions"
+    GEOMETRY_LIST = "GeometryList"
     INTEGER = "Integer"
     """Element containing an integer"""
     LINE_SEGMENT = "LineSegment"
@@ -109,6 +109,17 @@ class XMLObjectType(StrEnum):
     def __repr__(self):
         return self.name
 
+class XMLGeometryType(StrEnum):
+    LINE_SEGMENT = "Part::GeomLineSegment"
+
+class XMLGeometryAttr(StrEnum):
+    END_X = "EndX"
+    END_Y = "EndY"
+    END_Z = "EndZ"
+    START_X = "StartX"
+    START_Y = "StartY"
+    START_Z = "StartZ"
+
 class XMLPropertyType(StrEnum):
     APP_ANGLE = "App::PropertyAngle"
     APP_BOOL = "App::PropertyBool"
@@ -132,6 +143,7 @@ class XMLPropertyType(StrEnum):
     BAD_TYPE = "BadType"
     
     PART_PART_SHAPE = "Part::PropertyPartShape"
+    PART_GEOMETRY_LIST = "Part::PropertyGeometryList"
     
     MATERIALS_MATERIAL = "Materials::PropertyMaterial"
     
@@ -144,6 +156,7 @@ class XMLAttr(StrEnum):
     COUNT = "count"
     ID = "id"
     LINK_SUB = "sub"
+    MIGRATED = "migrated"
     NAME = "name"
     NAME_CAPITALIZED = "Name"
     OBJECT = "obj"
@@ -154,7 +167,12 @@ class XMLAttr(StrEnum):
     QUAT_1 = "Q1"
     QUAT_2 = "Q2"
     QUAT_3 = "Q3"
+    SCHEMA_VERSION = "SchemaVersion"
+    PROGRAM_VERSION = "ProgramVersion"
+    FILE_VERSION = "FileVersion"
+    STRING_HASHER = "StringHasher"
     STATUS = "status"
+    TRANSIENT_COUNT = "TransientCount"
     TYPE = "type"
     TYPE_CAPITALIZED = "Type"
     VALUE = "value"

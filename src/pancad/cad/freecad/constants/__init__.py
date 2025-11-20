@@ -11,4 +11,6 @@ from ._archive_constants import (
     XMLObjectType,
     XMLPropertyType,
     XMLAttr,
+    XMLGeometryAttr,
+    XMLGeometryType,
 )
