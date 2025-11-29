@@ -82,3 +82,10 @@ def read_color_array(archive: ZipFile, filename: str | ZipInfo) -> tuple[int]:
     header, color = list(batched(data, 4))
     assert header == (1, 0, 0, 0)
     return color
+
+def read_string_hasher(archive: ZipFile, filename: str | ZipInfo):
+    """Reads data from StringHasher files"""
+    with archive.open(filename) as file:
+        lines = [line.rstrip() for line in file]
+    title, version, count = lines.pop(0).split()
+    assert title.decode() == "StringTableStart"

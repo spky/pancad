@@ -8,6 +8,7 @@ from collections import namedtuple
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
+from datetime import datetime
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -186,7 +187,7 @@ def _read_python_object(element: Element) -> dict[str, str]:
     if len(element) != 1: raise ValueError(f"Found {len(element)}")
     return dict(element.find(XMLTag.PYTHON).attrib)
 
-def _read_nested_string(element: Element, tag: XMLTag, field: XMLAttr):
+def _read_nested_string(element: Element, tag: XMLTag, field: XMLAttr) -> str:
     """Used to read nested strings that aren't necessarily in a String tag."""
     if len(element) != 1: raise ValueError(f"Found {len(element)}")
     return element.find(tag).attrib[field]
@@ -240,19 +241,18 @@ def read_properties(element: Element) -> list[tuple[str, str, int, Any]]:
     :param element: The Properties element with elements underneath.
     :returns: A list of (Name, Type, Status, Value) tuples.
     """
-    properties = []
-    for property_ in element.iter(XMLTag.PROPERTY):
-        name = property_.get(XMLAttr.NAME)
-        type_ = property_.get(XMLAttr.TYPE)
-        if (status := property_.get(XMLAttr.STATUS)) is not None: 
-            status = int(status)
-        
-        if type_ in PROPERTY_DISPATCH:
-            value = PROPERTY_DISPATCH[type_](property_)
-        else:
-            # print(f"Skipped {name}, unsupported type {type_}")
-            logger.warning(f"Skipped {name}, unsupported type {type_}")
-            value = None
-        properties.append((name, type_, status, value))
-    return properties
+    return [read_property(prop) for prop in element.iter(XMLTag.PROPERTY)]
 
+def read_property(element: Element) -> tuple[str, int, Any]:
+    """Reads the name, type, status and value of a Property element"""
+    name = element.get(XMLAttr.NAME)
+    type_ = element.get(XMLAttr.TYPE)
+    if (status := element.get(XMLAttr.STATUS)) is not None: 
+        status = int(status)
+    
+    if type_ in PROPERTY_DISPATCH:
+        value = PROPERTY_DISPATCH[type_](element)
+    else:
+        logger.warning(f"Skipped {name}, unsupported type {type_}")
+        value = None
+    return (name, type_, status, value)

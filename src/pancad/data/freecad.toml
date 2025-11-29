@@ -9,3 +9,36 @@ install_dir = [
     "FreeCAD 1.0",
     "FreeCAD",
 ]
+
+[sql_columns.FreecadDocumentMetadata]
+Comment = 'TEXT'
+Company = 'TEXT'
+CreatedBy = 'TEXT'
+CreationDate = 'TEXT'
+Id = 'TEXT'
+Label = 'TEXT'
+LastModifiedBy = 'TEXT'
+LastModifiedDate = 'TEXT'
+License = 'TEXT'
+LicenseURL = 'TEXT'
+Material = 'TEXT'
+Meta = 'TEXT'
+ShowHidden = 'BOOLEAN'
+TipName = 'TEXT'
+Uid = 'UUID'
+UnitSystem = 'TEXT'
+UseHasher = 'BOOLEAN'
+
+[sql_columns.FreecadObjectsCommon]
+FileUid = 'TEXT'
+Name = 'TEXT'
+Id = 'INTEGER'
+Type = 'TEXT'
+Label = 'TEXT'
+Label2 = 'TEXT'
+Visibility = 'BOOLEAN'
+
+[sql_columns.FreecadObjectDependencies]
+FileUid = 'TEXT'
+Result = 'TEXT'
+Dependency = 'TEXT'
