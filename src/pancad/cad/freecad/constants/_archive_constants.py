@@ -38,6 +38,7 @@ class SubFile(StrEnum):
 class XMLTag(StrEnum):
     BOOL = "Bool"
     CAMERA = "Camera"
+    CIRCLE = "Circle"
     COLOR_LIST = "ColorList"
     CONSTRAINT = "Constrain"
     CONSTRAINT_LIST = "ConstraintList"
@@ -101,7 +102,7 @@ class XMLTag(StrEnum):
     UUID = "Uuid"
     
     def __repr__(self):
-        return self.name
+        return f"'{self.value}'"
 
 class XMLObjectType(StrEnum):
     PART_DESIGN_BODY = "PartDesign::Body"
@@ -169,6 +170,7 @@ class XMLAttr(StrEnum):
     EXTENSIONS = "Extensions"
     FILE = "file"
     ID = "id"
+    INTERNAL_GEOMETRY_TYPE = "internalGeometryType"
     LINE_PATTERN = "linePattern"
     LINE_WIDTH = "lineWidth"
     LINK_SUB = "sub"
@@ -197,4 +199,4 @@ class XMLAttr(StrEnum):
     VISIBLE = "visible"
     
     def __repr__(self):
-        return self.name
+        return f"'{self.value}'"

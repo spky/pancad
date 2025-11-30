@@ -4,6 +4,7 @@ from __future__ import annotations
 from contextlib import closing
 from pathlib import Path
 from uuid import UUID
+import logging
 import sqlite3
 import tomllib
 from typing import TYPE_CHECKING, Any
@@ -12,9 +13,11 @@ from zipfile import ZipFile
 
 from pancad import data as pancad_data
 
-from .xml_properties import read_properties, read_property
+from .xml_properties import (
+    read_properties, read_property, read_sketch_geometry_common
+)
 from .xml_appearance import read_shape_appearance
-from .constants import SubFile, XMLTag, XMLAttr
+from .constants import SubFile, XMLTag, XMLAttr, XMLObjectType, XMLPropertyType
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,6 +26,8 @@ if TYPE_CHECKING:
 sqlite3.register_adapter(UUID, lambda u: str(u))
 sqlite3.register_adapter(bool, int)
 sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
+
+logger = logging.getLogger(__name__)
 
 def read_objects(objects: Element) -> list[tuple[str, str, int]]:
     """Reads the objects inside an Objects element
@@ -38,23 +43,25 @@ def read_objects(objects: Element) -> list[tuple[str, str, int]]:
         data.append((name, type_, id_))
     return data
 
-def read_transient_properties(element: Element) -> list[tuple[str, str, int]]:
-    """Reads the _Property like formatted tags under the element.
+def read_sub_attrib(element: Element,
+                    tag: XMLTag=None) -> tuple[tuple[str], list[tuple[str]]]:
+    """Reads the attributes of the subelements the element.
     
-    :param element: The Properties element with elements underneath.
-    :returns: A list of (Name, Type, Status) tuples.
+    :param element: An xml element.
+    :param tag: The tag to filter subelements by. Defaults to None.
+    :returns: A tuple of attribute names and a list of value tuples of the same 
+        length and order as the names tuple.
     """
-    properties = []
-    for property_ in element.iter(XMLTag.TRANSIENT_PROPERTY):
-        name = property_.get(XMLAttr.NAME)
-        type_ = property_.get(XMLAttr.TYPE)
-        if (status := property_.get(XMLAttr.STATUS)) is not None: 
-            status = int(status)
-        properties.append((name, type_, status))
-    return properties
+    sub_attrs = []
+    names = []
+    for sub in element.iter(tag):
+        # Extend to maintain tuple ordering throughout iteration
+        names.extend(key for key in list(sub.attrib) if key not in names)
+        sub_attrs.append(tuple(sub.get(key) for key in names))
+    return tuple(names), sub_attrs
 
 def read_expand(expand: Element) -> set[str]:
-    """Recursively reads the names that are expanded in the expand element."""
+    """Recursively reads the names that are expanded in an expand xml element."""
     all_expanded = set()
     if name := expand.get(XMLAttr.NAME):
         all_expanded.add(name)
@@ -87,245 +94,229 @@ def read_view_provider_data(view_provider_data: Element
         data.append((attributes, extensions, properties))
     return data
 
-def read_metadata(filepath: Path | str) -> dict[str, Any]:
-    """Returns a dict of metadata field name to values from FCStd files."""
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    element = tree.find(XMLTag.PROPERTIES)
-    return {name: value for name, *_, value in read_properties(element)}
+def read_metadata(tree: ElementTree) -> tuple[tuple[str], list[tuple[Any]]]:
+    """Returns a tuple of field names and a tuple of values for FCStd metadata."""
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    data = []
+    
+    for element in tree.findall("./Properties/Property"):
+        name = element.get(XMLAttr.NAME)
+        type_ = element.get(XMLAttr.TYPE)
+        status = element.get(XMLAttr.STATUS)
+        match type_:
+            case XMLPropertyType.APP_STRING:
+                value = element.find(XMLTag.STRING).get(XMLAttr.VALUE)
+            case XMLPropertyType.APP_BOOL:
+                value = element.find(XMLTag.BOOL).get(XMLAttr.VALUE)
+            case XMLPropertyType.APP_UUID:
+                value = element.find(XMLTag.UUID).get(XMLAttr.VALUE)
+            case XMLPropertyType.APP_ENUM:
+                index = int(element.find(XMLTag.INTEGER).get(XMLAttr.VALUE))
+                enum_list = element.find(XMLTag.CUSTOM_ENUM_LIST)
+                value = enum_list[index].get(XMLAttr.VALUE)
+            case _:
+                logger.warning(f"Could not read metadata type {type_}")
+                value = None
+        data.append((file_uid, name, type_, status, value))
+    FIELDS = [XMLAttr.NAME, XMLAttr.TYPE, XMLAttr.STATUS, XMLAttr.VALUE]
+    return FIELDS, data
 
-def read_object_dependencies(filepath: str) -> dict[str, list[str]]:
+def read_dependencies(tree: str) -> tuple[tuple[str], list[tuple[Any]]]:
     """Returns a dict of object name to a list of its dependencies from FCStd 
     files. The lists of dependencies may have duplicates.
     """
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    objects = tree.find(XMLTag.OBJECTS)
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    OBJECT_DEPS_XPATH = f"./{XMLTag.OBJECTS}/{XMLTag.OBJECT_DEPENDENCIES}"
+    FIELDS = ["FileUid", "Object", "Dependency"]
     data = []
-    for object_ in objects.iter(XMLTag.OBJECT_DEPENDENCIES):
-        name = object_.get(XMLAttr.NAME_CAPITALIZED)
-        dep_iter = object_.iter(XMLTag.DEP)
-        depends_on = [dep.get(XMLAttr.NAME_CAPITALIZED) for dep in dep_iter]
-        data.append((name, depends_on))
-    return {name: dependencies for name, dependencies in data}
+    for deps in tree.findall(OBJECT_DEPS_XPATH):
+        name = deps.get(XMLAttr.NAME_CAPITALIZED)
+        depends_on = [
+            dep.get(XMLAttr.NAME_CAPITALIZED) for dep in deps.iter(XMLTag.DEP)
+        ]
+        data.extend([(file_uid, name, dep) for dep in depends_on])
+    return FIELDS, data
 
-def read_object_types(filepath: str) -> dict[str, str]:
-    """Returns a dict of object name to its type from FCStd files."""
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    objects = tree.find(XMLTag.OBJECTS)
-    data = read_objects(objects)
-    return {name: type_ for name, type_, _ in data}
+def read_sketch_constraints(tree: ElementTree) -> tuple[tuple[str], list[tuple[Any]]]:
+    """Returns a tuple of field names and a tuple of values for each constraint"""
+    TYPE_NAME_XPATH = "./Objects/Object[@type='Sketcher::SketchObject']"
+    DATA_XPATH = (
+        "./ObjectData/Object[@name='%s']"
+        "/Properties/Property[@type='Sketcher::PropertyConstraintList']"
+    )
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    ADDED_FIELDS = ("FileUid", "SketchName", "ListName", "ListIndex")
+    field_names = list(ADDED_FIELDS)
+    constraint_dicts = []
+    for sketch in tree.findall(TYPE_NAME_XPATH):
+        sketch_name = sketch.get(XMLAttr.NAME)
+        for property_ in tree.findall(DATA_XPATH % sketch_name):
+            list_name = property_.get(XMLAttr.NAME)
+            constraint_list = property_.find(XMLTag.CONSTRAINT_LIST)
+            fields, values = read_sub_attrib(constraint_list, XMLTag.CONSTRAINT)
+            
+            # Ensure that all fields are in the same order by mapping them first
+            fields = ADDED_FIELDS + fields
+            constraints = [(file_uid, sketch_name, list_name, list_index)
+                           + constraint
+                           for list_index, constraint in enumerate(values)]
+            constraint_dicts.extend(
+                [{field: attr for field, attr in zip(fields, constraint)}
+                 for constraint in constraints]
+             )
+            field_names.extend(name for name in fields
+                               if name not in field_names)
+    sketch_constraints = [tuple(constraint.setdefault(field)
+                                for field in field_names)
+                          for constraint in constraint_dicts]
+    return tuple(field_names), sketch_constraints
 
-def read_object_ids(filepath: str) -> dict[str, int]:
-    """Returns a dict of object name to its id integer from FCStd files."""
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    objects = tree.find(XMLTag.OBJECTS)
-    data = read_objects(objects)
-    return {name: id_ for name, _, id_ in data}
-
-def read_object_extensions(filepath: str) -> dict[str, list[tuple[str, str]]]:
-    """Returns a dict of object name to a (type, name) tuple for each of its 
-    extensions from FCStd files.
+def read_sketch_geometry_info(tree: ElementTree
+                              ) -> tuple[tuple[str], list[tuple[Any]]]:
+    """Returns a tuple of field names and a tuple of values in common for each 
+    sketch geometry element in the tree.
     """
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    extensions = {}
-    object_data = tree.find(XMLTag.OBJECT_DATA)
-    for object_ in object_data.iter(XMLTag.OBJECT):
-        if (obj_exts := object_.find(XMLTag.EXTENSIONS)) is None:
-            continue
-        name = object_.attrib[XMLAttr.NAME]
-        extensions[name] = [(ext.get(XMLAttr.TYPE), ext.get(XMLAttr.NAME))
-                            for ext in obj_exts.iter(XMLTag.EXTENSION)]
-    return extensions
+    sketch_geometry = []
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    TYPE_NAME_XPATH = "./Objects/Object[@type='Sketcher::SketchObject']"
+    DATA_XPATH = (
+        "./ObjectData/Object[@name='%s']"
+        "/Properties/Property[@type='Part::PropertyGeometryList']"
+    )
+    GEO_EXT_XPATH = (
+        "./GeoExtensions"
+        "/GeoExtension[@type='Sketcher::SketchGeometryExtension']"
+    )
+    for sketch in tree.findall(TYPE_NAME_XPATH):
+        sketch_name = sketch.get(XMLAttr.NAME)
+        for property_ in tree.findall(DATA_XPATH % sketch_name):
+            list_name = property_.get(XMLAttr.NAME)
+            geometry_list = property_.find(XMLTag.GEOMETRY_LIST)
+            for list_index, geometry in enumerate(geometry_list):
+                construction = geometry.find(XMLTag.CONSTRUCTION)
+                sketch_ext = geometry.find(GEO_EXT_XPATH)
+                sketch_geometry.append(
+                    (
+                        file_uid,
+                        sketch_name,
+                        list_name,
+                        list_index,
+                        geometry.get(XMLAttr.TYPE),
+                        geometry.get(XMLAttr.ID),
+                        geometry.get(XMLAttr.MIGRATED),
+                        construction.get(XMLAttr.VALUE),
+                        sketch_ext.get(XMLAttr.INTERNAL_GEOMETRY_TYPE)
+                    )
+                )
+    FIELDS = ("FileUid", "SketchName", "ListName", "ListIndex",
+              XMLAttr.ID, XMLAttr.TYPE, XMLAttr.MIGRATED, XMLTag.CONSTRUCTION,
+              XMLAttr.INTERNAL_GEOMETRY_TYPE)
+    return FIELDS, sketch_geometry
 
-def object_property_lists(filepath: str
-                          ) -> dict[str, list[tuple[str, str, int | None]]]:
-    """Returns a dict of object name to (name, type, status) tuples from FCStd 
-    files.
+def read_object_info(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
+    """Returns a tuple of field names and a tuple of values for fields common to 
+    all objects in an FCStd document.xml tree.
     """
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    property_lists = {}
-    object_data = tree.find(XMLTag.OBJECT_DATA)
-    for object_ in object_data.iter(XMLTag.OBJECT):
-        name = object_.attrib[XMLAttr.NAME]
-        for property_ in object_.find(XMLTag.PROPERTIES).iter(XMLTag.PROPERTY):
-            if (status := property_.get(XMLAttr.STATUS)) is not None:
-                status = int(status)
-            property_lists.setdefault(name, []).append(
-                (property_.get(XMLAttr.NAME),
-                 property_.get(XMLAttr.TYPE),
-                 status)
+    info = []
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    PROPERTY_XPATH = ("./ObjectData/Object[@name='%s']"
+                      "/Properties/Property[@name='%s']/%s")
+    SHARED_ATTR = [XMLAttr.NAME, XMLAttr.ID, XMLAttr.TYPE]
+    SHARED_DATA = [
+        ("Label", XMLTag.STRING),
+        ("Label2", XMLTag.STRING),
+        ("Visibility", XMLTag.BOOL),
+    ]
+    fields = SHARED_ATTR + [name for name, _ in SHARED_DATA]
+    for obj in tree.findall("./Objects/Object"):
+        name = obj.get(XMLAttr.NAME)
+        properties = [obj.get(attr) for attr in SHARED_ATTR]
+        for prop, tag in SHARED_DATA:
+            properties.append(
+                tree.find(PROPERTY_XPATH % (name, prop, tag)).get(XMLAttr.VALUE)
             )
-    return property_lists
+        info.append((file_uid,) + tuple(properties))
+    return ("FileUid",) + tuple(fields), info
 
-def read_object_property(filepath: str,
-                         object_: str,
-                         property_: str) -> tuple[str, int, Any]:
-    """Returns the type, status, and value of the property for the object in a 
-    FCStd file.
+def read_line_segments(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
+    """Returns the fields and values of all LineSegments in the tree."""
+    SKETCH_XPATH = ("./ObjectData/Object/Properties/Property[@name='Geometry']"
+                    "/../..")
+    GEO_LIST_XPATH = "./Properties/Property[@type='Part::PropertyGeometryList']"
+    GEO_XPATH = "./GeometryList/Geometry[@type='Part::GeomLineSegment']"
+    GEO_FIELDS = ("StartX", "StartY", "StartZ", "EndX", "EndY", "EndZ")
+    FIELDS = ("FileUid", "SketchName", "ListName", "Id",) + GEO_FIELDS
     
-    :param filepath: Path of a FCStd file.
-    :param object_: The name of an object.
-    :param property_: The name of a property.
-    """
-    tree = get_xml_tree(filepath, SubFile.DOCUMENT_XML)
-    object_data = tree.find(XMLTag.OBJECT_DATA)
-    for data in object_data.iter(XMLTag.OBJECT):
-        if data.get(XMLAttr.NAME) == object_:
-            properties = data.find(XMLTag.PROPERTIES)
-            break
-    try:
-        for element in properties.iter(XMLTag.PROPERTY):
-            if element.get(XMLAttr.NAME) == property_:
-                _, type_, status, value = read_property(element)
-                return (type_, status, value)
-    except UnboundLocalError as err:
-        print(f"Object {object_} not found")
-        raise
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    data = []
+    for sketch in tree.findall(SKETCH_XPATH):
+        sketch_name = sketch.get(XMLAttr.NAME)
+        for property_ in sketch.findall(GEO_LIST_XPATH):
+            list_name = property_.get(XMLAttr.NAME)
+            for geometry in property_.findall(GEO_XPATH):
+                id_ = geometry.get(XMLAttr.ID)
+                geo_element = geometry.find(XMLTag.LINE_SEGMENT)
+                data.append(
+                    (file_uid, sketch_name, list_name, id_)
+                    + tuple(geo_element.get(field) for field in GEO_FIELDS)
+                )
+    return FIELDS, data
 
-def table_exists(cur: sqlite3.Cursor, name: str):
-    tables = cur.execute("""SELECT name FROM sqlite_master WHERE
-                         type='table' and name='%s'""" % name).fetchall()
-    return len(tables) == 1
+def read_circles(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
+    """Returns the fields and values of all Circles in the tree."""
+    SKETCH_XPATH = ("./ObjectData/Object/Properties/Property[@name='Geometry']"
+                    "/../..")
+    GEO_LIST_XPATH = "./Properties/Property[@type='Part::PropertyGeometryList']"
+    GEO_XPATH = "./GeometryList/Geometry[@type='Part::GeomCircle']"
+    GEO_FIELDS = ("CenterX", "CenterY", "CenterZ",
+                  "NormalX", "NormalY", "NormalZ",
+                  "AngleXU", "Radius")
+    FIELDS = ("FileUid", "SketchName", "ListName", "Id",) + GEO_FIELDS
+    
+    file_uid = tree.find("./Properties/Property[@name='Uid']/Uuid").get("value")
+    data = []
+    for sketch in tree.findall(SKETCH_XPATH):
+        sketch_name = sketch.get(XMLAttr.NAME)
+        for property_ in sketch.findall(GEO_LIST_XPATH):
+            list_name = property_.get(XMLAttr.NAME)
+            for geometry in property_.findall(GEO_XPATH):
+                id_ = geometry.get(XMLAttr.ID)
+                geo_element = geometry.find(XMLTag.CIRCLE)
+                data.append(
+                    (file_uid, sketch_name, list_name, id_)
+                    + tuple(geo_element.get(field) for field in GEO_FIELDS)
+                )
+    return FIELDS, data
 
 def write_fcstd_sql(fcstd: str, database: str):
     OBJECTS_TABLE = "FreecadObjects"
     SHARED_PROPERTIES = ["Label", "Label2", "Visibility"]
     
-    object_ids = read_object_ids(fcstd)
-    object_types = read_object_types(fcstd)
+    with ZipFile(fcstd) as file:
+        with file.open(SubFile.DOCUMENT_XML) as document:
+            doc_tree = ElementTree.fromstring(document.read())
+        with file.open(SubFile.GUI_DOCUMENT_XML) as gui_document:
+            gui_tree = ElementTree.fromstring(gui_document.read())
     
-    object_data = []
-    for name, id_ in object_ids.items():
-        shared = []
-        for property_name in SHARED_PROPERTIES:
-            *_, value = read_object_property(fcstd, name, property_name)
-            shared.append(value)
-        type_ = object_types[name]
-        object_data.append(
-            (name, id_, type_, *shared)
-        )
-    metadata = read_metadata(fcstd)
-    file_uid = metadata["Uid"]
+    sketch_geometry = read_sketch_geometry_info(doc_tree)
+    object_ids = read_sub_attrib(doc_tree.find(XMLTag.OBJECTS), XMLTag.OBJECT)
+    dependencies = read_dependencies(doc_tree)
+    constraints = read_sketch_constraints(doc_tree)
+    metadata = read_metadata(doc_tree)
+    object_info = read_object_info(doc_tree)
+    breakpoint()
     
-    write_metadata(database, metadata)
-    write_objects_common(database, object_data, file_uid)
+    # object_data = []
+    # for name, id_ in object_ids.items():
+        # shared = []
+        # for property_name in SHARED_PROPERTIES:
+            # *_, value = read_object_property(fcstd, name, property_name)
+            # shared.append(value)
+        # type_ = object_types[name]
+        # object_data.append((name, id_, type_, *shared))
     
-    dependencies = read_object_dependencies(fcstd)
-    write_object_dependencies(database, dependencies, file_uid)
-
-def table_columns(table: str) -> list[str]:
-    with open(Path(pancad_data.__file__).parent / "freecad.toml", "rb") as file:
-        config = tomllib.load(file)["sql_columns"][table]
-    return list(config.keys())
-
-def table_column_settings(table: str) -> list[str]:
-    with open(Path(pancad_data.__file__).parent / "freecad.toml", "rb") as file:
-        config = tomllib.load(file)["sql_columns"][table]
-    return [f"{name} {type_}" for name, type_ in config.items()]
-
-def write_metadata(database: str, as_read_data: dict[str, Any]) -> None:
-    """Writes FCStd file metadata to sql database. Only stores default FreeCAD 
-    metadata.
-    """
-    TABLE = "FreecadDocumentMetadata"
-    columns = table_column_settings(TABLE)
-    data = [as_read_data[column] for column in table_columns(TABLE)]
-    
-    with closing(sqlite3.connect(database)) as con:
-        con.execute("CREATE TABLE IF NOT EXISTS %s(%s, UNIQUE(Uid))"
-                    % (TABLE, ",".join(columns)))
-        q_marks = ",".join("?" * len(columns))
-        con.execute("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        con.commit()
-
-def write_objects_common(database: str,
-                         as_read_data: list[tuple[Any]],
-                         file_uid: UUID) -> None:
-    """Writes the data that all FCStd objects share in common to sql database."""
-    TABLE = "FreecadObjectsCommon"
-    columns = table_column_settings(TABLE)
-    data = [(file_uid,) + row for row in as_read_data]
-    
-    with closing(sqlite3.connect(database)) as con:
-        con.execute("CREATE TABLE IF NOT EXISTS %s(%s, UNIQUE(FileUid, Id, Name))"
-                    % (TABLE, ",".join(columns)))
-        q_marks = ",".join("?" * len(columns))
-        con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        con.commit()
-
-def write_object_dependencies(database: str,
-                              as_read_data: dict[str, list[str]],
-                              file_uid: str) -> None:
-    TABLE = "FreecadObjectDependencies"
-    columns = table_column_settings(TABLE)
-    data = []
-    for result, dependencies in as_read_data.items():
-        data.extend([(file_uid, result, dep) for dep in set(dependencies)])
-    
-    with closing(sqlite3.connect(database)) as con:
-        con.execute("CREATE TABLE IF NOT EXISTS %s(%s)"
-                    % (TABLE, ",".join(columns)))
-        q_marks = ",".join("?" * len(columns))
-        con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        con.commit()
-
-def get_xml_tree(filepath: Path | str, sub_name: SubFile) -> ElementTree:
-    """Returns an xml tree from inside a FCStd file.
-    
-    :param filepath: A filepath to a FreeCAD FCStd file.
-    :param sub_name: The name of the file inside the FCStd file to be accessed.
-    """
-    zipped = ZipFile(filepath)
-    with zipped.open(SubFile.DOCUMENT_XML) as document:
-        return ElementTree.fromstring(document.read())
-
-class Document:
-    """A class representing a FreeCAD document, read without the FreeCAD API."""
-    
-    def __init__(self, filepath: str | Path) -> None:
-        self.archive = ZipFile(filepath)
-        self.members = {m.filename: m for m in self.archive.infolist()}
-        with self.archive.open(self.members[SubFile.DOCUMENT_XML]) as file:
-            self.tree = ElementTree.fromstring(file.read())
-        
-        
-        # properties_element = self.tree.find(XMLTag.PROPERTIES)
-        # object_element = self.tree.find(XMLTag.OBJECTS)
-        # object_data_element = self.tree.find(XMLTag.OBJECT_DATA)
-        
-        # self.properties = read_properties(properties_element)
-        # self.private = read_transient_properties(properties_element)
-        # self.document_schema_version = self.tree.get(XMLAttr.SCHEMA_VERSION)
-        # self.program_version = self.tree.get(XMLAttr.PROGRAM_VERSION)
-        # self.file_version = self.tree.get(XMLAttr.FILE_VERSION)
-        # self.string_hasher = self.tree.get(XMLAttr.STRING_HASHER)
-        
-        # objects = read_objects(object_element)
-        # dependencies = read_object_deps(object_element)
-        
-        # self.name_to_id = {name: id_ for name, _, id_ in objects}
-        # self.id_to_name = {id_: name for name, _, id_ in objects}
-        
-        # object_data = []
-        # for object_ in object_data_element.iter(XMLTag.OBJECT):
-            # object_data.append((object_.get(XMLAttr.NAME), object_))
-        # self.objects = {}
-        # for name, type_, id_ in objects:
-            # object_dict = {XMLAttr.NAME: name, XMLAttr.TYPE: type_, XMLAttr.ID: id_}
-            # for dependency_name, list_ in dependencies:
-                # if name == dependency_name:
-                    # object_dict[XMLTag.OBJECT_DEPENDENCIES] = list_
-                    # break
-            # for object_data_name, element in object_data:
-                # if name == object_data_name:
-                    # object_dict[XMLTag.OBJECT_DATA] = element
-            # self.objects[id_] = object_dict
-        
-        # with self.archive.open(self.members[SubFile.GUI_DOCUMENT_XML]) as file:
-            # self.gui_tree = ElementTree.fromstring(file.read())
-        
-        # expand_element = self.gui_tree.find(XMLTag.EXPAND)
-        # view_data_element = self.gui_tree.find(XMLTag.VIEW_PROVIDER_DATA)
-        
-        # self.expand = read_expand(expand_element)
-        # self.view_provider_data = read_view_provider_data(view_data_element)
-        
+    # write_metadata(database, metadata)
+    # write_constraints(database, constraints, file_uid)
+    # write_objects_common(database, object_data, file_uid)
+    # write_sketch_geometry(database, sketch_geometry, file_uid)
+    # write_object_dependencies(database, dependencies, file_uid)

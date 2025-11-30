@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
 
+
 def unpack_argb(packed: int) -> ARGB:
     """Returns a tuple of ARGB values from an integer."""
     return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
@@ -234,6 +235,35 @@ PROPERTY_DISPATCH = {
         
         XMLPropertyType.SKETCHER_CONSTRAINT_LIST: _read_constraint_list,
 }
+
+def read_sketch_geometry_common(object_: Element) -> tuple[tuple[str], list[tuple[Any]]]:
+    """Returns a list of data common to all geometry tuples for each sketch 
+    geometry element in the properties list element.
+    """
+    
+    list_names = ["ExternalGeo", "Geometry"]
+    lists = []
+    for property_ in properties.iter(XMLTag.PROPERTY):
+        if (name := property_.get(XMLAttr.NAME)) in list_names:
+            lists.append((name, property_))
+    
+    if not lists:
+        return None
+    
+    geometry = []
+    for list_name, property_element in lists:
+        list_element = property_element.find(XMLTag.GEOMETRY_LIST)
+        for list_index, element in enumerate(list_element):
+            type_ = element.get(XMLAttr.TYPE)
+            id_ = int(element.get(XMLAttr.ID))
+            construction = bool(
+                int(element.find(XMLTag.CONSTRUCTION).get(XMLAttr.VALUE))
+            )
+            migrated = bool(int(element.get(XMLAttr.MIGRATED)))
+            geometry.append(
+                (list_name, list_index, id_, type_, construction, migrated)
+            )
+    return geometry
 
 def read_properties(element: Element) -> list[tuple[str, str, int, Any]]:
     """Reads the property formatted tags under the element.
