@@ -19,13 +19,16 @@ from pancad.cad.freecad.xml_readers import (
     read_dependencies,
     read_sketch_geometry_info,
     read_sketch_constraints,
-    read_line_segments,
-    read_circles,
+    read_sketch_geometry,
     write_fcstd_sql,
+    tuples_to_dicts,
+    get_sketch_geometry_types
 )
 from pancad.cad.freecad.xml_properties import read_properties
 from pancad.cad.freecad import xml_appearance
-from pancad.cad.freecad.constants import XMLTag, SubFile, XMLAttr
+from pancad.cad.freecad.constants.archive_constants import (
+    Tag, SubFile, XMLGeometryType
+)
 
 from . import dump
 
@@ -38,22 +41,22 @@ class FCStdXMLUtils(TestCase):
     
     def test_read_sub_attrib_properties(self):
         # Checking an element with consistent subelement attributes
-        element = self.tree.find(XMLTag.PROPERTIES)
-        names, attrs = read_sub_attrib(element, XMLTag.PROPERTY)
+        element = self.tree.find(Tag.PROPERTIES)
+        names, attrs = read_sub_attrib(element, Tag.PROPERTY)
         print("Names:", names); print("Attributes:"); pp(attrs)
         self.assertTupleEqual(names, ("name", "type", "status"))
     
     def test_read_sub_attrib_string_hasher(self):
         # Checking an element with no sub elements
-        element = self.tree.find(XMLTag.STRING_HASHER)
-        names, attrs = read_sub_attrib(element, XMLTag.PROPERTY)
+        element = self.tree.find(Tag.STRING_HASHER)
+        names, attrs = read_sub_attrib(element, Tag.PROPERTY)
         print("Names:", names, "Attributes:", attrs)
         self.assertTupleEqual(names, tuple())
     
     def test_read_sub_attrib_body(self):
         # Checking an element with inconsistent subelement attributes
         element = self.tree.find("./ObjectData/Object[@name='Body']/Properties")
-        names, attrs = read_sub_attrib(element, XMLTag.PROPERTY)
+        names, attrs = read_sub_attrib(element, Tag.PROPERTY)
         print("Names:", names); print("Attributes:"); pp(attrs)
         group = [element for element in attrs if element[0] == "Group"][0]
         self.assertTupleEqual(group, ("Group", "App::PropertyLinkList", None))
@@ -79,12 +82,24 @@ class OneOfEachSketchGeometry(TestCase):
         for row in rows:
             print(row)
     
-    def test_read_line_segments(self):
-        test = read_line_segments(self.tree)
-        pp(test)
+    def test_read_sketch_geometry(self):
+        tests = [
+            (XMLGeometryType.ARC_OF_CIRCLE,Tag.ARC_OF_CIRCLE),
+            (XMLGeometryType.CIRCLE, Tag.CIRCLE),
+            (XMLGeometryType.ELLIPSE,Tag.ELLIPSE),
+            (XMLGeometryType.LINE_SEGMENT, Tag.LINE_SEGMENT),
+            (XMLGeometryType.POINT,Tag.GEOM_POINT),
+        ]
+        for type_, tag in tests:
+            with self.subTest(f"Read {tag.value} geometry"):
+                fields, data = read_sketch_geometry(self.tree, type_, tag)
+                print(type_, tag)
+                print(fields)
+                for row in data:
+                    print(row)
     
-    def test_read_circles(self):
-        test = read_circles(self.tree)
+    def test_get_sketch_geometry_types(self):
+        test = get_sketch_geometry_types(self.tree)
         pp(test)
 
 class Cube1x1x1(TestCase):

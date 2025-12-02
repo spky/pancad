@@ -6,13 +6,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constants import ConstraintReference
-from .constants import XMLGeometryAttr, XMLGeometryType, XMLTag
+from .constants.archive_constants import XMLGeometryAttr, XMLGeometryType, Tag
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element
 
 def _line_segment(element: Element) -> dict[ConstraintReference, tuple[float]]:
-    line = element.find(XMLTag.LINE_SEGMENT)
+    line = element.find(Tag.LINE_SEGMENT)
     START_ATTR = [XMLGeometryAttr.START_X, XMLGeometryAttr.START_Y,
                   XMLGeometryAttr.START_Z]
     END_ATTR = [XMLGeometryAttr.END_X, XMLGeometryAttr.END_Y,

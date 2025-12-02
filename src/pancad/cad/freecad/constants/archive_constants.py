@@ -35,10 +35,16 @@ class SubFile(StrEnum):
     SUPPRESSED_SHAPE_BRP = ".SuppressedShape.brp"
     """Suffix of file with unknwon purpose."""
 
-class XMLTag(StrEnum):
+class Tag(StrEnum):
+    """Enumeration of the tags used in FCStd xml files."""
+    ARC_OF_CIRCLE = "ArcOfCircle"
+    """Element defining the center, orientation, radius, and sweep angles of a 
+    sketch circular arc.
+    """
     BOOL = "Bool"
     CAMERA = "Camera"
     CIRCLE = "Circle"
+    """Element defining the center, orientation, and radius of a sketch circle."""
     COLOR_LIST = "ColorList"
     CONSTRAINT = "Constrain"
     CONSTRAINT_LIST = "ConstraintList"
@@ -48,6 +54,8 @@ class XMLTag(StrEnum):
     """Top level xml element."""
     DEP = "Dep"
     """Object dependency element."""
+    ELLIPSE = "Ellipse"
+    """Element defining the center, orientation, and radii of a sketch ellipse."""
     ELEMENT_MAP = "ElementMap"
     ELEMENT_MAP_2 = "ElementMap2"
     EXPAND = "Expand"
@@ -57,6 +65,8 @@ class XMLTag(StrEnum):
     EXTENSION = "Extension"
     """Element containing information about an extension of an Object."""
     FLOAT = "Float"
+    GEOM_POINT = "GeomPoint"
+    """Element defining the location of a sketch point."""
     GEOMETRY = "Geometry"
     GEOMETRY_EXTENSION = "GeoExtension"
     GEOMETRY_EXTENSIONS = "GeoExtensions"
@@ -64,6 +74,7 @@ class XMLTag(StrEnum):
     INTEGER = "Integer"
     """Element containing an integer"""
     LINE_SEGMENT = "LineSegment"
+    """Element defining the end points of a sketch line segment."""
     LINK = "Link"
     LINK_LIST = "LinkList"
     LINK_SUB = "LinkSub"
@@ -110,13 +121,77 @@ class XMLObjectType(StrEnum):
     APP_ORIGIN = "App::Origin"
     APP_LINE = "App::Line"
     APP_PLANE = "App::Plane"
-    SKETCHER_SKETCH_OBJECT = "Sketcher::SketchObject"
+    
+    def __repr__(self):
+        return self.name
+
+class Sketcher(StrEnum):
+    """Enumeration of 'Sketcher::' options in FCStd xml files."""
+    SKETCH = "Sketcher::SketchObject"
+    """type attribute of Sketch Object elements."""
+    CONSTRAINT_LIST = "Sketcher::PropertyConstraintList"
+    """type attribute of constraint list Property elements."""
+    GEOMETRY_EXT = "Sketcher::SketchGeometryExtension"
+    """type attribute of sketch GeoExtension elements with sketch specific info 
+    stored on them.
+    """
+    EXTERNAL_EXT = "Sketcher::ExternalGeometryExtension"
+    """type attribute of sketch GeoExtension elements. Unknown use."""
+
+class App(StrEnum):
+    """Enumeration of 'App::' options in FCStd xml files."""
+    ANGLE = "App::PropertyAngle"
+    BOOL = "App::PropertyBool"
+    COLOR = "App::PropertyColor"
+    COLOR_LIST = "App::PropertyColorList"
+    ENUM = "App::PropertyEnumeration"
+    EXPRESSION_ENGINE = "App::PropertyExpressionEngine"
+    FLOAT = "App::PropertyFloat"
+    FLOAT_CONSTRAINT = "App::PropertyFloatConstraint"
+    LENGTH = "App::PropertyLength"
+    LINK = "App::PropertyLink"
+    LINK_SUB = "App::PropertyLinkSub"
+    LINK_SUBLIST = "App::PropertyLinkSubList"
+    LINK_LIST_HIDDEN = "App::PropertyLinkListHidden"
+    MAP = "App::PropertyMap"
+    MATERIAL = "App::PropertyMaterial"
+    MATERIAL_LIST = "App::PropertyMaterialList"
+    PERCENT = "App::PropertyPercent"
+    PLACEMENT = "App::PropertyPlacement"
+    PRECISION = "App::PropertyPrecision"
+    PYTHON_OBJECT = "App::PropertyPythonObject"
+    STRING = "App::PropertyString"
+    UUID = "App::PropertyUUID"
+    VECTOR = "App::PropertyVector"
+
+class Part(StrEnum):
+    """Enumeration of 'Part::' options in FCStd xml files."""
+    ARC_OF_CIRCLE = "Part::GeomArcOfCircle"
+    CIRCLE = "Part::GeomCircle"
+    ELLIPSE = "Part::GeomEllipse"
+    LINE_SEGMENT = "Part::GeomLineSegment"
+    POINT = "Part::GeomPoint"
+    SHAPE = "Part::PropertyPartShape"
+    GEOMETRY_LIST = "Part::PropertyGeometryList"
+
+class Materials(StrEnum):
+    """Enumeration of 'Materials::' options in FCStd xml files."""
+    MATERIAL = "Materials::PropertyMaterial"
+
+class PropertyType(StrEnum):
+    """Enumeration of types that do not have a '::' namespace."""
+    BAD_TYPE = "BadType"
     
     def __repr__(self):
         return self.name
 
 class XMLGeometryType(StrEnum):
+    """Enumeration of the supported FCStd Geometry element type attributes"""
+    ARC_OF_CIRCLE = "Part::GeomArcOfCircle"
+    CIRCLE = "Part::GeomCircle"
+    ELLIPSE = "Part::GeomEllipse"
     LINE_SEGMENT = "Part::GeomLineSegment"
+    POINT = "Part::GeomPoint"
 
 class XMLGeometryAttr(StrEnum):
     END_X = "EndX"
@@ -126,44 +201,10 @@ class XMLGeometryAttr(StrEnum):
     START_Y = "StartY"
     START_Z = "StartZ"
 
-class XMLPropertyType(StrEnum):
-    APP_ANGLE = "App::PropertyAngle"
-    APP_BOOL = "App::PropertyBool"
-    APP_COLOR = "App::PropertyColor"
-    APP_COLOR_LIST = "App::PropertyColorList"
-    APP_ENUM = "App::PropertyEnumeration"
-    APP_EXPRESSION_ENGINE = "App::PropertyExpressionEngine"
-    APP_FLOAT = "App::PropertyFloat"
-    APP_FLOAT_CONSTRAINT = "App::PropertyFloatConstraint"
-    APP_LENGTH = "App::PropertyLength"
-    APP_LINK = "App::PropertyLink"
-    APP_LINK_SUB = "App::PropertyLinkSub"
-    APP_LINK_SUBLIST = "App::PropertyLinkSubList"
-    APP_LINK_LIST_HIDDEN = "App::PropertyLinkListHidden"
-    APP_MAP = "App::PropertyMap"
-    APP_MATERIAL = "App::PropertyMaterial"
-    APP_MATERIAL_LIST = "App::PropertyMaterialList"
-    APP_PERCENT = "App::PropertyPercent"
-    APP_PLACEMENT = "App::PropertyPlacement"
-    APP_PRECISION = "App::PropertyPrecision"
-    APP_PYTHON_OBJECT = "App::PropertyPythonObject"
-    APP_STRING = "App::PropertyString"
-    APP_UUID = "App::PropertyUUID"
-    APP_VECTOR = "App::PropertyVector"
-    
-    BAD_TYPE = "BadType"
-    
-    PART_PART_SHAPE = "Part::PropertyPartShape"
-    PART_GEOMETRY_LIST = "Part::PropertyGeometryList"
-    
-    MATERIALS_MATERIAL = "Materials::PropertyMaterial"
-    
-    SKETCHER_CONSTRAINT_LIST = "Sketcher::PropertyConstraintList"
-    
-    def __repr__(self):
-        return self.name
 
-class XMLAttr(StrEnum):
+
+class Attr(StrEnum):
+    """Enumeration of element attribute names in FCStd xml files."""
     COUNT = "count"
     COUNT_CAPITALIZED = "Count"
     EXPANDED = "expanded"
