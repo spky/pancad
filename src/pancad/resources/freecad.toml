@@ -10,6 +10,21 @@ install_dir = [
     "FreeCAD",
 ]
 
+[sql]
+[sql.table.FreecadLineSegment.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+Id = 'INTEGER'
+StartX = 'REAL'
+StartY = 'REAL'
+StartZ = 'REAL'
+EndX = 'REAL'
+EndY = 'REAL'
+EndZ = 'REAL'
+[sql.table.FreecadLineSegment]
+unique = ['FileUid', 'SketchName', 'ListName', 'Id']
+
 [sql_columns.FreecadDocumentMetadata]
 FileUid = 'TEXT'
 Name = 'TEXT'

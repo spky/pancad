@@ -16,8 +16,7 @@ from .xml_properties import (
 )
 from .xml_appearance import read_shape_appearance
 from .constants.archive_constants import (
-    SubFile, Tag, Attr, XMLObjectType, PropertyType, XMLGeometryType,
-    Sketcher, Part
+    SubFile, Tag, Attr, XMLObjectType, PropertyType, Sketcher, Part
 )
 
 if TYPE_CHECKING:
@@ -258,7 +257,7 @@ def get_sketch_geometry_types(tree: ElementTree) -> list[tuple[str, str]]:
     return list(types)
 
 def read_sketch_geometry(tree: ElementTree,
-                         type_: XMLGeometryType,
+                         type_: Part,
                          tag: Tag) -> tuple[tuple[str], list[tuple[str]]]:
     """Returns the fields and dimensions of all sketch geometries in an FCStd file.
     
