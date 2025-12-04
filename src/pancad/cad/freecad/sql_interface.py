@@ -11,6 +11,7 @@ from zipfile import ZipFile
 
 import logging
 import sqlite3
+import tomllib
 
 from pancad import resources
 
@@ -56,11 +57,28 @@ def parse_sketch_geometry(tree: ElementTree,
         parsed.append(tuple(row_data))
     return fields, parsed
 
-def ensure_fcstd_tables() -> None:
+def ensure_tables(database: str) -> None:
     """Makes sure that the pancad database has the minimum columns for each 
     table
     """
+    with open(Path(resources.__file__).parent / "freecad.toml", "rb") as file:
+        config = tomllib.load(file)
     
+    for table_type, template in config["sql"]["table_commands"].items():
+        for name, settings in config["sql"][table_type].items():
+            columns = []
+            for column, type_ in settings["columns"].items():
+                columns.append(f"{column} {type_}")
+            unique_csv = ",".join(settings["unique"])
+            command = template.format(
+                name=name,
+                columns=",".join(columns),
+                uniques=",".join(settings["unique"])
+            )
+            with sqlite3.connect(database) as con:
+                con.execute(command)
+                con.commit()
+    con.close()
 # def data_to_sql(table: str, columns: tuple[str], data: list[tuple[Any]]) -> None:
     # with sqlite3.connect(
     

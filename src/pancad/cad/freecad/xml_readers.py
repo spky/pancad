@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
-from pancad import data as pancad_data
-
 from .xml_properties import (
     read_properties, read_property, read_sketch_geometry_common
 )

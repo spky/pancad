@@ -9,7 +9,7 @@ from shutil import which
 from tkinter import messagebox, filedialog
 import tomllib
 
-from pancad import data
+from pancad import resources
 from pancad.constants import ConfigCategory, SoftwareName
 from pancad.utils.initialize import (
     get_application_paths, get_cache, write_cache
@@ -162,7 +162,7 @@ def _correct_install_dir(path: Path) -> Path:
 
 def _read_data() -> dict:
     """Reads the freecad data toml."""
-    filepath = Path(data.__file__).parent / "freecad.toml"
+    filepath = Path(resources.__file__).parent / "freecad.toml"
     with open(filepath, "rb") as file:
         config_data = tomllib.load(file)
     return config_data

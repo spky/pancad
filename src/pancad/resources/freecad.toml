@@ -11,117 +11,18 @@ install_dir = [
 ]
 
 [sql]
-[sql.table.FreecadLineSegment.columns]
-FileUid = 'UUID'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-Id = 'INTEGER'
-StartX = 'REAL'
-StartY = 'REAL'
-StartZ = 'REAL'
-EndX = 'REAL'
-EndY = 'REAL'
-EndZ = 'REAL'
-[sql.table.FreecadLineSegment]
+[sql.table_commands]
+geometry_table = '''
+CREATE TABLE IF NOT EXISTS {name} (
+    {columns},
+    UNIQUE ({uniques})
+)
+'''
+
+[sql.geometry_table.FreecadArcOfCircle]
 unique = ['FileUid', 'SketchName', 'ListName', 'Id']
-
-[sql_columns.FreecadDocumentMetadata]
-FileUid = 'TEXT'
-Name = 'TEXT'
-Type = 'TEXT'
-Status = 'TEXT'
-Value = 'TEXT'
-
-[sql_columns.FreecadObjectsCommon]
-FileUid = 'TEXT'
-Name = 'TEXT'
-Id = 'INTEGER'
-Type = 'TEXT'
-Label = 'TEXT'
-Label2 = 'TEXT'
-Visibility = 'BOOLEAN'
-
-[sql_columns.FreecadObjectDependencies]
-FileUid = 'TEXT'
-Object = 'TEXT'
-Dependency = 'TEXT'
-
-[sql_columns.FreecadSketchConstraints]
-FileUid = 'TEXT'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-ListIndex = 'INTEGER'
-Name = 'TEXT'
-Type = 'INTEGER'
-Value = 'REAL'
-First = 'INTEGER'
-FirstPos = 'INTEGER'
-Second = 'INTEGER'
-SecondPos = 'INTEGER'
-Third = 'INTEGER'
-ThirdPos = 'INTEGER'
-LabelDistance = 'REAL'
-LabelPosition = 'REAL'
-IsDriving = 'BOOLEAN'
-IsInVirtualSpace = 'BOOLEAN'
-IsActive = 'BOOLEAN'
-InternalAlignmentType = 'INTEGER'
-InternalAlignmentIndex = 'INTEGER'
-
-[sql_columns.FreecadSketchGeometry]
-FileUid = 'TEXT'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-ListIndex = 'INTEGER'
-Id = 'INTEGER'
-Type = 'TEXT'
-Construction = 'BOOLEAN'
-Migrated = 'BOOLEAN'
-internalGeometryType = 'INTEGER'
-
-[sql_columns.FreecadLineSegment]
-FileUid = 'TEXT'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-Id = 'INTEGER'
-StartX = 'REAL'
-StartY = 'REAL'
-StartZ = 'REAL'
-EndX = 'REAL'
-EndY = 'REAL'
-EndZ = 'REAL'
-
-[sql_columns.FreecadCircle]
-FileUid = 'TEXT'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-Id = 'INTEGER'
-CenterX = 'REAL'
-CenterY = 'REAL'
-CenterZ = 'REAL'
-NormalX = 'REAL'
-NormalY = 'REAL'
-NormalZ = 'REAL'
-AngleXU = 'REAL'
-Radius = 'REAL'
-
-[sql_columns.FreecadEllipse]
-FileUid = 'TEXT'
-SketchName = 'TEXT'
-ListName = 'TEXT'
-Id = 'INTEGER'
-CenterX = 'REAL'
-CenterY = 'REAL'
-CenterZ = 'REAL'
-NormalX = 'REAL'
-NormalY = 'REAL'
-NormalZ = 'REAL'
-MajorRadius = 'REAL'
-MinorRadius = 'REAL'
-AngleXU = 'REAL'
-
-[sql_columns.FreecadArcOfCircle]
-FileUid = 'TEXT'
+[sql.geometry_table.FreecadArcOfCircle.columns]
+FileUid = 'UUID'
 SketchName = 'TEXT'
 ListName = 'TEXT'
 Id = 'INTEGER'
@@ -136,11 +37,180 @@ Radius = 'REAL'
 StartAngle = 'REAL'
 EndAngle = 'REAL'
 
-[sql_columns.FreecadGeomPoint]
-FileUid = 'TEXT'
+[sql.geometry_table.FreecadLineSegment]
+unique = ['FileUid', 'SketchName', 'ListName', 'Id']
+[sql.geometry_table.FreecadLineSegment.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+Id = 'INTEGER'
+StartX = 'REAL'
+StartY = 'REAL'
+StartZ = 'REAL'
+EndX = 'REAL'
+EndY = 'REAL'
+EndZ = 'REAL'
+
+[sql.geometry_table.FreecadPoint]
+unique = ['FileUid', 'SketchName', 'ListName', 'Id']
+[sql.geometry_table.FreecadPoint.columns]
+FileUid = 'UUID'
 SketchName = 'TEXT'
 ListName = 'TEXT'
 Id = 'INTEGER'
 X = 'REAL'
 Y = 'REAL'
 Z = 'REAL'
+
+[sql.geometry_table.FreecadCircle]
+unique = ['FileUid', 'SketchName', 'ListName', 'Id']
+[sql.geometry_table.FreecadCircle.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+Id = 'INTEGER'
+CenterX = 'REAL'
+CenterY = 'REAL'
+CenterZ = 'REAL'
+NormalX = 'REAL'
+NormalY = 'REAL'
+NormalZ = 'REAL'
+AngleXU = 'REAL'
+Radius = 'REAL'
+
+[sql.geometry_table.FreecadEllipse]
+unique = ['FileUid', 'SketchName', 'ListName', 'Id']
+[sql.geometry_table.FreecadEllipse.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+Id = 'INTEGER'
+CenterX = 'REAL'
+CenterY = 'REAL'
+CenterZ = 'REAL'
+NormalX = 'REAL'
+NormalY = 'REAL'
+NormalZ = 'REAL'
+MajorRadius = 'REAL'
+MinorRadius = 'REAL'
+AngleXU = 'REAL'
+
+# [sql_columns.FreecadDocumentMetadata]
+# FileUid = 'TEXT'
+# Name = 'TEXT'
+# Type = 'TEXT'
+# Status = 'TEXT'
+# Value = 'TEXT'
+
+# [sql_columns.FreecadObjectsCommon]
+# FileUid = 'TEXT'
+# Name = 'TEXT'
+# Id = 'INTEGER'
+# Type = 'TEXT'
+# Label = 'TEXT'
+# Label2 = 'TEXT'
+# Visibility = 'BOOLEAN'
+
+# [sql_columns.FreecadObjectDependencies]
+# FileUid = 'TEXT'
+# Object = 'TEXT'
+# Dependency = 'TEXT'
+
+# [sql_columns.FreecadSketchConstraints]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# ListIndex = 'INTEGER'
+# Name = 'TEXT'
+# Type = 'INTEGER'
+# Value = 'REAL'
+# First = 'INTEGER'
+# FirstPos = 'INTEGER'
+# Second = 'INTEGER'
+# SecondPos = 'INTEGER'
+# Third = 'INTEGER'
+# ThirdPos = 'INTEGER'
+# LabelDistance = 'REAL'
+# LabelPosition = 'REAL'
+# IsDriving = 'BOOLEAN'
+# IsInVirtualSpace = 'BOOLEAN'
+# IsActive = 'BOOLEAN'
+# InternalAlignmentType = 'INTEGER'
+# InternalAlignmentIndex = 'INTEGER'
+
+# [sql_columns.FreecadSketchGeometry]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# ListIndex = 'INTEGER'
+# Id = 'INTEGER'
+# Type = 'TEXT'
+# Construction = 'BOOLEAN'
+# Migrated = 'BOOLEAN'
+# internalGeometryType = 'INTEGER'
+
+# [sql_columns.FreecadLineSegment]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# Id = 'INTEGER'
+# StartX = 'REAL'
+# StartY = 'REAL'
+# StartZ = 'REAL'
+# EndX = 'REAL'
+# EndY = 'REAL'
+# EndZ = 'REAL'
+
+# [sql_columns.FreecadCircle]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# Id = 'INTEGER'
+# CenterX = 'REAL'
+# CenterY = 'REAL'
+# CenterZ = 'REAL'
+# NormalX = 'REAL'
+# NormalY = 'REAL'
+# NormalZ = 'REAL'
+# AngleXU = 'REAL'
+# Radius = 'REAL'
+
+# [sql_columns.FreecadEllipse]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# Id = 'INTEGER'
+# CenterX = 'REAL'
+# CenterY = 'REAL'
+# CenterZ = 'REAL'
+# NormalX = 'REAL'
+# NormalY = 'REAL'
+# NormalZ = 'REAL'
+# MajorRadius = 'REAL'
+# MinorRadius = 'REAL'
+# AngleXU = 'REAL'
+
+# [sql_columns.FreecadArcOfCircle]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# Id = 'INTEGER'
+# CenterX = 'REAL'
+# CenterY = 'REAL'
+# CenterZ = 'REAL'
+# NormalX = 'REAL'
+# NormalY = 'REAL'
+# NormalZ = 'REAL'
+# AngleXU = 'REAL'
+# Radius = 'REAL'
+# StartAngle = 'REAL'
+# EndAngle = 'REAL'
+
+# [sql_columns.FreecadGeomPoint]
+# FileUid = 'TEXT'
+# SketchName = 'TEXT'
+# ListName = 'TEXT'
+# Id = 'INTEGER'
+# X = 'REAL'
+# Y = 'REAL'
+# Z = 'REAL'
