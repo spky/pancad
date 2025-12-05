@@ -3,9 +3,9 @@ pancad sqlite database.
 """
 from __future__ import annotations
 
+from contextlib import closing
 from pathlib import Path
 from typing import TYPE_CHECKING
-from uuid import UUID
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
@@ -14,6 +14,7 @@ import sqlite3
 import tomllib
 
 from pancad import resources
+from pancad.constants.config_paths import DATABASE
 
 from .constants.archive_constants import Part, SubFile
 from . import xml_readers
@@ -25,66 +26,84 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-def parse_sketch_geometry(tree: ElementTree,
-                          type_: Part,
-                          tag: Tag) -> tuple[tuple[str], list[tuple[Any]]]:
-    """Reads and translates sketch geometry data from an FCStd file's document 
-    tree into data ready to write to sql. Any unrecognized fields will be passed 
-    as the existing string.
-    
-    :param tree: An FCStd document.xml ElementTree.
-    :param type_: The type attribute value on a Geometry element.
-    :param tag: The tag of the corresponding Geometry subelement.
-    :returns: A tuple of column names and a list of data tuples in the same 
-        order as the columns.
-    :raises UnsupportedGeometryType: Raised when passed an invalid type_.
-    # """
-    fields, data = xml_readers.read_sketch_geometry(tree, type_, tag)
-    try:
-        dispatch = _TO_SQL[type_]
-    except KeyError:
-        raise UnsupportedGeometryType(type_)
-    
-    parsed = []
-    for row in data:
-        row_data = []
-        for field, string in zip(fields, row):
-            try:
-                value = dispatch[field](string)
-            except KeyError:
-                value = string
-            row_data.append(value)
-        parsed.append(tuple(row_data))
-    return fields, parsed
+sqlite3.register_converter("BOOLEAN", lambda x: bool(int(x)))
 
-def ensure_tables(database: str) -> None:
+
+def write_data_to_sql(database: Path,
+                      table: str,
+                      columns: tuple[str],
+                      data: list[tuple[str]]):
+    """Writes data read using xml_readers into sql"""
+    con = sqlite3.connect(database) 
+    
+    # Translate string data to SQL types
+    with closing(con.cursor()) as cur:
+        column_info = cur.execute(
+            f"SELECT name, type FROM  pragma_table_info('{table}')"
+        ).fetchall()
+    types = {name: type_ for name, type_ in column_info}
+    dispatch = _TO_SQL_TYPE
+    parsed_data = []
+    for row in data:
+        parsed_row = []
+        for column, value in zip(columns, row):
+            try:
+                parsed_value = _TO_SQL_TYPE[types[column]](value)
+            except KeyError:
+                parsed_value = value
+            parsed_row.append(parsed_value)
+        parsed_data.append(tuple(parsed_row))
+    
+    questions = ",".join("?" * len(columns))
+    columns_csv = ",".join(columns)
+    with closing(con.cursor()) as cur:
+        command = f"INSERT INTO {table} ({columns_csv}) VALUES ({questions})"
+        cur.executemany(command, parsed_data)
+    con.commit()
+    con.close()
+
+_TO_SQL_TYPE = {
+    "TEXT": lambda x: x if x is None else str(x),
+    "BOOLEAN": lambda x: x if x is None else bool(int(x)),
+    "INTEGER": lambda x: x if x is None else int(x),
+    "REAL": lambda x: x if x is None else float(x),
+    "UUID": lambda x: x if x is None else str(x),
+}
+
+def ensure_tables(database: Path) -> None:
     """Makes sure that the pancad database has the minimum columns for each 
-    table
+    table based on the freecad.toml settings.
     """
     with open(Path(resources.__file__).parent / "freecad.toml", "rb") as file:
         config = tomllib.load(file)
     
-    for table_type, template in config["sql"]["table_commands"].items():
-        for name, settings in config["sql"][table_type].items():
-            columns = []
-            for column, type_ in settings["columns"].items():
-                columns.append(f"{column} {type_}")
-            unique_csv = ",".join(settings["unique"])
-            command = template.format(
-                name=name,
-                columns=",".join(columns),
-                uniques=",".join(settings["unique"])
-            )
-            with sqlite3.connect(database) as con:
+    for name, settings in config["sql"]["tables"].items():
+        type_ = settings["type"]
+        template = config["sql"]["table_types"][type_]
+        match type_:
+            case "listed_uniques":
+                columns = [f"{column} {type_}"
+                           for column, type_ in settings["columns"].items()]
+                command = template.format(
+                    name=name,
+                    columns=",".join(columns),
+                    uniques=",".join(settings["unique"])
+                )
+        try:
+            with closing(sqlite3.connect(database)) as con:
                 con.execute(command)
                 con.commit()
-    con.close()
-# def data_to_sql(table: str, columns: tuple[str], data: list[tuple[Any]]) -> None:
-    # with sqlite3.connect(
-    
+        except sqlite3.OperationalError as err:
+            raise FreecadTomlSqlError(
+                "freecad.toml caused sqlite3.OperationalError.\n"
+                f"Command: \n{command}".strip() + f"\nsqlite3 error: {str(err)}"
+            )
 
 def fcstd_to_sql(path: Path) -> None:
     """Reads a freecad file and loads it into the pancad database."""
+    
+    with open(Path(resources.__file__).parent / "freecad.toml", "rb") as file:
+        config = tomllib.load(file)
     
     with ZipFile(path) as file:
         with file.open(SubFile.DOCUMENT_XML) as document:
@@ -92,181 +111,35 @@ def fcstd_to_sql(path: Path) -> None:
         with file.open(SubFile.GUI_DOCUMENT_XML) as gui_document:
             gui_tree = ElementTree.fromstring(gui_document.read())
     
+    ensure_tables(DATABASE)
+    
+    # Read Non-Geometry Data
+    table_funcs = [
+        ("FreecadObjectInfo", xml_readers.read_object_info),
+        ("FreecadSketchGeometryInfo", xml_readers.read_sketch_geometry_info),
+        ("FreecadConstraint", xml_readers.read_sketch_constraints),
+        ("FreecadObjectDependencies", xml_readers.read_dependencies),
+    ]
+    for table, reader in table_funcs:
+        columns, data = reader(doc_tree)
+        write_data_to_sql(DATABASE, table, columns, data)
+    
+    # Read Sketch Geometry Data
+    geometry_tables = {table["freecad_geometry_type"]: name
+                       for name, table in config["sql"]["tables"].items()
+                       if "freecad_geometry_type" in table}
     for type_, tag in xml_readers.get_sketch_geometry_types(doc_tree):
         try:
-            columns, data = parse_sketch_geometry(doc_tree, type_, tag)
+            columns, data = xml_readers.read_sketch_geometry(doc_tree,
+                                                             type_, tag)
+            write_data_to_sql(DATABASE, geometry_tables[type_], columns, data)
         except UnsupportedGeometryType:
             logger.error(f"Could not parse geometry type in file: {type_}")
 
 class UnsupportedGeometryType(TypeError):
     """Raised when an operation is attempted on an unsupported or unknown 
-    geometry element type.
+    FreeCAD geometry element type.
     """
 
-# Dispatch dicts for writing to SQL
-_LINE_SEGMENT_TO_SQL = {
-    "FileUid": lambda x: UUID(x),
-    "id": lambda x: int(x),
-    "StartX": lambda x: float(x),
-    "StartY": lambda x: float(x),
-    "StartZ": lambda x: float(x),
-    "EndX": lambda x: float(x),
-    "EndY": lambda x: float(x),
-    "EndZ": lambda x: float(x),
-}
-
-_CIRCLE_TO_SQL = {
-    "FileUid": lambda x: UUID(x),
-    "id": lambda x: int(x),
-    "CenterX": lambda x: float(x),
-    "CenterY": lambda x: float(x),
-    "CenterZ": lambda x: float(x),
-    "NormalX": lambda x: float(x),
-    "NormalY": lambda x: float(x),
-    "NormalZ": lambda x: float(x),
-    "AngleXU": lambda x: float(x),
-    "Radius": lambda x: float(x),
-}
-
-_ELLIPSE_TO_SQL = {
-    "FileUid": lambda x: UUID(x),
-    "id": lambda x: int(x),
-    "CenterX": lambda x: float(x),
-    "CenterY": lambda x: float(x),
-    "CenterZ": lambda x: float(x),
-    "NormalX": lambda x: float(x),
-    "NormalY": lambda x: float(x),
-    "NormalZ": lambda x: float(x),
-    "MajorRadius": lambda x: float(x),
-    "MinorRadius": lambda x: float(x),
-    "AngleXU": lambda x: float(x),
-}
-
-_ARC_OF_CIRCLE_TO_SQL = {
-    "FileUid": lambda x: UUID(x),
-    "id": lambda x: int(x),
-    "CenterX": lambda x: float(x),
-    "CenterY": lambda x: float(x),
-    "CenterZ": lambda x: float(x),
-    "NormalX": lambda x: float(x),
-    "NormalY": lambda x: float(x),
-    "NormalZ": lambda x: float(x),
-    "AngleXU": lambda x: float(x),
-    "Radius": lambda x: float(x),
-    "StartAngle": lambda x: float(x),
-    "EndAngle": lambda x: float(x),
-}
-
-_POINT_TO_SQL = {
-    "FileUid": lambda x: UUID(x),
-    "id": lambda x: int(x),
-    "X": lambda x: float(x),
-    "Y": lambda x: float(x),
-    "Z": lambda x: float(x),
-}
-
-_TO_SQL = {
-    Part.LINE_SEGMENT: _LINE_SEGMENT_TO_SQL,
-    Part.CIRCLE: _CIRCLE_TO_SQL,
-    Part.ELLIPSE: _ELLIPSE_TO_SQL,
-    Part.ARC_OF_CIRCLE: _ARC_OF_CIRCLE_TO_SQL,
-    Part.POINT: _POINT_TO_SQL,
-}
-
-# sqlite3.register_adapter(UUID, lambda u: str(u))
-# sqlite3.register_adapter(bool, int)
-# sqlite3.register_converter("BOOLEAN", lambda v: bool(int(v)))
-
-# def write_line_segment(tree: 
-
-# def table_columns(table: str) -> list[str]:
-    # with open(Path(pancad_data.__file__).parent / "freecad.toml", "rb") as file:
-        # config = tomllib.load(file)["sql_columns"][table]
-    # return list(config.keys())
-
-# def table_column_settings(table: str) -> list[str]:
-    # with open(Path(pancad_data.__file__).parent / "freecad.toml", "rb") as file:
-        # config = tomllib.load(file)["sql_columns"][table]
-    # return [f"{name} {type_}" for name, type_ in config.items()]
-
-# def write_sketch_geometry(database: str,
-                          # as_read_data: list[tuple[Any]],
-                          # file_uid: str) -> None:
-    # TABLE = "FreecadSketchGeometry"
-    # columns = table_column_settings(TABLE)
-    # data = [(file_uid, *values) for values in as_read_data]
-    
-    # with closing(sqlite3.connect(database)) as con:
-        # con.execute("CREATE TABLE IF NOT EXISTS %s(%s)"
-                    # % (TABLE, ",".join(columns)))
-        # q_marks = ",".join("?" * len(columns))
-        # con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        # con.commit()
-
-# def write_constraints(database: str,
-                      # as_read_data: dict[str, list[dict]],
-                      # file_uid: UUID) -> None:
-    # TABLE = "FreecadSketchConstraints"
-    # columns = table_column_settings(TABLE)
-    # data = []
-    # for sketch, constraints in as_read_data.items():
-        # for i, constraint in enumerate(constraints):
-            # constraint.update(
-                # {"FileUid": file_uid, "SketchName": sketch, "ListIndex": i}
-            # )
-            # data.append(tuple(constraint[column]
-                              # for column in table_columns(TABLE)))
-    
-    # with closing(sqlite3.connect(database)) as con:
-        # command = """CREATE TABLE IF NOT EXISTS %s(%s,
-                  # UNIQUE(FileUid, SketchName, ListIndex))"""
-        # con.execute(command % (TABLE, ", ".join(columns)))
-        # q_marks = ",".join("?" * len(columns))
-        # con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        # con.commit()
-
-# def write_metadata(database: str, as_read_data: dict[str, Any]) -> None:
-    # """Writes FCStd file metadata to sql database. Only stores default FreeCAD 
-    # metadata.
-    # """
-    # TABLE = "FreecadDocumentMetadata"
-    # columns = table_column_settings(TABLE)
-    # data = [as_read_data[column] for column in table_columns(TABLE)]
-    
-    # with closing(sqlite3.connect(database)) as con:
-        # con.execute("CREATE TABLE IF NOT EXISTS %s(%s, UNIQUE(Uid))"
-                    # % (TABLE, ",".join(columns)))
-        # q_marks = ",".join("?" * len(columns))
-        # con.execute("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        # con.commit()
-
-# def write_objects_common(database: str,
-                         # as_read_data: list[tuple[Any]],
-                         # file_uid: UUID) -> None:
-    # """Writes the data that all FCStd objects share in common to sql database."""
-    # TABLE = "FreecadObjectsCommon"
-    # columns = table_column_settings(TABLE)
-    # data = [(file_uid,) + row for row in as_read_data]
-    
-    # with closing(sqlite3.connect(database)) as con:
-        # con.execute("CREATE TABLE IF NOT EXISTS %s(%s, UNIQUE(FileUid, Id, Name))"
-                    # % (TABLE, ",".join(columns)))
-        # q_marks = ",".join("?" * len(columns))
-        # con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        # con.commit()
-
-# def write_object_dependencies(database: str,
-                              # as_read_data: dict[str, list[str]],
-                              # file_uid: str) -> None:
-    # TABLE = "FreecadObjectDependencies"
-    # columns = table_column_settings(TABLE)
-    # data = []
-    # for result, dependencies in as_read_data.items():
-        # data.extend([(file_uid, result, dep) for dep in set(dependencies)])
-    
-    # with closing(sqlite3.connect(database)) as con:
-        # con.execute("CREATE TABLE IF NOT EXISTS %s(%s)"
-                    # % (TABLE, ",".join(columns)))
-        # q_marks = ",".join("?" * len(columns))
-        # con.executemany("INSERT INTO %s VALUES(%s)" % (TABLE, q_marks), data)
-        # con.commit()
+class FreecadTomlSqlError(sqlite3.OperationalError):
+    """Raised when the freecad.toml has caused an sqlite3 operational error."""

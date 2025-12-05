@@ -197,8 +197,8 @@ def read_sketch_geometry_info(tree: ElementTree) -> tuple[tuple[str], list[tuple
                 sketch_geometry.append(
                     (
                         file_uid, sketch_name, list_name, list_index,
-                        geometry.get(Attr.TYPE),
                         geometry.get(Attr.ID),
+                        geometry.get(Attr.TYPE),
                         geometry.get(Attr.MIGRATED),
                         construction.get(Attr.VALUE),
                         sketch_ext.get(Attr.INTERNAL_GEOMETRY_TYPE)
@@ -228,9 +228,11 @@ def read_object_info(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
         name = obj.get(Attr.NAME)
         properties = [obj.get(attr) for attr in SHARED_ATTR]
         for prop, tag in SHARED_DATA:
-            properties.append(
-                tree.find(PROPERTY_XPATH % (name, prop, tag)).get(Attr.VALUE)
-            )
+            value = tree.find(PROPERTY_XPATH % (name, prop, tag)).get(Attr.VALUE)
+            if tag == Tag.BOOL:
+                properties.append(value == "true")
+            else:
+                properties.append(value)
         info.append((file_uid,) + tuple(properties))
     return ("FileUid",) + tuple(fields), info
 
