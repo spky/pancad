@@ -21,13 +21,10 @@ from . import xml_readers
 
 if TYPE_CHECKING:
     from typing import Any
-    
     from .constants.archive_constants import Tag
 
-logger = logging.getLogger(__name__)
-
 sqlite3.register_converter("BOOLEAN", lambda x: bool(int(x)))
-
+logger = logging.getLogger(__name__)
 
 def write_data_to_sql(database: Path,
                       table: str,

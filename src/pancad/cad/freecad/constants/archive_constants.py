@@ -150,6 +150,7 @@ class App(StrEnum):
     FLOAT_CONSTRAINT = "App::PropertyFloatConstraint"
     LENGTH = "App::PropertyLength"
     LINK = "App::PropertyLink"
+    LINK_LIST = "App::PropertyLinkList"
     LINK_SUB = "App::PropertyLinkSub"
     LINK_SUBLIST = "App::PropertyLinkSubList"
     LINK_LIST_HIDDEN = "App::PropertyLinkListHidden"
@@ -164,6 +165,10 @@ class App(StrEnum):
     UUID = "App::PropertyUUID"
     VECTOR = "App::PropertyVector"
 
+class Attacher(StrEnum):
+    """Enumeration of 'Attacher::' options in FCStd xml files."""
+    ATTACH_ENGINE_PLANE = "Attacher::AttachEnginePlane"
+
 class Part(StrEnum):
     """Enumeration of 'Part::' options in FCStd xml files."""
     ARC_OF_CIRCLE = "Part::GeomArcOfCircle"
@@ -173,6 +178,14 @@ class Part(StrEnum):
     POINT = "Part::GeomPoint"
     SHAPE = "Part::PropertyPartShape"
     GEOMETRY_LIST = "Part::PropertyGeometryList"
+
+class PartDesign(StrEnum):
+    """Enumeration of 'PartDesign::' options in FCStd xml files."""
+    BODY = "PartDesign::Body"
+    PAD = "PartDesign::Pad"
+    REVOLUTION = "PartDesign::Revolution"
+    POCKET = "PartDesign::Pocket"
+    GROOVE = "PartDesign::Groove"
 
 class Materials(StrEnum):
     """Enumeration of 'Materials::' options in FCStd xml files."""
