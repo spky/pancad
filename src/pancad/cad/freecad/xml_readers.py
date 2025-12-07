@@ -14,7 +14,14 @@ from .xml_properties import (
 )
 from .xml_appearance import read_shape_appearance
 from .constants.archive_constants import (
-    SubFile, Tag, Attr, PropertyType, Sketcher, Part, App
+    App,
+    Attr,
+    Part,
+    PartDesign,
+    PropertyType,
+    Sketcher,
+    SubFile,
+    Tag,
 )
 
 if TYPE_CHECKING:
@@ -201,7 +208,7 @@ def read_object_info(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
     return ("FileUid",) + tuple(fields), info
 
 def get_sketch_geometry_types(tree: ElementTree) -> list[str]:
-    """Returns the types and tags of each geometry type in the file."""
+    """Returns the types of each sketch geometry type in the file."""
     GEOMETRY_XPATH = "./GeometryList/Geometry"
     sketch_xpath = OBJ_TYPE_XPATH.format(Sketcher.SKETCH)
     geo_list_xpath = PROP_TYPE_REL_XPATH.format(Part.GEOMETRY_LIST)
@@ -215,9 +222,15 @@ def get_sketch_geometry_types(tree: ElementTree) -> list[str]:
                 types.add(geometry.attrib[Attr.TYPE])
     return list(types)
 
+def get_object_types(tree: ElementTree) -> list[str]:
+    """Returns the types of each object type in the file."""
+    OBJECT_XPATH = "./Objects/Object"
+    return list({obj.get(Attr.TYPE) for obj in tree.findall(OBJECT_XPATH)})
+
 def read_sketch_geometry(tree: ElementTree,
                          type_: Part) -> tuple[tuple[str], list[tuple[str]]]:
-    """Returns the fields and dimensions of all sketch geometries in an FCStd file.
+    """Returns the fields and dimensions of all sketch geometry elements in an 
+    FCStd file.
     
     :param tree: An ElementTree of the document.xml file.
     :param type_: A type attribute value of a parent Geometry tag.
@@ -255,6 +268,44 @@ def read_sketch_geometry(tree: ElementTree,
                 data.append(static + dynamic)
     return STATIC_FIELDS + tuple(dynamic_fields), data
 
-def read_sketch_info(tree: ElementTree) -> tuple[tuple[str], list[tuple[str]]]:
-    """Returns the properties unique to sketches in an FCStd file."""
-    sketch_xpath = OBJ_TYPE_XPATH.format(Sketcher.SKETCH)
+def read_object_type(tree: ElementTree,
+                     type_: App | Sketcher | PartDesign
+                     ) -> tuple[tuple[str], list[tuple[str]]]:
+    """Reads the properties all 'type_' objects from a FCStd file."""
+    PROPERTY_XPATH = "./Properties/Property"
+    STATIC_FIELDS = ("FileUid", Attr.NAME, Attr.ID)
+    
+    # These types will be read by other functions or are irrelevant
+    SKIP_TYPES = [Part.GEOMETRY_LIST, Sketcher.CONSTRAINT_LIST]
+    
+    object_xpath = OBJ_TYPE_XPATH.format(type_)
+    
+    # Read data into dicts
+    file_uid = tree.find(FILE_UID_XPATH).get(Attr.VALUE)
+    data_dicts = []
+    dynamic_fields = []
+    for object_ in tree.findall(object_xpath):
+        object_name = object_.attrib[Attr.NAME]
+        properties = {"FileUid": file_uid,
+                      Attr.NAME: object_name,
+                      Attr.ID: object_.attrib[Attr.ID]}
+        object_data = tree.find(OBJ_DATA_XPATH.format(object_name))
+        for property_ in object_data.findall(PROPERTY_XPATH):
+            if property_.get(Attr.TYPE) in SKIP_TYPES:
+                continue
+            property_name = property_.get(Attr.NAME)
+            if property_name not in dynamic_fields:
+                dynamic_fields.append(property_name)
+            try:
+                properties[property_name] = read_property_value(property_)
+            except FreecadUnsupportedPropertyError as err:
+                logger.warning(f"Skip {property_name} on {object_name}: {err}")
+                properties[property_name] = err.__class__.__name__
+        data_dicts.append(properties)
+    
+    # Order data according to field order
+    data = []
+    fields = STATIC_FIELDS + tuple(dynamic_fields)
+    for object_data in data_dicts:
+        data.append(tuple(object_data.setdefault(field) for field in fields))
+    return fields, data

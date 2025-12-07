@@ -13,18 +13,9 @@ from tests import sample_freecad
 
 from itertools import islice
 
-from pancad.cad.freecad.xml_readers import (
-    read_metadata,
-    read_dependencies,
-    read_sketch_geometry_info,
-    read_sketch_constraints,
-    read_sketch_geometry,
-    get_sketch_geometry_types
-)
-from pancad.cad.freecad.xml_properties import read_properties
-from pancad.cad.freecad import xml_appearance
+from pancad.cad.freecad import xml_readers
 from pancad.cad.freecad.constants.archive_constants import (
-    Tag, SubFile, XMLGeometryType
+    Tag, SubFile, Part, Sketcher, PartDesign, App
 )
 
 from . import dump
@@ -37,14 +28,14 @@ class OneOfEachSketchGeometry(TestCase):
             self.tree = ElementTree.fromstring(document.read())
     
     def test_read_sketch_geometry_info(self):
-        test = read_sketch_geometry_info(self.tree)
+        test = xml_readers.read_sketch_geometry_info(self.tree)
         rows = [test[0], *test[1]]
         print()
         for row in rows:
             print(row)
     
     def test_read_sketch_constraints(self):
-        test = read_sketch_constraints(self.tree)
+        test = xml_readers.read_sketch_constraints(self.tree)
         rows = [test[0], *test[1]]
         print()
         for row in rows:
@@ -52,23 +43,43 @@ class OneOfEachSketchGeometry(TestCase):
     
     def test_read_sketch_geometry(self):
         tests = [
-            XMLGeometryType.ARC_OF_CIRCLE,
-            XMLGeometryType.CIRCLE,
-            XMLGeometryType.ELLIPSE,
-            XMLGeometryType.LINE_SEGMENT,
-            XMLGeometryType.POINT,
+            Part.ARC_OF_CIRCLE,
+            Part.CIRCLE,
+            Part.ELLIPSE,
+            Part.LINE_SEGMENT,
+            Part.POINT,
         ]
         for type_ in tests:
             with self.subTest(f"Read {type_.value} geometry"):
-                fields, data = read_sketch_geometry(self.tree, type_)
+                fields, data = xml_readers.read_sketch_geometry(self.tree, type_)
                 print(type_)
                 print(fields)
                 for row in data:
                     print(row)
     
     def test_get_sketch_geometry_types(self):
-        test = get_sketch_geometry_types(self.tree)
+        test = xml_readers.get_sketch_geometry_types(self.tree)
         pp(test)
+    
+    def test_get_object_types(self):
+        test = xml_readers.get_object_types(self.tree)
+        expected = [PartDesign.BODY, Sketcher.SKETCH, 
+                    App.PLANE, App.ORIGIN, App.LINE,]
+        self.assertCountEqual(test, expected)
+        pp(test)
+    
+    def test_read_object_type(self):
+        types = xml_readers.get_object_types(self.tree)
+        for type_ in types:
+            with self.subTest(f"Read {type_} object"):
+                columns, data = xml_readers.read_object_type(self.tree, type_)
+                dicts = []
+                for row in data:
+                    dicts.append(
+                        {column: value for column, value in zip(columns, row)}
+                    )
+                print(type_)
+                pp(dicts[0])
 
 class Cube1x1x1(TestCase):
     
@@ -79,9 +90,9 @@ class Cube1x1x1(TestCase):
             self.tree = ElementTree.fromstring(document.read())
     
     def test_read_metadata(self):
-        data = read_metadata(self.tree)
+        data = xml_readers.read_metadata(self.tree)
         pp(data)
     
     def test_read_dependencies(self):
-        data = read_dependencies(self.tree)
+        data = xml_readers.read_dependencies(self.tree)
         pp(data)

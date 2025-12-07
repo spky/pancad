@@ -14,7 +14,13 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 from .constants.archive_constants import (
-    Tag, Attr, PropertyType, App, Sketcher, Part
+    App,
+    Attr,
+    Materials,
+    Part,
+    PropertyType,
+    Sketcher,
+    Tag,
 )
 from .xml_geometry import GEOMETRY_DISPATCH
 
@@ -28,9 +34,16 @@ ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
 GEO_EXT_REL_XPATH = "./GeoExtensions/GeoExtension[@type='{}']"
 """Get GeoExtension element(s) under a Geometry element of a type."""
 
-def unpack_argb(packed: int) -> ARGB:
-    """Returns a tuple of ARGB values from an integer."""
-    return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
+# def unpack_argb(packed: int) -> ARGB:
+    # """Returns a tuple of ARGB values from an integer."""
+    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
+
+# def _read_color(element: Element) -> tuple[int, int, int, int]:
+    # """Returns the ARGB values from the integer in the element as a tuple."""
+    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
+    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
+    # return unpack_argb(integer)
 
 def _read_bad_type(element: Element) -> list[tuple[bool, int, float]]:
     layer_list = element.find(Tag.VISUAL_LAYER_LIST)
@@ -49,13 +62,6 @@ def _read_single(element: Element) -> str:
     for attr, value in dict(element[0].attrib).items():
         return value
 
-def _read_color(element: Element) -> tuple[int, int, int, int]:
-    """Returns the ARGB values from the integer in the element as a tuple."""
-    if len(element) != 1: raise ValueError(f"Found {len(element)}")
-    ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
-    integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
-    return unpack_argb(integer)
-
 def _read_enum(element: Element) -> str:
     """Returns the custom enumeration string or the selection integer as a 
     string.
@@ -66,12 +72,12 @@ def _read_enum(element: Element) -> str:
     else:
         return selection
 
-def _read_constraint_list(element: Element) -> list[dict]:
+def _read_constraint_list(element: Element) -> list[dict[str, str]]:
     list_name = element.get(Attr.NAME)
     data = []
     for i, constraint in enumerate(element.find(Tag.CONSTRAINT_LIST)):
         data.append(
-            {"ListName": list_name, "ListIndex": i, **constraint.attrib}
+            {"ListName": list_name, "ListIndex": str(i), **constraint.attrib}
         )
     return data
 
@@ -86,7 +92,7 @@ def _read_geometry_list(element: Element) -> list[dict[str, str]]:
     
     for list_index, geometry in enumerate(geometry_list):
         geometry_tag = ({sub.tag for sub in geometry} - NON_GEOMETRY_TAGS).pop()
-        info = {"ListName": list_name, "ListIndex": list_index}
+        info = {"ListName": list_name, "ListIndex": str(list_index)}
         info.update(geometry.find(sketch_ext_xpath).attrib)
         info.update(geometry.attrib) # Overwrites SketchExt id and type
         info[Tag.CONSTRUCTION] = geometry.find(Tag.CONSTRUCTION).get(Attr.VALUE)
@@ -100,6 +106,35 @@ def _read_link_sublist(element: Element) -> list[tuple[str, str]]:
     for link in element.find(Tag.LINK_SUB_LIST):
         links.append((link.get(Attr.OBJECT), link.get(Attr.LINK_SUB)))
     return links
+
+def _read_part_shape(element: Element) -> dict[str, str | None]:
+    """Reads the varying structure of a Part::PropertyPartShape element into a 
+    dictionary.
+    """
+    PART_MAP = {
+        Attr.HASHER_INDEX: Attr.HASHER_INDEX,
+        Attr.ELEMENT_MAP: "_".join([Attr.ELEMENT_MAP, Tag.PART]),
+        Attr.FILE: "_".join([Attr.FILE, Tag.PART])
+    }
+    MAP_2_MAP = {Attr.FILE: "_".join([Attr.FILE, Tag.ELEMENT_MAP_2]),}
+    part_dict = {}
+    map_2_dict = {}
+    
+    if (part := element.find(Tag.PART)) is not None:
+        part_dict = dict(part.attrib)
+    if (map_2 := element.find(Tag.ELEMENT_MAP_2)) is not None:
+        map_2_dict = dict(map_2.attrib)
+    
+    elements = []
+    if (element_map := element.find(Tag.ELEMENT_MAP)) is not None:
+        for mapped in element_map:
+            elements.append(dict(mapped.attrib))
+    
+    return {
+        **{new: part_dict.setdefault(old) for old, new in PART_MAP.items()},
+        **{new: map_2_dict.setdefault(old) for old, new in MAP_2_MAP.items()},
+        Tag.ELEMENT_MAP: elements,
+    }
 
 def _read_subelement_list(element: Element) -> list:
     """Returns each subelement value in a nested list"""
@@ -123,6 +158,7 @@ PROPERTY_DISPATCH = {
     App.FLOAT: _read_single,
     App.FLOAT_CONSTRAINT: _read_single,
     App.LENGTH: _read_single,
+    App.LINK: _read_single,
     App.LINK_SUBLIST: _read_link_sublist,
     App.LINK_LIST: _read_subelement_list,
     App.LINK_LIST_HIDDEN: _read_subelement_list,
@@ -136,41 +172,15 @@ PROPERTY_DISPATCH = {
     App.STRING: _read_single,
     App.UUID: _read_single,
     
+    Materials.MATERIAL: _read_single,
+    
     PropertyType.BAD_TYPE: _read_bad_type,
     
     Part.GEOMETRY_LIST: _read_geometry_list,
+    Part.SHAPE: _read_part_shape,
     
     Sketcher.CONSTRAINT_LIST: _read_constraint_list,
 }
-
-def read_sketch_geometry_common(object_: Element) -> tuple[tuple[str], list[tuple[Any]]]:
-    """Returns a list of data common to all geometry tuples for each sketch 
-    geometry element in the properties list element.
-    """
-    
-    list_names = ["ExternalGeo", "Geometry"]
-    lists = []
-    for property_ in properties.iter(Tag.PROPERTY):
-        if (name := property_.get(Attr.NAME)) in list_names:
-            lists.append((name, property_))
-    
-    if not lists:
-        return None
-    
-    geometry = []
-    for list_name, property_element in lists:
-        list_element = property_element.find(Tag.GEOMETRY_LIST)
-        for list_index, element in enumerate(list_element):
-            type_ = element.get(Attr.TYPE)
-            id_ = int(element.get(Attr.ID))
-            construction = bool(
-                int(element.find(Tag.CONSTRUCTION).get(Attr.VALUE))
-            )
-            migrated = bool(int(element.get(Attr.MIGRATED)))
-            geometry.append(
-                (list_name, list_index, id_, type_, construction, migrated)
-            )
-    return geometry
 
 def read_properties(element: Element) -> list[tuple[str, str, int, Any]]:
     """Reads the property formatted tags under the element.

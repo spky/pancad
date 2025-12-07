@@ -11,6 +11,7 @@ install_dir = [
 ]
 
 [sql]
+
 [sql.table_types]
 listed_uniques = '''
 CREATE TABLE IF NOT EXISTS {name} (
@@ -53,6 +54,15 @@ unique = ['FileUid', 'Object', 'Dependency']
 FileUid = 'UUID'
 Object = 'TEXT'
 Dependency = 'TEXT'
+
+# Object Tables
+[sql.tables.FreecadSketch]
+type = 'listed_uniques'
+unique = ['FileUid', 'name', 'id']
+[sql.tables.FreecadSketch.columns]
+FileUid = 'UUID'
+name = 'TEXT'
+id = 'INTEGER'
 
 # Sketch Elements Tables
 [sql.tables.FreecadConstraint]
