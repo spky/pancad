@@ -249,6 +249,7 @@ class Attr(StrEnum):
     SCHEMA_VERSION = "SchemaVersion"
     PROGRAM_VERSION = "ProgramVersion"
     FILE_VERSION = "FileVersion"
+    SETTINGS = "settings"
     STRING_HASHER = "StringHasher"
     STATUS = "status"
     TRANSIENT_COUNT = "TransientCount"

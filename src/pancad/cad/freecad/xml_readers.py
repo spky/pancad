@@ -79,6 +79,35 @@ def read_extensions(extensions: Element) -> list[tuple[str, str]]:
         data.append((ext.get(Attr.TYPE), ext.get(Attr.NAME)))
     return data
 
+def view_provider_properties(tree: ElementTree, name: str) -> dict[str, Any]:
+    """Reads the view provider properties associated with the object named 'name'
+    
+    :param tree: The ElementTree of a FCStd GuiDocument.xml
+    :param name: The name of an object in the FCStd file
+    """
+    PROVIDER_XPATH = "./ViewProviderData/ViewProvider[@name='{}']"
+    PROPERTY_XPATH = "./Properties/Property"
+    provider = tree.find(PROVIDER_XPATH.format(name))
+    data = dict(provider.attrib)
+    for property_ in provider.findall(PROPERTY_XPATH):
+        data[property_.get(Attr.NAME)] = read_property_value(property_)
+    return data
+
+def camera(tree: ElementTree) -> dict[str, str]:
+    """Reads the camera settings of an FCStd file from the GuiDocument.xml."""
+    element = tree.find(Tag.CAMERA)
+    settings = element.get(Attr.SETTINGS)
+    lines = settings.split("\n")
+    IGNORE = ["", "}"]
+    lines = [line.strip() for line in settings.split("\n") if line not in IGNORE]
+    data = {}
+    data["CameraType"] = lines.pop(0).split()[0]
+    for line in lines:
+        line_list = line.split()
+        name = line_list.pop(0)
+        data[name] = " ".join(line_list)
+    return data
+
 def read_view_provider_data(view_provider_data: Element
                             ) -> list[tuple[dict[str, str], list, list]]:
     """Reads ViewProvider elements from a ViewProviderData element as a list of 

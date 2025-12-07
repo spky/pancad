@@ -108,6 +108,8 @@ class Cube1x1x1(TestCase):
         self.path = sample_dir / "cube_1x1x1.FCStd"
         with ZipFile(self.path).open(SubFile.DOCUMENT_XML) as document:
             self.tree = ElementTree.fromstring(document.read())
+        with ZipFile(self.path).open(SubFile.GUI_DOCUMENT_XML) as document:
+            self.gui_tree = ElementTree.fromstring(document.read())
     
     def test_read_metadata(self):
         data = xml_readers.read_metadata(self.tree)
@@ -129,3 +131,10 @@ class Cube1x1x1(TestCase):
                     )
                 print(type_)
                 pp(dicts[0])
+    
+    def test_view_provider_properties(self):
+        data = xml_readers.view_provider_properties(self.gui_tree, "Sketch")
+        pp(data)
+    
+    def test_camera(self):
+        data = xml_readers.camera(self.gui_tree)
