@@ -81,6 +81,26 @@ class OneOfEachSketchGeometry(TestCase):
                 print(type_)
                 pp(dicts[0])
 
+class OneOfEachFeature(TestCase):
+    def setUp(self):
+        sample_dir = Path(sample_freecad.__file__).parent
+        self.path = sample_dir / "one_of_each_feature.FCStd"
+        with ZipFile(self.path).open(SubFile.DOCUMENT_XML) as document:
+            self.tree = ElementTree.fromstring(document.read())
+    
+    def test_read_object_type(self):
+        types = xml_readers.get_object_types(self.tree)
+        for type_ in types:
+            with self.subTest(f"Read {type_} object"):
+                columns, data = xml_readers.read_object_type(self.tree, type_)
+                dicts = []
+                for row in data:
+                    dicts.append(
+                        {column: value for column, value in zip(columns, row)}
+                    )
+                print(type_)
+                pp(dicts[0])
+
 class Cube1x1x1(TestCase):
     
     def setUp(self):
@@ -96,3 +116,16 @@ class Cube1x1x1(TestCase):
     def test_read_dependencies(self):
         data = xml_readers.read_dependencies(self.tree)
         pp(data)
+    
+    def test_read_object_type(self):
+        types = xml_readers.get_object_types(self.tree)
+        for type_ in types:
+            with self.subTest(f"Read {type_} object"):
+                columns, data = xml_readers.read_object_type(self.tree, type_)
+                dicts = []
+                for row in data:
+                    dicts.append(
+                        {column: value for column, value in zip(columns, row)}
+                    )
+                print(type_)
+                pp(dicts[0])

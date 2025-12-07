@@ -100,12 +100,25 @@ def _read_geometry_list(element: Element) -> list[dict[str, str]]:
         geometries.append(info)
     return geometries
 
+def _read_link_sub(element: Element) -> dict[str, str]:
+    link_sub = element.find(Tag.LINK_SUB)
+    return {
+        Attr.NAME: link_sub.get(Attr.VALUE),
+        Tag.SUB: [dict(sub.attrib) for sub in link_sub],
+    }
+
 def _read_link_sublist(element: Element) -> list[tuple[str, str]]:
     """Returns the name and sub in each link in the link sublist"""
     links = []
     for link in element.find(Tag.LINK_SUB_LIST):
         links.append((link.get(Attr.OBJECT), link.get(Attr.LINK_SUB)))
     return links
+
+def _read_multi_subelement_to_dicts(element: Element) -> list[dict[str, str]]:
+    subelements = []
+    for subelement in element[0]:
+        subelements.append(dict(subelement.attrib))
+    return subelements
 
 def _read_part_shape(element: Element) -> dict[str, str | None]:
     """Reads the varying structure of a Part::PropertyPartShape element into a 
@@ -136,7 +149,7 @@ def _read_part_shape(element: Element) -> dict[str, str | None]:
         Tag.ELEMENT_MAP: elements,
     }
 
-def _read_subelement_list(element: Element) -> list:
+def _read_subelement_list(element: Element) -> list[str]:
     """Returns each subelement value in a nested list"""
     values = []
     for list_element in element[0]:
@@ -144,6 +157,8 @@ def _read_subelement_list(element: Element) -> list:
             values.append(value)
             break
     return values
+
+
 
 def _read_subelement_attrib_to_dict(element: Element) -> dict[str, str]:
     """Returns the single subelement's attributes as a dict."""
@@ -155,11 +170,13 @@ PROPERTY_DISPATCH = {
     App.COLOR: _read_single,
     App.COLOR_LIST: _read_single,
     App.ENUM: _read_enum,
+    App.EXPRESSION_ENGINE: _read_multi_subelement_to_dicts,
     App.FLOAT: _read_single,
     App.FLOAT_CONSTRAINT: _read_single,
     App.LENGTH: _read_single,
     App.LINK: _read_single,
-    App.LINK_SUBLIST: _read_link_sublist,
+    App.LINK_SUB: _read_link_sub,
+    App.LINK_SUBLIST: _read_multi_subelement_to_dicts,
     App.LINK_LIST: _read_subelement_list,
     App.LINK_LIST_HIDDEN: _read_subelement_list,
     App.MATERIAL: _read_subelement_attrib_to_dict,
