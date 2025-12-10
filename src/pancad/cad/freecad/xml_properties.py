@@ -2,16 +2,15 @@
 properties from/to its save files.
 """
 from __future__ import annotations
-from functools import partial
 
-from collections import namedtuple
 import logging
-from typing import TYPE_CHECKING, Any
-from uuid import UUID
-from datetime import datetime
-from xml.etree import ElementTree as ET
+import tomllib
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+from pancad import resources
 
 from .constants.archive_constants import (
     App,
@@ -22,40 +21,26 @@ from .constants.archive_constants import (
     Sketcher,
     Tag,
 )
-from .xml_geometry import GEOMETRY_DISPATCH
 
 if TYPE_CHECKING:
+    from typing import Any
     from xml.etree.ElementTree import Element
 
 logger = logging.getLogger(__name__)
 
-ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
-"""Typing for alpha red blue green color data"""
-GEO_EXT_REL_XPATH = "./GeoExtensions/GeoExtension[@type='{}']"
-"""Get GeoExtension element(s) under a Geometry element of a type."""
+### Configuration
+def _xml_config() -> dict[str, str]:
+    """Returns the xml configuration dict of the freecad.toml file"""
+    FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
+    with open(FREECAD_TOML, "rb") as file:
+        return tomllib.load(file)["xml"]
 
-# def unpack_argb(packed: int) -> ARGB:
-    # """Returns a tuple of ARGB values from an integer."""
-    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
-
-# def _read_color(element: Element) -> tuple[int, int, int, int]:
-    # """Returns the ARGB values from the integer in the element as a tuple."""
-    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
-    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
-    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
-    # return unpack_argb(integer)
-
-def _read_bad_type(element: Element) -> list[tuple[bool, int, float]]:
+### Type Readers
+def _read_bad_type(element: Element) -> list[dict[str, str]]:
     layer_list = element.find(Tag.VISUAL_LAYER_LIST)
     if layer_list.tag != Tag.VISUAL_LAYER_LIST:
         raise ValueError(f"Unexpected tag: {element.tag}")
-    layers = []
-    for list_ in layer_list.iter(Tag.VISUAL_LAYER):
-        visible = list_.attrib[Attr.VISIBLE] == "true"
-        line_pattern = int(list_.attrib[Attr.LINE_PATTERN])
-        line_width = float(list_.attrib[Attr.LINE_WIDTH])
-        layers.append((visible, line_pattern, line_width))
-    return layers
+    return [dict(list_.attrib) for list_ in layer_list.iter(Tag.VISUAL_LAYER)]
 
 def _read_single(element: Element) -> str:
     """Reads the value from of the element nested in a property to a string."""
@@ -73,26 +58,37 @@ def _read_enum(element: Element) -> str:
         return selection
 
 def _read_constraint_list(element: Element) -> list[dict[str, str]]:
+    fields = _xml_config()["pancad"]["fields"]
+    
     list_name = element.get(Attr.NAME)
     data = []
     for i, constraint in enumerate(element.find(Tag.CONSTRAINT_LIST)):
         data.append(
-            {"ListName": list_name, "ListIndex": str(i), **constraint.attrib}
+            {
+                fields["list_name"]: list_name,
+                fields["list_index"]: str(i),
+                **constraint.attrib,
+            }
         )
     return data
 
 def _read_geometry_list(element: Element) -> list[dict[str, str]]:
+    config = _xml_config()
+    xpaths = config["xpaths"]
+    fields = config["pancad"]["fields"]
+    
     NON_GEOMETRY_TAGS = {Tag.GEOMETRY_EXTENSIONS, Tag.CONSTRUCTION}
     EXT_IGNORE_ATTR = [Attr.TYPE, Attr.ID]
     list_name = element.get(Attr.NAME)
     
     geometries = []
     geometry_list = element.find(Tag.GEOMETRY_LIST)
-    sketch_ext_xpath = GEO_EXT_REL_XPATH.format(Sketcher.GEOMETRY_EXT)
+    sketch_ext_xpath = xpaths["GEOMETRY_EXT"].format(Sketcher.GEOMETRY_EXT)
     
     for list_index, geometry in enumerate(geometry_list):
         geometry_tag = ({sub.tag for sub in geometry} - NON_GEOMETRY_TAGS).pop()
-        info = {"ListName": list_name, "ListIndex": str(list_index)}
+        info = {fields["list_name"]: list_name,
+                fields["list_index"]: str(list_index)}
         info.update(geometry.find(sketch_ext_xpath).attrib)
         info.update(geometry.attrib) # Overwrites SketchExt id and type
         info[Tag.CONSTRUCTION] = geometry.find(Tag.CONSTRUCTION).get(Attr.VALUE)
@@ -199,14 +195,6 @@ PROPERTY_DISPATCH = {
     Sketcher.CONSTRAINT_LIST: _read_constraint_list,
 }
 
-def read_properties(element: Element) -> list[tuple[str, str, int, Any]]:
-    """Reads the property formatted tags under the element.
-    
-    :param element: The Properties element with elements underneath.
-    :returns: A list of (Name, Type, Status, Value) tuples.
-    """
-    return [read_property(prop) for prop in element.iter(Tag.PROPERTY)]
-
 def read_property_value(element: Element) -> str | dict[str, str]:
     """Reads the values associated with a Property element."""
     type_ = element.attrib[Attr.TYPE]
@@ -230,3 +218,17 @@ class FreecadPropertyParseError(ValueError):
     """Raised when a property can't be read from a FreeCAD file because an error 
     was encountered while reading its value.
     """
+
+# Possible Future implementation for color reading:
+# ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+# """Typing for alpha red blue green color data"""
+# def unpack_argb(packed: int) -> ARGB:
+    # """Returns a tuple of ARGB values from an integer."""
+    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
+
+# def _read_color(element: Element) -> tuple[int, int, int, int]:
+    # """Returns the ARGB values from the integer in the element as a tuple."""
+    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
+    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
+    # return unpack_argb(integer)

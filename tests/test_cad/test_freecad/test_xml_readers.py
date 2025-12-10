@@ -1,22 +1,15 @@
-import os
 from pathlib import Path
 from pprint import pp
-import datetime
-from uuid import UUID
-import sqlite3
 from zipfile import ZipFile
-from contextlib import closing
-from unittest import TestCase, skip
+from unittest import TestCase
 from xml.etree import ElementTree
 
-from tests import sample_freecad
-
-from itertools import islice
-
-from pancad.cad.freecad import xml_readers
+from pancad.cad.freecad import read_xml
 from pancad.cad.freecad.constants.archive_constants import (
-    Tag, SubFile, Part, Sketcher, PartDesign, App
+    App, Part, PartDesign, Sketcher, SubFile
 )
+
+from tests import sample_freecad
 
 from . import dump
 
@@ -27,21 +20,19 @@ class OneOfEachSketchGeometry(TestCase):
         with ZipFile(self.path).open(SubFile.DOCUMENT_XML) as document:
             self.tree = ElementTree.fromstring(document.read())
     
-    def test_read_sketch_geometry_info(self):
-        test = xml_readers.read_sketch_geometry_info(self.tree)
-        rows = [test[0], *test[1]]
-        print()
-        for row in rows:
-            print(row)
+    def test_object_info(self):
+        data = read_xml.object_info(self.tree)
+        pp(data)
     
-    def test_read_sketch_constraints(self):
-        test = xml_readers.read_sketch_constraints(self.tree)
-        rows = [test[0], *test[1]]
-        print()
-        for row in rows:
-            print(row)
+    def test_sketch_geometry_info(self):
+        test = read_xml.sketch_geometry_info(self.tree)
+        pp(test)
     
-    def test_read_sketch_geometry(self):
+    def test_sketch_constraints(self):
+        test = read_xml.sketch_constraints(self.tree)
+        pp(test)
+    
+    def test_sketch_geometry(self):
         tests = [
             Part.ARC_OF_CIRCLE,
             Part.CIRCLE,
@@ -51,35 +42,27 @@ class OneOfEachSketchGeometry(TestCase):
         ]
         for type_ in tests:
             with self.subTest(f"Read {type_.value} geometry"):
-                fields, data = xml_readers.read_sketch_geometry(self.tree, type_)
-                print(type_)
-                print(fields)
-                for row in data:
-                    print(row)
+                data = read_xml.sketch_geometry(self.tree, type_)
+                pp(data)
     
-    def test_get_sketch_geometry_types(self):
-        test = xml_readers.get_sketch_geometry_types(self.tree)
+    def test_sketch_geometry_types(self):
+        test = read_xml.sketch_geometry_types(self.tree)
         pp(test)
     
-    def test_get_object_types(self):
-        test = xml_readers.get_object_types(self.tree)
+    def test_object_types(self):
+        test = read_xml.object_types(self.tree)
         expected = [PartDesign.BODY, Sketcher.SKETCH, 
                     App.PLANE, App.ORIGIN, App.LINE,]
         self.assertCountEqual(test, expected)
         pp(test)
     
-    def test_read_object_type(self):
-        types = xml_readers.get_object_types(self.tree)
+    def test_object_type(self):
+        types = read_xml.object_types(self.tree)
         for type_ in types:
             with self.subTest(f"Read {type_} object"):
-                columns, data = xml_readers.read_object_type(self.tree, type_)
-                dicts = []
-                for row in data:
-                    dicts.append(
-                        {column: value for column, value in zip(columns, row)}
-                    )
+                data = read_xml.object_type(self.tree, type_)
                 print(type_)
-                pp(dicts[0])
+                pp(data)
 
 class OneOfEachFeature(TestCase):
     def setUp(self):
@@ -88,21 +71,14 @@ class OneOfEachFeature(TestCase):
         with ZipFile(self.path).open(SubFile.DOCUMENT_XML) as document:
             self.tree = ElementTree.fromstring(document.read())
     
-    def test_read_object_type(self):
-        types = xml_readers.get_object_types(self.tree)
+    def test_object_type(self):
+        types = read_xml.object_types(self.tree)
         for type_ in types:
             with self.subTest(f"Read {type_} object"):
-                columns, data = xml_readers.read_object_type(self.tree, type_)
-                dicts = []
-                for row in data:
-                    dicts.append(
-                        {column: value for column, value in zip(columns, row)}
-                    )
-                print(type_)
-                pp(dicts[0])
+                data = read_xml.object_type(self.tree, type_)
+                pp(data)
 
 class Cube1x1x1(TestCase):
-    
     def setUp(self):
         sample_dir = Path(sample_freecad.__file__).parent
         self.path = sample_dir / "cube_1x1x1.FCStd"
@@ -111,30 +87,36 @@ class Cube1x1x1(TestCase):
         with ZipFile(self.path).open(SubFile.GUI_DOCUMENT_XML) as document:
             self.gui_tree = ElementTree.fromstring(document.read())
     
-    def test_read_metadata(self):
-        data = xml_readers.read_metadata(self.tree)
+    def test_metadata(self):
+        data = read_xml.metadata(self.tree)
         pp(data)
     
-    def test_read_dependencies(self):
-        data = xml_readers.read_dependencies(self.tree)
+    def test_dependencies(self):
+        data = read_xml.dependencies(self.tree)
         pp(data)
     
-    def test_read_object_type(self):
-        types = xml_readers.get_object_types(self.tree)
+    def test_object_type(self):
+        types = read_xml.object_types(self.tree)
         for type_ in types:
             with self.subTest(f"Read {type_} object"):
-                columns, data = xml_readers.read_object_type(self.tree, type_)
-                dicts = []
-                for row in data:
-                    dicts.append(
-                        {column: value for column, value in zip(columns, row)}
-                    )
-                print(type_)
-                pp(dicts[0])
+                data = read_xml.object_type(self.tree, type_)
+                pp(data)
     
     def test_view_provider_properties(self):
-        data = xml_readers.view_provider_properties(self.gui_tree, "Sketch")
+        data = read_xml.view_provider_properties(self.gui_tree, "Sketch")
         pp(data)
     
     def test_camera(self):
-        data = xml_readers.camera(self.gui_tree)
+        data = read_xml.camera(self.gui_tree)
+        expected = {
+            'CameraType': 'OrthographicCamera',
+            'viewportMapping': 'ADJUST_CAMERA',
+            'position': '0.55408478 -3.0705452 22.883564',
+            'orientation': '-0.74290597 0.30772173 0.59447283 5.0660691',
+            'nearDistance': '1.429081e-005',
+            'farDistance': '44.038101',
+            'aspectRatio': '1',
+            'focalDistance': '15.944237',
+            'height': '122.14027'
+         }
+        self.assertDictEqual(data, expected)
