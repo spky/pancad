@@ -1,5 +1,5 @@
-"""A module providing functions for reading and writing FreeCAD xml 
-properties from/to its save files.
+"""A module providing functions for reading FreeCAD xml properties from its save 
+files without the FreeCAD Python API.
 """
 from __future__ import annotations
 
@@ -7,8 +7,6 @@ import logging
 import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from pancad import resources
 
@@ -28,18 +26,31 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+FreecadPropertyValueType = (
+    str
+    | list[str]
+    | dict[str, str | None | list[dict[str, str]] | list[str]]
+)
+"""The possible return types from the read_property_value function."""
+
 ### Configuration
 def _xml_config() -> dict[str, str]:
-    """Returns the xml configuration dict of the freecad.toml file"""
+    """Returns the xml configuration dict of the freecad.toml file."""
     FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
     with open(FREECAD_TOML, "rb") as file:
         return tomllib.load(file)["xml"]
 
 ### Type Readers
 def _read_bad_type(element: Element) -> list[dict[str, str]]:
-    layer_list = element.find(Tag.VISUAL_LAYER_LIST)
+    """Reads BadType typed elements, which appears to be some form of FreeCAD 
+    file error. Only been seen on VisualLayerList elements.
+    
+    :raises FreecadUnknownBadTypeTag: Raised when the first subelement is not 
+        VisualLayerList.
+    """
+    layer_list = element[0]
     if layer_list.tag != Tag.VISUAL_LAYER_LIST:
-        raise ValueError(f"Unexpected tag: {element.tag}")
+        raise FreecadUnknownBadTypeTag(f"Unexpected tag: {element.tag}")
     return [dict(list_.attrib) for list_ in layer_list.iter(Tag.VISUAL_LAYER)]
 
 def _read_single(element: Element) -> str:
@@ -48,9 +59,7 @@ def _read_single(element: Element) -> str:
         return value
 
 def _read_enum(element: Element) -> str:
-    """Returns the custom enumeration string or the selection integer as a 
-    string.
-    """
+    """Returns the custom enumeration str or the selection integer as a str."""
     selection = element.find(Tag.INTEGER).attrib[Attr.VALUE]
     if (enum_list := element.find(Tag.CUSTOM_ENUM_LIST)) is not None:
         return enum_list[int(selection)].attrib[Attr.VALUE]
@@ -58,6 +67,9 @@ def _read_enum(element: Element) -> str:
         return selection
 
 def _read_constraint_list(element: Element) -> list[dict[str, str]]:
+    """Reads all constraint properties into a dict list. Also adds the list name 
+    and respective index based on the appearance order for each constraint.
+    """
     fields = _xml_config()["pancad"]["fields"]
     
     list_name = element.get(Attr.NAME)
@@ -73,6 +85,9 @@ def _read_constraint_list(element: Element) -> list[dict[str, str]]:
     return data
 
 def _read_geometry_list(element: Element) -> list[dict[str, str]]:
+    """Reads geometry properties into a dict list. Also adds the list name and 
+    respective index based on the appearance order for each geometry.
+    """
     config = _xml_config()
     xpaths = config["xpaths"]
     fields = config["pancad"]["fields"]
@@ -97,20 +112,15 @@ def _read_geometry_list(element: Element) -> list[dict[str, str]]:
     return geometries
 
 def _read_link_sub(element: Element) -> dict[str, str]:
+    """Reads LinkSub elements to a dict"""
     link_sub = element.find(Tag.LINK_SUB)
     return {
         Attr.NAME: link_sub.get(Attr.VALUE),
         Tag.SUB: [dict(sub.attrib) for sub in link_sub],
     }
 
-def _read_link_sublist(element: Element) -> list[tuple[str, str]]:
-    """Returns the name and sub in each link in the link sublist"""
-    links = []
-    for link in element.find(Tag.LINK_SUB_LIST):
-        links.append((link.get(Attr.OBJECT), link.get(Attr.LINK_SUB)))
-    return links
-
 def _read_multi_subelement_to_dicts(element: Element) -> list[dict[str, str]]:
+    """Reads each subelement attrib dict into a dict list"""
     subelements = []
     for subelement in element[0]:
         subelements.append(dict(subelement.attrib))
@@ -118,7 +128,7 @@ def _read_multi_subelement_to_dicts(element: Element) -> list[dict[str, str]]:
 
 def _read_part_shape(element: Element) -> dict[str, str | None]:
     """Reads the varying structure of a Part::PropertyPartShape element into a 
-    dictionary.
+    consistently labeled dictionary.
     """
     PART_MAP = {
         Attr.HASHER_INDEX: Attr.HASHER_INDEX,
@@ -154,13 +164,12 @@ def _read_subelement_list(element: Element) -> list[str]:
             break
     return values
 
-
-
 def _read_subelement_attrib_to_dict(element: Element) -> dict[str, str]:
     """Returns the single subelement's attributes as a dict."""
     return dict(element[0].attrib)
 
-PROPERTY_DISPATCH = {
+### Property Reading
+PROPERTY_DISPATCH = { 
     App.ANGLE: _read_single,
     App.BOOL: _read_single,
     App.COLOR: _read_single,
@@ -194,13 +203,25 @@ PROPERTY_DISPATCH = {
     
     Sketcher.CONSTRAINT_LIST: _read_constraint_list,
 }
+"""A dict matching xml types to their respective parsing function calls."""
 
-def read_property_value(element: Element) -> str | dict[str, str]:
-    """Reads the values associated with a Property element."""
+def read_property_value(element: Element) -> FreecadPropertyValueType:
+    """Reads the values associated with a Property element.
+    
+    :param element: A Property element.
+    :raises FreecadPropertyParseError: When a property type was recognized but 
+        could not be parsed.
+    :raises FreecadUnsupportedPropertyError: When an unknown property type is 
+        encountered.
+    """
     type_ = element.attrib[Attr.TYPE]
     try:
         value = PROPERTY_DISPATCH[type_](element)
         return value
+    except FreecadUnknownBadTypeTag as err:
+        name = element.get(Attr.NAME)
+        logger.error(f"Could not read '{name}' BadType unknown tag: {err}")
+        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
     except KeyError as err:
         name = element.get(Attr.NAME)
         raise FreecadUnsupportedPropertyError(f"'{name}' typed {err}")
@@ -208,6 +229,9 @@ def read_property_value(element: Element) -> str | dict[str, str]:
         name = element.get(Attr.NAME)
         raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
 
+### Exceptions
+class FreecadUnknownBadTypeTag(ValueError):
+    """Raised when a BadType typed element is encountered with an unknown tag."""
 
 class FreecadUnsupportedPropertyError(KeyError):
     """Raised when a property can't be read from a FreeCAD file because it hasn't 

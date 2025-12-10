@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING
 
 from pancad import resources
 
-from .xml_properties import read_property_value, FreecadUnsupportedPropertyError
+from .xml_properties import (
+    read_property_value,
+    FreecadPropertyValueType,
+    FreecadUnsupportedPropertyError,
+)
 from .constants.archive_constants import Attr, Part, Sketcher, Tag
 
 if TYPE_CHECKING:
@@ -83,7 +87,7 @@ def extensions(element: Element) -> list[tuple[str, str]]:
         data.append((ext.get(Attr.TYPE), ext.get(Attr.NAME)))
     return data
 
-def metadata(tree: ElementTree) -> list[dict[str, str]]:
+def metadata(tree: ElementTree) -> list[dict[str, FreecadPropertyValueType]]:
     """Returns a tuple of field names and a tuple of values for FCStd metadata."""
     config = _xml_config()
     xpaths = config["xpaths"]
@@ -109,7 +113,7 @@ def metadata(tree: ElementTree) -> list[dict[str, str]]:
         )
     return data
 
-def object_info(tree: ElementTree) -> list[dict[str, str]]:
+def object_info(tree: ElementTree) -> list[dict[str, FreecadPropertyValueType]]:
     """Returns a tuple of field names and a tuple of values for fields common to 
     all objects in an FCStd document.xml tree.
     """
@@ -135,7 +139,7 @@ def object_info(tree: ElementTree) -> list[dict[str, str]]:
 
 def object_type(tree: ElementTree,
                 type_: App | Sketcher | PartDesign
-                ) -> list[dict[str, str | dict[str, str] | list[str]]]:
+                ) -> list[dict[str, FreecadPropertyValueType]]:
     """Reads the properties all objects of a type from a FCStd file."""
     SKIP_TYPES = [Part.GEOMETRY_LIST, Sketcher.CONSTRAINT_LIST]
     # These types will be read by other functions
@@ -271,7 +275,7 @@ def sketch_geometry_info(tree: ElementTree) -> list[dict[str, str]]:
             geometry_info = read_property_value(property_)
             for geometry in geometry_info:
                 geometry = {key: geometry[key] for key in geometry
-                            if key not in SHARED_FIELDS}
+                            if key in SHARED_FIELDS}
                 info.append({**static, **geometry})
     return info
 
@@ -291,7 +295,7 @@ def sketch_geometry_types(tree: ElementTree) -> list[str]:
     return list(types)
 
 def view_provider_properties(tree: ElementTree, name: str
-                             ) -> dict[str, str | dict[str, str]]:
+                             ) -> dict[str, FreecadPropertyValueType]:
     """Reads the view provider properties associated with the object named 'name'
     
     :param tree: The ElementTree of a FCStd GuiDocument.xml
