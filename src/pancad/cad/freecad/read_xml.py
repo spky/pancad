@@ -1,6 +1,7 @@
 """A module providing functions for reading FreeCAD xml directly."""
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 import logging
 import tomllib
@@ -21,12 +22,6 @@ if TYPE_CHECKING:
     from .constants.archive_constants import App, PartDesign
 
 logger = logging.getLogger(__name__)
-
-def _xml_config() -> dict[str, str]:
-    """Returns the xml configuration dict of the freecad.toml file"""
-    FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
-    with open(FREECAD_TOML, "rb") as file:
-        return tomllib.load(file)["xml"]
 
 def camera(tree: ElementTree) -> dict[str, str]:
     """Reads the camera settings of an FCStd file from the GuiDocument.xml."""
@@ -307,3 +302,10 @@ def view_provider_properties(tree: ElementTree, name: str
     for property_ in provider.findall(xpaths["PROPERTY"]):
         data[property_.get(Attr.NAME)] = read_property_value(property_)
     return data
+
+@cache
+def _xml_config() -> dict[str, str]:
+    """Returns the xml configuration dict of the freecad.toml file"""
+    FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
+    with open(FREECAD_TOML, "rb") as file:
+        return tomllib.load(file)["xml"]

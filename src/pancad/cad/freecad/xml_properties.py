@@ -3,6 +3,7 @@ files without the FreeCAD Python API.
 """
 from __future__ import annotations
 
+from functools import cache
 import logging
 import tomllib
 from pathlib import Path
@@ -10,17 +11,10 @@ from typing import TYPE_CHECKING
 
 from pancad import resources
 
-from .constants.archive_constants import (
-    App,
-    Attr,
-    Materials,
-    Part,
-    PropertyType,
-    Sketcher,
-    Tag,
-)
+from .constants.archive_constants import Attr, Sketcher, Tag
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any
     from xml.etree.ElementTree import Element
 
@@ -33,12 +27,60 @@ FreecadPropertyValueType = (
 )
 """The possible return types from the read_property_value function."""
 
+### Property Reading
+def read_property_value(element: Element) -> FreecadPropertyValueType:
+    """Reads the values associated with a Property element.
+    
+    :param element: A Property element.
+    :raises FreecadPropertyParseError: When a property type was recognized but 
+        could not be parsed.
+    :raises FreecadUnsupportedPropertyError: When an unknown property type is 
+        encountered.
+    """
+    type_ = element.attrib[Attr.TYPE]
+    dispatch = _property_dispatch()
+    try:
+        value = dispatch[type_](element)
+        return value
+    except FreecadUnknownBadTypeTag as err:
+        name = element.get(Attr.NAME)
+        logger.error(f"Could not read '{name}' BadType unknown tag: {err}")
+        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
+    except KeyError as err:
+        name = element.get(Attr.NAME)
+        raise FreecadUnsupportedPropertyError(f"'{name}' typed {err}")
+    except Exception as err:
+        name = element.get(Attr.NAME)
+        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
+
 ### Configuration
+@cache
 def _xml_config() -> dict[str, str]:
     """Returns the xml configuration dict of the freecad.toml file."""
     FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
     with open(FREECAD_TOML, "rb") as file:
         return tomllib.load(file)["xml"]
+
+@cache
+def _property_dispatch() -> dict[str, Callable[Element]]:
+    """Returns a dict mapping xml types to their respective parsing function."""
+    PARSERS = {
+        "bad_type": _read_bad_type,
+        "enum": _read_enum,
+        "constraint_list": _read_constraint_list,
+        "geometry_list": _read_geometry_list,
+        "link_sub": _read_link_sub,
+        "multi_subelement_to_dicts": _read_multi_subelement_to_dicts,
+        "part_shape": _read_part_shape,
+        "single": _read_single,
+        "subelement_attrib_to_dict": _read_subelement_attrib_to_dict,
+        "subelement_list": _read_subelement_list,
+    }
+    dispatch = {}
+    for format_category, types in _xml_config()["pancad"]["dispatch"].items():
+        for type_ in types:
+            dispatch[type_] = PARSERS[format_category]
+    return dispatch
 
 ### Type Readers
 def _read_bad_type(element: Element) -> list[dict[str, str]]:
@@ -168,67 +210,6 @@ def _read_subelement_attrib_to_dict(element: Element) -> dict[str, str]:
     """Returns the single subelement's attributes as a dict."""
     return dict(element[0].attrib)
 
-### Property Reading
-PROPERTY_DISPATCH = { 
-    App.ANGLE: _read_single,
-    App.BOOL: _read_single,
-    App.COLOR: _read_single,
-    App.COLOR_LIST: _read_single,
-    App.ENUM: _read_enum,
-    App.EXPRESSION_ENGINE: _read_multi_subelement_to_dicts,
-    App.FLOAT: _read_single,
-    App.FLOAT_CONSTRAINT: _read_single,
-    App.LENGTH: _read_single,
-    App.LINK: _read_single,
-    App.LINK_SUB: _read_link_sub,
-    App.LINK_SUBLIST: _read_multi_subelement_to_dicts,
-    App.LINK_LIST: _read_subelement_list,
-    App.LINK_LIST_HIDDEN: _read_subelement_list,
-    App.MATERIAL: _read_subelement_attrib_to_dict,
-    App.MATERIAL_LIST: _read_subelement_attrib_to_dict,
-    App.PLACEMENT: _read_subelement_attrib_to_dict,
-    App.PYTHON_OBJECT: _read_subelement_attrib_to_dict,
-    App.PERCENT: _read_single,
-    App.PRECISION: _read_single,
-    App.VECTOR: _read_subelement_attrib_to_dict,
-    App.STRING: _read_single,
-    App.UUID: _read_single,
-    
-    Materials.MATERIAL: _read_single,
-    
-    PropertyType.BAD_TYPE: _read_bad_type,
-    
-    Part.GEOMETRY_LIST: _read_geometry_list,
-    Part.SHAPE: _read_part_shape,
-    
-    Sketcher.CONSTRAINT_LIST: _read_constraint_list,
-}
-"""A dict matching xml types to their respective parsing function calls."""
-
-def read_property_value(element: Element) -> FreecadPropertyValueType:
-    """Reads the values associated with a Property element.
-    
-    :param element: A Property element.
-    :raises FreecadPropertyParseError: When a property type was recognized but 
-        could not be parsed.
-    :raises FreecadUnsupportedPropertyError: When an unknown property type is 
-        encountered.
-    """
-    type_ = element.attrib[Attr.TYPE]
-    try:
-        value = PROPERTY_DISPATCH[type_](element)
-        return value
-    except FreecadUnknownBadTypeTag as err:
-        name = element.get(Attr.NAME)
-        logger.error(f"Could not read '{name}' BadType unknown tag: {err}")
-        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
-    except KeyError as err:
-        name = element.get(Attr.NAME)
-        raise FreecadUnsupportedPropertyError(f"'{name}' typed {err}")
-    except Exception as err:
-        name = element.get(Attr.NAME)
-        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
-
 ### Exceptions
 class FreecadUnknownBadTypeTag(ValueError):
     """Raised when a BadType typed element is encountered with an unknown tag."""
@@ -242,17 +223,3 @@ class FreecadPropertyParseError(ValueError):
     """Raised when a property can't be read from a FreeCAD file because an error 
     was encountered while reading its value.
     """
-
-# Possible Future implementation for color reading:
-# ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
-# """Typing for alpha red blue green color data"""
-# def unpack_argb(packed: int) -> ARGB:
-    # """Returns a tuple of ARGB values from an integer."""
-    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
-
-# def _read_color(element: Element) -> tuple[int, int, int, int]:
-    # """Returns the ARGB values from the integer in the element as a tuple."""
-    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
-    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
-    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
-    # return unpack_argb(integer)

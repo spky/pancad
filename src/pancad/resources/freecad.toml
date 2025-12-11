@@ -11,6 +11,46 @@ install_dir = [
 ]
 
 [xml]
+[xml.pancad.dispatch]
+# Tells pancad which functions to run on which xml property types by 
+# categorizing their formats.
+bad_type = ["BadType"]
+constraint_list = ["Sketcher::PropertyConstraintList"]
+enum = ["App::PropertyEnumeration"]
+geometry_list = ["Part::PropertyGeometryList"]
+link_sub = ["App::PropertyLinkSub"]
+multi_subelement_to_dicts = [
+    "App::PropertyExpressionEngine",
+    "App::PropertyLinkSubList",
+]
+part_shape = ["Part::PropertyPartShape"]
+single = [
+    "App::PropertyAngle",
+    "App::PropertyBool",
+    "App::PropertyColor",
+    "App::PropertyColorList",
+    "App::PropertyFloat",
+    "App::PropertyFloatConstraint",
+    "App::PropertyLength",
+    "App::PropertyLink",
+    "App::PropertyPercent",
+    "App::PropertyPrecision",
+    "App::PropertyString",
+    "App::PropertyUUID",
+    "Materials::PropertyMaterial",
+]
+subelement_attrib_to_dict = [
+    "App::PropertyMaterial",
+    "App::PropertyMaterialList",
+    "App::PropertyPlacement",
+    "App::PropertyPythonObject",
+    "App::PropertyVector"
+]
+subelement_list = [
+    "App::PropertyLinkList",
+    "App::PropertyLinkListHidden",
+]
+
 [xml.pancad.fields]
 camera_type = "CameraType"
 # For storing the type of camera on the Camera element
@@ -24,6 +64,7 @@ list_name = "ListName"
 # For adding the name of a sketch geometry/constraint list to sketch elements
 list_index = "ListIndex"
 # For adding the index of the element to an element
+
 [xml.xpaths]
 OBJECTS = './Objects/Object'
 # Get all the names, types and ids for Objects in Document.xml. Absolute.
@@ -48,6 +89,7 @@ GEOMETRY_EXT = '''./GeoExtensions/GeoExtension[@type='{}']'''
 GEOMETRY_TYPE = '''./GeometryList/Geometry[@type='{}']'''
 # Gets a Geometry element under a geometry list type element of a type. Relative.
 GEOMETRY_LIST = './GeometryList/Geometry'
+
 [xml.shared]
 # Lists of properties shared by elements for use in tables
 object_attributes = ["name", "id", "type"]

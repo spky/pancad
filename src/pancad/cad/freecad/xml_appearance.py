@@ -92,3 +92,17 @@ files.
         # lines = [line.rstrip() for line in file]
     # title, version, count = lines.pop(0).split()
     # assert title.decode() == "StringTableStart"
+
+# Possible Future implementation for color reading:
+# ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+# """Typing for alpha red blue green color data"""
+# def unpack_argb(packed: int) -> ARGB:
+    # """Returns a tuple of ARGB values from an integer."""
+    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
+
+# def _read_color(element: Element) -> tuple[int, int, int, int]:
+    # """Returns the ARGB values from the integer in the element as a tuple."""
+    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
+    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
+    # return unpack_argb(integer)
