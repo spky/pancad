@@ -1,0 +1,263 @@
+[default_install]
+Windows = [
+    'C:/Program Files/FreeCAD 1.0/bin',
+    'C:/Program Files/FreeCAD/bin',
+]
+
+[folders]
+install_dir = [
+    "FreeCAD 1.0",
+    "FreeCAD",
+]
+
+[xml]
+[xml.pancad.dispatch]
+# Tells pancad which functions to run on which xml property types by 
+# categorizing their formats.
+bad_type = ["BadType"]
+constraint_list = ["Sketcher::PropertyConstraintList"]
+enum = ["App::PropertyEnumeration"]
+geometry_list = ["Part::PropertyGeometryList"]
+link_sub = ["App::PropertyLinkSub"]
+multi_subelement_to_dicts = [
+    "App::PropertyExpressionEngine",
+    "App::PropertyLinkSubList",
+]
+part_shape = ["Part::PropertyPartShape"]
+single = [
+    "App::PropertyAngle",
+    "App::PropertyBool",
+    "App::PropertyColor",
+    "App::PropertyColorList",
+    "App::PropertyFloat",
+    "App::PropertyFloatConstraint",
+    "App::PropertyLength",
+    "App::PropertyLink",
+    "App::PropertyPercent",
+    "App::PropertyPrecision",
+    "App::PropertyString",
+    "App::PropertyUUID",
+    "Materials::PropertyMaterial",
+]
+subelement_attrib_to_dict = [
+    "App::PropertyMaterial",
+    "App::PropertyMaterialList",
+    "App::PropertyPlacement",
+    "App::PropertyPythonObject",
+    "App::PropertyVector"
+]
+subelement_list = [
+    "App::PropertyLinkList",
+    "App::PropertyLinkListHidden",
+]
+
+[xml.pancad.fields]
+camera_type = "CameraType"
+# For storing the type of camera on the Camera element
+depends_on = "DependsOn"
+# For keeping track of the objects that an object is dependent one
+file_uid = "FileUid"
+# For adding the File's uid to elements
+sketch_name = "SketchName"
+# For adding a sketch's unique name to sketch elements
+list_name = "ListName"
+# For adding the name of a sketch geometry/constraint list to sketch elements
+list_index = "ListIndex"
+# For adding the index of the element to an element
+
+[xml.xpaths]
+OBJECTS = './Objects/Object'
+# Get all the names, types and ids for Objects in Document.xml. Absolute.
+FILE_UID = '''./Properties/Property[@name='Uid']/Uuid'''
+# Get the File Uuid element in an FCStd's Document.xml file. Absolute.
+OBJECT_TYPE = '''./Objects/Object[@type='{}']'''
+# Get all object(s) of a type in Document.xml. Absolute.
+OBJECT_DATA = '''./ObjectData/Object[@name='{}']'''
+# Get object named name in Document.xml. Absolute.
+OBJECT_DEPENDENCIES = './Objects/ObjectDeps'
+# Get all object dependencies in Document.xml. Absolute.
+VIEW_PROVIDER = '''./ViewProviderData/ViewProvider[@name='{}']'''
+# Get the view provider of an element by name in GuiDocument.xml. Absolute.
+PROPERTY = './Properties/Property'
+# Get the properties of an object. Relative.
+PROPERTY_NAME = '''./Properties/Property[@name='{}']'''
+# Get Property element(s) under an Object element of a type. Relative.
+PROPERTY_TYPE = '''./Properties/Property[@type='{}']'''
+# Get Property element(s) under an Object element of a type. Relative.
+GEOMETRY_EXT = '''./GeoExtensions/GeoExtension[@type='{}']'''
+# Get GeoExtension element(s) under a Geometry element of a type. Relative.
+GEOMETRY_TYPE = '''./GeometryList/Geometry[@type='{}']'''
+# Gets a Geometry element under a geometry list type element of a type. Relative.
+GEOMETRY_LIST = './GeometryList/Geometry'
+
+[xml.shared]
+# Lists of properties shared by elements for use in tables
+object_attributes = ["name", "id", "type"]
+# Attributes shared by all Objects in Objects/Object elements
+object_properties = ["Label", "Label2", "Visibility"]
+# Properties shared by all Objects in ObjectData/Object elements
+
+[sql]
+[sql.table_types]
+listed_uniques = '''
+CREATE TABLE IF NOT EXISTS {name} (
+    {columns},
+    UNIQUE ({uniques})
+)
+''' # A table requiring a list of columns and a list of unique columns
+
+# Object Info Tables
+[sql.tables.FreecadObjectInfo]
+type = 'listed_uniques'
+unique = ['FileUid', 'name', 'id']
+[sql.tables.FreecadObjectInfo.columns]
+FileUid = 'UUID'
+name = 'TEXT'
+id = 'INTEGER'
+type = 'TEXT'
+Label = 'TEXT'
+Label2 = 'TEXT'
+Visibility = 'BOOLEAN'
+
+[sql.tables.FreecadSketchGeometryInfo]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'ListIndex', 'id']
+[sql.tables.FreecadSketchGeometryInfo.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+ListIndex = 'INTEGER'
+type = 'TEXT'
+id = 'INTEGER'
+migrated = 'INTEGER'
+internalGeometryType = 'INTEGER'
+Construction = 'BOOLEAN'
+
+[sql.tables.FreecadObjectDependencies]
+type = 'listed_uniques'
+unique = ['FileUid', 'Object', 'Dependency']
+[sql.tables.FreecadObjectDependencies.columns]
+FileUid = 'UUID'
+Object = 'TEXT'
+Dependency = 'TEXT'
+
+# Object Tables
+[sql.tables.FreecadSketch]
+type = 'listed_uniques'
+unique = ['FileUid', 'name', 'id']
+[sql.tables.FreecadSketch.columns]
+FileUid = 'UUID'
+name = 'TEXT'
+id = 'INTEGER'
+
+# Sketch Elements Tables
+[sql.tables.FreecadConstraint]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'ListIndex']
+[sql.tables.FreecadConstraint.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+ListIndex = 'INTEGER'
+Name = 'TEXT'
+Type = 'INTEGER'
+InternalAlignmentType = 'INTEGER'
+InternalAlignmentIndex = 'INTEGER'
+First = 'INTEGER'
+FirstPos = 'INTEGER'
+Second = 'INTEGER'
+SecondPos = 'INTEGER'
+Third = 'INTEGER'
+ThirdPos = 'INTEGER'
+Value = 'REAL'
+LabelDistance = 'REAL'
+LabelPosition = 'REAL'
+IsDriving = 'BOOLEAN'
+IsInVirtualSpace = 'BOOLEAN'
+IsActive = 'BOOLEAN'
+
+[sql.tables.FreecadArcOfCircle]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'id']
+freecad_geometry_type = 'Part::GeomArcOfCircle'
+[sql.tables.FreecadArcOfCircle.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+id = 'INTEGER'
+CenterX = 'REAL'
+CenterY = 'REAL'
+CenterZ = 'REAL'
+NormalX = 'REAL'
+NormalY = 'REAL'
+NormalZ = 'REAL'
+AngleXU = 'REAL'
+Radius = 'REAL'
+StartAngle = 'REAL'
+EndAngle = 'REAL'
+
+[sql.tables.FreecadLineSegment]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'id']
+freecad_geometry_type = 'Part::GeomLineSegment'
+[sql.tables.FreecadLineSegment.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+id = 'INTEGER'
+StartX = 'REAL'
+StartY = 'REAL'
+StartZ = 'REAL'
+EndX = 'REAL'
+EndY = 'REAL'
+EndZ = 'REAL'
+
+[sql.tables.FreecadPoint]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'id']
+freecad_geometry_type = 'Part::GeomPoint'
+[sql.tables.FreecadPoint.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+id = 'INTEGER'
+X = 'REAL'
+Y = 'REAL'
+Z = 'REAL'
+
+[sql.tables.FreecadCircle]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'id']
+freecad_geometry_type = 'Part::GeomCircle'
+[sql.tables.FreecadCircle.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+id = 'INTEGER'
+CenterX = 'REAL'
+CenterY = 'REAL'
+CenterZ = 'REAL'
+NormalX = 'REAL'
+NormalY = 'REAL'
+NormalZ = 'REAL'
+AngleXU = 'REAL'
+Radius = 'REAL'
+
+[sql.tables.FreecadEllipse]
+type = 'listed_uniques'
+unique = ['FileUid', 'SketchName', 'ListName', 'id']
+freecad_geometry_type = 'Part::GeomEllipse'
+[sql.tables.FreecadEllipse.columns]
+FileUid = 'UUID'
+SketchName = 'TEXT'
+ListName = 'TEXT'
+id = 'INTEGER'
+CenterX = 'REAL'
+CenterY = 'REAL'
+CenterZ = 'REAL'
+NormalX = 'REAL'
+NormalY = 'REAL'
+NormalZ = 'REAL'
+MajorRadius = 'REAL'
+MinorRadius = 'REAL'
+AngleXU = 'REAL'

@@ -9,8 +9,10 @@ from pancad import config
 _CONFIG_NAME = "config.toml"
 _CACHE_NAME = "cache.json"
 _APPDATA = Path(expandvars("%appdata%"))
+_DATABASE_NAME = "data.db"
 
 PANCAD_CONFIG_DIR = _APPDATA / "pancad"
 CACHE_FILEPATH = PANCAD_CONFIG_DIR / _CACHE_NAME
 CONFIG_FILEPATH = PANCAD_CONFIG_DIR / _CONFIG_NAME
 DEFAULTS_DIR = Path(config.__file__).parent
+DATABASE = PANCAD_CONFIG_DIR / _DATABASE_NAME

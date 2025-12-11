@@ -1,0 +1,108 @@
+"""A module providing functions for reading and writing FreeCAD appearance 
+files.
+"""
+# This file is stored for later when appearance files need to be read and 
+# written. Currently for future planned functionality
+
+# from __future__ import annotations
+
+# from itertools import islice
+# from typing import TYPE_CHECKING
+# import struct
+
+
+# if TYPE_CHECKING:
+    # from zipfile import ZipFile, ZipInfo
+
+# def batched(iterable, n, *, strict=False):
+    # # batched('ABCDEFG', 2) → AB CD EF G
+    # if n < 1:
+        # raise ValueError('n must be at least one')
+    # iterator = iter(iterable)
+    # while batch := tuple(islice(iterator, n)):
+        # if strict and len(batch) != n:
+            # raise ValueError('batched(): incomplete batch')
+        # yield batch
+
+# def read_shape_appearance(archive: ZipFile,
+                          # filename: str | ZipInfo
+                          # ) -> dict[str, float | tuple[int]]:
+    # """Reads shape appearance file data.
+    
+    # :param archive: A ZipFile of a FreeCAD file.
+    # :param filename: The name of the ShapeAppearance file to read.
+    # :returns: A dictionary of labels to either their float values or their RGBA 
+        # color integer tuples.
+    # """
+    # with archive.open(filename) as file:
+        # data = bytes(file.read())
+    
+    # parsed = {}
+    
+    # if len(data) > 40:
+        # parsed["uid"] = data[40:].decode()
+        # data = data[:40]
+    
+    # LABELS = [
+        # "header",
+        # "ambient",
+        # "diffuse",
+        # "specular",
+        # "emissive",
+        # "shininess",
+        # "transparency",
+        # "blank0",
+        # "blank1",
+        # "uuid_sync",
+    # ]
+    # COLORS = ["ambient", "diffuse", "specular", "emissive"]
+    # FLOATS = ["shininess", "transparency"]
+    # for label, entry in zip(LABELS, batched(data, 4)):
+        # if label in COLORS:
+            # parsed[label] = entry[::-1]
+        # elif label in FLOATS:
+            # parsed[label] = struct.unpack("<f", bytes(entry))[0]
+        # elif label == "header":
+            # assert entry == (1, 0, 0, 0)
+        # elif label == "uuid_sync":
+            # assert entry == (0, 0, 0, 0) or entry == (36, 0, 0, 0)
+        # elif label.startswith("blank"):
+            # assert entry == (0, 0, 0, 0)
+        # else:
+            # raise ValueError(f"Unhandled label {label}")
+    # return parsed
+
+# def read_color_array(archive: ZipFile, filename: str | ZipInfo) -> tuple[int]:
+    # """Reads color array file data.
+    
+    # :param archive: A ZipFile of a FreeCAD file.
+    # :param filename: The name of the Point or Line ColorArray file to read.
+    # :returns: A tuple of ARGB integer values.
+    # """
+    # with archive.open(filename) as file:
+        # data = bytes(file.read())
+    
+    # header, color = list(batched(data, 4))
+    # assert header == (1, 0, 0, 0)
+    # return color
+
+# def read_string_hasher(archive: ZipFile, filename: str | ZipInfo):
+    # """Reads data from StringHasher files"""
+    # with archive.open(filename) as file:
+        # lines = [line.rstrip() for line in file]
+    # title, version, count = lines.pop(0).split()
+    # assert title.decode() == "StringTableStart"
+
+# Possible Future implementation for color reading:
+# ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+# """Typing for alpha red blue green color data"""
+# def unpack_argb(packed: int) -> ARGB:
+    # """Returns a tuple of ARGB values from an integer."""
+    # return ARGB(*[(packed >> shift_by) & 0xFF for shift_by in [24, 16, 8, 0]])
+
+# def _read_color(element: Element) -> tuple[int, int, int, int]:
+    # """Returns the ARGB values from the integer in the element as a tuple."""
+    # if len(element) != 1: raise ValueError(f"Found {len(element)}")
+    # ARGB = namedtuple("ARGB", ["a", "r", "g", "b"])
+    # integer = int(element.find(Tag.PROPERTY_COLOR).attrib[Attr.VALUE])
+    # return unpack_argb(integer)
