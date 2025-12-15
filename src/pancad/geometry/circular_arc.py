@@ -3,12 +3,15 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from functools import partial
+from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 from numpy import array
 
 from pancad.geometry import AbstractGeometry, Point
 from pancad.geometry.constants import ConstraintReference
+from pancad.utils import comparison
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import (
     get_unit_vector,
@@ -20,6 +23,8 @@ from pancad.utils.trigonometry import (
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
+
+isclose = partial(comparison.isclose, nan_equal=False)
 
 class CircularArc(AbstractGeometry):
     """A class representing a circular arc in 2D or 3D space.
@@ -357,6 +362,21 @@ class CircularArc(AbstractGeometry):
         else:
             raise ValueError("Cannot update a 2D circular arc to 3D")
     
+    # Python Dunders #
+    def __conform__(self, protocol: PrepareProtocol) -> str:
+        if protocol is PrepareProtocol:
+            if len(self) == 3:
+                raise NotImplementedError("3D CircularArcs not implemented yet")
+            vectors = [self.center.cartesian, self.start_vector, self.end_vector]
+            vector_strings = map(lambda v: ";".join(map(str, v)), vectors)
+            return "|".join(
+                [
+                    *vector_strings,
+                    str(int(self.is_clockwise)),
+                    str(self.radius),
+                ]
+            )
+    
     def __copy__(self) -> CircularArc:
         """Returns a copy of the arc with the same radius, center point, 
         start/end vectors, but with no assigned uid.
@@ -367,6 +387,20 @@ class CircularArc(AbstractGeometry):
                            self.end_vector,
                            self.is_clockwise,
                            self.normal_vector)
+    
+    def __eq__(self, other: CircularArc) -> bool:
+        if isinstance(other, CircularArc):
+            if len(self) == 3:
+                raise NotImplementedError("3D Arcs not supported yet")
+            return (
+                isclose(self.center.cartesian, other.center.cartesian)
+                and isclose(self.start_vector, other.start_vector)
+                and isclose(self.end_vector, other.end_vector)
+                and self.is_clockwise == other.is_clockwise
+                and isclose(self.radius, other.radius)
+            )
+        else:
+            return NotImplemented
     
     def __len__(self) -> int:
         """Returns whether the arc is 2D or 3D."""

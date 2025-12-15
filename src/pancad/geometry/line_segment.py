@@ -6,6 +6,7 @@ from __future__ import annotations
 from math import copysign
 from functools import partial
 from numbers import Real
+from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING, overload
 
 import numpy as np
@@ -416,6 +417,10 @@ class LineSegment(AbstractGeometry):
         return self
     
     # Python Dunders #
+    def __conform__(self, protocol: PrepareProtocol) -> str:
+        if protocol is PrepareProtocol:
+            return ";".join(map(str, [*self.point_a, *self.point_b]))
+    
     def __copy__(self) -> LineSegment:
         """Returns a copy of the LineSegment that has the same points and line, 
         but no assigned uid.
