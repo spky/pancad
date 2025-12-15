@@ -19,6 +19,9 @@ class MemoryDatabase(TestCase):
         geometry_and_values = [
             (geometry.Point(0, 0), "0;0"),
             (geometry.Point(0, 0, 0), "0;0;0"),
+            (geometry.Circle((0, 0), 1), "0;0;1"),
+            (geometry.Line.from_two_points((0, 0), (1, 0)), "0.0;0.0;1.0;0.0"),
+            (geometry.Line.from_two_points((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
         ]
         self.tests = []
         for geo, value in geometry_and_values:

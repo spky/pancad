@@ -4,6 +4,7 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from functools import partial
+from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -170,6 +171,18 @@ class Circle(AbstractGeometry):
                              f" defined. Given vectors {vectors}")
     
     # Python Dunders #
+    def __conform__(self, protocol: PrepareProtocol):
+        """Conforms the circle's values for storage in sqlite. 2D circles are 
+        stored as center_x;center_y;radius.
+        
+        :raises NotImplementedError: Raised when a 3D circle is provided.
+        """
+        if protocol is PrepareProtocol:
+            if len(self) == 3:
+                raise NotImplementedError("3D circles not implemented yet")
+            dimensions = [*self.center, self.radius]
+            return ";".join(map(str, dimensions))
+    
     def __copy__(self) -> Circle:
         """Returns a copy of the circle with the same radius, center point, and 
         orientation vectors, but with no assigned uid.
