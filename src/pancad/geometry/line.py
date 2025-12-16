@@ -297,7 +297,7 @@ class Line(AbstractGeometry):
     @direction.setter
     def direction(self, vector: VectorLike) -> None:
         if vector is not None:
-            vector = trig.to_1D_np(vector)
+            vector = trig.to_1d_np(vector)
             self._direction = Line._unique_direction(vector)
         else:
             self._direction = None
@@ -327,7 +327,7 @@ class Line(AbstractGeometry):
         :returns: The Point on the line corresponding to the parameter's value.
         """
         return Point(np.array(self.reference_point)
-                     + trig.to_1D_np(self.direction)*t)
+                     + trig.to_1d_np(self.direction)*t)
     
     def get_parametric_constants(self) -> tuple[Real]:
         """Returns a tuple containing parameters for the line. The reference 
@@ -414,7 +414,7 @@ class Line(AbstractGeometry):
             closest to the origin.
         """
         point_vector = np.array(point)
-        vector = trig.to_1D_np(vector)
+        vector = trig.to_1d_np(vector)
         unit_vector = trig.get_unit_vector(vector)
         dot_product = np.dot(point_vector, unit_vector)
         
@@ -463,7 +463,7 @@ class Line(AbstractGeometry):
                 unit_vector = -unit_vector
         
         # Add 0 to ensure negative zero representations are eliminated
-        return trig.to_1D_tuple(unit_vector + 0)
+        return trig.to_1d_tuple(unit_vector + 0)
     
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol) -> str:

@@ -19,7 +19,7 @@ from pancad.geometry.constants import ConstraintReference
 from pancad.utils import comparison
 from pancad.utils.trigonometry import (yaw_pitch_roll,
                                        rotation_2,
-                                       to_1D_tuple,
+                                       to_1d_tuple,
                                        cartesian_to_spherical)
 from pancad.utils.pancad_types import VectorLike
 
@@ -382,13 +382,13 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         """
         if len(self.origin) == len(axis_matrix) == 2:
             x, y = axis_matrix
-            self._x_vector = to_1D_tuple(x)
-            self._y_vector = to_1D_tuple(y)
+            self._x_vector = to_1d_tuple(x)
+            self._y_vector = to_1d_tuple(y)
         elif len(self.origin) == len(axis_matrix) == 3:
             x, y, z = axis_matrix
-            self._x_vector = to_1D_tuple(x)
-            self._y_vector = to_1D_tuple(y)
-            self._z_vector = to_1D_tuple(z)
+            self._x_vector = to_1d_tuple(x)
+            self._y_vector = to_1d_tuple(y)
+            self._z_vector = to_1d_tuple(z)
         else:
             raise ValueError("axis_matrix must be for the same number of"
                              " dimensions as the origin point")

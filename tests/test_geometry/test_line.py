@@ -120,9 +120,9 @@ class TestLineTwoPointDefinition(unittest.TestCase):
         ]
         for i, (pt_a, pt_b, e_pt, vector) in enumerate(self.tests):
             # Convert expected direction to unit vector
-            np_vector = trig.to_1D_np(vector)
+            np_vector = trig.to_1d_np(vector)
             unit_vector = trig.get_unit_vector(np_vector)
-            self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1D_tuple(unit_vector))
+            self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1d_tuple(unit_vector))
     
     def test_from_two_points_point_closest_to_origin(self):
         for point_a, point_b, expected_point, _ in self.tests:

@@ -35,7 +35,7 @@ def get_unit_vector(vector: VectorLike) -> np.ndarray:
         shape = vector.shape
     else:
         shape = (len(vector),)
-    vector = to_1D_np(vector)
+    vector = to_1d_np(vector)
     length = np.linalg.norm(vector)
     if is_geometry_vector(vector):
         if length == 0:
@@ -221,7 +221,7 @@ def positive_angle(angle: Real) -> float:
         return angle_mod(angle)
     return angle_mod(angle) + 2*np.pi
 
-def to_1D_tuple(value: VectorLike) -> tuple:
+def to_1d_tuple(value: VectorLike) -> tuple:
     """Returns a 1D tuple from a given value."""
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
         return value
@@ -231,7 +231,7 @@ def to_1D_tuple(value: VectorLike) -> tuple:
         return tuple(float(coordinate.squeeze()) for coordinate in value)
     raise ValueError(f"Cannot convert {value} of class {value.__class__}")
 
-def to_1D_np(value: VectorLike) -> np.ndarray:
+def to_1d_np(value: VectorLike) -> np.ndarray:
     """Returns a 1D numpy array from a given value."""
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
         return np.array(value)

@@ -93,7 +93,7 @@ class Plane(AbstractGeometry):
     @normal.setter
     def normal(self, vector: VectorLike):
         if vector is not None:
-            self._normal = trig.to_1D_tuple(trig.get_unit_vector(vector))
+            self._normal = trig.to_1d_tuple(trig.get_unit_vector(vector))
         else:
             self._normal = None
     
@@ -209,7 +209,7 @@ class Plane(AbstractGeometry):
         if len(vector) == 2:
             normal_vector = (vector[0], vector[1], 0)
         else:
-            normal_vector = trig.to_1D_tuple(vector)
+            normal_vector = trig.to_1d_tuple(vector)
         
         x0, y0, z0 = point_vector
         a, b, c = normal_vector

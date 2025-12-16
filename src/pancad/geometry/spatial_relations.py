@@ -181,7 +181,7 @@ def coincident_point(point: Point,
         
         ref_pt_to_pt = (np.dot(point_vector, direction_vector)
                         * direction_vector)
-        check_point_tuple = trig.to_1D_tuple(ref_pt_to_pt + reference_vector)
+        check_point_tuple = trig.to_1d_tuple(ref_pt_to_pt + reference_vector)
         
         return True if isclose(check_point_tuple, tuple(point)) else False
     elif isinstance(other, LineSegment):

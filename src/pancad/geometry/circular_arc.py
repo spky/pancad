@@ -15,7 +15,7 @@ from pancad.utils import comparison
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import (
     get_unit_vector,
-    to_1D_tuple,
+    to_1d_tuple,
     phi_of_cartesian,
     polar_to_cartesian,
 )
@@ -270,7 +270,7 @@ class CircularArc(AbstractGeometry):
             raise ValueError(f"Can't update {len(self)}D arc to {len(point)}D")
         
         unit_vector = get_unit_vector(vector)
-        self._end_vector = to_1D_tuple(unit_vector)
+        self._end_vector = to_1d_tuple(unit_vector)
         
         # Everything but the end point stays the same
         end_location = self.center + self.radius * unit_vector
@@ -297,7 +297,7 @@ class CircularArc(AbstractGeometry):
             raise ValueError(f"Can't update {len(self)}D arc to {len(point)}D")
         
         unit_vector = get_unit_vector(vector)
-        self._start_vector = to_1D_tuple(unit_vector)
+        self._start_vector = to_1d_tuple(unit_vector)
         # Everything but the start point stays the same
         start_location = self.center + self.radius * unit_vector
         self._start.update(Point(start_location))

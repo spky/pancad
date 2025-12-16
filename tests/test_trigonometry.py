@@ -63,7 +63,7 @@ class TestVectorUtilities(unittest.TestCase):
             with self.subTest(value=value, expected_bool=expected_bool):
                 self.assertEqual(trig.is_iterable(value), expected_bool)
     
-    def test_to_1D_tuple(self):
+    def test_to_1d_tuple(self):
         tests = [
             # 2D Tests #
             ([0, 1], (0, 1)),
@@ -78,8 +78,8 @@ class TestVectorUtilities(unittest.TestCase):
         ]
         for value, expected_tuple in tests:
             with self.subTest(value=value, expected_tuple=expected_tuple):
-                self.assertCountEqual(trig.to_1D_tuple(value), expected_tuple)
-                self.assertEqual(str(trig.to_1D_tuple(value)), str(expected_tuple))
+                self.assertCountEqual(trig.to_1d_tuple(value), expected_tuple)
+                self.assertEqual(str(trig.to_1d_tuple(value)), str(expected_tuple))
     
     def test_to_1D_numpy(self):
         tests = [
@@ -96,8 +96,8 @@ class TestVectorUtilities(unittest.TestCase):
         ]
         for value, expected_tuple in tests:
             with self.subTest(value=value, expected_tuple=expected_tuple):
-                self.assertCountEqual(trig.to_1D_np(value), expected_tuple)
-                self.assertEqual(str(trig.to_1D_np(value)), str(expected_tuple))
+                self.assertCountEqual(trig.to_1d_np(value), expected_tuple)
+                self.assertEqual(str(trig.to_1d_np(value)), str(expected_tuple))
     
     def test_is_clockwise_2d(self):
         v1 = (1, 0)

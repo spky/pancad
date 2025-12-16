@@ -135,7 +135,7 @@ class LineSegment(AbstractGeometry):
         """
         vector_ab = np.array(self.point_b) - np.array(self.point_a)
         unit_vector_ab = trig.get_unit_vector(vector_ab)
-        return trig.to_1D_tuple(unit_vector_ab)
+        return trig.to_1d_tuple(unit_vector_ab)
     
     @property
     def direction_polar(self) -> tuple[Real]:
@@ -297,7 +297,7 @@ class LineSegment(AbstractGeometry):
         if numpy_vector:
             return np_vector_ab
         else:
-            return trig.to_1D_tuple(np_vector_ab)
+            return trig.to_1d_tuple(np_vector_ab)
     
     def set_length_from_a(self, value: Real) -> Self:
         """Sets the length of the line segment relative to point a by keeping 

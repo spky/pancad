@@ -135,7 +135,7 @@ class TestLineSegmentGetters(unittest.TestCase):
             (1, 1, 1),
         ]
         directions = [
-            trig.to_1D_tuple(trig.get_unit_vector(d)) for d in directions
+            trig.to_1d_tuple(trig.get_unit_vector(d)) for d in directions
         ]
         lengths = [
             math.hypot(1, 1),
