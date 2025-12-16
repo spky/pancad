@@ -2,10 +2,10 @@
 pancad-independent actions on those models.
 """
 
-from os import close, remove
 from pathlib import Path
 from pprint import pformat
 from subprocess import Popen
+import os
 import tempfile
 import json
 
@@ -21,16 +21,14 @@ def call_freecad_python(program: str | Path, *args) -> dict:
     :returns: The dictionary read from the program's json output file.
     """
     exe = find_app_dir() / "python.exe"
-    file, temp_file_name = tempfile.mkstemp()
-    close(file)
-    
-    proc = Popen([exe, program, temp_file_name, *args])
-    proc.communicate()
-    
-    with open(temp_file_name) as file:
-        result = json.load(file)
-    remove(temp_file_name)
-    
+    with tempfile.NamedTemporaryFile(delete=False) as file:
+        temp_file_name = file.name
+    with Popen([exe, program, temp_file_name, *args]) as proc:
+        # proc = Popen([exe, program, temp_file_name, *args])
+        proc.communicate()
+        with open(temp_file_name, encoding="utf-8") as file:
+            result = json.load(file)
+    os.remove(temp_file_name)
     return result
 
 def validate_freecad(fcstd_filepath: str | Path,
@@ -46,11 +44,8 @@ def validate_freecad(fcstd_filepath: str | Path,
     report = call_freecad_python(error_detection.__file__, fcstd_filepath)
     if not unconstrained_error:
         report.pop(error_detection.ErrorCategory.UNCONSTRAINED, None)
-    
     for _, values in report.items():
         if values:
             report_str = pformat(report)
-            path = Path(fcstd_filepath)
             raise ValueError("Errors found in FreeCAD file"
                              f" {fcstd_filepath.name}! Report:\n{report_str}")
-    return None
