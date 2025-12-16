@@ -18,14 +18,42 @@ if TYPE_CHECKING:
     from typing import Any
     from xml.etree.ElementTree import Element
 
+FREECAD_TOML = "freecad.toml"
 logger = logging.getLogger(__name__)
-
 FreecadPropertyValueType = (
     str
     | list[str]
     | dict[str, str | None | list[dict[str, str]] | list[str]]
 )
 """The possible return types from the read_property_value function."""
+
+### Configuration
+@cache
+def _xml_config() -> dict[str, str]:
+    """Returns the xml configuration dict of the freecad.toml file."""
+    with open(Path(resources.__file__).parent / FREECAD_TOML, "rb") as file:
+        return tomllib.load(file)["xml"]
+
+@cache
+def _property_dispatch() -> dict[str, Callable[Element]]:
+    """Returns a dict mapping xml types to their respective parsing function."""
+    parsers = {
+        "bad_type": _read_bad_type,
+        "enum": _read_enum,
+        "constraint_list": _read_constraint_list,
+        "geometry_list": _read_geometry_list,
+        "link_sub": _read_link_sub,
+        "multi_subelement_to_dicts": _read_multi_subelement_to_dicts,
+        "part_shape": _read_part_shape,
+        "single": _read_single,
+        "subelement_attrib_to_dict": _read_subelement_attrib_to_dict,
+        "subelement_list": _read_subelement_list,
+    }
+    dispatch = {}
+    for format_category, types in _xml_config()["pancad"]["dispatch"].items():
+        for type_ in types:
+            dispatch[type_] = parsers[format_category]
+    return dispatch
 
 ### Property Reading
 def read_property_value(element: Element) -> FreecadPropertyValueType:
@@ -44,43 +72,14 @@ def read_property_value(element: Element) -> FreecadPropertyValueType:
         return value
     except FreecadUnknownBadTypeTag as err:
         name = element.get(Attr.NAME)
-        logger.error(f"Could not read '{name}' BadType unknown tag: {err}")
-        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
+        logger.error("Could not read '%s' BadType unknown tag: %s", name, err)
+        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'") from err
     except KeyError as err:
         name = element.get(Attr.NAME)
-        raise FreecadUnsupportedPropertyError(f"'{name}' typed {err}")
+        raise FreecadUnsupportedPropertyError(f"'{name}'") from err
     except Exception as err:
         name = element.get(Attr.NAME)
-        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'", str(err))
-
-### Configuration
-@cache
-def _xml_config() -> dict[str, str]:
-    """Returns the xml configuration dict of the freecad.toml file."""
-    FREECAD_TOML = Path(resources.__file__).parent / "freecad.toml"
-    with open(FREECAD_TOML, "rb") as file:
-        return tomllib.load(file)["xml"]
-
-@cache
-def _property_dispatch() -> dict[str, Callable[Element]]:
-    """Returns a dict mapping xml types to their respective parsing function."""
-    PARSERS = {
-        "bad_type": _read_bad_type,
-        "enum": _read_enum,
-        "constraint_list": _read_constraint_list,
-        "geometry_list": _read_geometry_list,
-        "link_sub": _read_link_sub,
-        "multi_subelement_to_dicts": _read_multi_subelement_to_dicts,
-        "part_shape": _read_part_shape,
-        "single": _read_single,
-        "subelement_attrib_to_dict": _read_subelement_attrib_to_dict,
-        "subelement_list": _read_subelement_list,
-    }
-    dispatch = {}
-    for format_category, types in _xml_config()["pancad"]["dispatch"].items():
-        for type_ in types:
-            dispatch[type_] = PARSERS[format_category]
-    return dispatch
+        raise FreecadPropertyParseError(f"'{name}' typed '{type_}'") from err
 
 ### Type Readers
 def _read_bad_type(element: Element) -> list[dict[str, str]]:
@@ -97,7 +96,7 @@ def _read_bad_type(element: Element) -> list[dict[str, str]]:
 
 def _read_single(element: Element) -> str:
     """Reads the value from of the element nested in a property to a string."""
-    for attr, value in dict(element[0].attrib).items():
+    for _, value in dict(element[0].attrib).items():
         return value
 
 def _read_enum(element: Element) -> str:
@@ -105,15 +104,13 @@ def _read_enum(element: Element) -> str:
     selection = element.find(Tag.INTEGER).attrib[Attr.VALUE]
     if (enum_list := element.find(Tag.CUSTOM_ENUM_LIST)) is not None:
         return enum_list[int(selection)].attrib[Attr.VALUE]
-    else:
-        return selection
+    return selection
 
 def _read_constraint_list(element: Element) -> list[dict[str, str]]:
     """Reads all constraint properties into a dict list. Also adds the list name 
     and respective index based on the appearance order for each constraint.
     """
     fields = _xml_config()["pancad"]["fields"]
-    
     list_name = element.get(Attr.NAME)
     data = []
     for i, constraint in enumerate(element.find(Tag.CONSTRAINT_LIST)):
@@ -133,17 +130,13 @@ def _read_geometry_list(element: Element) -> list[dict[str, str]]:
     config = _xml_config()
     xpaths = config["xpaths"]
     fields = config["pancad"]["fields"]
-    
-    NON_GEOMETRY_TAGS = {Tag.GEOMETRY_EXTENSIONS, Tag.CONSTRUCTION}
-    EXT_IGNORE_ATTR = [Attr.TYPE, Attr.ID]
+    non_geometry_tags = {Tag.GEOMETRY_EXTENSIONS, Tag.CONSTRUCTION}
     list_name = element.get(Attr.NAME)
-    
     geometries = []
     geometry_list = element.find(Tag.GEOMETRY_LIST)
     sketch_ext_xpath = xpaths["GEOMETRY_EXT"].format(Sketcher.GEOMETRY_EXT)
-    
     for list_index, geometry in enumerate(geometry_list):
-        geometry_tag = ({sub.tag for sub in geometry} - NON_GEOMETRY_TAGS).pop()
+        geometry_tag = ({sub.tag for sub in geometry} - non_geometry_tags).pop()
         info = {fields["list_name"]: list_name,
                 fields["list_index"]: str(list_index)}
         info.update(geometry.find(sketch_ext_xpath).attrib)
@@ -172,28 +165,25 @@ def _read_part_shape(element: Element) -> dict[str, str | None]:
     """Reads the varying structure of a Part::PropertyPartShape element into a 
     consistently labeled dictionary.
     """
-    PART_MAP = {
+    part_map = {
         Attr.HASHER_INDEX: Attr.HASHER_INDEX,
         Attr.ELEMENT_MAP: "_".join([Attr.ELEMENT_MAP, Tag.PART]),
         Attr.FILE: "_".join([Attr.FILE, Tag.PART])
     }
-    MAP_2_MAP = {Attr.FILE: "_".join([Attr.FILE, Tag.ELEMENT_MAP_2]),}
+    map_2_map = {Attr.FILE: "_".join([Attr.FILE, Tag.ELEMENT_MAP_2]),}
     part_dict = {}
     map_2_dict = {}
-    
     if (part := element.find(Tag.PART)) is not None:
         part_dict = dict(part.attrib)
     if (map_2 := element.find(Tag.ELEMENT_MAP_2)) is not None:
         map_2_dict = dict(map_2.attrib)
-    
     elements = []
     if (element_map := element.find(Tag.ELEMENT_MAP)) is not None:
         for mapped in element_map:
             elements.append(dict(mapped.attrib))
-    
     return {
-        **{new: part_dict.setdefault(old) for old, new in PART_MAP.items()},
-        **{new: map_2_dict.setdefault(old) for old, new in MAP_2_MAP.items()},
+        **{new: part_dict.setdefault(old) for old, new in part_map.items()},
+        **{new: map_2_dict.setdefault(old) for old, new in map_2_map.items()},
         Tag.ELEMENT_MAP: elements,
     }
 
