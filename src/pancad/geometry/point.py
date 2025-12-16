@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import math
 from functools import partial, singledispatchmethod
 from numbers import Real
+from sqlite3 import PrepareProtocol
 from typing import overload, NoReturn, Self
 
 import numpy as np
@@ -475,6 +476,14 @@ class Point(AbstractGeometry):
                 raise ValueError("Cannot add 2D points to/from 3D points")
         else:
             return NotImplemented
+    
+    def __conform__(self, protocol: PrepareProtocol):
+        """Conforms the point's values for storage in sqlite."""
+        if protocol is PrepareProtocol:
+            if len(self) == 2:
+                return f"{self.x};{self.y}"
+            else:
+                return f"{self.x};{self.y};{self.z}"
     
     def __sub__(self, other) -> tuple[Real]:
         """Returns the subtraction of two point's cartesian position vectors as

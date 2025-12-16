@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from functools import partial
 import math
+from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -465,6 +466,11 @@ class Line(AbstractGeometry):
         return trig.to_1D_tuple(unit_vector + 0)
     
     # Python Dunders #
+    def __conform__(self, protocol: PrepareProtocol) -> str:
+        if protocol is PrepareProtocol:
+            dimensions = [*self.reference_point, *self.direction]
+            return ";".join(map(str, dimensions))
+    
     def __copy__(self) -> Line:
         """Returns a copy of the line that has the same closest to origin 
         point and direction, but a different uid. Can be used with the python 
