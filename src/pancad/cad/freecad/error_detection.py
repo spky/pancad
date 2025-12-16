@@ -14,7 +14,6 @@ import FreeCAD as App
 class ErrorCategory(StrEnum):
     """An enumeration used to define FreeCAD error categories for model validation.
     """
-    
     DETACHED = auto()
     """When a sketch is not properly attached to geometry"""
     ERROR = auto()
@@ -40,18 +39,19 @@ def _parse_args() -> argparse.Namespace:
                         help="Filepath of the FreeCAD file to check")
     return parser.parse_args()
 
-def _key(freecad_object: App.DocumentObject) -> str:
+def _key(object_: App.DocumentObject) -> str:
     """Returns the report key for the FreeCAD object/"""
-    return "{0}: {1}".format(freecad_object.ID, freecad_object.Label)
+    return f"{object_.ID}: {object_.Label}"
 
 def main():
+    """This function receives arguments from the primary pancad instance to 
+    check a .FCStd file for errors. It then reports the results into a 
+    temporary json file so the primary pancad process can read it.
+    """
     args = _parse_args()
-    
     document = App.open(args.filepath)
-    
     # Recompute the FreeCAD document before checking
     document.recompute()
-    
     data = []
     for obj in document.Objects:
         if not obj.isValid():
@@ -65,7 +65,6 @@ def main():
         if hasattr(obj, "FullyConstrained") and not obj.FullyConstrained:
             # Log sketches that are not fully constrained
             data.append((ErrorCategory.UNCONSTRAINED, _key(obj)))
-    
     report = {}
     for category, item in data:
         if isinstance(item, str):
@@ -73,8 +72,8 @@ def main():
         else:
             name, status = item
             report.setdefault(category, {})[name] = status
-    with open(args.temp_file_name, "w") as file:
+    with open(args.temp_file_name, "w", encoding="utf-8") as file:
         json.dump(report, file)
-    
+
 if __name__ == "__main__":
     main()
