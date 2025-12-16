@@ -256,32 +256,6 @@ class svg(SVGElement):
                 self.unit = value
             case _:
                 super().set(key, value)
-    
-    def auto_size(self, margin: float = 0, scope: SVGElement = None) -> None:
-        """Sizes the view of the svg based on all its subelements or 
-        based on a given scope element's sub elements.
-        
-        :param margin: The margin around the minimum shape, has the 
-                       same units as the svg file, defaults to 0.
-        :param scope: Which element should be considered the scope of 
-                      the autosize, defaults to self.
-        """
-        if scope is None:
-            scope = self
-        geometry = []
-        for sub in scope.iter():
-            if hasattr(sub, "geometry"):
-                geometry.extend(sub.geometry)
-        if geometry is not None:
-            corners = trig.multi_fit_box(geometry)
-            min_x, min_y = corners[0][0] - margin, corners[0][1] - margin
-            max_x, max_y = corners[1][0] + margin, corners[1][1] + margin
-            self.width = str(max_x - min_x) + self.unit
-            self.height = str(max_y - min_y) + self.unit
-            self.viewBox = [min_x, min_y,
-                            self._width_value, self._height_value]
-        else:
-            raise ValueError("element has no geometry to be auto-sized")
 
 class g(SVGElement):
     """A class representing a SVG 1.1 g tagged element.
