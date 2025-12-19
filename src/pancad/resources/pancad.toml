@@ -1,0 +1,22 @@
+[filenames]
+# Names of files created and used by pancad
+user_config = 'config.toml'
+default_user_config = 'default_user_config.toml'
+cache = 'cache.json'
+database = 'data.db'
+
+[paths]
+# Directories used and/or created by pancad
+user_dir = '%appdata%/pancad'
+default_save_path = '%homepath%'
+
+[sqlite.conform_type]
+# type names for conformed pancad objects put into a database
+Point = "Point"
+Circle = "Circle"
+CircularArc = "CircularArc"
+Ellipse = "Ellipse"
+Line = "Line"
+LineSegment = "Line_segment"
+Plane = "Plane"
+CoordinateSystem = "CoordinateSystem"

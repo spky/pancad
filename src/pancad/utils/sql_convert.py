@@ -5,7 +5,7 @@ import sqlite3
 import tomllib
 from pathlib import Path
 
-from pancad import config, geometry
+from pancad import resources, geometry
 
 def _point(value: bytes) -> geometry.Point:
     return geometry.Point(*map(float, value.split(b";")))
@@ -83,8 +83,8 @@ def _plane(value: bytes) -> geometry.Plane:
     raise NotImplementedError
 
 
-with open(Path(config.__file__).parent / "sqlite.toml", "rb") as file:
-    conform_type = tomllib.load(file)["conform_type"]
+with open(Path(resources.__file__).parent / "pancad.toml", "rb") as file:
+    conform_type = tomllib.load(file)["sqlite"]["conform_type"]
 
 converters = {
     "Point": _point,

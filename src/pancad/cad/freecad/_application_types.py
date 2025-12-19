@@ -8,15 +8,16 @@ from . import App, Sketcher, Part
 
 FreeCADDocument = App.Document
 FreeCADOrigin = App.DocumentObject
-# FreeCAD Origins do not have their own class, usually need to be identified by 
-# their type id
+"""FreeCAD Origins do not have their own class, usually need to be identified by 
+their type id.
+"""
 FreeCADBody = Part.BodyBase
 FreeCADSketch = Sketcher.Sketch
 FreeCADPad = Part.Feature
-# FreeCAD Pads do not have their own class, usually need to be identified by 
-# their type id
+"""FreeCAD Pads do not have their own class, usually need to be identified by 
+their type id
+"""
 FreeCADFeature = FreeCADPad | FreeCADOrigin | FreeCADSketch | FreeCADBody
-
 FreeCADLineSegment = Part.LineSegment
 FreeCADCircle = Part.Circle
 FreeCADCircularArc = Part.ArcOfCircle
@@ -28,7 +29,6 @@ FreeCADGeometry = (FreeCADLineSegment
                    | FreeCADEllipse)
 
 FreeCADConstraint = Sketcher.Constraint
-
 FreeCADCADObject = (FreeCADFeature
                     | FreeCADGeometry
                     | FreeCADConstraint

@@ -1,11 +1,3 @@
-[general]
-# Settings used by pancad application-wide
-default_save_path = '%homepath%'
-
-[application_paths]
-# Paths to external executables used by pancad
-freecad = ''
-
 [svg]
 # svg file specific settings
 auto_size_margin = 0.1
