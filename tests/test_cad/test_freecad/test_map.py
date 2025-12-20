@@ -2,8 +2,19 @@ from os.path import join
 from math import radians
 import unittest
 
+try:
+    import FreeCAD as App
+    import Sketcher
+    import Part
+except ImportError:
+    import sys
+    from ._bootstrap import get_app_dir
+    sys.path.append(str(get_app_dir()))
+    import FreeCAD as App
+    import Sketcher
+    import Part
+
 from pancad import PartFile
-from pancad.cad.freecad import App, Part, Sketcher
 from pancad.cad.freecad._feature_mappers import FreeCADMap
 from pancad.cad.freecad._map_typing import (
     FeatureID,

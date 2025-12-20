@@ -84,7 +84,7 @@ class PartFile(PancadThing):
         :returns: The pancad equivalent of the FreeCAD part file.
         """
         # Local import here to avoid circular imports
-        from pancad.cad.freecad import FreeCADFile
+        from pancad.cad.freecad.filetypes import FreeCADFile
         file = FreeCADFile(filepath)
         return file.to_pancad()
     
@@ -208,7 +208,7 @@ class PartFile(PancadThing):
         :param filepath: The filepath to save the new FreeCAD file into.
         """
         # Local import here to avoid circular imports
-        from pancad.cad.freecad import FreeCADFile
+        from pancad.cad.freecad.filetypes import FreeCADFile
         file = FreeCADFile.from_partfile(self, filepath)
     
     # Python Dunders #

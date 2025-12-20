@@ -6,6 +6,16 @@ from functools import singledispatchmethod
 from math import pi
 import numpy as np
 
+try:
+    import Part
+    import FreeCAD as App
+except ImportError:
+    import sys
+    from ._bootstrap import get_app_dir
+    sys.path.append(str(get_app_dir()))
+    import Part
+    import FreeCAD as App
+
 from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
@@ -20,7 +30,6 @@ from pancad.geometry import (
     Sketch,
 )
 from pancad.geometry.constants import ConstraintReference
-from . import App, Part
 from .constants import ListName, ObjectType, PadType
 from ._application_types import (
     FreeCADBody,

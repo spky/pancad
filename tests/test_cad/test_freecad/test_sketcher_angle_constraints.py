@@ -9,7 +9,7 @@ from pancad.filetypes import PartFile
 from pancad.geometry import Sketch, LineSegment, Point
 from pancad.geometry.constants import ConstraintReference
 from pancad.geometry.constraints import Angle, Coincident, Distance, Equal
-from pancad.cad.freecad import FreeCADFile
+from pancad.cad.freecad.filetypes import FreeCADFile
 from pancad.cad.freecad.freecad_python import validate_freecad
 
 from . import dump

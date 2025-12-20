@@ -4,16 +4,19 @@ from contextlib import closing
 import tomllib
 from unittest import TestCase
 from pathlib import Path
+from importlib.util import find_spec
 from sqlite3 import connect, PARSE_DECLTYPES
 
-from pancad import geometry, config
+from pancad import geometry
 from pancad.utils import sql_convert
+
+RESOURCES = Path(find_spec("pancad.resources").origin).parent
 
 class MemoryDatabase(TestCase):
     """Writing into a temporary database memory."""
     
     def setUp(self):
-        with open(Path(config.__file__).parent / "sqlite.toml", "rb") as file:
+        with open(RESOURCES / "sqlite.toml", "rb") as file:
             self.types = tomllib.load(file)["conform_type"]
         
         geometry_and_values = [

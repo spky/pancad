@@ -5,6 +5,16 @@ from __future__ import annotations
 from functools import singledispatch, singledispatchmethod
 from typing import TYPE_CHECKING
 
+try:
+    import FreeCAD as App
+    import Sketcher
+except ImportError:
+    import sys
+    from ._bootstrap import get_app_dir
+    sys.path.append(str(get_app_dir()))
+    import FreeCAD as App
+    import Sketcher
+
 from pancad.geometry import LineSegment, Point
 from pancad.geometry.constraints import (
     Angle,
@@ -23,7 +33,6 @@ from pancad.geometry.constraints import (
 )
 from pancad.geometry.constants import ConstraintReference
 
-from . import App, Sketcher
 from ._application_types import FreeCADConstraint
 from .constants import (
     ConstraintType, EdgeSubPart, InternalAlignmentType, ListName

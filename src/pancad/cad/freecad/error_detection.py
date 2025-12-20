@@ -9,7 +9,13 @@ import argparse
 from enum import StrEnum, auto
 import json
 
-import FreeCAD as App
+try:
+    import FreeCAD as App
+except ImportError:
+    import sys
+    from ._bootstrap import get_app_dir
+    sys.path.append(str(get_app_dir()))
+    import FreeCAD as App
 
 class ErrorCategory(StrEnum):
     """An enumeration used to define FreeCAD error categories for model validation.

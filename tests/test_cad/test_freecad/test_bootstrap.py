@@ -58,6 +58,7 @@ class SampleUserConfigs(TestCase):
     
     def tearDown(self):
         CONFIG_PATH.unlink(missing_ok=True)
+        CACHE_PATH.unlink(missing_ok=True)
 
 class MissingUserConfigAndCache(TestCase):
     """Tests for how pancad handles the user's config and cache missing while 

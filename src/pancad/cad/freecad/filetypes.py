@@ -9,7 +9,14 @@ from typing import Self, NoReturn, TYPE_CHECKING
 
 from pancad.filetypes import PartFile
 
-from . import App
+try:
+    import FreeCAD as App
+except ImportError:
+    import sys
+    from ._bootstrap import get_app_dir
+    sys.path.append(str(get_app_dir()))
+    import FreeCAD as App
+
 from .constants import ObjectType, PadType
 from .freecad_python import validate_freecad
 from ._feature_mappers import FreeCADMap
