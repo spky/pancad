@@ -1,4 +1,5 @@
-from .abstract_constraint import AbstractConstraint
+"""A module containing geometry constraint classes and functions to make them."""
+from .abstract_constraint import AbstractConstraint, constraint_args
 
 from .state_constraint import (
     AbstractStateConstraint,

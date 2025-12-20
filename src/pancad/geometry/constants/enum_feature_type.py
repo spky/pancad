@@ -8,7 +8,6 @@ class FeatureType(Flag):
     """An enumeration used by features to define their directions and end 
     conditions.
     """
-    
     # Dimension Types #
     DIMENSION = auto()
     """Features that take one parameter in the normal direction of their 
@@ -48,7 +47,6 @@ class FeatureType(Flag):
     """Features that extend up to a user specified face."""
     UP_TO_BODY = auto()
     """Features that extend up to a user specified body."""
-    
     # Aliases #
     DIMENSION_TYPE = (
         DIMENSION
@@ -66,26 +64,20 @@ class FeatureType(Flag):
     END_FEATURE_TYPE = UP_TO_FACE | UP_TO_BODY
     """The FeatureTypes using conditions to define direction and end condition.
     """
-    
     def __repr__(self):
-        match self:
-            case self.DIMENSION:
-                return "Dim"
-            case self.ANTI_DIMENSION:
-                return "ADim"
-            case self.SYMMETRIC:
-                return "Sym"
-            case self.TWO_DIMENSIONS:
-                return "2Dim"
-            case self.ANTI_TWO_DIMENSIONS:
-                return "A2Dim"
-            case self.UP_TO_LAST:
-                return "toLast"
-            case self.UP_TO_FIRST:
-                return "toFirst"
-            case self.UP_TO_FACE:
-                return "toFace"
-            case self.UP_TO_BODY:
-                return "toBody"
-            case _:
-                return repr(self)
+        try:
+            return _REPR_NAMES[self]
+        except KeyError:
+            return repr(self)
+
+_REPR_NAMES = {
+    FeatureType.DIMENSION: "Dim",
+    FeatureType.ANTI_DIMENSION: "ADim",
+    FeatureType.SYMMETRIC: "Sym",
+    FeatureType.TWO_DIMENSIONS: "2Dim",
+    FeatureType.ANTI_TWO_DIMENSIONS: "A2Dim",
+    FeatureType.UP_TO_LAST: "toLast",
+    FeatureType.UP_TO_FIRST: "toFirst",
+    FeatureType.UP_TO_FACE: "toFace",
+    FeatureType.UP_TO_BODY: "toBody",
+}

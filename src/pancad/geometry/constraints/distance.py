@@ -7,13 +7,13 @@ to be limited to the x or y direction respectively.
 from __future__ import annotations
 
 from abc import abstractmethod
-from functools import reduce
 import math
 from numbers import Real
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
 from pancad.geometry import (
+    AbstractGeometry,
     Circle,
     CircularArc,
     CoordinateSystem,
@@ -26,21 +26,29 @@ from pancad.geometry import (
 
 if TYPE_CHECKING:
     from typing import NoReturn
-    
     from pancad.geometry.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 
     geometries that has a value associated with it.
     """
-    
     VALUE_STR_FORMAT = "{value}{unit}"
-    
+    GEOMETRY_TYPES = AbstractGeometry
     @property
     @abstractmethod
     def value(self) -> Real:
         """The value that the constraint enforces."""
-    
+    @property
+    def unit(self) -> str:
+        """The unit of the constraint's value.
+        
+        :getter: Returns the constraint's unit.
+        :setter: Sets the constraints unit.
+        """
+        return self._unit
+    @unit.setter
+    def unit(self, value: str) -> None:
+        self._unit = value
     # Shared Public Methods #
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the constraint.
@@ -51,33 +59,27 @@ class AbstractValue(AbstractConstraint):
             in the string if include_unit is 'True'. 
         """
         if include_unit:
-            return self.VALUE_STR_FORMAT.format(value=self.value,
-                                                unit=self.unit)
-        else:
-            return str(self.value)
-    
+            return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
+        return str(self.value)
     # Shared Private Methods #
     def _validate_constrained_geometry(self) -> NoReturn:
         """Raises an error if the constrained geometries are not one of the 
         allowed types.
         """
-        if not any([isinstance(g, self.GEOMETRY_TYPES)
-                    for g in self.get_geometry()]):
+        if not any(isinstance(g, self.GEOMETRY_TYPES)
+                   for g in self.get_geometry()):
             classes = [g.__class__ for g in self.get_geometry()]
             raise ValueError(
                 f"geometries must be one of:\n{self.GEOMETRY_TYPES}\n"
                 f"Given: {classes}"
             )
-    
     # Abstract Private Methods #
     @abstractmethod
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the parent geometry cannot be used."""
-    
     @abstractmethod
     def _validate_value(self) -> NoReturn:
         """Raises an error if the value of the constraint cannot be used."""
-    
     # Shared Dunder Methods
     def __eq__(self, other: AbstractValue) -> bool:
         """Checks whether two value relations are functionally the same by 
@@ -89,10 +91,8 @@ class AbstractValue(AbstractConstraint):
         """
         geometry_zip = zip(self.get_geometry(), other.get_geometry())
         if isinstance(other, self.__class__):
-            return all([g is other_g for g, other_g in geometry_zip])
-        else:
-            return NotImplemented
-    
+            return all(g is other_g for g, other_g in geometry_zip)
+        return NotImplemented
     def __str__(self) -> str:
         super_str = super().__str__().removesuffix(">")
         return f"{super_str}[{self.value}{self.unit}]>"
@@ -124,23 +124,14 @@ class Angle(AbstractValue):
     :param uid: Unique identifier of the constraint.
     :param is_radians: Whether provided value is in radians. Defaults to False.
     """
-    CONSTRAINED_TYPES = (
-        CoordinateSystem,
-        Line,
-        LineSegment,
-        Ellipse,
-    )
+    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Ellipse)
     GEOMETRY_TYPES = (Line, LineSegment)
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
     QUADRANTS = [1, 2, 3, 4]
     """The allowed quadrant choices for where to place the angle."""
-    
     def __init__(self,
-                 geometry_a: ConstrainedType,
+                 geometry_a: AbstractGeometry,
                  reference_a: ConstraintReference,
-                 geometry_b: ConstrainedType,
+                 geometry_b: AbstractGeometry,
                  reference_b: ConstraintReference,
                  value: Real,
                  quadrant: int,
@@ -157,17 +148,14 @@ class Angle(AbstractValue):
             self.value = math.degrees(value)
         else:
             self.value = value
-    
     # Getters #
     @property
     def quadrant(self) -> int:
         return self._quadrant
-    
     @property
     def value(self) -> Real:
         """Value of the angle constraint in degrees"""
         return self._value
-    
     # Setters #
     @quadrant.setter
     def quadrant(self, value: int) -> None:
@@ -176,23 +164,18 @@ class Angle(AbstractValue):
         else:
             raise ValueError(f"Provided quadrant {value} not recognized."
                              f" Must be one of {self.QUADRANTS}")
-    
     @value.setter
     def value(self, value: Real) -> None:
         self._value = value
         self._validate_value()
-    
     # Public Methods #
-    def get_constrained(self) -> tuple[ConstrainedType]:
+    def get_constrained(self) -> tuple[AbstractGeometry]:
         return (self._a, self._b)
-    
-    def get_geometry(self) -> tuple[ConstrainedType]:
+    def get_geometry(self) -> tuple[AbstractGeometry]:
         return (self._a.get_reference(self._a_reference),
                 self._b.get_reference(self._b_reference))
-    
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference, self._b_reference)
-    
     def get_value(self, in_radians: bool=False) -> Real:
         """Returns the value of the angle constraint.
         
@@ -205,7 +188,6 @@ class Angle(AbstractValue):
             return math.radians(self.value)
         else:
             return self.value
-    
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the geometries are not one of the allowed 
@@ -221,7 +203,6 @@ class Angle(AbstractValue):
             raise ValueError("geometry must be 2D")
         elif self._a is self._b:
             raise ValueError("geometry a/b cannot be the same geometry element")
-    
     def _validate_value(self) -> NoReturn:
         """Raises an error if the value of the constraint cannot be used."""
         if not isinstance(self.value, (int, float)):
@@ -232,16 +213,13 @@ class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more 
     geometries that has a distance associated with it.
     """
-    
     @property
     def value(self) -> Real:
         """The distance the constrain enforces. Cannot be negative."""
         return self._value
-    
     @value.setter
     def value(self, value: Real) -> None:
         self._value = value
-    
     # Shared Private Methods #
     def _validate_value(self) -> NoReturn:
         """Raises an error if the value of the constraint cannot be used."""
@@ -270,9 +248,9 @@ class Abstract2GeometryDistance(AbstractDistance):
     :param unit: The unit of the distance value. Defaults to None.
     """
     def __init__(self,
-                 geometry_a: ConstrainedType,
+                 geometry_a: AbstractGeometry,
                  reference_a: ConstraintReference,
-                 geometry_b: ConstrainedType,
+                 geometry_b: AbstractGeometry,
                  reference_b: ConstraintReference,
                  value: Real,
                  uid: str=None,
@@ -284,18 +262,14 @@ class Abstract2GeometryDistance(AbstractDistance):
         self._b_reference = reference_b
         self.value = value
         self.unit = unit
-        
         self._validate_parent_geometry()
         self._validate_constrained_geometry()
         self._validate_value()
-    
-    def get_constrained(self) -> tuple[ConstrainedType]:
+    def get_constrained(self) -> tuple[AbstractGeometry]:
         return (self._a, self._b)
-    
-    def get_geometry(self) -> tuple[ConstrainedType]:
+    def get_geometry(self) -> tuple[AbstractGeometry]:
         return (self._a.get_reference(self._a_reference),
                 self._b.get_reference(self._b_reference))
-    
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference, self._b_reference)
 
@@ -314,17 +288,8 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     """
-    CONSTRAINED_TYPES = (
-        Circle,
-        CircularArc,
-    )
-    GEOMETRY_TYPES = (
-        Circle,
-        CircularArc,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
+    CONSTRAINED_TYPES = (Circle, CircularArc)
+    GEOMETRY_TYPES = (Circle, CircularArc)
     def __init__(self,
                  geometry_a: ConstrainedType,
                  reference_a: ConstraintReference,
@@ -336,21 +301,16 @@ class Abstract1GeometryDistance(AbstractDistance):
         self._a_reference = reference_a
         self.value = value
         self.unit = unit
-        
         self._validate_parent_geometry()
         self._validate_constrained_geometry()
         self._validate_value()
-    
     # Public Methods #
-    def get_constrained(self) -> tuple[ConstrainedType]:
+    def get_constrained(self) -> tuple[AbstractGeometry]:
         return (self._a,)
-    
-    def get_geometry(self) -> tuple[ConstrainedType]:
+    def get_geometry(self) -> tuple[AbstractGeometry]:
         return (self._a.get_reference(self._a_reference),)
-    
     def get_references(self) -> tuple[ConstraintReference]:
         return (self._a_reference,)
-    
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the geometries are not one of the allowed 
@@ -389,9 +349,6 @@ class Distance(Abstract2GeometryDistance):
         Point,
     )
     GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the geometries are not one of the allowed 
@@ -425,14 +382,7 @@ class AbstractDistance2D(Abstract2GeometryDistance):
         LineSegment,
         Point,
     )
-    GEOMETRY_TYPES = (
-        Line,
-        LineSegment,
-        Point,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
+    GEOMETRY_TYPES = (Line, LineSegment, Point)
     # Private Methods #
     def _validate_parent_geometry(self) -> NoReturn:
         """Raises an error if the geometries are not one of the allowed types.
