@@ -9,8 +9,8 @@ import os
 import tempfile
 import json
 
-from . import error_detection
-from ._bootstrap import find_app_dir
+from pancad.cad.freecad import error_detection
+from pancad.cad.freecad._bootstrap import find_app_dir
 
 def call_freecad_python(program: str | Path, *args) -> dict:
     """Calls a python program using the FreeCAD python executable. Assumes that 
@@ -24,7 +24,6 @@ def call_freecad_python(program: str | Path, *args) -> dict:
     with tempfile.NamedTemporaryFile(delete=False) as file:
         temp_file_name = file.name
     with Popen([exe, program, temp_file_name, *args]) as proc:
-        # proc = Popen([exe, program, temp_file_name, *args])
         proc.communicate()
         with open(temp_file_name, encoding="utf-8") as file:
             result = json.load(file)

@@ -1,3 +1,4 @@
+"""The freecad.constants module imports the constants for easier access here."""
 from ._object_type import ObjectType
 from ._edge_sub_parts import EdgeSubPart
 from ._constraint_type import ConstraintType

@@ -4,20 +4,20 @@ True from isinstance(). The aliases defined in this file are only for classes
 that will return True.
 """
 
-try:
-    import FreeCAD as App
-    import Sketcher
-    import Part
-except ImportError:
-    import sys
-    from ._bootstrap import get_app_dir
-    sys.path.append(str(get_app_dir()))
-    import FreeCAD as App
-    import Sketcher
-    import Part
+for _ in range(0, 2):
+    try:
+        import FreeCAD
+        import Sketcher
+        import Part
+    except ImportError:
+        import sys
+        from pancad.cad.freecad._bootstrap import get_app_dir
+        sys.path.append(str(get_app_dir()))
+        continue
+    break
 
-FreeCADDocument = App.Document
-FreeCADOrigin = App.DocumentObject
+FreeCADDocument = FreeCAD.Document
+FreeCADOrigin = FreeCAD.DocumentObject
 """FreeCAD Origins do not have their own class, usually need to be identified by 
 their type id.
 """

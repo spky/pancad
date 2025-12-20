@@ -4,7 +4,6 @@ from enum import StrEnum
 
 class SubFile(StrEnum):
     """An enumeration of file names inside of FreeCAD document."""
-    
     DOCUMENT_XML = "Document.xml"
     """XML file containing geometric information."""
     GUI_DOCUMENT_XML = "GuiDocument.xml"
@@ -111,19 +110,8 @@ class Tag(StrEnum):
     VISUAL_LAYER = "VisualLayer"
     VISUAL_LAYER_LIST = "VisualLayerList"
     UUID = "Uuid"
-    
     def __repr__(self):
         return f"'{self.value}'"
-
-class XMLObjectType(StrEnum):
-    PART_DESIGN_BODY = "PartDesign::Body"
-    PART_DESIGN_PAD = "PartDesign::Pad"
-    APP_ORIGIN = "App::Origin"
-    APP_LINE = "App::Line"
-    APP_PLANE = "App::Plane"
-    
-    def __repr__(self):
-        return self.name
 
 class Sketcher(StrEnum):
     """Enumeration of 'Sketcher::' options in FCStd xml files."""
@@ -197,7 +185,6 @@ class Materials(StrEnum):
 class PropertyType(StrEnum):
     """Enumeration of types that do not have a '::' namespace."""
     BAD_TYPE = "BadType"
-    
     def __repr__(self):
         return self.name
 
@@ -208,16 +195,6 @@ class XMLGeometryType(StrEnum):
     ELLIPSE = "Part::GeomEllipse"
     LINE_SEGMENT = "Part::GeomLineSegment"
     POINT = "Part::GeomPoint"
-
-class XMLGeometryAttr(StrEnum):
-    END_X = "EndX"
-    END_Y = "EndY"
-    END_Z = "EndZ"
-    START_X = "StartX"
-    START_Y = "StartY"
-    START_Z = "StartZ"
-
-
 
 class Attr(StrEnum):
     """Enumeration of element attribute names in FCStd xml files."""
@@ -259,6 +236,5 @@ class Attr(StrEnum):
     VALUE = "value"
     VALUE_CAPITALIZED = "Value"
     VISIBLE = "visible"
-    
     def __repr__(self):
         return f"'{self.value}'"

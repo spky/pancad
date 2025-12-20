@@ -9,13 +9,15 @@ import argparse
 from enum import StrEnum, auto
 import json
 
-try:
-    import FreeCAD as App
-except ImportError:
-    import sys
-    from ._bootstrap import get_app_dir
-    sys.path.append(str(get_app_dir()))
-    import FreeCAD as App
+for _ in range(0, 2):
+    try:
+        import FreeCAD
+    except ImportError:
+        import sys
+        from pancad.cad.freecad._bootstrap import get_app_dir
+        sys.path.append(str(get_app_dir()))
+        continue
+    break
 
 class ErrorCategory(StrEnum):
     """An enumeration used to define FreeCAD error categories for model validation.
@@ -45,7 +47,7 @@ def _parse_args() -> argparse.Namespace:
                         help="Filepath of the FreeCAD file to check")
     return parser.parse_args()
 
-def _key(object_: App.DocumentObject) -> str:
+def _key(object_: FreeCAD.DocumentObject) -> str:
     """Returns the report key for the FreeCAD object/"""
     return f"{object_.ID}: {object_.Label}"
 
@@ -55,7 +57,7 @@ def main():
     temporary json file so the primary pancad process can read it.
     """
     args = _parse_args()
-    document = App.open(args.filepath)
+    document = FreeCAD.open(args.filepath)
     # Recompute the FreeCAD document before checking
     document.recompute()
     data = []
