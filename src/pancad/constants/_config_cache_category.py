@@ -6,7 +6,6 @@ from enum import StrEnum, auto
 class ConfigCategory(StrEnum):
     """An enumeration used for pancad cache and configuration category options.
     """
-    
     APPLICATION_PATHS = auto()
     """Used to store paths to executables"""
     DEFAULT_INSTALL = auto()
