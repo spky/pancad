@@ -13,17 +13,6 @@ from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
 from pancad.geometry.constraints.utils import constraint_args
-from pancad.geometry import (
-    AbstractGeometry,
-    Circle,
-    CircularArc,
-    CoordinateSystem,
-    Ellipse,
-    Line,
-    LineSegment,
-    Plane,
-    Point,
-)
 
 if TYPE_CHECKING:
     from pancad.geometry.constraints.utils import GeometryReference
@@ -34,7 +23,6 @@ class AbstractValue(AbstractConstraint):
     geometries that has a value associated with it.
     """
     VALUE_STR_FORMAT = "{value}{unit}"
-    GEOMETRY_TYPES = AbstractGeometry
     @property
     @abstractmethod
     def value(self) -> Real:
@@ -50,13 +38,6 @@ class AbstractValue(AbstractConstraint):
     @unit.setter
     def unit(self, value: str) -> None:
         self._unit = value
-    @property
-    def _pairs(self) -> list[tuple[AbstractGeometry, ConstraintReference]]:
-        return self.__pairs
-    @_pairs.setter
-    def _pairs(self, value: list[tuple[AbstractGeometry,
-                                       ConstraintReference]]) -> None:
-        self.__pairs = value
     # Shared Public Methods #
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the constraint.
@@ -69,14 +50,6 @@ class AbstractValue(AbstractConstraint):
         if include_unit:
             return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
         return str(self.value)
-    # Public Methods #
-    def get_constrained(self) -> tuple[AbstractGeometry]:
-        return tuple(geometry for geometry, _ in self._pairs)
-    def get_geometry(self) -> tuple[AbstractGeometry]:
-        return tuple(geometry.get_reference(reference)
-                     for geometry, reference in self._pairs)
-    def get_references(self) -> tuple[ConstraintReference]:
-        return tuple(reference for _, reference in self._pairs)
     # Abstract Private Methods #
     @abstractmethod
     def _validate(self) -> None:
@@ -121,8 +94,6 @@ class Angle(AbstractValue):
     :raises ValueError: When the subgeometries are not 2D or if not exactly 2
         pairs are provided.
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Line, LineSegment, Ellipse)
-    GEOMETRY_TYPES = (Line, LineSegment)
     QUADRANTS = [1, 2, 3, 4]
     """The allowed quadrant choices for where to place the angle."""
     def __init__(self,
@@ -228,8 +199,8 @@ class Abstract2GeometryDistance(AbstractDistance):
                  unit: str=None) -> None:
         self.uid = uid
         self._pairs = constraint_args(*reference_pairs)
-        self.value = value
         self.unit = unit
+        self.value = value
     def _validate(self) -> None:
         super()._validate()
         if len(self._pairs) != 2:
@@ -251,8 +222,6 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     """
-    CONSTRAINED_TYPES = (Circle, CircularArc)
-    GEOMETRY_TYPES = (Circle, CircularArc)
     def __init__(self,
                  *reference_pairs: GeometryReference,
                  value: Real,
@@ -273,42 +242,12 @@ class Abstract1GeometryDistance(AbstractDistance):
 class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D 
     or 3D.
-    
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CircularArc`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Point`
-    - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (
-        Circle,
-        CircularArc,
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Plane,
-        Point,
-    )
-    GEOMETRY_TYPES = (Point, Line, LineSegment, Plane)
 
 # 2D Only Classes #
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    CONSTRAINED_TYPES = (
-        Circle,
-        CircularArc,
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Point,
-    )
-    GEOMETRY_TYPES = (Line, LineSegment, Point)
     # Private Methods #
     def _validate(self) -> None:
         super()._validate()
@@ -317,41 +256,13 @@ class AbstractDistance2D(Abstract2GeometryDistance):
             raise ValueError("geometry must be 2D")
 
 class HorizontalDistance(AbstractDistance2D):
-    """A constraint that sets the horizontal distance between two elements. Can 
-    constrain:
-    
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CircularArc`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Point`
-    """
+    """A constraint that sets the horizontal distance between two elements."""
 
 class VerticalDistance(AbstractDistance2D):
-    """A constraint that sets the vertical distance between two elements. Can 
-    constrain:
-    
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CircularArc`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Point`
-    """
+    """A constraint that sets the vertical distance between two elements."""
 
 class Radius(Abstract1GeometryDistance):
-    """A constraint that sets the radius of a curve. Can constrain:
-    
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CircularArc`
-    """
+    """A constraint that sets the radius of a curve."""
 
 class Diameter(Abstract1GeometryDistance):
-    """A constraint that sets the diameter of a curve. Can constrain:
-    
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CircularArc`
-    """
+    """A constraint that sets the diameter of a curve."""

@@ -43,14 +43,6 @@ class AbstractStateConstraint(AbstractConstraint):
         self.uid = uid
         self._pairs = constraint_args(*reference_pairs)
         self._validate()
-    # Public Methods
-    def get_constrained(self) -> tuple[AbstractGeometry]:
-        return tuple(geometry for geometry, _ in self._pairs)
-    def get_geometry(self) -> tuple[AbstractGeometry]:
-        return tuple(geometry.get_reference(reference)
-                     for geometry, reference in self._pairs)
-    def get_references(self) -> tuple[ConstraintReference]:
-        return tuple(reference for _, reference in self._pairs)
     # Private Methods #
     def _validate(self) -> None:
         if len(self._pairs) != 2:

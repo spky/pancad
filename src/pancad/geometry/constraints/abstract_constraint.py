@@ -16,22 +16,32 @@ class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint 
     Elements.
     """
-    # Abstract Public Methods #
-    @abstractmethod
+    @property
+    def _pairs(self) -> list[tuple[AbstractGeometry, ConstraintReference]]:
+        return self.__pairs
+    @_pairs.setter
+    def _pairs(self, value: list[tuple[AbstractGeometry,
+                                       ConstraintReference]]) -> None:
+        self.__pairs = value
     def get_constrained(self) -> tuple[AbstractGeometry]:
         """Returns the geometry or geometries being constrained."""
-    @abstractmethod
+        return tuple(geometry for geometry, _ in self._pairs)
     def get_geometry(self) -> tuple[AbstractGeometry]:
         """Returns the portions of the constrained geometry being constrained. 
         
         Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or 
         the start point of a :class:`~pancad.geometry.LineSegment`.
         """
-    @abstractmethod
+        return tuple(geometry.get_reference(reference)
+                     for geometry, reference in self._pairs)
     def get_references(self) -> tuple[ConstraintReference]:
         """Returns a tuple of the constrained geometrys' ConstraintReferences in 
         the same order as the tuple returned by :meth:`get_constrained`.
         """
+        return tuple(reference for _, reference in self._pairs)
+    @abstractmethod
+    def _validate(self) -> None:
+        """Checks whether the constraint is badly formed."""
     def __repr__(self) -> str:
         return str(self)
     def __str__(self) -> str:
