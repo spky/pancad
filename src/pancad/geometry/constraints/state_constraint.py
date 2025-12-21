@@ -8,11 +8,10 @@ examples of state constraints.
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from functools import reduce
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
+from pancad.geometry.constraints.utils import constraint_args
 from pancad.geometry import (
     Circle,
     CircularArc,
@@ -25,79 +24,45 @@ from pancad.geometry import (
 )
 
 if TYPE_CHECKING:
-    from typing import NoReturn, Type
-    
+    from typing import Type
+    from pancad.geometry import AbstractGeometry
+    from pancad.geometry.constraints.utils import GeometryReference
     from pancad.geometry.constants import ConstraintReference
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry 
     elements to share a constant implied value or some state.
     
-    :param constrain_a: The first geometry to be constrained.
-    :param reference_a: The ConstraintReference of the portion of constrain_a to 
-        be constrained.
-    :param constrain_b: The second geometry to be constrained.
-    :param reference_b: The ConstraintReference of the portion of constrain_b to 
-        be constrained.
+    :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
+        the geometry to be constrained.
     :param uid: The unique id of the constraint.
     """
     def __init__(self,
-                 constrain_a: ConstrainedType,
-                 reference_a: ConstraintReference,
-                 constrain_b: ConstrainedType,
-                 reference_b: ConstraintReference,
+                 *reference_pairs: GeometryReference,
                  uid: str=None) -> None:
         self.uid = uid
-        
-        self._a = constrain_a
-        self._a_reference = reference_a
-        self._b = constrain_b
-        self._b_reference = reference_b
-        
-        self._validate_parent_geometry()
-        self._validate_geometry()
-        self._validate_combination()
-    
+        self._pairs = constraint_args(*reference_pairs)
+        self._validate()
     # Public Methods
-    def get_constrained(self) -> tuple[ConstrainedType]:
-        return (self._a, self._b)
-    
-    def get_geometry(self) -> tuple[GeometryType]:
-        return (self._a.get_reference(self._a_reference),
-                self._b.get_reference(self._b_reference))
-    
+    def get_constrained(self) -> tuple[AbstractGeometry]:
+        return tuple(geometry for geometry, _ in self._pairs)
+    def get_geometry(self) -> tuple[AbstractGeometry]:
+        return tuple(geometry.get_reference(reference)
+                     for geometry, reference in self._pairs)
     def get_references(self) -> tuple[ConstraintReference]:
-        return (self._a_reference, self._b_reference)
-    
+        return tuple(reference for _, reference in self._pairs)
     # Private Methods #
-    def _validate_geometry(self) -> NoReturn:
-        """Raises an error if the geometries are not one of the allowed types.
-        """
-        if not any([isinstance(g, self.GEOMETRY_TYPES)
-                    for g in self.get_geometry()]):
-            classes = [g.__class__ for g in self.get_geometry()]
-            raise ValueError(
-                f"geometry a and b must be one of:\n{self.GEOMETRY_TYPES}\n"
-                f"Given: {classes}"
-            )
-        elif self._a is self._b:
-            raise ValueError("Constrained a/b cannot be the same element")
-    
-    def _validate_parent_geometry(self) -> NoReturn:
-        """Raises an error if the parents (Ex: the line of the start point) of 
-        the geometries are not one of the allowed types. Also called constrained 
-        geometry.
-        """
-        if not any([isinstance(g, self.CONSTRAINED_TYPES)
-                    for g in self.get_constrained()]):
-            classes = [g.__class__ for g in self.get_constrained()]
-            raise ValueError(
-                f"geometry a and b must be one of:\n{self.CONSTRAINED_TYPES}\n"
-                f"Given: {classes}"
-            )
-    
+    def _validate(self) -> None:
+        if len(self._pairs) != 2:
+            raise ValueError("Expected 2 reference_pairs,"
+                             f" provided {len(self._pairs)}")
+        iterator = iter(len(geometry.get_reference(reference))
+                        for geometry, reference in self._pairs)
+        first_length = next(iterator)
+        if not all(first_length == length for length in iterator):
+            raise ValueError("Not all subgeometry are the same dimension")
     # Abstract Shared Static Private Methods
-    def _is_combination(self, 
+    def _is_combination(self,
                         one_parent_type: Type | tuple[Type],
                         one_reference_geometry: Type | tuple[Type],
                         other_parent_type: Type | tuple[Type],
@@ -116,33 +81,24 @@ class AbstractStateConstraint(AbstractConstraint):
         """
         constrained = list(self.get_constrained())
         references = list(self.get_references())
-        geometry = list(self.get_geometry())
-        
-        # Check parent types and 
-        if isinstance(self._a, one_parent_type):
+        iterator = iter(self._pairs)
+        first, _ = next(iterator)
+        second, _ = next(iterator)
+        # Check parent types and order them to check against the other.
+        if isinstance(first, one_parent_type):
             one_parent, other_parent = constrained
             one_reference, other_reference = references
-        elif isinstance(self._b, one_parent_type):
+        elif isinstance(second, one_parent_type):
             other_parent, one_parent = constrained
             other_reference, one_reference = references
         else:
             return False
-        
         if isinstance(one_parent.get_reference(one_reference),
                       one_reference_geometry):
             if isinstance(other_parent, other_parent_type):
                 return isinstance(other_parent.get_reference(other_reference),
                                   other_reference_geometry)
-            else:
-                return False
-        else:
-            return False
-    
-    # Abstract Shared Private Methods #
-    @abstractmethod
-    def _validate_combination(self) -> NoReturn:
-        """Raises an error if the geometry combination cannot be constrained."""
-    
+        return False
     # Python Dunders #
     def __eq__(self, other: AbstractStateConstraint) -> bool:
         """Checks whether two state constraints are functionally the same by 
@@ -153,9 +109,8 @@ class AbstractStateConstraint(AbstractConstraint):
         """
         geometry_zip = zip(self.get_geometry(), other.get_geometry())
         if isinstance(other, self.__class__):
-            return all([g is other_g for g, other_g in geometry_zip])
-        else:
-            return NotImplemented
+            return all(g is other_g for g, other_g in geometry_zip)
+        return NotImplemented
 
 class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same 
@@ -169,28 +124,11 @@ class Coincident(AbstractStateConstraint):
     - :class:`~pancad.geometry.Plane`
     - :class:`~pancad.geometry.Point`
     """
-    CONSTRAINED_TYPES = (
-        Circle,
-        CircularArc,
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Plane,
-        Point,
-    )
-    GEOMETRY_TYPES = (
-        Circle,
-        CircularArc,
-        Line,
-        LineSegment,
-        Plane,
-        Point,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
-    def _validate_combination(self) -> NoReturn:
+    CONSTRAINED_TYPES = (Circle, CircularArc, CoordinateSystem,
+                         Ellipse, Line, LineSegment, Plane, Point)
+    GEOMETRY_TYPES = (Circle, CircularArc, Line, LineSegment, Plane, Point)
+    def _validate(self) -> None:
+        super()._validate()
         if self._is_combination((CoordinateSystem, Line, LineSegment),
                                 (LineSegment, Line),
                                 (Circle, CircularArc),
@@ -207,21 +145,10 @@ class Equal(AbstractStateConstraint):
     - :class:`~pancad.geometry.Ellipse`
     - :class:`~pancad.geometry.LineSegment`
     """
-    CONSTRAINED_TYPES = (
-        Circle,
-        CircularArc,
-        Ellipse,
-        LineSegment,
-    )
-    GEOMETRY_TYPES = (
-        Circle,
-        CircularArc,
-        LineSegment,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
-    def _validate_combination(self) -> NoReturn:
+    CONSTRAINED_TYPES = (Circle, CircularArc, Ellipse, LineSegment)
+    GEOMETRY_TYPES = (Circle, CircularArc, LineSegment)
+    def _validate(self) -> None:
+        super()._validate()
         if self._is_combination(LineSegment,
                                 LineSegment,
                                 (Circle, CircularArc),
@@ -238,19 +165,8 @@ class Parallel(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Plane,
-    )
+    CONSTRAINED_TYPES = (CoordinateSystem, Ellipse, Line, LineSegment, Plane)
     GEOMETRY_TYPES = (Line, LineSegment, Plane)
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
-    def _validate_combination(self) -> NoReturn:
-        """No known invalid combinations available for parallel."""
 
 class Perpendicular(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be angled 90 degrees 
@@ -262,23 +178,8 @@ class Perpendicular(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Plane,
-    )
-    GEOMETRY_TYPES = (
-        Line,
-        LineSegment,
-        Plane,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
-    def _validate_combination(self) -> NoReturn:
-        """No known invalid combinations available for perpendicular."""
+    CONSTRAINED_TYPES = (CoordinateSystem, Ellipse, Line, LineSegment, Plane)
+    GEOMETRY_TYPES = (Line, LineSegment, Plane)
 
 class Tangent(AbstractStateConstraint):
     """A constraint that forces a line to touch a curve at a point while not 
@@ -291,34 +192,20 @@ class Tangent(AbstractStateConstraint):
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (
-        Circle,
-        CoordinateSystem,
-        Ellipse,
-        Line,
-        LineSegment,
-        Plane,
-    )
-    GEOMETRY_TYPES = (
-        Circle,
-        CircularArc,
-        Line,
-        LineSegment,
-        Plane,
-    )
-    ConstrainedType = reduce(lambda x, y: x | y, CONSTRAINED_TYPES)
-    GeometryType = reduce(lambda x, y: x | y, GEOMETRY_TYPES)
-    
-    def _validate_combination(self) -> NoReturn:
+    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
+                         Line, LineSegment, Plane)
+    GEOMETRY_TYPES = (Circle, CircularArc, Line, LineSegment, Plane)
+    def _validate(self) -> None:
+        super()._validate()
         if self._is_combination((CoordinateSystem, Line, LineSegment, Plane),
                                 (LineSegment, Line, Plane),
                                 (CoordinateSystem, Line, LineSegment, Plane),
                                 (LineSegment, Line, Plane)):
-            # NOTE: CAD programs like FreeCAD do allow the line-line tangent 
-            # condition. This may have some limited use cases, but does not 
-            # match the mathematical definition of tangent. This case is 
-            # protected against to limit ambiguities between CAD programs, but 
-            # may still be translated to coincident in application specific 
+            # NOTE: CAD programs like FreeCAD do allow the line-line tangent
+            # condition. This may have some limited use cases, but does not
+            # match the mathematical definition of tangent. This case is
+            # protected against to limit ambiguities between CAD programs, but
+            # may still be translated to coincident in application specific
             # contexts.
             raise TypeError("Lines/Planes cannot be made tangent with"
                             " other Lines/Planes. Use coincident if you mean to"

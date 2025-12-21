@@ -14,12 +14,12 @@ class TestInit(unittest.TestCase):
     def test_point_init(self):
         # Checking whether init errors out nominally
         c = Coincident(self.a, ConstraintReference.CORE,
-                       self.b, ConstraintReference.CORE, self.uid)
+                       self.b, ConstraintReference.CORE, uid=self.uid)
     
     def test_point_change(self):
         # Check whether updating the point updates the value in coincident
         c = Coincident(self.a, ConstraintReference.CORE,
-                       self.b, ConstraintReference.CORE, self.uid)
+                       self.b, ConstraintReference.CORE, uid=self.uid)
         original_a = self.a.copy()
         new_a = Point(1, 1)
         self.a.update(new_a)

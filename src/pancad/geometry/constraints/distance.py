@@ -12,7 +12,7 @@ from numbers import Real
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
-from pancad.geometry.constraints.utils import GeometryReference, constraint_args
+from pancad.geometry.constraints.utils import constraint_args
 from pancad.geometry import (
     AbstractGeometry,
     Circle,
@@ -26,7 +26,7 @@ from pancad.geometry import (
 )
 
 if TYPE_CHECKING:
-    from typing import NoReturn
+    from pancad.geometry.constraints.utils import GeometryReference
     from pancad.geometry.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
@@ -238,7 +238,7 @@ class Abstract2GeometryDistance(AbstractDistance):
                         for geometry, reference in self._pairs)
         first_length = next(iterator)
         if not all(first_length == length for length in iterator):
-            raise ValueError("Not all subgeometry is the same dimension")
+            raise ValueError("Not all subgeometry are the same dimension")
 
 class Abstract1GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly one** 
