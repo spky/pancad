@@ -16,11 +16,9 @@ from pancad.geometry import (
     Circle,
     CircularArc,
     CoordinateSystem,
-    Ellipse,
     Line,
     LineSegment,
     Plane,
-    Point,
 )
 
 if TYPE_CHECKING:
@@ -106,19 +104,8 @@ class AbstractStateConstraint(AbstractConstraint):
 
 class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same 
-    location. Can constrain:
-    
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Plane`
-    - :class:`~pancad.geometry.Point`
+    location.
     """
-    CONSTRAINED_TYPES = (Circle, CircularArc, CoordinateSystem,
-                         Ellipse, Line, LineSegment, Plane, Point)
-    GEOMETRY_TYPES = (Circle, CircularArc, Line, LineSegment, Plane, Point)
     def _validate(self) -> None:
         super()._validate()
         if self._is_combination((CoordinateSystem, Line, LineSegment),
@@ -131,14 +118,7 @@ class Coincident(AbstractStateConstraint):
 class Equal(AbstractStateConstraint):
     """A constraint that forces two geometry elements to have the same 
     context-specific value, such as two line segments sharing the same length. 
-    Can constrain:
-    
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.LineSegment`
     """
-    CONSTRAINED_TYPES = (Circle, CircularArc, Ellipse, LineSegment)
-    GEOMETRY_TYPES = (Circle, CircularArc, LineSegment)
     def _validate(self) -> None:
         super()._validate()
         if self._is_combination(LineSegment,
@@ -149,44 +129,18 @@ class Equal(AbstractStateConstraint):
 
 class Parallel(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be side by side and 
-    have the same distance continuously between them. Can constrain:
-    
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Plane`
+    have the same distance continuously between them.
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Ellipse, Line, LineSegment, Plane)
-    GEOMETRY_TYPES = (Line, LineSegment, Plane)
 
 class Perpendicular(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be angled 90 degrees 
     relative to each other.
-    
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (CoordinateSystem, Ellipse, Line, LineSegment, Plane)
-    GEOMETRY_TYPES = (Line, LineSegment, Plane)
 
 class Tangent(AbstractStateConstraint):
     """A constraint that forces a line to touch a curve at a point while not 
     also crossing the curve at that point.
-    
-    - :class:`~pancad.geometry.Circle`
-    - :class:`~pancad.geometry.CoordinateSystem`
-    - :class:`~pancad.geometry.Ellipse`
-    - :class:`~pancad.geometry.Line`
-    - :class:`~pancad.geometry.LineSegment`
-    - :class:`~pancad.geometry.Plane`
     """
-    CONSTRAINED_TYPES = (Circle, CoordinateSystem, Ellipse,
-                         Line, LineSegment, Plane)
-    GEOMETRY_TYPES = (Circle, CircularArc, Line, LineSegment, Plane)
     def _validate(self) -> None:
         super()._validate()
         if self._is_combination((CoordinateSystem, Line, LineSegment, Plane),

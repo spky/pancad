@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
-    from pancad.geometry import AbstractFeature, AbstractGeometry
+    from pancad.geometry import AbstractGeometry
 
 class AbstractFeature(PancadThing):
-    
+    """A class defining the interfaces provided by pancad Feature elements."""
     # Public Methods #
     @abstractmethod
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
@@ -20,7 +20,6 @@ class AbstractFeature(PancadThing):
         :class:`~pancad.geometry.Sketch` returns the sketch's coordinate 
         system and its external geometry references.
         """
-    
     # Abstract Properties
     @property
     @abstractmethod
@@ -29,8 +28,7 @@ class AbstractFeature(PancadThing):
         then the feature's context is the top level of the file that the feature 
         is inside of.
         """
-    
-    # Getters #
+    # Properties #
     @property
     def name(self) -> str:
         """The name of the feature. Usually user assigned or automatically 
@@ -38,10 +36,7 @@ class AbstractFeature(PancadThing):
         """
         if hasattr(self, "_name"):
             return self._name
-        else:
-            return None
-    
-    # Setters #
+        return ""
     @name.setter
     def name(self, value: str) -> str | None:
         self._name = value
