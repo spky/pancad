@@ -31,6 +31,7 @@ from pancad.geometry.constraints import (
     Angle,
     make_constraint,
 )
+from pancad.geometry.constraints.utils import flatten_to_pairs
 from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
@@ -256,36 +257,10 @@ class Sketch(AbstractFeature, AbstractGeometry):
             raise LookupError(f"Dependencies for {repr(constraint)} are missing"
                              f" from sketch: {list(missing)}")
     
-    @overload
-    def add_constraint_by_uid(self,
-                              sketch_constraint: SketchConstraint,
-                              uid_a: str | UUID,
-                              reference_a: ConstraintReference,
-                              **kwargs) -> Self: ...
-    
-    @overload
-    def add_constraint_by_uid(self,
-                              sketch_constraint: SketchConstraint,
-                              uid_a: str | UUID,
-                              reference_a: ConstraintReference,
-                              uid_b: str | UUID=None,
-                              reference_b: ConstraintReference=None,
-                              **kwargs) -> Self: ...
-    
-    @overload
-    def add_constraint_by_uid(self,
-                              sketch_constraint: SketchConstraint,
-                              uid_a: str | UUID,
-                              reference_a: ConstraintReference,
-                              uid_b: str | UUID=None,
-                              reference_b: ConstraintReference=None,
-                              uid_c: str | UUID=None,
-                              reference_c: ConstraintReference=None,
-                              **kwargs) -> Self: ...
-    
     def add_constraint_by_uid(
-                self, sketch_constraint, uid_a, reference_a,
-                uid_b=None, reference_b=None, uid_c=None, reference_c=None,
+                self, type_: SketchConstraint,
+                *uid_pairs: (tuple[str | UUID, ConstraintReference]
+                            | str | UUID | ConstraintReference),
                 **kwargs
             ) -> Self:
         """Adds a sketch constraint between two geometry elements selected by 
@@ -295,61 +270,21 @@ class Sketch(AbstractFeature, AbstractGeometry):
         instead of any of the uid inputs to refer to the sketch's coordinate 
         system.
         
-        :param sketch_constraint: The SketchConstraint for the type of 
-            constraint to be added.
-        :param uid_a: The uid of geometry a.
-        :param reference_a: The ConstraintReference to part of geometry a.
-        :param uid_b: The uid of geometry b. Only supplied for constraints 
-            that require 2 or 3 geometry elements (e.g. coincident, parallel).
-        :param reference_b: The ConstraintReference to part of geometry b
-        :param uid_c: The uid of geometry c. Only supplied for constraints 
-            requiring 3 geometry elements (i.e. symmetry).
-        :param reference_c: The ConstraintReference to part of geometry c. The 
-            uid of geometry c. Only supplied for constraints requiring 3 
-            geometry elements (i.e. symmetry).
+        :param type_: The SketchConstraint of the constraint to be added.
+        :param uid_pairs: Pairs of (UUID, ConstraintReference) for each geometry
         :returns: The updated sketch.
         """
-        geometry_a = self.get_geometry_by_uid(uid_a)
-        geometry_b = self.get_geometry_by_uid(uid_b)
-        geometry_c = self.get_geometry_by_uid(uid_c)
-        constraint = make_constraint(sketch_constraint,
-                                     geometry_a, reference_a,
-                                     geometry_b, reference_b,
-                                     geometry_c, reference_c,
-                                     **kwargs)
+        reference_pairs = []
+        for uid, reference in flatten_to_pairs(uid_pairs):
+            reference_pairs.extend([self.get_geometry_by_uid(uid), reference])
+        constraint = make_constraint(type_, *reference_pairs, **kwargs)
         self.add_constraint(constraint)
         return self
     
-    @overload
-    def add_constraint_by_index(self,
-                                sketch_constraint: SketchConstraint,
-                                index_a: int,
-                                reference_a: ConstraintReference,
-                                **kwargs) -> Self: ...
-    
-    @overload
-    def add_constraint_by_index(self,
-                                sketch_constraint: SketchConstraint,
-                                index_a: int,
-                                reference_a: ConstraintReference,
-                                index_b: int=None,
-                                reference_b: ConstraintReference=None,
-                                **kwargs) -> Self: ...
-    
-    @overload
-    def add_constraint_by_index(self,
-                                sketch_constraint: SketchConstraint,
-                                index_a: int,
-                                reference_a: ConstraintReference,
-                                index_b: int=None,
-                                reference_b: ConstraintReference=None,
-                                index_c: int=None,
-                                reference_c: ConstraintReference=None,
-                                **kwargs) -> Self: ...
-    
     def add_constraint_by_index(
-                self, sketch_constraint, index_a, reference_a,
-                index_b=None, reference_b=None, index_c=None, reference_c=None,
+                self, type_: SketchConstraint,
+                *index_pairs: (tuple[int, ConstraintReference]
+                               | int | ConstraintReference),
                 **kwargs
             ) -> Self:
         """Adds a sketch constraint between two geometry elements selected by 
@@ -361,26 +296,15 @@ class Sketch(AbstractFeature, AbstractGeometry):
         
         :param sketch_constraint: The SketchConstraint of the new constraint 
             type.
-        :param index_a: The index of geometry a.
-        :param reference_a: The ConstraintReference to part of geometry a.
-        :param index_b: The index of geometry b. Only required for constraints 
-            that require 2 or 3 geometry elements (e.g. coincident, parallel).
-        :param reference_b: The ConstraintReference to part of geometry b. 
-            Required if index_b is provided.
-        :param index_c: The index of geometry c. Only required for constraints 
-            requiring 3 geometry elements (i.e. symmetry).
-        :param reference_c: The ConstraintReference to part of geometry c. 
-            Required if index_c is provided.
+        :param index_pairs: Pairs of (int, ConstraintReference) for each geometry
         :returns: The updated sketch.
         """
-        geometry_a = self._get_geometry_by_index(index_a)
-        geometry_b = self._get_geometry_by_index(index_b)
-        geometry_c = self._get_geometry_by_index(index_c)
-        constraint = make_constraint(sketch_constraint,
-                                     geometry_a, reference_a,
-                                     geometry_b, reference_b,
-                                     geometry_c, reference_c,
-                                     **kwargs)
+        reference_pairs = []
+        for index, reference in flatten_to_pairs(index_pairs):
+            reference_pairs.extend(
+                [self._get_geometry_by_index(index), reference]
+            )
+        constraint = make_constraint(type_, *reference_pairs, **kwargs)
         self.add_constraint(constraint)
         return self
     

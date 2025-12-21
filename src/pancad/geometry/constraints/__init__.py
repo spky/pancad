@@ -1,5 +1,5 @@
 """A module containing geometry constraint classes and functions to make them."""
-from .abstract_constraint import AbstractConstraint, constraint_args
+from .abstract_constraint import AbstractConstraint
 
 from .state_constraint import (
     AbstractStateConstraint,
@@ -17,6 +17,7 @@ from .snapto import (
 
 from .distance import (
     AbstractValue,
+    AbstractDistance,
     Abstract1GeometryDistance,
     Abstract2GeometryDistance,
     AbstractDistance2D,

@@ -3,7 +3,6 @@ each constraint class individually.
 """
 from __future__ import annotations
 
-from numbers import Real
 from typing import overload, TYPE_CHECKING
 
 from pancad.geometry.constants import SketchConstraint
@@ -11,9 +10,7 @@ from pancad.geometry.constants import SketchConstraint
 from . import (
     AbstractConstraint,
     AbstractStateConstraint,
-    AbstractSnapTo,
-    Abstract1GeometryDistance,
-    Abstract2GeometryDistance,
+    AbstractDistance,
     Angle,
     Coincident,
     Diameter,
@@ -27,95 +24,55 @@ from . import (
     Vertical,
     VerticalDistance,
 )
+from .utils import GeometryReference
 
 if TYPE_CHECKING:
     from uuid import UUID
+    from numbers import Real
     from pancad.geometry import AbstractGeometry
     from pancad.geometry.constants import ConstraintReference
 
+SKETCH_CONSTRAINT_TO_CLASS = {
+    SketchConstraint.ANGLE: Angle,
+    SketchConstraint.COINCIDENT: Coincident,
+    SketchConstraint.HORIZONTAL: Horizontal,
+    SketchConstraint.DISTANCE: Distance,
+    SketchConstraint.DISTANCE_DIAMETER: Diameter,
+    SketchConstraint.DISTANCE_RADIUS: Radius,
+    SketchConstraint.DISTANCE_HORIZONTAL: HorizontalDistance,
+    SketchConstraint.DISTANCE_VERTICAL: VerticalDistance,
+    SketchConstraint.EQUAL: Equal,
+    SketchConstraint.PARALLEL: Parallel,
+    SketchConstraint.PERPENDICULAR: Perpendicular,
+    SketchConstraint.VERTICAL: Vertical,
+}
+
 @overload
-def make_constraint(self,
-                    constraint_type: SketchConstraint,
-                    a: AbstractGeometry,
-                    reference_a: ConstraintReference,
-                    b: AbstractGeometry,
-                    reference_b: ConstraintReference,
-                    *,
+def make_constraint(type_: SketchConstraint,
+                    *reference_pairs: GeometryReference,
                     uid: UUID | str=None) -> AbstractStateConstraint: ...
 
 @overload
-def make_constraint(self,
-                    constraint_type: SketchConstraint,
-                    a: AbstractGeometry,
-                    reference_a: ConstraintReference,
-                    b: AbstractGeometry | None=None,
-                    reference_b: ConstraintReference | None=None,
-                    *,
-                    uid: UUID | str=None) -> AbstractSnapTo: ...
-
-@overload
-def make_constraint(self,
-                    constraint_type: SketchConstraint,
-                    a: AbstractGeometry,
-                    reference_a: ConstraintReference,
-                    *,
+def make_constraint(type_: SketchConstraint,
+                    *reference_pairs: GeometryReference,
                     value: Real,
                     unit: str | None=None,
-                    uid: UUID | str=None) -> Abstract1GeometryDistance: ...
+                    uid: UUID | str=None) -> AbstractDistance: ...
 
 @overload
-def make_constraint(self,
-                    constraint_type: SketchConstraint,
-                    a: AbstractGeometry,
-                    reference_a: ConstraintReference,
-                    b: AbstractGeometry,
-                    reference_b: ConstraintReference,
-                    *,
-                    value: Real,
-                    unit: str | None=None,
-                    uid: UUID | str=None) -> Abstract2GeometryDistance: ...
-
-@overload
-def make_constraint(self,
-                    constraint_type: SketchConstraint,
-                    a: AbstractGeometry,
-                    reference_a: ConstraintReference,
-                    b: AbstractGeometry,
-                    reference_b: ConstraintReference,
-                    *,
+def make_constraint(type_: SketchConstraint,
+                    *reference_pairs: GeometryReference,
                     value: Real,
                     uid: UUID | str=None,
                     quadrant: int,
                     is_radians: bool=False) -> Angle: ...
 
-def make_constraint(constraint_type,
-                    a,
-                    reference_a,
-                    b=None,
-                    reference_b=None,
-                    c=None,
-                    reference_c=None,
-                    *,
-                    value=None,
-                    uid=None,
-                    unit=None,
-                    quadrant=None,
-                    is_radians=False,
-                    ) -> AbstractConstraint:
+def make_constraint(type_, *reference_pairs, **kwargs) -> AbstractConstraint:
     """Creates a new pancad constraint.
     
-    :param constraint_type: The SketchConstraint value for the constraint to be 
-        created.
-    :param a: First constraint geometry.
-    :param reference_a: A ConstraintReference for a portion of a.
-    :param b: Second constraint geometry. Only required for constraints 
-        that require at least 2 geometry elements (e.g. coincident, parallel).
-    :param reference_b: A ConstraintReference for a portion of b. Required if 
-        b is provided.
-    :param c: Third constraint geometry. Only required for constraints 
-        requiring 3 geometry elements (i.e. symmetry).
-    :param reference_c: A ConstraintReference for a portion of c. Required if 
-        index_c is provided.
+    :param type_: The SketchConstraint value for the constraint to be created.
+    :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of 
+        the geometry to be constrained.
     :param value: The constraint's associate value. Can be a length or an angle 
         and is required for value constraints.
     :param uid: The constraint's uid. Defaults to being auto-generated.
@@ -129,59 +86,10 @@ def make_constraint(constraint_type,
     :raises NotImplementedError: Raised if a SketchConstraint for a constraint 
         that is not yet implemented is provided.
     """
-    match constraint_type:
-        case SketchConstraint.ANGLE:
-            constraint = Angle(a, reference_a,
-                               b, reference_b,
-                               uid=uid,
-                               value=value,
-                               quadrant=quadrant,
-                               is_radians=is_radians)
-        case SketchConstraint.COINCIDENT:
-            constraint = Coincident(a, reference_a, b, reference_b)
-        case SketchConstraint.HORIZONTAL:
-            constraint = Horizontal(a, reference_a, b, reference_b)
-        case SketchConstraint.DISTANCE:
-            constraint = Distance(a, reference_a,
-                                  b, reference_b,
-                                  uid=uid,
-                                  value=value,
-                                  unit=unit)
-        case SketchConstraint.DISTANCE_DIAMETER:
-            constraint = Diameter(a, reference_a,
-                                  uid=uid,
-                                  value=value,
-                                  unit=unit)
-        case SketchConstraint.DISTANCE_HORIZONTAL:
-            constraint = HorizontalDistance(a, reference_a,
-                                            b, reference_b,
-                                            uid=uid,
-                                            value=value,
-                                            unit=unit)
-        case SketchConstraint.DISTANCE_RADIUS:
-            constraint = Radius(a, reference_a,
-                                uid=uid,
-                                value=value,
-                                unit=unit)
-        case SketchConstraint.DISTANCE_VERTICAL:
-            constraint = VerticalDistance(a, reference_a,
-                                          b, reference_b,
-                                          uid=uid,
-                                          value=value,
-                                          unit=unit)
-        case SketchConstraint.EQUAL:
-            constraint = Equal(a, reference_a, b, reference_b)
-        case SketchConstraint.PARALLEL:
-            constraint = Parallel(a, reference_a, b, reference_b)
-        case SketchConstraint.PERPENDICULAR:
-            constraint = Perpendicular(a, reference_a, b, reference_b)
-        case SketchConstraint.SYMMETRIC:
-            raise NotImplementedError("Symmetric not yet implemented, #85")
-        case SketchConstraint.TANGENT:
-            raise NotImplementedError("Tangent not yet implemented, #82")
-        case SketchConstraint.VERTICAL:
-            constraint = Vertical(a, reference_a, b, reference_b)
-        case _:
-            raise ValueError(f"Constraint choice {constraint_type}"
-                             " not recognized")
-    return constraint
+    try:
+        class_ = SKETCH_CONSTRAINT_TO_CLASS[type_]
+    except KeyError as err:
+        if type_ in [SketchConstraint.SYMMETRIC, SketchConstraint.TANGENT]:
+            raise NotImplementedError("See issue #82 or #85") from err
+        raise KeyError from err
+    return class_(*reference_pairs, **kwargs)
