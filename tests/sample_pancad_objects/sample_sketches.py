@@ -37,7 +37,7 @@ def circle(coordinate_system: CoordinateSystem=None,
                     geometry=[circle],
                     name=name)
     sketch.constraints = [
-        Diameter(circle, CR.CORE, radius, unit=unit),
+        Diameter(circle, CR.CORE, value=radius, unit=unit),
         Coincident(circle, CR.CENTER, sketch, CR.ORIGIN)
     ]
     return sketch
@@ -78,8 +78,8 @@ def square(coordinate_system: CoordinateSystem=None,
             Coincident(b, CR.END, r, CR.START),
             Coincident(r, CR.END, t, CR.START),
             Coincident(t, CR.END, l, CR.START),
-            Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
-            Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
+            Distance(b, CR.CORE, t, CR.CORE, value=side, unit="mm"),
+            Distance(r, CR.CORE, l, CR.CORE, value=side, unit="mm"),
             Coincident(b, CR.START, sketch, CR.ORIGIN),
         ]
     
@@ -147,8 +147,8 @@ def rounded_square(coordinate_system: CoordinateSystem=None,
             Coincident(a_tr, CR.END, t, CR.START),
             Coincident(t, CR.END, a_tl, CR.START),
             Coincident(a_tl, CR.END, l, CR.START),
-            Distance(b, CR.CORE, t, CR.CORE, side, unit="mm"),
-            Distance(r, CR.CORE, l, CR.CORE, side, unit="mm"),
+            Distance(b, CR.CORE, t, CR.CORE, value=side, unit="mm"),
+            Distance(r, CR.CORE, l, CR.CORE, value=side, unit="mm"),
             Coincident(b, CR.CORE, sketch, CR.ORIGIN),
             Coincident(l, CR.CORE, sketch, CR.ORIGIN),
         ]

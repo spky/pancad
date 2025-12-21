@@ -26,8 +26,8 @@ class TestExtrudeInit(unittest.TestCase):
             Coincident(geometry[0], CR.END, geometry[1], CR.START),
             Coincident(geometry[1], CR.END, geometry[2], CR.START),
             Coincident(geometry[2], CR.END, geometry[3], CR.START),
-            VerticalDistance(geometry[0], CR.CORE, geometry[2], CR.CORE, 1),
-            HorizontalDistance(geometry[1], CR.CORE, geometry[3], CR.CORE, 1),
+            VerticalDistance(geometry[0], CR.CORE, geometry[2], CR.CORE, value=1),
+            HorizontalDistance(geometry[1], CR.CORE, geometry[3], CR.CORE, value=1),
         ]
         self.sketch = Sketch(cs, geometry=geometry, constraints=constraints,
                              uid="TestSketch")

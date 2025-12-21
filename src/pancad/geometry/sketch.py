@@ -14,21 +14,16 @@ from typing import TYPE_CHECKING, overload, Self, NoReturn
 from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
-    Circle,
-    CircularArc,
+    # Circle,
+    # CircularArc,
     CoordinateSystem,
-    Ellipse,
-    Point,
-    Line,
-    LineSegment,
+    # Ellipse,
+    # Point,
+    # Line,
+    # LineSegment,
 )
 from pancad.geometry.constants import SketchConstraint, ConstraintReference
 from pancad.geometry.constraints import (
-    Abstract1GeometryDistance,
-    Abstract2GeometryDistance,
-    AbstractStateConstraint,
-    AbstractSnapTo,
-    Angle,
     make_constraint,
 )
 from pancad.geometry.constraints.utils import flatten_to_pairs
@@ -439,29 +434,29 @@ class Sketch(AbstractFeature, AbstractGeometry):
         else:
             return self.geometry[index]
     
-    def _generate_summary(self, title_to_type: dict, element_list: list) -> str:
-        """Returns a string summarizing a list of classes of geometry or 
-        constraints in table format.
-        """
-        from textwrap import indent
-        summary_strings = []
-        UID_KEYS = ["UID", "a UID", "b UID"]
-        for title, type_ in title_to_type.items():
-            info = []
-            for e in filter(lambda e: isinstance(e, type_), element_list):
-                element_info = self._get_summary_info(e)
-                if not self.STR_VERBOSE:
-                    element_info = {k: v for k, v in element_info.items()
-                                    if k not in UID_KEYS}
-                info.append(element_info)
-            if len(info) > 0:
-                summary_strings.append(title)
-                summary_strings.append(
-                    indent(get_table_string(info), "  ")
-                )
-        summary = "\n".join(summary_strings)
-        summary = indent(summary, "  ")
-        return summary
+    # def _generate_summary(self, title_to_type: dict, element_list: list) -> str:
+        # """Returns a string summarizing a list of classes of geometry or 
+        # constraints in table format.
+        # """
+        # from textwrap import indent
+        # summary_strings = []
+        # UID_KEYS = ["UID", "a UID", "b UID"]
+        # for title, type_ in title_to_type.items():
+            # info = []
+            # for e in filter(lambda e: isinstance(e, type_), element_list):
+                # element_info = self._get_summary_info(e)
+                # if not self.STR_VERBOSE:
+                    # element_info = {k: v for k, v in element_info.items()
+                                    # if k not in UID_KEYS}
+                # info.append(element_info)
+            # if len(info) > 0:
+                # summary_strings.append(title)
+                # summary_strings.append(
+                    # indent(get_table_string(info), "  ")
+                # )
+        # summary = "\n".join(summary_strings)
+        # summary = indent(summary, "  ")
+        # return summary
     
     def _generate_location_string(self) -> str:
         """Returns a string describing where the sketch is located."""
@@ -482,195 +477,195 @@ class Sketch(AbstractFeature, AbstractGeometry):
                 f" {n_cons} constraints,"
                 f" {n_ext} externals]")
     
-    def _validate_constraint_references(self, constraint) -> None:
-        """Checks whether a constraint references geometry in the sketch's 
-        geometry or externals"""
-        references = constraint.get_constrained()
-        if not all([self.has_geometry(g) for g in references]):
-            raise ValueError(f"The {repr(constraint)} constraint references"
-                             " geometry that is not in the sketch."
-                             f"\nAll Geometry: {references}")
+    # def _validate_constraint_references(self, constraint) -> None:
+        # """Checks whether a constraint references geometry in the sketch's 
+        # geometry or externals"""
+        # references = constraint.get_constrained()
+        # if not all([self.has_geometry(g) for g in references]):
+            # raise ValueError(f"The {repr(constraint)} constraint references"
+                             # " geometry that is not in the sketch."
+                             # f"\nAll Geometry: {references}")
     
-    # Private Dispatch Methods
-    @singledispatchmethod
-    def _get_summary_info(
-                self, geometry: AbstractGeometry | AbstractConstraint
-            ) -> NoReturn:
-        """Returns the summary info for a given geometry type."""
-        raise TypeError(f"{geometry.__class__} not recognized")
+    # # Private Dispatch Methods
+    # @singledispatchmethod
+    # def _get_summary_info(
+                # self, geometry: AbstractGeometry | AbstractConstraint
+            # ) -> NoReturn:
+        # """Returns the summary info for a given geometry type."""
+        # raise TypeError(f"{geometry.__class__} not recognized")
     
-    @_get_summary_info.register
-    def _circle(self, geometry: Circle) -> dict:
-        return {"Index": self.get_index_of(geometry),
-                "UID": geometry.uid,
-                "Center": geometry.center.cartesian,
-                "Radius": geometry.radius,
-                "Construction": self.construction[self.get_index_of(geometry)]}
+    # @_get_summary_info.register
+    # def _circle(self, geometry: Circle) -> dict:
+        # return {"Index": self.get_index_of(geometry),
+                # "UID": geometry.uid,
+                # "Center": geometry.center.cartesian,
+                # "Radius": geometry.radius,
+                # "Construction": self.construction[self.get_index_of(geometry)]}
     
-    @_get_summary_info.register
-    def _circular_arc(self, geometry: CircularArc) -> dict:
-        return {
-            "Index": self.get_index_of(geometry),
-            "UID": geometry.uid,
-            "Center": geometry.center.cartesian,
-            "Radius": geometry.radius,
-            "Start": geometry.start.cartesian,
-            "End": geometry.end.cartesian,
-            "Is Clockwise": geometry.is_clockwise,
-            "Construction": self.construction[self.get_index_of(geometry)],
-        }
+    # @_get_summary_info.register
+    # def _circular_arc(self, geometry: CircularArc) -> dict:
+        # return {
+            # "Index": self.get_index_of(geometry),
+            # "UID": geometry.uid,
+            # "Center": geometry.center.cartesian,
+            # "Radius": geometry.radius,
+            # "Start": geometry.start.cartesian,
+            # "End": geometry.end.cartesian,
+            # "Is Clockwise": geometry.is_clockwise,
+            # "Construction": self.construction[self.get_index_of(geometry)],
+        # }
     
-    @_get_summary_info.register
-    def _ellipse(self, geometry: Ellipse) -> dict:
-        return {"Index": self.get_index_of(geometry),
-                "UID": geometry.uid,
-                "Center": geometry.center.cartesian,
-                "Semi-Major Axis Length": geometry.semi_major_axis,
-                "Semi-Minor Axis Length": geometry.semi_minor_axis,
-                "Semi-Major Axis Angle": degrees(geometry.major_axis_angle),
-                "Construction": self.construction[self.get_index_of(geometry)]}
+    # @_get_summary_info.register
+    # def _ellipse(self, geometry: Ellipse) -> dict:
+        # return {"Index": self.get_index_of(geometry),
+                # "UID": geometry.uid,
+                # "Center": geometry.center.cartesian,
+                # "Semi-Major Axis Length": geometry.semi_major_axis,
+                # "Semi-Minor Axis Length": geometry.semi_minor_axis,
+                # "Semi-Major Axis Angle": degrees(geometry.major_axis_angle),
+                # "Construction": self.construction[self.get_index_of(geometry)]}
     
-    @_get_summary_info.register
-    def _line(self, geometry: Line) -> dict:
-        return {"Index": self.get_index_of(geometry),
-                "UID": geometry.uid,
-                "X-Intercept": (geometry.x_intercept, 0),
-                "Y-Intercept": (0, geometry.y_intercept),
-                "Construction": self.construction[self.get_index_of(geometry)]}
+    # @_get_summary_info.register
+    # def _line(self, geometry: Line) -> dict:
+        # return {"Index": self.get_index_of(geometry),
+                # "UID": geometry.uid,
+                # "X-Intercept": (geometry.x_intercept, 0),
+                # "Y-Intercept": (0, geometry.y_intercept),
+                # "Construction": self.construction[self.get_index_of(geometry)]}
     
-    @_get_summary_info.register
-    def _line_segment(self, geometry: LineSegment) -> dict:
-        return {"Index": self.get_index_of(geometry),
-                "UID": geometry.uid,
-                "Start": geometry.point_a.cartesian,
-                "End": geometry.point_b.cartesian,
-                "Construction": self.construction[self.get_index_of(geometry)]}
+    # @_get_summary_info.register
+    # def _line_segment(self, geometry: LineSegment) -> dict:
+        # return {"Index": self.get_index_of(geometry),
+                # "UID": geometry.uid,
+                # "Start": geometry.point_a.cartesian,
+                # "End": geometry.point_b.cartesian,
+                # "Construction": self.construction[self.get_index_of(geometry)]}
     
-    @_get_summary_info.register
-    def _point(self, geometry: Point) -> dict:
-        return {"Index": self.get_index_of(geometry),
-                "UID": geometry.uid,
-                "Location": geometry.cartesian,
-                "Construction": self.construction[self.get_index_of(geometry)]}
+    # @_get_summary_info.register
+    # def _point(self, geometry: Point) -> dict:
+        # return {"Index": self.get_index_of(geometry),
+                # "UID": geometry.uid,
+                # "Location": geometry.cartesian,
+                # "Construction": self.construction[self.get_index_of(geometry)]}
     
-    @_get_summary_info.register
-    def _state_constraint(self, constraint: AbstractStateConstraint) -> dict:
-        geometry_a, geometry_b = constraint.get_constrained()
-        reference_a, reference_b = constraint.get_references()
-        return {"Index": self.get_index_of(constraint),
-                "Type": constraint.__class__.__name__,
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                    geometry_a.__class__.__name__,
-                    reference_a.name.title(),
-                ),
-                "b Index": self.get_index_of(geometry_b),
-                "b UID": geometry_b.uid,
-                "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                    geometry_b.__class__.__name__,
-                    reference_b.name.title()
-                )}
+    # @_get_summary_info.register
+    # def _state_constraint(self, constraint: AbstractStateConstraint) -> dict:
+        # geometry_a, geometry_b = constraint.get_constrained()
+        # reference_a, reference_b = constraint.get_references()
+        # return {"Index": self.get_index_of(constraint),
+                # "Type": constraint.__class__.__name__,
+                # "a Index": self.get_index_of(geometry_a),
+                # "a UID": geometry_a.uid,
+                # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    # geometry_a.__class__.__name__,
+                    # reference_a.name.title(),
+                # ),
+                # "b Index": self.get_index_of(geometry_b),
+                # "b UID": geometry_b.uid,
+                # "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    # geometry_b.__class__.__name__,
+                    # reference_b.name.title()
+                # )}
     
-    @_get_summary_info.register
-    def _state_constraint(self, constraint: AbstractSnapTo) -> dict:
-        geometry = constraint.get_constrained()
-        references = constraint.get_references()
-        if len(geometry) == 1:
-            geometry_a = geometry[0]
-            reference_a = references[0]
-            return {
-                "Index": self.get_index_of(constraint),
-                "Type": constraint.__class__.__name__,
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                    geometry_a.__class__.__name__,
-                    reference_a.name.title()
-                ),
-                "b Index": None,
-                "b UID": None,
-                "b Type": None,
-            }
-        else:
-            geometry_a, geometry_b = geometry
-            reference_a, reference_b = references
-            return {
-                "Index": self.get_index_of(constraint),
-                "Type": constraint.__class__.__name__,
-                "a Index": self.get_index_of(geometry_a),
-                "a UID": geometry_a.uid,
-                "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                    geometry_a.__class__.__name__,
-                    reference_a.name.title()
-                ),
-                "b Index": self.get_index_of(geometry_b),
-                "b UID": geometry_b.uid,
-                "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                    geometry_b.__class__.__name__,
-                    reference_b.name.title()
-                ),
-            }
+    # @_get_summary_info.register
+    # def _state_constraint(self, constraint: AbstractSnapTo) -> dict:
+        # geometry = constraint.get_constrained()
+        # references = constraint.get_references()
+        # if len(geometry) == 1:
+            # geometry_a = geometry[0]
+            # reference_a = references[0]
+            # return {
+                # "Index": self.get_index_of(constraint),
+                # "Type": constraint.__class__.__name__,
+                # "a Index": self.get_index_of(geometry_a),
+                # "a UID": geometry_a.uid,
+                # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    # geometry_a.__class__.__name__,
+                    # reference_a.name.title()
+                # ),
+                # "b Index": None,
+                # "b UID": None,
+                # "b Type": None,
+            # }
+        # else:
+            # geometry_a, geometry_b = geometry
+            # reference_a, reference_b = references
+            # return {
+                # "Index": self.get_index_of(constraint),
+                # "Type": constraint.__class__.__name__,
+                # "a Index": self.get_index_of(geometry_a),
+                # "a UID": geometry_a.uid,
+                # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    # geometry_a.__class__.__name__,
+                    # reference_a.name.title()
+                # ),
+                # "b Index": self.get_index_of(geometry_b),
+                # "b UID": geometry_b.uid,
+                # "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                    # geometry_b.__class__.__name__,
+                    # reference_b.name.title()
+                # ),
+            # }
     
-    @_get_summary_info.register
-    def _1_geo_distance(self, constraint: Abstract1GeometryDistance) -> dict:
-        geometry_a = constraint.get_constrained()[0]
-        reference_a = constraint.get_references()[0]
-        return {
-            "Index": self.get_index_of(constraint),
-            "Type": constraint.__class__.__name__,
-            "a Index": self.get_index_of(geometry_a),
-            "a UID": geometry_a.uid,
-            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                geometry_a.__class__.__name__,
-                reference_a.name.title()
-            ),
-            "Value": constraint.get_value_string(),
-        }
+    # @_get_summary_info.register
+    # def _1_geo_distance(self, constraint: Abstract1GeometryDistance) -> dict:
+        # geometry_a = constraint.get_constrained()[0]
+        # reference_a = constraint.get_references()[0]
+        # return {
+            # "Index": self.get_index_of(constraint),
+            # "Type": constraint.__class__.__name__,
+            # "a Index": self.get_index_of(geometry_a),
+            # "a UID": geometry_a.uid,
+            # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                # geometry_a.__class__.__name__,
+                # reference_a.name.title()
+            # ),
+            # "Value": constraint.get_value_string(),
+        # }
     
-    @_get_summary_info.register
-    def _2_geo_distance(self, constraint: Abstract2GeometryDistance) -> dict:
-        geometry_a, geometry_b = constraint.get_constrained()
-        reference_a, reference_b = constraint.get_references()
-        return {
-            "Index": self.get_index_of(constraint),
-            "Type": constraint.__class__.__name__,
-            "a Index": self.get_index_of(geometry_a),
-            "a UID": geometry_a.uid,
-            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                geometry_a.__class__.__name__,
-                reference_a.name.title()
-            ),
-            "b Index": self.get_index_of(geometry_b),
-            "b UID": geometry_b.uid,
-            "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                geometry_b.__class__.__name__,
-                reference_b.name.title()
-            ),
-            "Value": constraint.get_value_string(),
-        }
+    # @_get_summary_info.register
+    # def _2_geo_distance(self, constraint: Abstract2GeometryDistance) -> dict:
+        # geometry_a, geometry_b = constraint.get_constrained()
+        # reference_a, reference_b = constraint.get_references()
+        # return {
+            # "Index": self.get_index_of(constraint),
+            # "Type": constraint.__class__.__name__,
+            # "a Index": self.get_index_of(geometry_a),
+            # "a UID": geometry_a.uid,
+            # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                # geometry_a.__class__.__name__,
+                # reference_a.name.title()
+            # ),
+            # "b Index": self.get_index_of(geometry_b),
+            # "b UID": geometry_b.uid,
+            # "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                # geometry_b.__class__.__name__,
+                # reference_b.name.title()
+            # ),
+            # "Value": constraint.get_value_string(),
+        # }
     
-    @_get_summary_info.register
-    def _angle(self, constraint: Angle) -> dict:
-        geometry_a, geometry_b = constraint.get_constrained()
-        reference_a, reference_b = constraint.get_references()
-        return {
-            "Index": self.get_index_of(constraint),
-            "a Index": self.get_index_of(geometry_a),
-            "a UID": geometry_a.uid,
-            "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                geometry_a.__class__.__name__,
-                reference_a.name.title()
-            ),
-            "b Index": self.get_index_of(geometry_b),
-            "b UID": geometry_b.uid,
-            "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
-                geometry_b.__class__.__name__,
-                reference_b.name.title()
-            ),
-            "Value": constraint.get_value_string(),
-            "Quadrant": constraint.quadrant,
-        }
+    # @_get_summary_info.register
+    # def _angle(self, constraint: Angle) -> dict:
+        # geometry_a, geometry_b = constraint.get_constrained()
+        # reference_a, reference_b = constraint.get_references()
+        # return {
+            # "Index": self.get_index_of(constraint),
+            # "a Index": self.get_index_of(geometry_a),
+            # "a UID": geometry_a.uid,
+            # "a Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                # geometry_a.__class__.__name__,
+                # reference_a.name.title()
+            # ),
+            # "b Index": self.get_index_of(geometry_b),
+            # "b UID": geometry_b.uid,
+            # "b Type": self.CONSTRAINT_GEOMETRY_TYPE_STR.format(
+                # geometry_b.__class__.__name__,
+                # reference_b.name.title()
+            # ),
+            # "Value": constraint.get_value_string(),
+            # "Quadrant": constraint.quadrant,
+        # }
     
     # Python Dunders #
     def __copy__(self) -> Sketch:
@@ -683,9 +678,8 @@ class Sketch(AbstractFeature, AbstractGeometry):
         return item.uid in contents
     
     def __len__(self) -> int:
-        """Returns the number of dimensions of the sketch's contextual 
-        coordinate system"""
-        return len(self.coordinate_system)
+        """Sketches are always 3 dimensional"""
+        return 3
     
     def __repr__(self) -> str:
         """Returns the short string representation of the sketch"""
@@ -704,30 +698,30 @@ class Sketch(AbstractFeature, AbstractGeometry):
             indent(self._generate_location_string(), "  ")
         )
         # Geometry Summary #
-        sketch_summary.append("Geometry")
-        summaries = {
-            "Circles": Circle,
-            "Circular Arcs": CircularArc,
-            "Ellipses": Ellipse,
-            "Line Segments": LineSegment,
-            "Infinite Lines": Line,
-            "Points": Point,
-        }
-        sketch_summary.append(
-            self._generate_summary(summaries, self.geometry)
-        )
+        # sketch_summary.append("Geometry")
+        # summaries = {
+            # "Circles": Circle,
+            # "Circular Arcs": CircularArc,
+            # "Ellipses": Ellipse,
+            # "Line Segments": LineSegment,
+            # "Infinite Lines": Line,
+            # "Points": Point,
+        # }
+        # sketch_summary.append(
+            # self._generate_summary(summaries, self.geometry)
+        # )
         
         # Constraint Summary #
-        sketch_summary.append("Constraints")
-        summaries = {
-            "State Constraints": AbstractStateConstraint,
-            "Snap To Constraints": AbstractSnapTo,
-            "Distance Constraints": Abstract2GeometryDistance,
-            "Radius and Diameter Constraints": Abstract1GeometryDistance,
-            "Angle Constraints": Angle,
-        }
-        sketch_summary.append(
-            self._generate_summary(summaries, self.constraints)
-        )
+        # sketch_summary.append("Constraints")
+        # summaries = {
+            # "State Constraints": AbstractStateConstraint,
+            # "Snap To Constraints": AbstractSnapTo,
+            # "Distance Constraints": Abstract2GeometryDistance,
+            # "Radius and Diameter Constraints": Abstract1GeometryDistance,
+            # "Angle Constraints": Angle,
+        # }
+        # sketch_summary.append(
+            # self._generate_summary(summaries, self.constraints)
+        # )
         sketch_summary.append(self._generate_quantity_string())
         return "\n".join(sketch_summary)

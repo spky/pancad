@@ -81,7 +81,7 @@ class TestSummary(unittest.TestCase):
                        # sketch.get_sketch_coordinate_system(),
                        sketch,
                        ConstraintReference.ORIGIN),
-            Diameter(geometry[4], ConstraintReference.CORE, 1, unit=unit),
+            Diameter(geometry[4], ConstraintReference.CORE, value=1, unit=unit),
             Angle(geometry[0], ConstraintReference.CORE,
                   geometry[1], ConstraintReference.CORE,
                   value=90, quadrant=2)
