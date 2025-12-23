@@ -27,9 +27,6 @@ class TestPointInit(unittest.TestCase):
                 numpy_coordinate, tuple([float(c) for c in expected])
             )
     
-    def test_point_init_no_arg(self):
-        pt = Point()
-    
     def test_point_init_tuple(self):
         for coordinate in self.coordinates:
             with self.subTest(coordinate=coordinate):
@@ -106,7 +103,6 @@ class TestPointInit(unittest.TestCase):
         ]
         tests = [(r, math.radians(phi), math.radians(theta))
                  for r, phi, theta in tests]
-        
         for r, phi, theta in tests:
             with self.subTest(r=r,
                               phi=(f"Degrees: {math.degrees(phi)} "
@@ -136,7 +132,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 
     and from polar/spherical coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # From Left to Right:
@@ -177,7 +173,6 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
             self.coordinates_spherical.append(
                 ((coordinate[1], coordinate[2], coordinate[3]), coordinate[0])
             )
-        
         
     def test_cartesian_setter(self):
         for coordinate, *_ in self.coordinates:
@@ -331,7 +326,7 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the r setter in Point correctly updates the point's position 
     and identifies when it cannot with errors in spherical coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # tests: initial spherical, new r, expected new spherical
@@ -386,7 +381,7 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
     """Tests whether the r setter in Point correctly updates the point's position 
     and identifies when it cannot with errors in polar coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # tests: initial spherical, new r, expected new spherical
@@ -441,7 +436,7 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the phi setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in spherical coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # tests: initial spherical, new r, expected new spherical
@@ -492,7 +487,7 @@ class TestPhiSetterpolarEdgeCases(unittest.TestCase):
     """Tests whether the phi setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in polar coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # tests: initial polar, new r, expected new polar
@@ -543,7 +538,7 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the theta setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in spherical coordinates"""
     def setUp(self):
-        self.pt = Point()
+        self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
         # tests: initial spherical, new r, expected new spherical

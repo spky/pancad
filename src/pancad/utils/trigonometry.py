@@ -272,7 +272,10 @@ def theta_of_cartesian(cartesian: VectorLike) -> float:
     :returns: The inclination coordinate of the equivalent polar/spherical 
         coordinate.
     """
-    x, y, z = cartesian
+    try:
+        x, y, z = cartesian
+    except ValueError as err:
+        raise IndexError("Index out of range, likely 2D instead of 3D") from err
     if z == 0 and math.hypot(x, y) != 0:
         return math.pi/2
     if x == y == z == 0:
