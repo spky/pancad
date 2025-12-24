@@ -125,8 +125,8 @@ def _pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
 @_pancad_to_freecad_geometry.register
 @staticmethod
 def _line_segment(line_segment: LineSegment) -> FreeCADLineSegment:
-    start = App.Vector(tuple(line_segment.point_a) + (0,))
-    end = App.Vector(tuple(line_segment.point_b) + (0,))
+    start = App.Vector(tuple(line_segment.start) + (0,))
+    end = App.Vector(tuple(line_segment.end) + (0,))
     return Part.LineSegment(start, end)
 
 @_pancad_to_freecad_geometry.register

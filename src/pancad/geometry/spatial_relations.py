@@ -439,10 +439,10 @@ def project_line(line: Line, plane: Plane) -> Point | Line:
 def project_line_segment(line_segment: LineSegment,
                          plane: Plane) -> Point | LineSegment:
     if perpendicular(line_segment, plane):
-        return project(line_segment.point_a, plane)
+        return project(line_segment.start, plane)
     else:
-        return LineSegment(project(line_segment.point_a, plane),
-                           project(line_segment.point_b, plane))
+        return LineSegment(project(line_segment.start, plane),
+                           project(line_segment.end, plane))
 
 @skew.register
 def skew_line(line: Line, other: Line | LineSegment) -> bool:

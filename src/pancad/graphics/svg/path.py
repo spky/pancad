@@ -101,14 +101,14 @@ class Path:
         previous_pt = None
         for geometry in geometry_list:
             if isinstance(geometry, LineSegment):
-                if previous_pt is None or previous_pt != geometry.point_a:
+                if previous_pt is None or previous_pt != geometry.start:
                     cmds.append(
-                        (CmdChar.M, tuple(geometry.point_a))
+                        (CmdChar.M, tuple(geometry.start))
                     )
                 cmds.append(
-                    (CmdChar.L, tuple(geometry.point_b))
+                    (CmdChar.L, tuple(geometry.end))
                 )
-                previous_pt = geometry.point_b
+                previous_pt = geometry.end
             elif isinstance(geometry, (Point, Line, Plane, CoordinateSystem)):
                 raise ValueError(f"{geometry.__class__} cannot be represented"
                                  " by svg path data")

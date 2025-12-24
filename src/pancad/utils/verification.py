@@ -29,8 +29,8 @@ def assertLinesAlmostEqual(self_input,
 def assertLineSegmentsAlmostEqual(self_input,
                                   line_a: LineSegment, line_b: LineSegment,
                                   places: int = 7):
-    a = tuple(line_a.point_a) + tuple(line_a.point_b)
-    b = tuple(line_b.point_a) + tuple(line_b.point_b)
+    a = tuple(line_a.start) + tuple(line_a.end)
+    b = tuple(line_b.start) + tuple(line_b.end)
     assertTupleAlmostEqual(self_input, a, b, places)
 
 def assertPlanesAlmostEqual(self_input, plane_a: Plane, plane_b: Plane,
