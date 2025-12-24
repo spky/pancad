@@ -7,7 +7,7 @@ from math import copysign
 from functools import partial
 from numbers import Real
 from sqlite3 import PrepareProtocol
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -42,6 +42,11 @@ class LineSegment(AbstractGeometry):
             start = Point(start)
         if isinstance(end, VectorLike):
             end = Point(end)
+        if any(not isinstance(point, Point) for point in [start, end]):
+            types = [type(point) for point in [start, end]]
+            raise TypeError(f"Expected Point or VectorLike, got {types}")
+        self._start = start
+        self._end = end
         self.update_points(start, end)
         self.uid = uid
     # Class Methods #
@@ -303,14 +308,8 @@ class LineSegment(AbstractGeometry):
             raise ValueError("points are at the same position")
         if len(start) != len(end):
             raise ValueError("points must be the same dimension")
-        if hasattr(self, "_start"):
-            # Update existing points
-            self._start.cartesian = start.cartesian
-            self._end.cartesian = end.cartesian
-        else:
-            # Initialize Points
-            self._start = start
-            self._end = end
+        self._start.cartesian = start.cartesian
+        self._end.cartesian = end.cartesian
         return self
     def _update_axis_length(self,
                             value: Real,

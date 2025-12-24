@@ -37,10 +37,6 @@ class Point(AbstractGeometry):
     :param uid: The unique ID of the point for interoperable CAD identification.
     :param unit: The unit of the point's length values.
     """
-    # pylint: disable=too-many-instance-attributes
-    # Ok here since the intent of the Point class is to allow other functions to
-    # immediately translate coordinates to other systems with minimal
-    # boilerplate.
     REFERENCES = (ConstraintReference.CORE,)
     """All relevant ConstraintReferences for Point."""
     def __init__(self, *components: Real | Sequence[Real] | np.ndarray,
