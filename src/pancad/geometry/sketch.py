@@ -26,7 +26,7 @@ from pancad.geometry.constants import SketchConstraint, ConstraintReference
 from pancad.geometry.constraints import (
     make_constraint,
 )
-from pancad.geometry.constraints.utils import flatten_to_pairs
+from pancad.utils.constraints import parse_pairs
 from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
@@ -270,7 +270,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :returns: The updated sketch.
         """
         reference_pairs = []
-        for uid, reference in flatten_to_pairs(uid_pairs):
+        for uid, reference in parse_pairs(uid_pairs):
             reference_pairs.extend([self.get_geometry_by_uid(uid), reference])
         constraint = make_constraint(type_, *reference_pairs, **kwargs)
         self.add_constraint(constraint)
@@ -295,7 +295,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :returns: The updated sketch.
         """
         reference_pairs = []
-        for index, reference in flatten_to_pairs(index_pairs):
+        for index, reference in parse_pairs(index_pairs):
             reference_pairs.extend(
                 [self._get_geometry_by_index(index), reference]
             )

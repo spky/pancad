@@ -12,11 +12,11 @@ from numbers import Real
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
-from pancad.geometry.constraints.utils import constraint_args
+from pancad.utils.constraints import constraint_args
 
 if TYPE_CHECKING:
-    from pancad.geometry.constraints.utils import GeometryReference
     from pancad.geometry.constants import ConstraintReference
+    from pancad.utils.constraints import GeometryReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 

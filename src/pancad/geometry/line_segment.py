@@ -28,12 +28,10 @@ class LineSegment(AbstractGeometry):
     :param point_b: The end point of the line segment.
     :param uid: The unique id of the line segment.
     """
-    
     REFERENCES = (ConstraintReference.CORE,
                   ConstraintReference.START,
                   ConstraintReference.END)
     """All relevant ConstraintReferences for LineSegments."""
-    
     def __init__(self,
                  point_a: Point | VectorLike,
                  point_b: Point | VectorLike,
@@ -42,10 +40,8 @@ class LineSegment(AbstractGeometry):
             point_a = Point(point_a)
         if isinstance(point_b, VectorLike):
             point_b = Point(point_b)
-        
         self.update_points(point_a, point_b)
         self.uid = uid
-    
     # Class Methods #
     @overload
     @classmethod
@@ -54,7 +50,6 @@ class LineSegment(AbstractGeometry):
                                 length: VectorLike,
                                 *,
                                 uid: str=None) -> Self: ...
-    
     @overload
     @classmethod
     def from_point_length_angle(cls,
@@ -63,7 +58,6 @@ class LineSegment(AbstractGeometry):
                                 phi: Real,
                                 *,
                                 uid: str=None) -> Self: ...
-    
     @overload
     @classmethod
     def from_point_length_angle(cls,
@@ -73,7 +67,6 @@ class LineSegment(AbstractGeometry):
                                 theta: Real,
                                 *,
                                 uid: str=None) -> Self: ...
-    
     @classmethod
     def from_point_length_angle(cls, point, length, phi=None, theta=None,
                                 *, uid=None):
@@ -114,13 +107,9 @@ class LineSegment(AbstractGeometry):
             raise ValueError(f"Unhandled type combo given {point.__class__},"
                              f" {length.__class__}, {phi.__class__},"
                              f" {theta.__class__}")
-        
-        if len(point) == len(vector_ab):
-            return cls(point, np.array(point) + vector_ab, uid)
-        else:
-            raise ValueError("Point and vector must have the same number of"
-                             " dimensions")
-    
+        if len(point) != len(vector_ab):
+            raise ValueError("Point and vector must be the same dimension")
+        return cls(point, np.array(point) + vector_ab, uid)
     # Getters #
     @property
     def direction(self) -> tuple[Real]:
@@ -136,7 +125,6 @@ class LineSegment(AbstractGeometry):
         vector_ab = np.array(self.point_b) - np.array(self.point_a)
         unit_vector_ab = trig.get_unit_vector(vector_ab)
         return trig.to_1d_tuple(unit_vector_ab)
-    
     @property
     def direction_polar(self) -> tuple[Real]:
         """The direction of the line segment defined as the unit vector pointing 
@@ -147,7 +135,6 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.cartesian_to_polar(self.direction)
-    
     @property
     def direction_spherical(self) -> tuple[Real]:
         """The direction of the line segment defined as the unit vector pointing 
@@ -159,7 +146,6 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.cartesian_to_spherical(self.direction)
-    
     @property
     def length(self) -> float:
         """The length of the line segment. Defined as the distance between 
@@ -169,7 +155,6 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return float(np.linalg.norm(self.get_vector_ab()))
-    
     @property
     def phi(self) -> Real:
         """The azimuth angle of the vector from point a to point b.
@@ -178,7 +163,6 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.phi_of_cartesian(self.direction)
-    
     @property
     def point_a(self) -> Point:
         """The start Point of the line segment.
@@ -187,7 +171,6 @@ class LineSegment(AbstractGeometry):
         :setter: Updates point a to match the location of a new Point.
         """
         return self._point_a
-    
     @property
     def point_b(self) -> Point:
         """The end Point of the line segment.
@@ -196,7 +179,6 @@ class LineSegment(AbstractGeometry):
         :setter: Updates point b to match the location of a new Point.
         """
         return self._point_b
-    
     @property
     def theta(self) -> Real:
         """The inclination angle of the vector from point a to point b.
@@ -205,16 +187,13 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.theta_of_cartesian(self.direction)
-    
     # Setters #
     @point_a.setter
     def point_a(self, pt: Point) -> None:
         self.update_points(pt, self.point_b)
-    
     @point_b.setter
     def point_b(self, pt: Point) -> None:
         self.update_points(self.point_a, pt)
-    
     # Public Methods #
     def copy(self) -> LineSegment:
         """Returns a copy of the LineSegment.
@@ -222,8 +201,7 @@ class LineSegment(AbstractGeometry):
         :returns: A new LineSegment with new start and end points at the same 
             position as this LineSegment, but with no uids assigned.
         """
-        return self.__copy__()
-    
+        return LineSegment(self.point_a.copy(), self.point_b.copy())
     def get_fit_box(self) -> tuple[Point, Point]:
         """Returns the corner points of the smallest axis-aligned box that fits 
         the line segment.
@@ -238,11 +216,9 @@ class LineSegment(AbstractGeometry):
             min_coordinates += (min(self.point_a.z, self.point_b.z),)
             max_coordinates += (max(self.point_a.z, self.point_b.z),)
         return (Point(min_coordinates), Point(max_coordinates))
-    
     def get_length(self) -> float:
         """Returns the length of the LineSegment."""
         return self.length
-    
     def get_reference(self,
                       reference: ConstraintReference) -> LineSegment | Point:
         """Returns reference geometry for use in external modules like 
@@ -262,29 +238,23 @@ class LineSegment(AbstractGeometry):
             case _:
                 raise ValueError(f"{self.__class__}s do not have any"
                                  f" {reference.name} reference geometry")
-    
     def get_all_references(self) -> tuple[ConstraintReference]:
         """Returns all ConstraintReferences applicable to LineSegments. See 
         :attr:`LineSegment.REFERENCES`.
         """
         return self.REFERENCES
-    
     def get_x_length(self) -> Real:
         """Returns the distance along the x axis from point a to point b."""
         return abs(self.point_a.x - self.point_b.x)
-    
     def get_y_length(self) -> Real:
         """Returns the distance along the y axis from point a to point b."""
         return abs(self.point_a.y - self.point_b.y)
-    
     def get_z_length(self) -> Real:
         """Returns the distance along the z axis from point a to point b."""
         return abs(self.point_a.z - self.point_b.z)
-    
     def get_line(self) -> Line:
         """Returns the infinite Line coincident with points a and b."""
         return Line.from_two_points(self.point_a, self.point_b)
-    
     def get_vector_ab(self, numpy_vector: bool=True) -> np.ndarray | tuple:
         """Returns the non-unit-vector from point a to point b.
         
@@ -296,9 +266,7 @@ class LineSegment(AbstractGeometry):
         np_vector_ab = np.array(self.point_b) - np.array(self.point_a)
         if numpy_vector:
             return np_vector_ab
-        else:
-            return trig.to_1d_tuple(np_vector_ab)
-    
+        return trig.to_1d_tuple(np_vector_ab)
     def set_length_from_a(self, value: Real) -> Self:
         """Sets the length of the line segment relative to point a by keeping 
         point a in the same location and moving point b along the current 
@@ -312,9 +280,7 @@ class LineSegment(AbstractGeometry):
             self.point_b.cartesian = (np.array(self.point_a.cartesian)
                                       + new_vector_ab)
             return self
-        else:
-            raise ValueError("Line Length cannot be set to 0")
-    
+        raise ValueError("Line Length cannot be set to 0")
     def set_length_from_b(self, value: Real) -> Self:
         """Sets the length of the line segment relative to point b by keeping 
         point b in the same location and moving point a along the current 
@@ -329,37 +295,29 @@ class LineSegment(AbstractGeometry):
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
             return self
-        else:
-            raise ValueError("Line Length cannot be set to 0")
-    
+        raise ValueError("Line Length cannot be set to 0")
     def set_x_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_length_from_a`, but only along the x axis and does 
         not raise a ValueError if set to 0.
         """
         return self._update_axis_length(value, 0, True)
-    
     def set_x_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_length_from_b`, but only along the x axis and does 
         not raise a ValueError if set to 0.
         """
         return self._update_axis_length(value, 0, False)
-    
     def set_y_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_a`, but only along the y axis."""
         return self._update_axis_length(value, 1, True)
-    
     def set_y_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_b`, but only along the y axis."""
         return self._update_axis_length(value, 1, False)
-    
     def set_z_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_a`, but only along the z axis."""
         return self._update_axis_length(value, 2, True)
-    
     def set_z_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_b`, but only along the z axis."""
         return self._update_axis_length(value, 2, False)
-    
     def update(self, other: LineSegment) -> Self:
         """Updates the points of the line segment to match the points of another 
         line segment.
@@ -368,7 +326,6 @@ class LineSegment(AbstractGeometry):
         :returns: The updated LineSegment.
         """
         return self.update_points(other.point_a, other.point_b)
-    
     def update_points(self, point_a: Point, point_b: Point) -> Self:
         """Updates (or initializes if not available) the points of the line 
         segment. Raises ValueErrors if the points are the same or if the points 
@@ -379,22 +336,18 @@ class LineSegment(AbstractGeometry):
         :returns: The updated LineSegment.
         """
         if point_a == point_b:
-            raise ValueError("Line Segments cannot be defined with 2 of the"
-                             " same point""")
-        elif len(point_a) == len(point_b):
-            if hasattr(self, "_point_a"):
-                # Update existing points
-                self._point_a.cartesian = point_a.cartesian
-                self._point_b.cartesian = point_b.cartesian
-            else:
-                # Initialize Points
-                self._point_a = point_a
-                self._point_b = point_b
-            return self
+            raise ValueError("points are at the same position")
+        if len(point_a) != len(point_b):
+            raise ValueError("points must be the same dimension")
+        if hasattr(self, "_point_a"):
+            # Update existing points
+            self._point_a.cartesian = point_a.cartesian
+            self._point_b.cartesian = point_b.cartesian
         else:
-            raise ValueError("point_a and point_b must have the same number of"
-                             " dimensions to initialize a line segment")
-    
+            # Initialize Points
+            self._point_a = point_a
+            self._point_b = point_b
+        return self
     def _update_axis_length(self,
                             value: Real,
                             axis: int,
@@ -415,18 +368,16 @@ class LineSegment(AbstractGeometry):
             self.point_a.cartesian = (np.array(self.point_b.cartesian)
                                       - new_vector_ab)
         return self
-    
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
             return ";".join(map(str, [*self.point_a, *self.point_b]))
-    
+        raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
     def __copy__(self) -> LineSegment:
         """Returns a copy of the LineSegment that has the same points and line, 
         but no assigned uid.
         """
-        return LineSegment(self.point_a.copy(), self.point_b.copy())
-    
+        return self.copy()
     def __eq__(self, other: LineSegment) -> bool:
         """Rich comparison for LineSegment equality that allows for line
         segments to be directly compared with ==.
@@ -440,15 +391,12 @@ class LineSegment(AbstractGeometry):
                 self.point_a == other.point_a
                 and self.point_b == other.point_b
             )
-        else:
-            return NotImplemented
-    
+        return NotImplemented
     def __len__(self) -> int:
         """Returns the number of elements in the line segment's point_a, which 
         is equivalent to the line segment's number of dimnesions.
         """
         return len(self.point_a)
-    
     def __str__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
@@ -462,6 +410,5 @@ class LineSegment(AbstractGeometry):
                 pt_b_strs.append("{:g}".format(self.point_b[i]))
         pt_a_str = ",".join(pt_a_strs)
         pt_b_str = ",".join(pt_b_strs)
-        
         prefix = super().__str__()
         return f"{prefix}({pt_a_str})({pt_b_str})>"

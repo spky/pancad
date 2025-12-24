@@ -24,7 +24,7 @@ from . import (
     Vertical,
     VerticalDistance,
 )
-from .utils import GeometryReference
+from pancad.utils.constraints import GeometryReference
 
 if TYPE_CHECKING:
     from uuid import UUID

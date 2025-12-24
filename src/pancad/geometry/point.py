@@ -15,6 +15,7 @@ import numpy as np
 from pancad.geometry import AbstractGeometry
 from pancad.geometry.constants import ConstraintReference
 from pancad.utils import trigonometry as trig, comparison
+from pancad.utils.geometry import parse_vector
 from pancad.utils.trigonometry import is_geometry_vector
 
 if TYPE_CHECKING:
@@ -47,7 +48,7 @@ class Point(AbstractGeometry):
         self._iter_index = 0 # Used for __iter__ counting
         self.uid = uid
         self.unit = unit
-        self.cartesian = self._parse_components(*components)
+        self.cartesian = parse_vector(*components)
     # Class Methods #
     @classmethod
     def from_polar(cls, *components: Real | Sequence[Real] | np.ndarray,
@@ -61,7 +62,7 @@ class Point(AbstractGeometry):
         :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 2 long.
         """
-        vector = Point._parse_components(*components)
+        vector = parse_vector(*components)
         if len(vector) != 2:
             raise ValueError(f"Expected a vector 2 long, got {vector}")
         return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
@@ -79,7 +80,7 @@ class Point(AbstractGeometry):
         :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 3 long.
         """
-        vector = Point._parse_components(*components)
+        vector = parse_vector(*components)
         if len(vector) != 3:
             raise ValueError(f"Expected a vector 3 long, got {vector}")
         return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
@@ -262,25 +263,6 @@ class Point(AbstractGeometry):
         if vertical:
             return array.reshape(len(self.cartesian), 1)
         return array
-    # Private Methods
-    @staticmethod
-    def _parse_components(*components: Real | Sequence[Real] | np.ndarray
-                          ) -> tuple[Real | Real | Real] | tuple[Real | Real]:
-        """Returns vector component inputs as a tuple of Reals."""
-        if len(components) not in [1, 2, 3]:
-            raise ValueError("components must be 1 to 3 arguments")
-        if len(components) == 1:
-            vector = components[0]
-            if isinstance(vector, np.ndarray):
-                if not is_geometry_vector(vector):
-                    raise ValueError("NumPy vectors must be 2 or 3 elements")
-                return tuple(float(c.squeeze()) for c in vector)
-            if isinstance(vector, Sequence):
-                return tuple(vector)
-            raise TypeError(f"Expected ndarray/Sequence, got {components}")
-        if any(isinstance(c, Real) for c in components):
-            return tuple(components)
-        raise TypeError(f"Expected Real components, got {components}")
     # Python Dunders #
     def __add__(self, other) -> tuple[Real]:
         """Returns the addition of two point's cartesian position vectors."""

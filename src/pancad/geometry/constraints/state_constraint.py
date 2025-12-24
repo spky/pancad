@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
-from pancad.geometry.constraints.utils import constraint_args
+from pancad.utils.constraints import constraint_args
 from pancad.geometry import (
     Circle,
     CircularArc,
@@ -24,8 +24,8 @@ from pancad.geometry import (
 if TYPE_CHECKING:
     from typing import Type
     from pancad.geometry import AbstractGeometry
-    from pancad.geometry.constraints.utils import GeometryReference
     from pancad.geometry.constants import ConstraintReference
+    from pancad.utils.constraints import GeometryReference
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry 
