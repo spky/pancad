@@ -14,13 +14,7 @@ from typing import TYPE_CHECKING, overload, Self, NoReturn
 from pancad.geometry import (
     AbstractFeature,
     AbstractGeometry,
-    # Circle,
-    # CircularArc,
     CoordinateSystem,
-    # Ellipse,
-    # Point,
-    # Line,
-    # LineSegment,
 )
 from pancad.geometry.constants import SketchConstraint, ConstraintReference
 from pancad.geometry.constraints import (

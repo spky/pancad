@@ -60,7 +60,7 @@ class TestPancadtoFreeCAD(unittest.TestCase):
     
     def test_map_add_feature_container(self):
         container = FeatureContainer(name="TestBucket")
-        coordinate_system = CoordinateSystem()
+        coordinate_system = CoordinateSystem((0, 0, 0))
         line = LineSegment((0, 0), (1, 1))
         sketch = Sketch(name="Test Mapping Sketch",
                         geometry=[line],
@@ -70,7 +70,7 @@ class TestPancadtoFreeCAD(unittest.TestCase):
     
     def test_map_cube_extrude(self):
         container = FeatureContainer(name="TestBucket")
-        cs = CoordinateSystem()
+        cs = CoordinateSystem((0, 0, 0))
         sketch = sample_sketches.square(cs)
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]
@@ -78,7 +78,7 @@ class TestPancadtoFreeCAD(unittest.TestCase):
     
     def test_map_ellipse_extrude(self):
         container = FeatureContainer(name="TestBucket")
-        cs = CoordinateSystem()
+        cs = CoordinateSystem((0, 0, 0))
         sketch = sample_sketches.ellipse(cs)
         extrude = Extrude.from_length(sketch, 1, name="Test Extrude")
         container.features = [cs, sketch, extrude]

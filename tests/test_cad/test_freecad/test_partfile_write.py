@@ -36,7 +36,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         filename = stack()[0].function + ".FCStd"
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)
-        cs = CoordinateSystem()
+        cs = CoordinateSystem((0, 0, 0))
         sketch = sample_sketches.square(cs)
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]
@@ -47,7 +47,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         filename = stack()[0].function + ".FCStd"
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)
-        cs = CoordinateSystem()
+        cs = CoordinateSystem((0, 0, 0))
         sketch = sample_sketches.circle(cs)
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]
@@ -58,7 +58,7 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         filename = stack()[0].function + ".FCStd"
         self.filepath = os.path.join(self.dump, filename)
         self.file = PartFile(filename)
-        cs = CoordinateSystem()
+        cs = CoordinateSystem((0, 0, 0))
         sketch = sample_sketches.ellipse(cs)
         extrude = Extrude.from_length(sketch, self.height, name=self.ext_name)
         self.file.features = [cs, sketch, extrude]

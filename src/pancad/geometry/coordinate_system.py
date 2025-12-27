@@ -3,7 +3,9 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from functools import partial, singledispatchmethod
+from copy import deepcopy
+from dataclasses import dataclass, fields
+from functools import partial, singledispatchmethod, partialmethod
 from textwrap import indent
 from typing import TYPE_CHECKING, overload, Self
 
@@ -29,7 +31,60 @@ if TYPE_CHECKING:
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-# TODO: Refactor instance axis variables to be in a NamedTuple or similar
+# TODO: Add expected conditions to the test_system_parts_rotation_3d test
+
+def updates_planes(func):
+    """A wrapper to sync up SystemParts planes after the axes are updated."""
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        if self.z is not None:
+            for axis, plane in zip(self.reversed(self.get_axes()),
+                                   self.get_planes()):
+                plane.update(Plane(self.origin, axis.direction))
+        return result
+    return wrapper
+
+@dataclass
+class SystemParts:
+    """A dataclass containing the geometric parts of a CoordinateSystem."""
+    origin: Point
+    x: Line
+    y: Line
+    z: Line = None
+    xy: Plane = None
+    xz: Plane = None
+    yz: Plane = None
+    def _get_typed(self, type_: str) -> list[Point | Line | Plane]:
+        """Returns the non-None values of a specified type."""
+        values = [getattr(self, field.name)
+                  for field in fields(self) if field.type == type_]
+        return [value for value in values if value is not None]
+    get_axes = partialmethod(_get_typed, type_="Line")
+    get_planes = partialmethod(_get_typed, type_="Plane")
+    @singledispatchmethod
+    @updates_planes
+    def rotate(self, rotation) -> NoReturn:
+        """Applies rotation to the axes and planes about the origin."""
+        raise TypeError(f"Expected numpy array or quaternion, got {rotation}")
+    @rotate.register
+    def _matrix(self, matrix: np.ndarray) -> Self:
+        """Rotate with a rotation matrix."""
+        if self.z is None and matrix.shape != (2, 2):
+            raise ValueError(f"Expected 2x2 matrix, got {matrix}")
+        if self.z is not None and matrix.shape != (3, 3):
+            raise ValueError(f"Expected 3x3 matrix, got {matrix}")
+        for axis in self.get_axes():
+            axis.update(Line(self.origin, matrix @ axis.direction))
+        return self
+    @rotate.register
+    def _quaternion(self, quat: quaternion.quaternion) -> Self:
+        if self.z is None:
+            raise ValueError("Cannot rotate 2D systems with quaternions!")
+        for axis in self.get_axes():
+            axis.update(
+                Line(self.origin, quaternion.rotate_vectors(quat, axis.direction))
+            )
+        return self
 
 class CoordinateSystem(AbstractGeometry, AbstractFeature):
     """A class representing coordinate systems in 2D and 3D space. Initial 
@@ -80,34 +135,36 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                  uid: str | None=None,
                  context: AbstractFeature | None=None,
                  name: str | None=None) -> None: ...
-    def __init__(self, origin=None, alpha=0, beta=0, gamma=0,
+    def __init__(self, origin, alpha=0, beta=0, gamma=0,
                  *, right_handed=True, uid=None, context=None, name=None):
-        if origin is None:
-            origin = (0, 0, 0)
         if isinstance(origin, VectorLike):
             origin = Point(origin)
+        if not isinstance(origin, Point):
+            raise TypeError(f"Expected Point/Vector for origin, got {origin}")
+        if len(origin) == 2 and any(angle != 0 for angle in [beta, gamma]):
+            raise ValueError(f"beta {beta} and gamma {gamma} must be 0 when 2D")
         if not right_handed:
-            raise NotImplementedError("Left-Handed CoordinateSystems not"
-                                      " yet implemented.")
-        # Initialize reference geometry and then translate/rotate into place
-        self._x_vector = None
-        self._y_vector = None
+            raise NotImplementedError("Lefthanded systems not yet implemented")
         if len(origin) == 2:
-            if beta != 0 or gamma != 0:
-                raise ValueError("beta and/or gamma angles cannot be set for a"
-                                 " 2D coordinate system")
-            self._init_2d(origin, alpha)
+            canon_vectors = [(1, 0), (0, 1)]
+            planes = []
+            rotation_matrix = rotation_2(alpha)
         else:
-            self._z_vector = None
-            self._init_3d(origin, alpha, beta, gamma)
+            canon_vectors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+            planes = [Plane(origin, vector) for vector in reversed(canon_vectors)]
+            rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
+        axes = [Line(origin, vector) for vector in canon_vectors]
+        self._parts = SystemParts(origin, *axes, *planes)
+        self.rotate(rotation_matrix)
         self.name = name
         self.context = context
         self.uid = uid
+    
     # Class Methods #
     @classmethod
     def from_quaternion(cls,
-                        origin: Point | VectorLike=None,
-                        quat: np.quaternion=None,
+                        origin: Point | VectorLike,
+                        quat: np.quaternion,
                         *,
                         right_handed: bool=True,
                         uid: str=None,
@@ -125,9 +182,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :param uid: The unique ID of the coordinate system.
         :returns: A 3D CoordinateSystem rotated according to the quaternion.
         """
-        if quat is None:
-            # Initialize a quaternion that won't rotate the coordinate system
-            quat = np.quaternion(0, 0, 0, 1)
         if len(origin) != 3:
             raise ValueError("2D Coordinate Systems cannot be initialized"
                              " with quaternions")
@@ -138,11 +192,18 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                                 uid=uid,
                                 context=context,
                                 name=name)
-        return coordinate_system._rotate_axes(quat)
+        return coordinate_system.rotate(quat)
     # Getters #
     @property
     def context(self) -> AbstractFeature | None:
         return self._context
+    @context.setter
+    def context(self, context_feature: AbstractFeature | None) -> None:
+        self._context = context_feature
+    @property
+    def parts(self) -> SystemParts:
+        """The geometric parts of the coordinate system. Read-only."""
+        return self._parts
     @property
     def origin(self) -> Point:
         """The origin point of the coordinate system.
@@ -151,29 +212,24 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :setter: Updates the origin point's location from another Point or 
             position vector.
         """
-        return self._origin
+        return self._parts.origin
+    @origin.setter
+    def origin(self, point: Point | VectorLike):
+        if isinstance(point, VectorLike):
+            point = Point(point)
+        self._parts.origin.update(point)
     @property
     def x_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's x-axis. Read-only."""
-        return self._x_vector
+        return self._parts.x.direction
     @property
     def y_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's y-axis. Read-only."""
-        return self._y_vector
+        return self._parts.y.direction
     @property
     def z_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's z-axis. Read-only."""
-        return self._z_vector
-    # Setters #
-    @context.setter
-    def context(self, context_feature: AbstractFeature | None) -> None:
-        self._context = context_feature
-    @origin.setter
-    def origin(self, point: Point | VectorLike):
-        if isinstance(point, Point):
-            self._origin.update(point)
-        else:
-            self._origin.cartesian = point
+        return self._parts.z.direction
     # Public Methods #
     def copy(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem.
@@ -202,32 +258,30 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return (self.context,)
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""
-        return self._x_axis_line
+        return self._parts.x
     def get_axis_line_y(self) -> Line:
         """Returns the infinite line coincident with the y-axis."""
-        return self._y_axis_line
+        return self._parts.y
     def get_axis_line_z(self) -> Line:
         """Returns the infinite line coincident with the z-axis."""
-        return self._z_axis_line
+        return self._parts.z
     def get_axis_vectors(self) -> tuple[tuple[Real]]:
         """Returns a tuple of the coordinate system's axis direction tuples."""
-        if len(self.origin) == 2:
-            return (self.x_vector, self.y_vector)
-        return (self.x_vector, self.y_vector, self.z_vector)
+        return tuple(axis.direction for axis in self._parts.get_axes())
     def get_quaternion(self) -> np.quaternion:
         """Returns a quaternion that can be used to rotate other vectors from 
         the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
         (0, 0, 1) to this coordinate system.
         """
         canon_axis = (0, 0, 1)
-        if (np.allclose(canon_axis, self._z_vector)
-                or np.allclose(canon_axis, -self._z_vector)):
+        if (np.allclose(canon_axis, self.z_vector)
+                or np.allclose(canon_axis, -self.z_vector)):
             # Protect against the situation where the coordinate system is
             # rotated around the z axis by switching to x axis
             canon_axis = (1, 0, 0)
-            current_axis = self._x_vector
+            current_axis = self.x_vector
         else:
-            current_axis = self._z_vector
+            current_axis = self.z_vector
         euler_axis = np.cross(canon_axis, current_axis)
         euler_axis = euler_axis / np.linalg.norm(euler_axis)
         normed_dot = (
@@ -249,21 +303,20 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :raises ValueError: When provided a ConstraintReference that is not 
             available for the coordinate system.
         """
-        if reference == ConstraintReference.ORIGIN:
-            return self.origin
-        reference_funcs = {
-            ConstraintReference.X: self.get_axis_line_x,
-            ConstraintReference.Y: self.get_axis_line_y,
+        reference_map = {
+            ConstraintReference.ORIGIN: self._parts.origin,
+            ConstraintReference.X: self._parts.x,
+            ConstraintReference.Y: self._parts.y,
         }
         if len(self.origin) == 3:
-            reference_funcs.update(
-                {ConstraintReference.Z: self.get_axis_line_z,
-                 ConstraintReference.XY: self.get_xy_plane,
-                 ConstraintReference.XZ: self.get_xz_plane,
-                 ConstraintReference.YZ: self.get_yz_plane}
+            reference_map.update(
+                {ConstraintReference.Z: self._parts.z,
+                 ConstraintReference.XY: self._parts.xy,
+                 ConstraintReference.XZ: self._parts.xz,
+                 ConstraintReference.YZ: self._parts.yz}
             )
         try:
-            return reference_funcs[reference]()
+            return reference_map[reference]
         except KeyError as err:
             references_3d = [ConstraintReference.Z,
                              ConstraintReference.XY,
@@ -276,13 +329,13 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             raise ValueError(message) from err
     def get_xy_plane(self) -> Plane:
         """Returns the XY plane of the CoordinateSystem."""
-        return self._xy_plane
+        return self._parts.xy
     def get_xz_plane(self) -> Plane:
         """Returns the XZ plane of the CoordinateSystem."""
-        return self._xz_plane
+        return self._parts.xz
     def get_yz_plane(self) -> Plane:
         """Returns the YZ plane of the CoordinateSystem."""
-        return self._yz_plane
+        return self._parts.yz
     def update(self, other: CoordinateSystem) -> Self:
         """Updates the origin, axes, and planes of the CoordinateSystem to match 
         another CoordinateSystem.
@@ -290,81 +343,14 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :param other: The CoordinateSystem to update to.
         :returns: The updated CoordinateSystem.
         """
-        self.origin = other.origin
-        self._set_axes(other.get_axis_vectors())
+        for field in fields(self._parts):
+            getattr(self.parts, field.name).update(
+                getattr(other.parts, field.name)
+            )
         return Self
-    # Private Methods #
-    def _init_2d(self, origin: Point, alpha: Real) -> None:
-        """Used to initialize a 2D coordinate system."""
-        self._origin = Point(0, 0)
-        self.origin = origin
-        self._x_axis_line = Line(self.origin, (1, 0))
-        self._y_axis_line = Line(self.origin, (0, 1))
-        initial_axis_matrix = (self._x_axis_line.direction,
-                               self._y_axis_line.direction)
-        self._set_axes(initial_axis_matrix)
-        rotation_matrix = rotation_2(alpha)
-        self._rotate_axes(rotation_matrix)
-    def _init_3d(self,
-                 origin: Point,
-                 alpha: Real, beta: Real, gamma: Real) -> None:
-        """Used to initialize a 3D coordinate system."""
-        self._origin = Point(0, 0, 0)
-        self.origin = origin
-        self._x_axis_line = Line(self.origin, (1, 0, 0))
-        self._y_axis_line = Line(self.origin, (0, 1, 0))
-        self._z_axis_line = Line(self.origin, (0, 0, 1))
-        self._xy_plane = Plane(self.origin, self._z_axis_line.direction)
-        self._xz_plane = Plane(self.origin, self._y_axis_line.direction)
-        self._yz_plane = Plane(self.origin, self._x_axis_line.direction)
-        initial_axis_matrix = (self._x_axis_line.direction,
-                               self._y_axis_line.direction,
-                               self._z_axis_line.direction)
-        self._set_axes(initial_axis_matrix)
-        rotation_matrix = yaw_pitch_roll(alpha, beta, gamma)
-        self._rotate_axes(rotation_matrix)
-    @singledispatchmethod
-    def _rotate_axes(self, rotation) -> NoReturn:
-        """Applies the rotation matrix to all the coordinate system's axes."""
-        raise TypeError(f"Invalid rotation type {rotation.__class__}")
-    @_rotate_axes.register
-    def _with_quaternion(self, quat: quaternion.quaternion) -> Self:
-        axis_array = np.array(self.get_axis_vectors())
-        rotated = quaternion.rotate_vectors(quat, axis_array)
-        self._set_axes(rotated)
+    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+        self.parts.rotate(rotation)
         return self
-    @_rotate_axes.register
-    def _with_matrix(self, rotation_matrix: np.ndarray) -> Self:
-        new_axis_matrix = [rotation_matrix @ axis
-                           for axis in self.get_axis_vectors()]
-        self._set_axes(new_axis_matrix)
-        return self
-    def _set_axes(self, axis_matrix: list | tuple | np.ndarray) -> None:
-        """Used to set the axes all at once while ensuring they are tuples. 
-        Assumes that the axes are still unit vectors, perpendicular, and 
-        linearly independent (that's why this is private).
-        """
-        if len(self.origin) == len(axis_matrix) == 2:
-            x, y = axis_matrix
-            self._x_vector = to_1d_tuple(x)
-            self._y_vector = to_1d_tuple(y)
-        elif len(self.origin) == len(axis_matrix) == 3:
-            x, y, z = axis_matrix
-            self._x_vector = to_1d_tuple(x)
-            self._y_vector = to_1d_tuple(y)
-            self._z_vector = to_1d_tuple(z)
-        else:
-            raise ValueError("axis_matrix must be for the same number of"
-                             " dimensions as the origin point")
-        self._update_axis_lines_and_planes()
-    def _update_axis_lines_and_planes(self):
-        self._x_axis_line.update(Line(self.origin, self._x_vector))
-        self._y_axis_line.update(Line(self.origin, self._y_vector))
-        if len(self.origin) == 3:
-            self._z_axis_line.update(Line(self.origin, self._z_vector))
-            self._xy_plane.update(Plane(self.origin, self._z_vector))
-            self._xz_plane.update(Plane(self.origin, self._y_vector))
-            self._yz_plane.update(Plane(self.origin, self._x_vector))
     # Python Dunders #
     def __copy__(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem that has the same origin, 

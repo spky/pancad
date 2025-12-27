@@ -150,7 +150,8 @@ class PartFile(PancadThing):
             # the FeatureContainer level since it only applies to PartFiles
             # and not things like Folders.
             self.container.add_feature(
-                CoordinateSystem(name=self.DEFAULT_COORDINATE_SYSTEM_NAME)
+                CoordinateSystem((0, 0, 0),
+                                 name=self.DEFAULT_COORDINATE_SYSTEM_NAME)
             )
         if isinstance(feature, Sketch) and feature.coordinate_system is None:
             # If the sketch doesn't have a coordinate system and is being put
