@@ -3,11 +3,10 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import dataclass, fields
 from functools import partial, singledispatchmethod, partialmethod
 from textwrap import indent
-from typing import TYPE_CHECKING, overload, Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 import quaternion
@@ -19,9 +18,7 @@ from pancad.geometry import (AbstractFeature,
                              Plane)
 from pancad.geometry.constants import ConstraintReference
 from pancad.utils import comparison
-from pancad.utils.trigonometry import (yaw_pitch_roll,
-                                       rotation_2,
-                                       to_1d_tuple)
+from pancad.utils.trigonometry import yaw_pitch_roll, rotation_2
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
@@ -63,7 +60,7 @@ class SystemParts:
     get_planes = partialmethod(_get_typed, type_="Plane")
     @singledispatchmethod
     @updates_planes
-    def rotate(self, rotation) -> NoReturn:
+    def rotate(self, rotation) -> Self:
         """Applies rotation to the axes and planes about the origin."""
         raise TypeError(f"Expected numpy array or quaternion, got {rotation}")
     @rotate.register
@@ -97,8 +94,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         rotation, defaults to 0. Cannot be set for a 2D coordinate system.
     :param gamma: Angle to rotate about the x-axis after beta rotation, defaults 
         to 0. Cannot be set for a 2D coordinate system.
-    :param right_handed: Whether the coordinate system is right-handed. 
-        Right-handed if True, left-handed if False. Defaults to False.
     :param uid: The unique ID of the coordinate system.
     :param context: The feature defining the context that the CoordinateSystem 
         exists inside of.
@@ -116,35 +111,19 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     """All relevant ConstraintReferences for CoordinateSystems. 2D 
     CoordinateSystems only have ORIGIN, X, and Y.
     """
-    @overload
     def __init__(self,
                  origin: Point | VectorLike,
-                 alpha: Real=0,
+                 alpha: Real=0, beta: Real=0, gamma: Real=0,
                  *,
-                 uid: str | None=None,
-                 context: AbstractFeature | None=None,
-                 name: str | None=None) -> None: ...
-    @overload
-    def __init__(self,
-                 origin: Point | VectorLike,
-                 alpha: Real=0,
-                 beta: Real=0,
-                 gamma: Real=0,
-                 *,
-                 right_handed: bool=True,
-                 uid: str | None=None,
-                 context: AbstractFeature | None=None,
-                 name: str | None=None) -> None: ...
-    def __init__(self, origin, alpha=0, beta=0, gamma=0,
-                 *, right_handed=True, uid=None, context=None, name=None):
+                 uid: str=None,
+                 context: AbstractFeature=None,
+                 name: str=None) -> None:
         if isinstance(origin, VectorLike):
             origin = Point(origin)
         if not isinstance(origin, Point):
             raise TypeError(f"Expected Point/Vector for origin, got {origin}")
         if len(origin) == 2 and any(angle != 0 for angle in [beta, gamma]):
             raise ValueError(f"beta {beta} and gamma {gamma} must be 0 when 2D")
-        if not right_handed:
-            raise NotImplementedError("Lefthanded systems not yet implemented")
         if len(origin) == 2:
             canon_vectors = [(1, 0), (0, 1)]
             planes = []
@@ -159,14 +138,12 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self.name = name
         self.context = context
         self.uid = uid
-    
     # Class Methods #
     @classmethod
     def from_quaternion(cls,
                         origin: Point | VectorLike,
                         quat: np.quaternion,
                         *,
-                        right_handed: bool=True,
                         uid: str=None,
                         name: str=None,
                         context: AbstractFeature=None) -> CoordinateSystem:
@@ -188,7 +165,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         # Initialize an unrotated coordinate system
         coordinate_system = cls(origin,
                                 0, 0, 0,
-                                right_handed=right_handed,
                                 uid=uid,
                                 context=context,
                                 name=name)
@@ -237,14 +213,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :returns: the same origin, axes, planes and context, but not the same 
             uid.
         """
-        if len(self) == 3:
-            return CoordinateSystem.from_quaternion(self.origin,
-                                                    self.get_quaternion(),
-                                                    context=self.context)
-        new_system = CoordinateSystem(self.origin, context=self.context)
-        new_initial_axis_matrix = (self._x_vector, self._y_vector)
-        new_system._set_axes(new_initial_axis_matrix)
-        return new_system
+        return CoordinateSystem(self.origin).update(self)
     def get_all_references(self) -> tuple[ConstraintReference]:
         """Returns all ConstraintReferences applicable to CoordinateSystems. See 
         :attr:`CoordinateSystem.REFERENCES`.
@@ -349,6 +318,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             )
         return Self
     def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+        """Rotates the system with a rotation matrix or quaternion."""
         self.parts.rotate(rotation)
         return self
     # Python Dunders #
