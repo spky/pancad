@@ -95,8 +95,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     :param gamma: Angle to rotate about the x-axis after beta rotation, defaults 
         to 0. Cannot be set for a 2D coordinate system.
     :param uid: The unique ID of the coordinate system.
-    :param context: The feature defining the context that the CoordinateSystem 
-        exists inside of.
     :param name: The name of the feature displayed to the users in CAD.
     :param context: The feature that acts as the context for this feature, 
         usually a :class:`~pancad.geometry.FeatureContainer`
