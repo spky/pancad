@@ -13,6 +13,9 @@ import numpy as np
 from pancad.geometry import AbstractGeometry, Point
 from pancad.geometry.constants import ConstraintReference
 from pancad.utils import comparison
+from pancad.utils.geometry import (
+    three_dimensional_only, two_dimensional_only, no_dimensional_mismatch
+)
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import (
     get_unit_vector,
@@ -57,8 +60,8 @@ class CircularArc(AbstractGeometry):
     :param end_vector: A vector pointing to the end of the arc.
     :param is_clockwise: Sets whether the arc travels clockwise from the start 
         point to the end point.
-    :param normal_vector: The vector normal to the start and end vectors that 
-        defines which direction is clockwise. Required for 3D arcs.
+    :param normal: The vector normal to the start and end vectors that defines 
+        which direction is clockwise. Required for 3D arcs.
     :param uid: The unique ID of the circle.
     """
     REFERENCES = (
@@ -76,6 +79,9 @@ class CircularArc(AbstractGeometry):
                  is_clockwise: bool,
                  normal: VectorLike | None=None,
                  uid: str=None) -> None:
+        # pylint: disable=too-many-positional-arguments, too-many-arguments
+        # Ok here because packing it smaller would require arbitrary lists or
+        # dicts. Arcs just need this many arguments.
         if isinstance(center, VectorLike):
             center = Point(center)
         if len(center) == 2 and normal is not None:
@@ -104,13 +110,17 @@ class CircularArc(AbstractGeometry):
         :param radius: The radius dimension of the arc.
         :param start_angle: The angle from the horizontal axis to the line 
             between the center and the start of the arc in radians.
-        :param end_angle: A vector pointing to the end of the arc.
+        :param end_angle: The angle from the horizontal axis to the line 
+            between the center and the end of the arc in radians.
         :param is_clockwise: Sets whether the arc travels clockwise from the 
             start point to the end point.
         :param uid: The unique ID of the circle.
         :raises ValueError: Raised if the center point is 3D since 3D arcs
             cannot be defined by angles.
         """
+        # pylint: disable=too-many-positional-arguments, too-many-arguments
+        # Ok here because packing it smaller would require arbitrary lists or
+        # dicts. Arcs just need this many arguments.
         if len(center) == 3:
             raise ValueError("3D CircularArcs cannot be initialized by angles")
         if isinstance(center, VectorLike):
@@ -129,11 +139,10 @@ class CircularArc(AbstractGeometry):
         """
         return self._parts.center
     @center.setter
+    @no_dimensional_mismatch
     def center(self, point: Point | VectorLike) -> None:
         if isinstance(point, VectorLike):
             point = Point(point)
-        if len(point) != len(self):
-            raise ValueError(f"Can't update {len(self)}D arc to {len(point)}D")
         # Store initial vectors before changing center
         start_vector = np.array(self.start_vector)
         end_vector = np.array(self.end_vector)
@@ -163,9 +172,10 @@ class CircularArc(AbstractGeometry):
         self.radius = value / 2
     @property
     def end(self) -> Point:
-        """The end point of the arc."""
+        """The end point of the arc. Read-only."""
         return self._parts.end
     @property
+    @two_dimensional_only
     def end_angle(self) -> Real:
         """The angle from the positive horizontal axis to the end_vector in 
         radians. Bounded -pi < angle <= pi.
@@ -175,13 +185,10 @@ class CircularArc(AbstractGeometry):
         :setter: Sets the end_vector based on the value given in radians.
         :raises ValueError: Raised if accessed on a 3D arc.
         """
-        if len(self) == 3:
-            raise ValueError("3D arcs cannot be defined by axis angles")
         return phi_of_cartesian(self.end_vector)
     @end_angle.setter
+    @two_dimensional_only
     def end_angle(self, angle: Real) -> None:
-        if len(self) == 3:
-            raise ValueError("3D arcs cannot be defined by axis angles")
         self.end_vector = polar_to_cartesian((1, angle))
     @property
     def end_vector(self) -> tuple[Real, Real] | tuple[Real, Real, Real]:
@@ -191,43 +198,27 @@ class CircularArc(AbstractGeometry):
         :setter: Sets the unit vector of the provided vector to the end vector 
             and updates the end point's position.
         """
-        return to_1d_tuple(
-            get_unit_vector(self._parts.end - self._parts.center)
-        )
+        return self._parts.end_vector
     @end_vector.setter
+    @no_dimensional_mismatch
     def end_vector(self, vector: VectorLike) -> None:
-        if len(vector) != len(self):
-            raise ValueError(f"Can't update {len(self)}D arc to {len(vector)}D")
         self._parts.end.update(
             Point(self._parts.center + self.radius * get_unit_vector(vector))
         )
     @property
+    @three_dimensional_only
     def normal_vector(self) -> tuple[Real] | None:
-        """The unit vector defining the direction of clockwise.
-        
-        :getter: Returns the vector.
-        :setter: Sets the unit vector of the provided vector to the normal
-            vector and updates the start/end points/vectors to their new 
-            positions rotated around the center.
-        """
-        if len(self) == 3:
-            raise NotImplementedError("3D arcs not implemented yet, see #143")
+        """The unit vector defining the direction of clockwise for 3D arcs."""
         return self._parts.normal
     @normal_vector.setter
+    @three_dimensional_only
+    @no_dimensional_mismatch
     def normal_vector(self, vector: VectorLike | None) -> None:
-        if len(self) == 3:
-            raise NotImplementedError("3D arcs not implemented yet, see #143")
-        if vector is None:
-            self._normal_vector = vector
-        else:
-            raise ValueError(f"2D Arc normals must be None. Given: {vector}")
+        self._parts.normal = vector
     @property
     def radius(self) -> Real:
         """Radius of the arc.
         
-        :getter: Returns the arc's radius value.
-        :setter: Updates the arc's radius if the given value is greater than 
-            or equal to 0.
         :raises ValueError: Raised if provided a value less than 0.
         """
         return self._parts.radius
@@ -241,25 +232,20 @@ class CircularArc(AbstractGeometry):
         self._parts.end.update(new_end)
     @property
     def start(self) -> Point:
-        """The start point of the arc."""
+        """The start point of the arc. Read-only."""
         return self._parts.start
     @property
+    @two_dimensional_only
     def start_angle(self) -> Real:
-        """The angle from the positive horizontal axis to the start_vector.
-        Bounded -pi < angle <= pi.
+        """The angle from the positive horizontal axis to the start_vector in 
+        radians. Bounded -pi < angle <= pi.
         
-        :getter: Returns the calculated angle of the start_vector relative to the 
-            positive horizontal axis in radians.
-        :setter: Sets the end_vector based on the value given in radians.
         :raises ValueError: Raised if accessed on a 3D arc.
         """
-        if len(self) == 3:
-            raise ValueError("3D arcs cannot be defined by axis angles")
         return phi_of_cartesian(self.start_vector)
     @start_angle.setter
+    @two_dimensional_only
     def start_angle(self, angle: Real) -> None:
-        if len(self) == 3:
-            raise ValueError("3D arcs cannot be defined by axis angles")
         self.start_vector = polar_to_cartesian((1, angle))
     @property
     def start_vector(self) -> tuple[Real]:
@@ -271,9 +257,8 @@ class CircularArc(AbstractGeometry):
         """
         return self._parts.start_vector
     @start_vector.setter
+    @no_dimensional_mismatch
     def start_vector(self, vector: VectorLike) -> None:
-        if len(vector) != len(self):
-            raise ValueError(f"Can't update {len(self)}D arc to {len(vector)}D")
         new_start = Point(self.center + self.radius * get_unit_vector(vector))
         self._parts.start.update(new_start)
     # Public Methods #
@@ -301,6 +286,7 @@ class CircularArc(AbstractGeometry):
         :attr:`CircularArc.REFERENCES`.
         """
         return self.REFERENCES
+    @no_dimensional_mismatch
     def update(self, other: CircularArc) -> Self:
         """Updates the center point, radius, start/end vectors and is_clockwise
         to match the other CircularArc.
@@ -308,16 +294,14 @@ class CircularArc(AbstractGeometry):
         :param other: A CircularArc to update this CircularArc to.
         :returns: The updated CircularArc.
         """
-        if len(self) == len(other):
-            self.center = other.center
-            self.radius = other.radius
-            self.start_vector = other.start_vector
-            self.end_vector = other.end_vector
-            self.is_clockwise = other.is_clockwise
-            if len(self) == 3:
-                self.normal_vector = other.normal_vector
-            return self
-        raise ValueError("Cannot update an arc to another dimension")
+        self.center = other.center
+        self.radius = other.radius
+        self.start_vector = other.start_vector
+        self.end_vector = other.end_vector
+        self.is_clockwise = other.is_clockwise
+        if len(self) == 3:
+            self.normal_vector = other.normal_vector
+        return self
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:

@@ -2,14 +2,20 @@ import unittest
 from uuid import UUID
 from math import sin, cos, radians, degrees
 
+import pytest
 from numpy import array, allclose
 from numpy.testing import assert_allclose
 
 from pancad.geometry import CircularArc, Point
 from pancad.utils.text_formatting import get_table_string
 
+def test_no_dimensional_mismatch():
+    arc_2d = CircularArc((0, 0), 1, (1, 0), (0, 1), False)
+    arc_3d = CircularArc((0, 0, 0), 1, (1, 0, 0), (0, 1, 0), False, (0, 0, 1))
+    with pytest.raises(ValueError, match=r"Input Dimensional Mismatch:.*"):
+        arc_2d.update(arc_3d)
+
 class ArcTest(unittest.TestCase):
-    
     def check_values(self,
                      test: CircularArc,
                      center,
@@ -18,10 +24,8 @@ class ArcTest(unittest.TestCase):
                      end_vector,
                      is_clockwise,
                      normal_vector=None):
-        
         start = array(center) + (radius * array(start_vector))
         end = array(center) + (radius * array(end_vector))
-        
         tests = [
             ("center", Point(center), test.center),
             ("radius", radius, test.radius),
@@ -30,8 +34,9 @@ class ArcTest(unittest.TestCase):
             ("end_vector", end_vector, test.end_vector),
             ("end", Point(end), test.end),
             ("is_clockwise", is_clockwise, test.is_clockwise),
-            ("normal_vector", normal_vector, test.normal_vector),
         ]
+        if len(test) == 3:
+            tests.append(("normal_vector", normal_vector, test.normal_vector))
         errors = []
         for name, expected, result in tests:
             message = None

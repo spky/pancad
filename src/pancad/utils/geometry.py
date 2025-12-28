@@ -11,14 +11,38 @@ from numpy import ndarray
 if TYPE_CHECKING:
     from typing import Any
 
-def only_3d_method(func):
-    """A wrapper to raise an error when a 3d only method is called on a 2d 
-    geometry object.
-    """
+def three_dimensional_only(func):
+    """A wrapper to raise an error when a 3d method is called on 2d geometry."""
     def wrapper(self, *args, **kwargs):
         if len(self) != 3:
-            raise ValueError("Method only available on 3D geometry")
+            raise ValueError(f"{func.__name__} Method only available on 3D"
+                             f" {self.__class__.__name__}s")
         result = func(self, *args, **kwargs)
+        return result
+    return wrapper
+
+def two_dimensional_only(func):
+    """A wrapper to raise an error when a 2d method is called on 3d geometry."""
+    def wrapper(self, *args, **kwargs):
+        if len(self) != 2:
+            raise ValueError(f"{func.__name__} Method only available on 2D"
+                             f" {self.__class__.__name__}s")
+        result = func(self, *args, **kwargs)
+        return result
+    return wrapper
+
+def no_dimensional_mismatch(func):
+    """A wrapper to raise an error when the first argument of a method does not 
+    match the dimension of the geometry.
+    """
+    def wrapper(self, value, *args, **kwargs):
+        if len(self) != len(value):
+            raise ValueError(
+                "Input Dimensional Mismatch:"
+                f" {len(self)}D {self.__class__.__name__}"
+                f" and {len(value)}D {value.__class__.__name__}"
+            )
+        result = func(self, value, *args, **kwargs)
         return result
     return wrapper
 
