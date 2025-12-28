@@ -3,6 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from functools import partial
 from math import atan2, cos, radians, sin, sqrt
 from numbers import Real
@@ -19,6 +20,39 @@ from pancad.utils.trigonometry import (angle_mod,
                                        rotation_2)
 
 _isclose = partial(comparison.isclose, nan_equal=False)
+
+@dataclass
+class EllipseParts:
+    """A dataclass containing the geometric parts of an Ellipse."""
+    center: Point
+    major_semidiameter: Real
+    minor_semidiameter: Real
+    major_axis: Line
+    minor_axis: Line
+    reference_points: dict[ConstraintReference, Point] = field(init=False)
+    @property
+    def linear_eccentricity(self) -> Real:
+        """Returns the linear eccentricity value of the Ellipse."""
+        return sqrt(self.major_semidiameter**2 - self.minor_semidiameter**2)
+    def __post_init__(self):
+        components = {
+            self.major_axis.direction: {
+                ConstraintReference.X_MAX: self.major_semidiameter,
+                ConstraintReference.X_MIN: -self.major_semidiameter,
+                ConstraintReference.FOCAL_PLUS: self.linear_eccentricity,
+                ConstraintReference.FOCAL_MINUS: -self.linear_eccentricity,
+            },
+            self.minor_axis.direction: {
+                ConstraintReference.Y_MAX: self.minor_semidiameter,
+                ConstraintReference.Y_MIN: -self.minor_semidiameter,
+            },
+        }
+        self.reference_points = {}
+        for direction, distance_map in components.items():
+            for reference, distance in distance_map.items():
+                self.reference_points[reference] = (
+                    self.center + distance * np.array(direction)
+                )
 
 class Ellipse(AbstractGeometry):
     """A class representing an ellipse in 2D or 3D space.
@@ -69,13 +103,22 @@ class Ellipse(AbstractGeometry):
                  major_direction, minor_direction=None, uid=None):
         if isinstance(center, VectorLike):
             center = Point(center)
+        if len(center) == 2 and minor_direction is not None:
+            raise ValueError("minor_direction cannot be provided in 2D case")
+        if len(center) == 3 and minor_direction is None:
+            raise ValueError("minor_direction must be given for 3D ellipses.")
+        major = Line(center, major_direction)
+        if not minor_direction:
+            minor_direction = major_direction @ np.array([[0, 1], [-1, 0]])
+        minor = Line(center, minor_direction)
+        self._parts = EllipseParts(center, semi_major_axis, semi_minor_axis,
+                                   major, minor)
+        breakpoint()
+        
         self.center = center
         self.semi_major_axis = semi_major_axis
         self.semi_minor_axis = semi_minor_axis
-        if len(self.center) == 2 and minor_direction is not None:
-            raise ValueError("minor_direction cannot be provided in 2D case")
-        if len(self.center) == 3 and minor_direction is None:
-            raise ValueError("minor_direction must be given for 3D ellipses.")
+        
         if len(self.center) == 2:
             self._init_2d(major_direction)
         else:
