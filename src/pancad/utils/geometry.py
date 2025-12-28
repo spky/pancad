@@ -11,6 +11,17 @@ from numpy import ndarray
 if TYPE_CHECKING:
     from typing import Any
 
+def only_3d_method(func):
+    """A wrapper to raise an error when a 3d only method is called on a 2d 
+    geometry object.
+    """
+    def wrapper(self, *args, **kwargs):
+        if len(self) != 3:
+            raise ValueError("Method only available on 3D geometry")
+        result = func(self, *args, **kwargs)
+        return result
+    return wrapper
+
 def parse_vector(*components: Real | Sequence[Real] | ndarray
                  ) -> tuple[Real, Real] | tuple[Real, Real, Real]:
     """Batches structures of vector component inputs to a tuple of Reals. 

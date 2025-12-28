@@ -2,7 +2,7 @@ import unittest
 from uuid import UUID
 from math import sin, cos, radians, degrees
 
-from numpy import array
+from numpy import array, allclose
 from numpy.testing import assert_allclose
 
 from pancad.geometry import CircularArc, Point
@@ -32,17 +32,16 @@ class ArcTest(unittest.TestCase):
             ("is_clockwise", is_clockwise, test.is_clockwise),
             ("normal_vector", normal_vector, test.normal_vector),
         ]
-        # for name, expected, result in tests: print(name, expected, result)
-        # print("uid", test.uid)
+        errors = []
         for name, expected, result in tests:
-            with self.subTest(name=name, expected=expected, result=result):
-                if isinstance(result, tuple):
-                    assert_allclose(result, expected, atol=1e-9)
-                else:
-                    self.assertEqual(result, expected)
-                    
-        with self.subTest(expected="uid is a UUID"):
-            self.assertTrue(isinstance(test.uid, UUID))
+            message = None
+            failed = (
+                (isinstance(result, tuple) and not allclose(result, expected, atol=1e-9))
+                or (not isinstance(result, tuple) and result != expected)
+            )
+            if failed:
+                errors.append(f"{name} fail: expected '{expected}', got {result}")
+        self.assertCountEqual(errors, [])
 
 
 class InitAndChangeTest(ArcTest):

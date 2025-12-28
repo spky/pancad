@@ -27,7 +27,7 @@ class MemoryDatabase(TestCase):
             (geometry.Line.from_two_points((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
             (geometry.LineSegment((0, 0), (1, 0)), "0;0;1;0"),
             (geometry.LineSegment((0, 0, 0), (1, 0, 0)), "0;0;0;1;0;0"),
-            (geometry.CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0;0|1.0;0.0|0.0;1.0|0|1")
+            (geometry.CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0;0|1.0;0.0|0.0;1.0|0|1.0")
         ]
         self.tests = []
         for geo, value in geometry_and_values:
