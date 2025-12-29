@@ -132,8 +132,8 @@ def _line_segment(line_segment: LineSegment) -> FreeCADLineSegment:
 @_pancad_to_freecad_geometry.register
 @staticmethod
 def _ellipse(ellipse: Ellipse) -> FreeCADEllipse:
-    major_axis_point = App.Vector(tuple(ellipse.get_major_axis_point()) + (0,))
-    minor_axis_point = App.Vector(tuple(ellipse.get_minor_axis_point()) + (0,))
+    major_axis_point = App.Vector(tuple(ellipse.major_axis_max) + (0,))
+    minor_axis_point = App.Vector(tuple(ellipse.minor_axis_max) + (0,))
     center = App.Vector(tuple(ellipse.center) + (0,))
     return Part.Ellipse(major_axis_point, minor_axis_point, center)
 

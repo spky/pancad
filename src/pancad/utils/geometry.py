@@ -24,7 +24,6 @@ def three_dimensional_only(func):
 def two_dimensional_only(func):
     """A wrapper to raise an error when a 2d method is called on 3d geometry."""
     def wrapper(self, *args, **kwargs):
-        breakpoint()
         if len(self) != 2:
             raise ValueError(f"{func.__name__} Method only available on 2D"
                              f" {self.__class__.__name__}s")

@@ -353,8 +353,14 @@ class Ellipse(AbstractGeometry):
                              f" {reference}") from err
     def get_all_references(self) -> tuple[ConstraintReference]:
         return self.REFERENCES
+    @no_dimensional_mismatch
+    @updates_reference_points
     def update(self, other: Ellipse) -> Self:
-        raise NotImplementedError("Not implemented yet")
+        self.parts.major_semidiameter = other.parts.major_semidiameter
+        self.parts.minor_semidiameter = other.parts.minor_semidiameter
+        self.parts.center.update(other.parts.center)
+        self.parts.major_axis.update(other.parts.major_axis)
+        self.parts.minor_axis.update(other.parts.minor_axis)
     # Private Methods #
     @two_dimensional_only
     def _get_point_at_angle(self, angle: Real) -> Point:
