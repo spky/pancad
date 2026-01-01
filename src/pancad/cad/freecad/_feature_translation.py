@@ -29,6 +29,7 @@ from pancad.geometry import (
     Point,
     Sketch,
 )
+from pancad.geometry.extrude import ExtrudeSettings
 from pancad.geometry.constants import ConstraintReference
 from .constants import ListName, ObjectType, PadType
 from ._application_types import (
@@ -278,15 +279,11 @@ def _ftpf_extrude(self, pad: FreeCADPad) -> Extrude:
     feature_type = PadType(pad.Type).get_feature_type(pad.Midplane,
                                                       pad.Reversed)
     unit = pad.Length.toStr().split(" ")[-1]
+    settings = ExtrudeSettings(feature_type,
+                               pad.Length.Value, pad.Length2.Value,
+                               unit, pad.Label)
     # Up to face/feature not handled in the return, future work
-    return Extrude(profile,
-                   feature_type,
-                   length=pad.Length.Value,
-                   opposite_length=pad.Length2.Value, # Assuming the same unit
-                   is_midplane=pad.Midplane,
-                   is_reverse_direction=pad.Reversed,
-                   unit=unit,
-                   name=pad.Label)
+    return Extrude(profile, settings)
 
 def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
     self._id_map[freecad_sketch.ID] = freecad_sketch

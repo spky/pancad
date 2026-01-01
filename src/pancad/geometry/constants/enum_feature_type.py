@@ -48,6 +48,8 @@ class FeatureType(Flag):
     UP_TO_BODY = auto()
     """Features that extend up to a user specified body."""
     # Aliases #
+    SINGLE_DIMENSION = DIMENSION | ANTI_DIMENSION | SYMMETRIC
+    """FeatureTypes that can be defined with a single dimension"""
     DIMENSION_TYPE = (
         DIMENSION
         | ANTI_DIMENSION

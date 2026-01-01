@@ -11,6 +11,7 @@ from numpy import ndarray
 if TYPE_CHECKING:
     from typing import Any
 
+### Wrappers
 def three_dimensional_only(func):
     """A wrapper to raise an error when a 3d method is called on 2d geometry."""
     def wrapper(self, *args, **kwargs):
@@ -46,6 +47,7 @@ def no_dimensional_mismatch(func):
         return result
     return wrapper
 
+### Functions
 def parse_vector(*components: Real | Sequence[Real] | ndarray
                  ) -> tuple[Real, Real] | tuple[Real, Real, Real]:
     """Batches structures of vector component inputs to a tuple of Reals. 

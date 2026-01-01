@@ -63,14 +63,12 @@ class TestAddGeometry(TestPartFile):
     
     def test_add_extrude(self):
         self.file.add_feature(self.sketch)
-        test_extrude = Extrude.from_length(self.sketch, self.height,
-                                           "test_extrude")
+        test_extrude = Extrude.from_length(self.sketch, self.height)
         self.file.add_feature(test_extrude)
         self.assertTrue(test_extrude in self.file)
     
     def test_add_extrude_missing_dependency(self):
-        test_extrude = Extrude.from_length(self.sketch, self.height,
-                                           "test_extrude")
+        test_extrude = Extrude.from_length(self.sketch, self.height)
         with self.assertRaises(LookupError):
             self.file.add_feature(test_extrude)
 
