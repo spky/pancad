@@ -11,10 +11,13 @@ from typing import TYPE_CHECKING
 from pancad.geometry import AbstractFeature
 from pancad.geometry.constants import FeatureType
 from pancad.utils.text_formatting import get_table_string
+from pancad.utils.initialize import get_pancad_config
 
 if TYPE_CHECKING:
     from typing import NoReturn, Self
     from pancad.geometry import AbstractGeometry, Sketch
+
+DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["extrude"]
 
 @dataclasses.dataclass
 class ExtrudeSettings:
@@ -34,7 +37,7 @@ class ExtrudeSettings:
     length: Real = 0
     opposite_length: Real = 0
     unit: str = None
-    name: str = "Extrude" # TODO: Add a way to set default names in config
+    name: str = DEFAULT_NAME
     def __post_init__(self):
         if self.name is None:
             self.name = "Extrude" # Has to be synced with name field

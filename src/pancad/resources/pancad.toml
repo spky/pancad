@@ -20,3 +20,6 @@ Line = "Line"
 LineSegment = "Line_segment"
 Plane = "Plane"
 CoordinateSystem = "CoordinateSystem"
+
+[features.default_names]
+extrude = "Extrude"

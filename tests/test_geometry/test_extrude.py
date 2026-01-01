@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from pancad.geometry.extrude import Extrude, ExtrudeSettings
+from pancad.geometry.extrude import Extrude, ExtrudeSettings, DEFAULT_NAME
 from pancad.geometry.constraints import (
     Coincident, Vertical, Horizontal,
     Distance, HorizontalDistance, VerticalDistance,
@@ -49,7 +49,7 @@ def test_unit(square_extrude):
 def test_name(square_extrude):
     extrude, params = square_extrude
     if params["name"] is None:
-        assert extrude.name == "Extrude"
+        assert extrude.name == DEFAULT_NAME
     else:
         assert extrude.name == params["name"]
 
