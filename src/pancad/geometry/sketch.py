@@ -7,19 +7,16 @@ that is application specific.
 from __future__ import annotations
 
 from itertools import compress
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Self, ClassVar
 from textwrap import indent
+import dataclasses
 
-from pancad.geometry import (
-    AbstractFeature,
-    AbstractGeometry,
-    CoordinateSystem,
-)
+from pancad.geometry import AbstractFeature, AbstractGeometry, CoordinateSystem
 from pancad.geometry.constants import SketchConstraint, ConstraintReference
-from pancad.geometry.constraints import (
-    make_constraint,
-)
+from pancad.geometry.constraints import make_constraint
 from pancad.utils.constraints import parse_pairs
+from pancad.utils.initialize import get_pancad_config
+from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -27,6 +24,38 @@ if TYPE_CHECKING:
 
     from pancad.geometry import Plane
     from pancad.geometry.constraints import AbstractConstraint
+
+DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["sketch"]
+
+@dataclasses.dataclass
+class SketchSettings:
+    """A dataclass containing the settings for a Sketch feature.
+    
+    :param three_system: The 3D CoordinateSystem defining the sketch's position 
+        and orientation.
+    :param system_plane: A ConstraintReference for one of the three_system's 
+        planes that defines which plane the Sketch should appear on.
+    :param two_system: The 2D CoordinateSystem that all the sketch's geometry 
+        can reference.
+    :param name: The name of the feature displayed to the users in CAD.
+    :raises ValueError: When the system_plane is not one of the plane_options 
+        and when the three/two systems are the wrong dimensions.
+    """
+    three_system: CoordinateSystem
+    system_plane: ConstraintReference
+    two_system: CoordinateSystem
+    name: str
+    plane_options: ClassVar[list[ConstraintReference]] = [
+        ConstraintReference.XY, ConstraintReference.XZ, ConstraintReference.YZ
+    ]
+    def __post_init__(self):
+        if self.system_plane not in self.plane_options:
+            raise ValueError(f"Expected one of {self.plane_options} for"
+                             f" system_plane, got '{self.system_plane}'")
+        if self.three_system is not None and len(self.three_system) != 3:
+            raise ValueError("three_system must be 3D")
+        if len(self.two_system) != 2:
+            raise ValueError("two_system must be 2D")
 
 class Sketch(AbstractFeature, AbstractGeometry):
     """A class representing a set of 2D geometry placed onto a coordinate system 
@@ -58,10 +87,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
                   ConstraintReference.X,
                   ConstraintReference.Y)
     """All relevant ConstraintReferences for Sketch."""
-    PLANE_OPTIONS = (ConstraintReference.XY,
-                     ConstraintReference.XZ,
-                     ConstraintReference.YZ)
-    """Allowable ConstraintReferences for the sketch's plane_reference."""
     CONSTRAINT_GEOMETRY_TYPE_STR = "{0}-{1}"
     """Sets the format of constraint constrained geometry summaries."""
 
@@ -73,10 +98,13 @@ class Sketch(AbstractFeature, AbstractGeometry):
                  constraints: Sequence[AbstractConstraint]=None,
                  externals: Sequence[AbstractGeometry]=None,
                  uid: str=None,
-                 name: str=None,
+                 name: str=DEFAULT_NAME,
                  context: AbstractFeature=None,):
         # Initialize private uid since uid and geometry sync with each other
         self.uid = uid
+        two_system = CoordinateSystem((0, 0), context=self)
+        self._settings  = SketchSettings(coordinate_system, plane_reference,
+                                         two_system, name)
         self._constraints = tuple()
         if geometry is None:
             geometry = tuple()
@@ -84,14 +112,10 @@ class Sketch(AbstractFeature, AbstractGeometry):
             constraints = tuple()
         if externals is None:
             externals = tuple()
-        self._sketch_cs = CoordinateSystem((0, 0), context=self)
-        self.coordinate_system = coordinate_system
         self.geometry = geometry
         self.externals = externals
         self.construction = construction
-        self.plane_reference = plane_reference
         self.constraints = constraints
-        self.name = name
         self.context = context
 
     # Properties #
@@ -149,10 +173,11 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :getter: Returns the CoordinateSystem object.
         :setter: Sets the coordinate system.
         """
-        return self._coordinate_system
+        return self._settings.three_system
     @coordinate_system.setter
+    @three_dimensions_required
     def coordinate_system(self, coordinate_system: CoordinateSystem) -> None:
-        self._coordinate_system = coordinate_system
+        self._settings.three_system = coordinate_system
 
     @property
     def externals(self) -> tuple[AbstractGeometry]:
@@ -185,6 +210,13 @@ class Sketch(AbstractFeature, AbstractGeometry):
         self._geometry = tuple(geometry)
 
     @property
+    def name(self) -> str:
+        return self._settings.name
+    @name.setter
+    def name(self, value: str) -> None:
+        dataclasses.replace(self._settings, name=value)
+
+    @property
     def plane_reference(self) -> ConstraintReference:
         """The ConstraintReference for the CoordinateSystem plane that contains 
         the sketch's geometry. Must be one of the enumeration values in 
@@ -195,13 +227,10 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :raises ValueError: Raised when provided a constraint reference not 
             allowed to be a plane reference in the sketch
         """
-        return self._plane_reference
+        return self._settings.system_plane
     @plane_reference.setter
     def plane_reference(self, reference: ConstraintReference):
-        if reference not in self.PLANE_OPTIONS:
-            raise ValueError(f"{reference} not recognized as a plane reference,"
-                             f"must be one of {list(self.PLANE_OPTIONS)}")
-        self._plane_reference = reference
+        dataclasses.replace(self._settings, system_plane=reference)
 
     # Public Functions #
     def add_constraint(self, constraint: AbstractConstraint) -> Self:
@@ -361,7 +390,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         if reference == ConstraintReference.CORE:
             return self
         try:
-            return self._sketch_cs.get_reference(reference)
+            return self._settings.two_system.get_reference(reference)
         except ValueError as err:
             raise ValueError("Unexpected ConstraintReference for Sketch's 2D or"
                              " the sketch's 3D references"
@@ -369,7 +398,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     def get_sketch_coordinate_system(self) -> CoordinateSystem:
         """Returns the sketch's 2D coordinate system."""
-        return self._sketch_cs
+        return self._settings.two_system
 
     def update(self, other: Sketch) -> Self:
         """Updates the origin, axes, planes and context of the Sketch to match 
@@ -378,7 +407,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :param other: The Sketch to update to.
         :returns: The updated Sketch.
         """
-        self._sketch_cs.update(other.get_sketch_coordinate_system())
+        self._settings.two_system.update(other.get_sketch_coordinate_system())
         self.plane_reference = other.plane_reference
         self.context = other.context
         return self

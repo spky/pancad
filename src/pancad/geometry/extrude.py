@@ -40,7 +40,7 @@ class ExtrudeSettings:
     name: str = DEFAULT_NAME
     def __post_init__(self):
         if self.name is None:
-            self.name = "Extrude" # Has to be synced with name field
+            self.name = DEFAULT_NAME
         if self.length < 0:
             raise ValueError(f"length cannot be <0, got {self.length}")
         if self.opposite_length < 0:
