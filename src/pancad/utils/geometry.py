@@ -1,6 +1,7 @@
 """A module providing helper functions for defining geometry and constraints."""
 from __future__ import annotations
 
+from functools import wraps
 from itertools import islice
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 ### Wrappers
 def three_dimensional_only(func):
     """A wrapper to raise an error when a 3d method is called on 2d geometry."""
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         if len(self) != 3:
             raise ValueError(f"{func.__name__} Method only available on 3D"
@@ -22,8 +24,10 @@ def three_dimensional_only(func):
         return result
     return wrapper
 
+
 def two_dimensional_only(func):
     """A wrapper to raise an error when a 2d method is called on 3d geometry."""
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         if len(self) != 2:
             raise ValueError(f"{func.__name__} Method only available on 2D"
@@ -32,10 +36,30 @@ def two_dimensional_only(func):
         return result
     return wrapper
 
+
+def three_dimensions_required(func):
+    """A wrapper to raise an error when a non-3D non-string/Real argument is 
+    supplied to a function that only works with 3D arguments.
+    """
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        errors = []
+        for arg in args:
+            if not isinstance(arg, (str, Real)) and len(arg) != 3:
+                errors.append(arg)
+        if errors:
+            raise ValueError("Expected only 3D arguments,"
+                             f" got non-3D args: {errors}")
+        result = func(self, *args, **kwargs)
+        return result
+    return wrapper
+
+
 def no_dimensional_mismatch(func):
     """A wrapper to raise an error when the first argument of a method does not 
     match the dimension of the geometry.
     """
+    @wraps(func)
     def wrapper(self, value, *args, **kwargs):
         if len(self) != len(value):
             raise ValueError(
@@ -75,6 +99,7 @@ def parse_vector(*components: Real | Sequence[Real] | ndarray
         return tuple(components)
     types = [type(component) for component in components]
     raise TypeError(f"Expected Real components, got {types}")
+
 
 def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
     """Flattens a sequence of inputs to pairs. Usually used by pancad to parse 

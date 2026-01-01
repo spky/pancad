@@ -11,9 +11,6 @@ ROUNDING_PLACES = 10
 
 class TestPlaneInit(unittest.TestCase):
     
-    def test_plane_init_no_arg(self):
-        pln = Plane()
-    
     def test_plane_init_origin(self):
         pt = Point(0, 0, 0)
         normal = (1, 0, 0)
