@@ -136,6 +136,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self.name = name
         self.context = context
         self.uid = uid
+        super().__init__()
     # Class Methods #
     @classmethod
     def from_quaternion(cls,

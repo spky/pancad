@@ -53,6 +53,7 @@ class Line(AbstractGeometry):
                              "Use Line.from_two_points instead")
         else:
             self._point_closest_to_origin = None
+        super().__init__()
     # Class Methods #
     @classmethod
     def from_two_points(cls,

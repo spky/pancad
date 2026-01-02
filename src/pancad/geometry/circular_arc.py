@@ -38,14 +38,17 @@ class ArcParts:
     end: Point
     clockwise: bool
     normal: tuple[Real, Real, Real] = None
+
     @property
     def radius(self) -> Real:
         """The radius of the arc derived from the center and start."""
         return np.linalg.norm(self.start - self.center)
+
     @property
     def start_vector(self) -> tuple[Real, Real] | tuple[Real, Real, Real]:
         """The unit vector from the center to the start, derived from start."""
         return to_1d_tuple(get_unit_vector(self.start - self.center))
+
     @property
     def end_vector(self) -> tuple[Real, Real] | tuple[Real, Real, Real]:
         """The unit vector from the center to the end, derived from end."""
@@ -95,6 +98,8 @@ class CircularArc(AbstractGeometry):
             normal = get_unit_vector(normal)
         self._parts = ArcParts(center.copy(), start, end, is_clockwise, normal)
         self.uid = uid
+        super().__init__()
+
     @classmethod
     def from_angles(cls,
                     center: Point | VectorLike,
@@ -129,6 +134,7 @@ class CircularArc(AbstractGeometry):
         end_vector = polar_to_cartesian((1, end_angle))
         return cls(center, radius, start_vector, end_vector, is_clockwise,
                    uid=uid)
+
     # Getters #
     @property
     def center(self) -> Point:
@@ -149,6 +155,7 @@ class CircularArc(AbstractGeometry):
         self._parts.center.update(point)
         self._parts.start.update(Point(start_vector + point))
         self._parts.end.update(Point(end_vector + point))
+
     @property
     def is_clockwise(self) -> bool:
         """A boolean that sets whether the arc travels clockwise or 
@@ -158,6 +165,7 @@ class CircularArc(AbstractGeometry):
     @is_clockwise.setter
     def is_clockwise(self, value: bool) -> None:
         self._parts.clockwise = value
+
     @property
     def diameter(self) -> Real:
         """Diameter of the arc.
@@ -170,10 +178,12 @@ class CircularArc(AbstractGeometry):
     @diameter.setter
     def diameter(self, value: Real) -> None:
         self.radius = value / 2
+
     @property
     def end(self) -> Point:
         """The end point of the arc. Read-only."""
         return self._parts.end
+
     @property
     @two_dimensional_only
     def end_angle(self) -> Real:
@@ -190,6 +200,7 @@ class CircularArc(AbstractGeometry):
     @two_dimensional_only
     def end_angle(self, angle: Real) -> None:
         self.end_vector = polar_to_cartesian((1, angle))
+
     @property
     def end_vector(self) -> tuple[Real, Real] | tuple[Real, Real, Real]:
         """The unit vector pointing to the end of the arc from its center.
@@ -205,6 +216,7 @@ class CircularArc(AbstractGeometry):
         self._parts.end.update(
             Point(self._parts.center + self.radius * get_unit_vector(vector))
         )
+
     @property
     @three_dimensional_only
     def normal_vector(self) -> tuple[Real] | None:
@@ -215,6 +227,7 @@ class CircularArc(AbstractGeometry):
     @no_dimensional_mismatch
     def normal_vector(self, vector: VectorLike | None) -> None:
         self._parts.normal = vector
+
     @property
     def radius(self) -> Real:
         """Radius of the arc.
@@ -230,10 +243,12 @@ class CircularArc(AbstractGeometry):
         new_end = Point(self.center + value * np.array(self.end_vector))
         self._parts.start.update(new_start)
         self._parts.end.update(new_end)
+
     @property
     def start(self) -> Point:
         """The start point of the arc. Read-only."""
         return self._parts.start
+
     @property
     @two_dimensional_only
     def start_angle(self) -> Real:
@@ -247,6 +262,7 @@ class CircularArc(AbstractGeometry):
     @two_dimensional_only
     def start_angle(self, angle: Real) -> None:
         self.start_vector = polar_to_cartesian((1, angle))
+
     @property
     def start_vector(self) -> tuple[Real]:
         """The unit vector pointing to the start of the arc from its center.
@@ -261,6 +277,7 @@ class CircularArc(AbstractGeometry):
     def start_vector(self, vector: VectorLike) -> None:
         new_start = Point(self.center + self.radius * get_unit_vector(vector))
         self._parts.start.update(new_start)
+
     # Public Methods #
     def get_reference(self, reference: ConstraintReference) -> Point | Self:
         """Returns reference geometry for use in external modules like 
@@ -281,11 +298,13 @@ class CircularArc(AbstractGeometry):
         except KeyError as err:
             raise ValueError("Unexpected ConstraintReference:"
                              f" {reference}") from err
+
     def get_all_references(self) -> tuple[ConstraintReference]:
         """Returns all ConstraintReferences applicable to CircularArcs. See 
         :attr:`CircularArc.REFERENCES`.
         """
         return self.REFERENCES
+
     @no_dimensional_mismatch
     def update(self, other: CircularArc) -> Self:
         """Updates the center point, radius, start/end vectors and is_clockwise
@@ -302,6 +321,7 @@ class CircularArc(AbstractGeometry):
         if len(self) == 3:
             self.normal_vector = other.normal_vector
         return self
+
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
@@ -317,6 +337,7 @@ class CircularArc(AbstractGeometry):
                 ]
             )
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
+
     def __copy__(self) -> CircularArc:
         """Returns a copy of the arc with the same radius, center point, 
         start/end vectors, but with no assigned uid.
@@ -327,6 +348,7 @@ class CircularArc(AbstractGeometry):
                            self.end_vector,
                            self.is_clockwise,
                            self.normal_vector)
+
     def __eq__(self, other: CircularArc) -> bool:
         if isinstance(other, CircularArc):
             if len(self) == 3:
@@ -339,9 +361,11 @@ class CircularArc(AbstractGeometry):
                 and isclose(self.radius, other.radius)
             )
         return NotImplemented
+
     def __len__(self) -> int:
         """Returns whether the arc is 2D or 3D."""
         return len(self.center)
+
     def __str__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
         start_str = str(self.start.cartesian).replace(" ","")

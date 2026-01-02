@@ -45,6 +45,7 @@ class Circle(AbstractGeometry):
         self._radius = radius
         self._validate_circle_parameters()
         self.uid = uid
+        super().__init__()
     # Getters #
     @property
     def center(self) -> Point:

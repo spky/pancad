@@ -6,6 +6,8 @@ that is application specific.
 """
 from __future__ import annotations
 
+from collections import namedtuple
+from collections.abc import MutableSequence
 from itertools import compress
 from typing import TYPE_CHECKING, Self, ClassVar
 from textwrap import indent
@@ -16,16 +18,19 @@ from pancad.geometry.constants import SketchConstraint, ConstraintReference
 from pancad.geometry.constraints import make_constraint
 from pancad.utils.constraints import parse_pairs
 from pancad.utils.initialize import get_pancad_config
-from pancad.utils.geometry import three_dimensions_required
+from pancad.utils.geometry import (three_dimensions_required,
+                                   two_dimensions_required)
 
 if TYPE_CHECKING:
     from uuid import UUID
     from collections.abc import Sequence
 
     from pancad.geometry import Plane
-    from pancad.geometry.constraints import AbstractConstraint
+    from pancad.constraints import AbstractConstraint
 
 DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["sketch"]
+
+SketchGeometry = namedtuple("SketchGeometry", ["geometry", "construction"])
 
 @dataclasses.dataclass
 class SketchSettings:
@@ -56,6 +61,229 @@ class SketchSettings:
             raise ValueError("three_system must be 3D")
         if len(self.two_system) != 2:
             raise ValueError("two_system must be 2D")
+
+class ConstraintList(MutableSequence):
+    """A class managing a mutable list of sketch constraints and their 
+    dependencies.
+    """
+    def __init__(self,
+                 system: SketchGeometrySystem,
+                 constraints: list[AbstractConstraint]):
+        self._system = system
+        self._constraints = []
+        errors = []
+        for constraint in constraints:
+            try:
+                self.append(constraint)
+            except (SketchMissingDependencyError,
+                    SketchDupeUidError) as err:
+                errors.append(err)
+        if errors:
+            raise ExceptionGroup("Constraint Addition Errors Encountered",
+                                 errors)
+
+    def get_by_uid(self, uid: str | UUID) -> AbstractConstraint:
+        """Returns a constraint with the matching uid.
+        
+        :raises LookupError: When no matching uid is found.
+        """
+        try:
+            return next(c for c in self._constraints if c.uid == uid)
+        except StopIteration as err:
+            raise LookupError(f"No constraint with uid '{uid}' found.") from err
+
+    def insert(self, index: int, value: AbstractConstraint) -> None:
+        """Inserts the constraint into the constraint list.
+        
+        :raises SketchMissingDependencyError: When not all constraint 
+            dependencies are in the constraint lists's associated system.
+        """
+        if missing := self._missing_dependencies(value):
+            raise SketchMissingDependencyError(f"'{value}' missing: {missing}")
+        if value in self:
+            raise SketchDupeUidError(f"Constraint {value} uid: {value.uid}")
+        self._constraints.insert(index, value)
+
+    def _missing_dependencies(self, constraint: AbstractConstraint
+                              ) -> list[AbstractGeometry]:
+        """Returns missing geometry dependencies for a constraint."""
+        return [geometry for geometry in constraint.get_constrained()
+                if geometry not in self._system]
+
+    def __getitem__(self, index: int) -> AbstractConstraint:
+        return self._constraints[index]
+
+    def __setitem__(self, index: int, value: AbstractConstraint) -> None:
+        """Sets the index to the constraint.
+        
+        :raises LookupError: When not all constraint dependencies are in the 
+            constraint lists's associated system.
+        """
+        if missing := self._missing_dependencies(value):
+            raise SketchMissingDependencyError(f"'{value}' missing: {missing}")
+        if value in self and self._constraints[index].uid != value.uid:
+            raise SketchDupeUidError(f"Constraint {value} uid: {value.uid}")
+        self._constraints[index] = value
+
+    def __delitem__(self, index: int) -> None:
+        del self._constraints[index]
+
+    def __len__(self) -> int:
+        return len(self._constraints)
+
+    def __contains__(self, value: AbstractConstraint) -> bool:
+        return any(value.uid == element.uid for element in self)
+
+class GeometryList(MutableSequence):
+    """A class managing a mutable list of sketch geometry."""
+    def __init__(self,
+                 system: SketchGeometrySystem,
+                 geometry: Sequence[AbstractGeometry]) -> None:
+        self._system = system
+        self._geometry = []
+        errors = []
+        for element in geometry:
+            try:
+                self.append(element)
+            except SketchDupeUidError as err:
+                errors.append(err)
+        if errors:
+            raise ExceptionGroup("Geometry Addition Errors Encountered", errors)
+
+    def insert(self, index: int, value: AbstractGeometry) -> None:
+        """Inserts the geometry into the geometry list."""
+        self._geometry.insert(index, value)
+
+    def __getitem__(self, index: int) -> AbstractGeometry:
+        return self._geometry[index]
+
+    def __setitem__(self, index: int, value: AbstractGeometry) -> None:
+        """Sets the index to the geometry. Deletes any constraints on the 
+        geometry previously at that index.
+        """
+        if value in self and self._geometry[index].uid != value.uid:
+            raise SketchDupeUidError(f"Geometry {value} uid: {value.uid}")
+        if constraints := self._system.get_applied_constraints(value):
+            raise SketchGeometryHasConstraintsError(
+                f"Geometry index {index} ({self[index]})"
+                f"still has constraints: {constraints}"
+            )
+        self._geometry[index] = value
+
+    def __delitem__(self, index: int) -> None:
+        """Deletes the geometry in the system.
+        
+        :raises ValueError: Raised if the geometry still has constraints applied 
+            to it.
+        """
+        if constraints := self._system.constraints.applied_to(self[index]):
+            raise SketchGeometryHasConstraintsError(
+                f"Geometry index {index} ({self[index]})"
+                f"still has constraints: {constraints}"
+            )
+        del self._geometry[index]
+
+    def __len__(self) -> int:
+        return len(self._geometry)
+
+    def __contains__(self, value: AbstractGeometry) -> bool:
+        return any(value.uid == element.uid for element in self)
+
+class SketchGeometrySystem:
+    """A class managing the geometry and constraints inside a Sketch.
+    
+    :param geometry: A sequence of geometry elements.
+    :param constraints: A sequence of constraints applied to the geometry.
+    :param construction: A subset of the geometry to make as construction. 
+        Defaults to an empty set, indicating all geometry is non-construction.
+    """
+    def __init__(self,
+                 geometry: Sequence[AbstractGeometry],
+                 constraints: Sequence[AbstractConstraint],
+                 construction: Sequence[AbstractGeometry]=None,
+                 context: Sketch=None) -> None:
+        self.coordinate_system = CoordinateSystem((0, 0), context=context)
+        self._geometry = GeometryList(self, geometry)
+        self._constraints = ConstraintList(self, constraints)
+        if construction:
+            self._construction = set(g.uid for g in construction)
+        else:
+            self._construction = set()
+
+    @property
+    def construction(self) -> list[bool]:
+        """A list of booleans indicating whether each index of the geometry tuple 
+        is construction geometry.
+        
+        :getter: Returns a list of bools corresponding to each geometry index.
+        :setter: Sets the construction tuple after checking that it is the same 
+            length as the geometry tuple.
+        :raises ValueError: Raised when the construction tuple and geometry tuple 
+            are not the same length.
+        """
+        return [g.uid in self._construction for g in self.geometry]
+
+    @property
+    def geometry(self) -> GeometryList:
+        """All geometry internal to the system."""
+        return self._geometry
+
+    @property
+    def constraints(self) -> ConstraintList:
+        """All constraints internal to the system."""
+        return self._constraints
+    @constraints.setter
+    def constraints(self, values: Sequence[AbstractConstraint]) -> None:
+        self._constraints = ConstraintList(self, values)
+
+    def get_applied_constraints(self, geometry: AbstractGeometry
+                                ) -> list[AbstractConstraint]:
+        """Returns the sketch constraints that are applied to the geometry."""
+        constraints = []
+        for constraint in self.constraints:
+            if any(constrained.uid == geometry.uid
+                   for constrained in constraint.get_constrained()):
+                constraints.append(constraint)
+        return constraints
+
+    @two_dimensions_required
+    def add_geometry(self, geometry: AbstractGeometry,
+                     construction: bool=False) -> None:
+        """Adds an already generated geometry element to the sketch.
+        
+        :param geometry: A 2D geometry element.
+        :param construction: Sets whether the geometry is construction. Defaults
+            to 'False'.
+        """
+        self._geometry.append(geometry)
+        if construction:
+            self._construction.add(geometry.uid)
+
+    def add_constraint(self, constraint: AbstractConstraint) -> None:
+        """Adds an already generated constraint to the system.
+        
+        :param constraint: A constraint referring to geometry that is already in 
+            the system.
+        :raises LookupError: Raised when the constraint's dependencies are not in 
+            the sketch.
+        """
+        if all(geometry in self for geometry in constraint.get_constrained()):
+            self.constraints.append(constraint)
+        missing = [geometry for geometry in constraint.get_constrained()
+                   if geometry not in self]
+        raise LookupError(f"{repr(constraint)} dependencies missing: {missing}")
+
+    def get_construction_geometry(self) -> list[AbstractGeometry]:
+        """Returns the system's construction geometry."""
+        return [g for g in self._geometry if g.uid in self._construction]
+
+    def get_non_construction_geometry(self) -> list[AbstractGeometry]:
+        """Returns a tuple of the sketch's non-construction geometry."""
+        return [g for g in self._geometry if g.uid not in self._construction]
+
+    def __contains__(self, item: AbstractGeometry | AbstractConstraint) -> bool:
+        contents = [*self.geometry, *self.constraints, self.coordinate_system]
+        return any(item.uid == element.uid for element in contents)
 
 class Sketch(AbstractFeature, AbstractGeometry):
     """A class representing a set of 2D geometry placed onto a coordinate system 
@@ -117,6 +345,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         self.construction = construction
         self.constraints = constraints
         self.context = context
+        super().__init__()
 
     # Properties #
     @property
@@ -713,3 +942,18 @@ class Sketch(AbstractFeature, AbstractGeometry):
         # )
         sketch_summary.append(self._generate_quantity_string())
         return "\n".join(sketch_summary)
+
+class SketchDupeUidError(ValueError):
+    """Raised when an element with an already added uid is added to a sketch 
+    element list.
+    """
+
+class SketchMissingDependencyError(LookupError):
+    """Raised when attempting to add a constraint to a sketch missing its 
+    dependencies.
+    """
+
+class SketchGeometryHasConstraintsError(ValueError):
+    """Raised when attempting to remove geometry from a sketch while it still has 
+    detectable constraints.
+    """

@@ -45,6 +45,7 @@ class Point(AbstractGeometry):
         self.uid = uid
         self.unit = unit
         self.cartesian = parse_vector(*components)
+        super().__init__()
 
     # Class Methods #
     @classmethod

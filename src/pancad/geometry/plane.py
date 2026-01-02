@@ -33,6 +33,7 @@ class Plane(AbstractGeometry):
         self.normal = normal
         self._point_closest_to_origin = Plane._closest_to_origin(point,
                                                                  self.normal)
+        super().__init__()
 
     # Getters #
     @property

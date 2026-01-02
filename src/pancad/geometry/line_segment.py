@@ -47,8 +47,11 @@ class LineSegment(AbstractGeometry):
             raise TypeError(f"Expected Point or VectorLike, got {types}")
         self._start = start
         self._end = end
+        for child in [self._start, self._end]:
+            child.parent = self
         self.update_points(start, end)
         self.uid = uid
+        super().__init__()
     # Class Methods #
     @classmethod
     def from_point_length_angle(cls,

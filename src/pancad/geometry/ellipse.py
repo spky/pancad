@@ -132,6 +132,7 @@ class Ellipse(AbstractGeometry):
         self.parts = EllipseParts(center, semi_major_axis, semi_minor_axis,
                                   major_axis, minor_axis)
         self.uid = uid
+        super().__init__()
     # Class Methods #
     @classmethod
     def from_angle(cls,
