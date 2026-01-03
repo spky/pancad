@@ -19,7 +19,7 @@ class AbstractGeometry(PancadThing):
                  references: dict[ConstraintReference, AbstractGeometry]
                  ) -> None:
         self._references = references
-        for reference, child in self.children.items():
+        for _, child in self.children.items():
             if child.uid != self.uid:
                 child.parent = self
 
