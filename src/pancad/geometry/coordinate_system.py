@@ -99,16 +99,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     :param context: The feature that acts as the context for this feature, 
         usually a :class:`~pancad.geometry.FeatureContainer`
     """
-    REFERENCES = (ConstraintReference.ORIGIN,
-                  ConstraintReference.X,
-                  ConstraintReference.Y,
-                  ConstraintReference.Z,
-                  ConstraintReference.XY,
-                  ConstraintReference.XZ,
-                  ConstraintReference.YZ)
-    """All relevant ConstraintReferences for CoordinateSystems. 2D 
-    CoordinateSystems only have ORIGIN, X, and Y.
-    """
     def __init__(self,
                  origin: Point | VectorLike,
                  alpha: Real=0, beta: Real=0, gamma: Real=0,
@@ -136,7 +126,22 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self.name = name
         self.context = context
         self.uid = uid
-        super().__init__()
+        references = {
+            ConstraintReference.CORE: self,
+            ConstraintReference.ORIGIN: self._parts.origin,
+            ConstraintReference.X: self._parts.x,
+            ConstraintReference.Y: self._parts.y,
+        }
+        if len(self) == 3:
+            references.update(
+                {
+                    ConstraintReference.Z: self._parts.z,
+                    ConstraintReference.XY: self._parts.xy,
+                    ConstraintReference.XZ: self._parts.xz,
+                    ConstraintReference.YZ: self._parts.yz,
+                }
+            )
+        super().__init__(references)
     # Class Methods #
     @classmethod
     def from_quaternion(cls,
@@ -213,13 +218,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             uid.
         """
         return CoordinateSystem(self.origin).update(self)
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to CoordinateSystems. See 
-        :attr:`CoordinateSystem.REFERENCES`.
-        """
-        if len(self) == 2:
-            return self.REFERENCES[0:3]
-        return self.REFERENCES
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
         if self.context is None:
             return tuple()
@@ -260,41 +258,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         sin_half_theta = np.sqrt((1 - normed_dot)/2)
         quat_vector = euler_axis * sin_half_theta
         return np.quaternion(cos_half_theta, *quat_vector)
-    def get_reference(self,
-                      reference: ConstraintReference) -> Point | Line | Plane:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            CoordinateSystems. See :attr:`CoordinateSystem.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        :raises ValueError: When provided a ConstraintReference that is not 
-            available for the coordinate system.
-        """
-        reference_map = {
-            ConstraintReference.ORIGIN: self._parts.origin,
-            ConstraintReference.X: self._parts.x,
-            ConstraintReference.Y: self._parts.y,
-        }
-        if len(self.origin) == 3:
-            reference_map.update(
-                {ConstraintReference.Z: self._parts.z,
-                 ConstraintReference.XY: self._parts.xy,
-                 ConstraintReference.XZ: self._parts.xz,
-                 ConstraintReference.YZ: self._parts.yz}
-            )
-        try:
-            return reference_map[reference]
-        except KeyError as err:
-            references_3d = [ConstraintReference.Z,
-                             ConstraintReference.XY,
-                             ConstraintReference.XZ,
-                             ConstraintReference.YZ]
-            if reference in references_3d:
-                message = f"3D reference {reference} not for 2D systems"
-            else:
-                message = f"Unexpected ConstraintReference: {reference}"
-            raise ValueError(message) from err
     def get_xy_plane(self) -> Plane:
         """Returns the XY plane of the CoordinateSystem."""
         return self._parts.xy

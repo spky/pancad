@@ -67,13 +67,6 @@ class CircularArc(AbstractGeometry):
         which direction is clockwise. Required for 3D arcs.
     :param uid: The unique ID of the circle.
     """
-    REFERENCES = (
-        ConstraintReference.CORE,
-        ConstraintReference.CENTER,
-        ConstraintReference.START,
-        ConstraintReference.END,
-    )
-    """All relevant ConstraintReferences for CircularArcs."""
     def __init__(self,
                  center: Point | VectorLike,
                  radius: Real,
@@ -98,7 +91,14 @@ class CircularArc(AbstractGeometry):
             normal = get_unit_vector(normal)
         self._parts = ArcParts(center.copy(), start, end, is_clockwise, normal)
         self.uid = uid
-        super().__init__()
+        super().__init__(
+            {
+                ConstraintReference.CORE: self,
+                ConstraintReference.CENTER: self._parts.center,
+                ConstraintReference.START: self._parts.start,
+                ConstraintReference.END: self._parts.end,
+            }
+        )
 
     @classmethod
     def from_angles(cls,
@@ -279,32 +279,6 @@ class CircularArc(AbstractGeometry):
         self._parts.start.update(new_start)
 
     # Public Methods #
-    def get_reference(self, reference: ConstraintReference) -> Point | Self:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            CircularArcs. See :attr:`CircularArc.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        reference_map = {
-            ConstraintReference.CORE: self,
-            ConstraintReference.CENTER: self._parts.center,
-            ConstraintReference.START: self._parts.start,
-            ConstraintReference.END: self._parts.end,
-        }
-        try:
-            return reference_map[reference]
-        except KeyError as err:
-            raise ValueError("Unexpected ConstraintReference:"
-                             f" {reference}") from err
-
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to CircularArcs. See 
-        :attr:`CircularArc.REFERENCES`.
-        """
-        return self.REFERENCES
-
     @no_dimensional_mismatch
     def update(self, other: CircularArc) -> Self:
         """Updates the center point, radius, start/end vectors and is_clockwise

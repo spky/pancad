@@ -91,17 +91,6 @@ class Ellipse(AbstractGeometry):
     :raises ValueError: When minor_direction is provided for a 2D ellipse or not 
         provided for a 3D ellipse.
     """
-    REFERENCES = (ConstraintReference.CORE,
-                  ConstraintReference.CENTER,
-                  ConstraintReference.X,
-                  ConstraintReference.Y,
-                  ConstraintReference.FOCAL_PLUS,
-                  ConstraintReference.FOCAL_MINUS,
-                  ConstraintReference.X_MAX,
-                  ConstraintReference.X_MIN,
-                  ConstraintReference.Y_MAX,
-                  ConstraintReference.Y_MIN,)
-    """All relevant ConstraintReferences for Ellipses."""
     @overload
     def __init__(self,
                  center: Point | VectorLike,
@@ -132,7 +121,15 @@ class Ellipse(AbstractGeometry):
         self.parts = EllipseParts(center, semi_major_axis, semi_minor_axis,
                                   major_axis, minor_axis)
         self.uid = uid
-        super().__init__()
+        references = {
+            ConstraintReference.CORE: self,
+            ConstraintReference.CENTER : self.parts.center,
+            ConstraintReference.X: self.parts.major_axis,
+            ConstraintReference.Y: self.parts.minor_axis,
+        }
+        for reference, point in self.parts.reference_points.items():
+            references[reference] = point
+        super().__init__(references)
     # Class Methods #
     @classmethod
     def from_angle(cls,
@@ -333,27 +330,6 @@ class Ellipse(AbstractGeometry):
     def get_linear_eccentricity(self) -> float:
         """Returns the linear eccentricity value of the Ellipse."""
         return self.parts.linear_eccentricity
-    def get_reference(self,
-                      reference: ConstraintReference) -> Self | Point | Line:
-        reference_map = {
-            ConstraintReference.CORE: self,
-            ConstraintReference.CENTER: self.center,
-            ConstraintReference.X: self.major_axis_line,
-            ConstraintReference.X_MAX: self.major_axis_max,
-            ConstraintReference.X_MIN: self.major_axis_min,
-            ConstraintReference.Y: self.minor_axis_line,
-            ConstraintReference.Y_MAX: self.minor_axis_max,
-            ConstraintReference.Y_MIN: self.minor_axis_min,
-            ConstraintReference.FOCAL_PLUS: self.focal_point_plus,
-            ConstraintReference.FOCAL_MINUS: self.focal_point_minus,
-        }
-        try:
-            return reference_map[reference]
-        except KeyError as err:
-            raise ValueError("Unexpected ConstraintReference:"
-                             f" {reference}") from err
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        return self.REFERENCES
     @no_dimensional_mismatch
     @updates_reference_points
     def update(self, other: Ellipse) -> Self:

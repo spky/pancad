@@ -21,7 +21,6 @@ isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
-    REFERENCES = (ConstraintReference.CORE,)
     def __init__(self, point: Point | VectorLike=None, normal: VectorLike=None,
                  uid: str=None):
         self.uid = uid
@@ -33,7 +32,7 @@ class Plane(AbstractGeometry):
         self.normal = normal
         self._point_closest_to_origin = Plane._closest_to_origin(point,
                                                                  self.normal)
-        super().__init__()
+        super().__init__({ConstraintReference.CORE: self})
 
     # Getters #
     @property
@@ -109,23 +108,6 @@ class Plane(AbstractGeometry):
         if vertical:
             return vector.reshape(3, 1)
         return vector
-
-    def get_reference(self, reference: ConstraintReference) -> Plane:
-        """Returns reference geometry for use in external modules like 
-        constraints. Warning: Unlike some common pancad functions this one does 
-        not return a copy of geometry, but the a reference to the internal 
-        geometry object.
-        
-        :param reference: A ConstraintReference enumeration value. Planes only 
-            have a core reference, so any other value will cause an error.
-        :returns: The Plane, since Planes don't have any other references.
-        """
-        if reference == ConstraintReference.CORE:
-            return self
-        raise ValueError(f"Unrecognized ConstraintReference {reference}")
-
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        return self.REFERENCES
 
     @three_dimensions_required
     def move_to_point(self, point: Point, normal: VectorLike = None) -> Plane:

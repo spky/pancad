@@ -30,10 +30,6 @@ class LineSegment(AbstractGeometry):
     :param end: The end point of the line segment.
     :param uid: The unique id of the line segment.
     """
-    REFERENCES = (ConstraintReference.CORE,
-                  ConstraintReference.START,
-                  ConstraintReference.END)
-    """All relevant ConstraintReferences for LineSegments."""
     def __init__(self,
                  start: Point | VectorLike,
                  end: Point | VectorLike,
@@ -51,7 +47,13 @@ class LineSegment(AbstractGeometry):
             child.parent = self
         self.update_points(start, end)
         self.uid = uid
-        super().__init__()
+        super().__init__(
+            {
+                ConstraintReference.CORE: self,
+                ConstraintReference.START: self.start,
+                ConstraintReference.END: self.end,
+            }
+        )
     # Class Methods #
     @classmethod
     def from_point_length_angle(cls,
@@ -191,30 +193,6 @@ class LineSegment(AbstractGeometry):
     def get_length(self) -> float:
         """Returns the length of the LineSegment."""
         return self.length
-    def get_reference(self,
-                      reference: ConstraintReference) -> LineSegment | Point:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            LineSegments. See :attr:`LineSegment.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        match reference:
-            case ConstraintReference.CORE:
-                return self
-            case ConstraintReference.START:
-                return self._start
-            case ConstraintReference.END:
-                return self._end
-            case _:
-                raise ValueError(f"{self.__class__}s do not have any"
-                                 f" {reference.name} reference geometry")
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to LineSegments. See 
-        :attr:`LineSegment.REFERENCES`.
-        """
-        return self.REFERENCES
     def get_x_length(self) -> Real:
         """Returns the distance along the x axis from point a to point b."""
         return abs(self.start.x - self.end.x)

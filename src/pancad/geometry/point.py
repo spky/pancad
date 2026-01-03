@@ -36,16 +36,13 @@ class Point(AbstractGeometry):
     :param uid: The unique ID of the point for interoperable CAD identification.
     :param unit: The unit of the point's length values.
     """
-    REFERENCES = (ConstraintReference.CORE,)
-    """All relevant ConstraintReferences for Point."""
-
     def __init__(self, *components: Real | Sequence[Real] | np.ndarray,
                  uid: str | UUID=None, unit: str=None):
         self._iter_index = 0 # Used for __iter__ counting
         self.uid = uid
         self.unit = unit
         self.cartesian = parse_vector(*components)
-        super().__init__()
+        super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods #
     @classmethod
@@ -225,23 +222,6 @@ class Point(AbstractGeometry):
     def copy(self) -> Point:
         """Returns a copy of the Point at the same position, different uid."""
         return Point(self.cartesian)
-
-    def get_reference(self, reference: ConstraintReference) -> Self:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            Points. See :attr:`Point.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        :raises ValueError: When provided an unrecognized ConstraintReference.
-        """
-        if reference == ConstraintReference.CORE:
-            return self
-        raise ValueError(f"Unrecognized ConstraintReference {reference}")
-
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Points."""
-        return self.REFERENCES
 
     def phi_degrees(self) -> Real:
         """Returns the polar/spherical azimuth angle of the Point in degrees."""

@@ -36,8 +36,6 @@ class Line(AbstractGeometry):
     :param direction: A vector in the direction of the line.
     :param uid: The unique ID of the line.
     """
-    REFERENCES = (ConstraintReference.CORE,)
-    """All relevant ConstraintReferences for Line."""
     def __init__(self,
                  point: Point=None,
                  direction: VectorLike=None,
@@ -53,7 +51,7 @@ class Line(AbstractGeometry):
                              "Use Line.from_two_points instead")
         else:
             self._point_closest_to_origin = None
-        super().__init__()
+        super().__init__({ConstraintReference.CORE: self})
     # Class Methods #
     @classmethod
     def from_two_points(cls,
@@ -302,26 +300,6 @@ class Line(AbstractGeometry):
         :returns: Line parameters (x0, y0, z0, a, b, c)
         """
         return (*self.reference_point.cartesian, *self.direction)
-    def get_reference(self, reference: ConstraintReference) -> Self:
-        """Returns reference geometry for use in external modules like 
-        constraints. Raises a ValueError if the ConstraintReference is not 
-        relevant for Lines.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            Lines. See :attr:`Line.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        match reference:
-            case ConstraintReference.CORE:
-                return self
-            case _:
-                raise ValueError(f"{self.__class__}s do not have any"
-                                 f" {reference.name} reference geometry")
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Lines. See 
-        :attr:`Line.REFERENCES`.
-        """
-        return self.REFERENCES
     def move_to_point(self,
                       point: Point,
                       phi: Real=None,

@@ -263,10 +263,6 @@ class SketchGeometrySystem(AbstractGeometry):
     :param construction: A subset of the geometry to make as construction. 
         Defaults to an empty set, indicating all geometry is non-construction.
     """
-    REFERENCES = (ConstraintReference.ORIGIN,
-                  ConstraintReference.X,
-                  ConstraintReference.Y)
-    """All relevant ConstraintReferences for geometry core to the Sketch."""
     def __init__(self,
                  geometry: Sequence[AbstractGeometry]=None,
                  constraints: Sequence[AbstractConstraint]=None,
@@ -286,7 +282,12 @@ class SketchGeometrySystem(AbstractGeometry):
             self._construction = set(g.uid for g in construction)
         else:
             self._construction = set()
-        super().__init__()
+        references = {ConstraintReference.CORE: self}
+        subreferences = [ConstraintReference.ORIGIN,
+                         ConstraintReference.X, ConstraintReference.Y]
+        for sub in subreferences:
+            references[sub] = self._coordinate_system.get_reference(sub)
+        super().__init__(references)
 
     # Properties #
     @property
@@ -335,20 +336,7 @@ class SketchGeometrySystem(AbstractGeometry):
     def constraints(self, values: Sequence[AbstractConstraint]) -> None:
         self._constraints = ConstraintList(self, values)
 
-    def get_reference(self, reference: ConstraintReference
-                      ) -> Point | Self | Line:
-        if reference == ConstraintReference.CORE:
-            return self
-        try:
-            return self._coordinate_system.get_reference(reference)
-        except ValueError as err:
-            raise ValueError("Unexpected ConstraintReference for Sketch's 2D"
-                             f" CoordinateSystem: {reference}") from err
-
     # Public Methods
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        return self.REFERENCES
-
     def get_applied_constraints(self, geometry: AbstractGeometry
                                 ) -> list[AbstractConstraint]:
         """Returns the sketch constraints that are applied to the geometry."""
@@ -442,10 +430,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
         usually a :class:`~pancad.geometry.FeatureContainer`
     """
     # Class Constants
-    REFERENCES = (ConstraintReference.ORIGIN,
-                  ConstraintReference.X,
-                  ConstraintReference.Y)
-    """All relevant ConstraintReferences for Sketch."""
     CONSTRAINT_GEOMETRY_TYPE_STR = "{0}-{1}"
     """Sets the format of constraint constrained geometry summaries."""
 
@@ -476,7 +460,12 @@ class Sketch(AbstractFeature, AbstractGeometry):
         self.construction = construction
         self.constraints = constraints
         self.context = context
-        super().__init__()
+        references = {ConstraintReference.CORE: self}
+        subreferences = [ConstraintReference.ORIGIN,
+                         ConstraintReference.X, ConstraintReference.Y]
+        for sub in subreferences:
+            references[sub] = self._settings.two_system.get_reference(sub)
+        super().__init__(references)
 
     # Properties #
     @property
@@ -680,12 +669,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
         self.construction = self.construction + (construction,)
         return self
 
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Sketches. See 
-        :attr:`Sketch.REFERENCES`.
-        """
-        return self.REFERENCES
-
     def get_construction_geometry(self) -> tuple[AbstractGeometry]:
         """Returns the sketch's construction geometry."""
         return tuple(compress(self.geometry, self.construction))
@@ -738,23 +721,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def get_plane(self) -> Plane:
         """Returns the plane that contains the sketch geometry."""
         return self.coordinate_system.get_reference(self.plane_reference)
-
-    def get_reference(self, reference: ConstraintReference) -> AbstractGeometry:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            Sketches. See :attr:`Sketch.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        if reference == ConstraintReference.CORE:
-            return self
-        try:
-            return self._settings.two_system.get_reference(reference)
-        except ValueError as err:
-            raise ValueError("Unexpected ConstraintReference for Sketch's 2D or"
-                             " the sketch's 3D references"
-                             f" CoordinateSystem: {reference}") from err
 
     def get_sketch_coordinate_system(self) -> CoordinateSystem:
         """Returns the sketch's 2D coordinate system."""

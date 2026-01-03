@@ -30,8 +30,6 @@ class Circle(AbstractGeometry):
         to None, but is required for a 3D circle.
     :param uid: The unique ID of the circle.
     """
-    REFERENCES = (ConstraintReference.CORE, ConstraintReference.CENTER)
-    """All relevant ConstraintReferences for Circles."""
     def __init__(self,
                  center: Point | VectorLike,
                  radius: Real,
@@ -45,7 +43,12 @@ class Circle(AbstractGeometry):
         self._radius = radius
         self._validate_circle_parameters()
         self.uid = uid
-        super().__init__()
+        super().__init__(
+            {
+                ConstraintReference.CORE: self,
+                ConstraintReference.CENTER: self.center,
+            }
+         )
     # Getters #
     @property
     def center(self) -> Point:
@@ -79,27 +82,6 @@ class Circle(AbstractGeometry):
         else:
             raise ValueError(f"Radius cannot be < 0. Given: {value}")
     # Public Methods #
-    def get_reference(self, reference: ConstraintReference) -> Point | Self:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            Circles. See :attr:`Circle.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        match reference:
-            case ConstraintReference.CORE:
-                return self
-            case ConstraintReference.CENTER:
-                return self.center
-            case _:
-                raise ValueError(f"Circles do not have {reference.name}"
-                                 " reference geometry")
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Circles. See 
-        :attr:`Circle.REFERENCES`.
-        """
-        return self.REFERENCES
     def update(self, other: Circle) -> Self:
         """Updates the center point, radius, and orientation vectors to match 
         the other circle.
