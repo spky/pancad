@@ -54,7 +54,8 @@ class LineSegment(AbstractGeometry):
                 ConstraintReference.END: self.end,
             }
         )
-    # Class Methods #
+
+    # Class Methods
     @classmethod
     def from_point_length_angle(cls,
                                 start: Point,
@@ -84,7 +85,8 @@ class LineSegment(AbstractGeometry):
             raise ValueError("start and vector must be the same dimension,"
                              f" got: {len(start)} and {len(cartesian)}")
         return cls(start, np.array(start) + cartesian, uid)
-    # Getters #
+
+    # Properties
     @property
     def direction(self) -> tuple[Real]:
         """The direction of the line segment defined as the unit vector pointing 
@@ -99,6 +101,7 @@ class LineSegment(AbstractGeometry):
         vector_ab = np.array(self.end) - np.array(self.start)
         unit_vector_ab = trig.get_unit_vector(vector_ab)
         return trig.to_1d_tuple(unit_vector_ab)
+
     @property
     def direction_polar(self) -> tuple[Real]:
         """The direction of the line segment defined as the unit vector pointing 
@@ -109,6 +112,7 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.cartesian_to_polar(self.direction)
+
     @property
     def direction_spherical(self) -> tuple[Real]:
         """The direction of the line segment defined as the unit vector pointing 
@@ -120,6 +124,7 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.cartesian_to_spherical(self.direction)
+
     @property
     def length(self) -> float:
         """The length of the line segment. Defined as the distance between 
@@ -129,6 +134,7 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return float(np.linalg.norm(self.get_vector_ab()))
+
     @property
     def phi(self) -> Real:
         """The azimuth angle of the vector from point a to point b.
@@ -137,6 +143,7 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.phi_of_cartesian(self.direction)
+
     @property
     def start(self) -> Point:
         """The start Point of the line segment.
@@ -145,6 +152,10 @@ class LineSegment(AbstractGeometry):
         :setter: Updates point a to match the location of a new Point.
         """
         return self._start
+    @start.setter
+    def start(self, pt: Point) -> None:
+        self.update_points(pt, self.end)
+
     @property
     def end(self) -> Point:
         """The end Point of the line segment.
@@ -153,6 +164,10 @@ class LineSegment(AbstractGeometry):
         :setter: Updates point b to match the location of a new Point.
         """
         return self._end
+    @end.setter
+    def end(self, pt: Point) -> None:
+        self.update_points(self.start, pt)
+
     @property
     def theta(self) -> Real:
         """The inclination angle of the vector from point a to point b.
@@ -161,13 +176,7 @@ class LineSegment(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.theta_of_cartesian(self.direction)
-    # Setters #
-    @start.setter
-    def start(self, pt: Point) -> None:
-        self.update_points(pt, self.end)
-    @end.setter
-    def end(self, pt: Point) -> None:
-        self.update_points(self.start, pt)
+
     # Public Methods #
     def copy(self) -> LineSegment:
         """Returns a copy of the LineSegment.
@@ -176,6 +185,7 @@ class LineSegment(AbstractGeometry):
             position as this LineSegment, but with no uids assigned.
         """
         return LineSegment(self.start.copy(), self.end.copy())
+
     def get_fit_box(self) -> tuple[Point, Point]:
         """Returns the corner points of the smallest axis-aligned box that fits 
         the line segment.
@@ -190,21 +200,27 @@ class LineSegment(AbstractGeometry):
             min_coordinates += (min(self.start.z, self.end.z),)
             max_coordinates += (max(self.start.z, self.end.z),)
         return (Point(min_coordinates), Point(max_coordinates))
+
     def get_length(self) -> float:
         """Returns the length of the LineSegment."""
         return self.length
+
     def get_x_length(self) -> Real:
         """Returns the distance along the x axis from point a to point b."""
         return abs(self.start.x - self.end.x)
+
     def get_y_length(self) -> Real:
         """Returns the distance along the y axis from point a to point b."""
         return abs(self.start.y - self.end.y)
+
     def get_z_length(self) -> Real:
         """Returns the distance along the z axis from point a to point b."""
         return abs(self.start.z - self.end.z)
+
     def get_line(self) -> Line:
         """Returns the infinite Line coincident with points a and b."""
         return Line.from_two_points(self.start, self.end)
+
     def get_vector_ab(self, numpy_vector: bool=True) -> np.ndarray | tuple:
         """Returns the non-unit-vector from point a to point b.
         
@@ -217,6 +233,7 @@ class LineSegment(AbstractGeometry):
         if numpy_vector:
             return np_vector_ab
         return trig.to_1d_tuple(np_vector_ab)
+
     def set_length_from_a(self, value: Real) -> Self:
         """Sets the length of the line segment relative to point a by keeping 
         point a in the same location and moving point b along the current 
@@ -231,6 +248,7 @@ class LineSegment(AbstractGeometry):
                                       + new_vector_ab)
             return self
         raise ValueError("Line Length cannot be set to 0")
+
     def set_length_from_b(self, value: Real) -> Self:
         """Sets the length of the line segment relative to point b by keeping 
         point b in the same location and moving point a along the current 
@@ -246,28 +264,35 @@ class LineSegment(AbstractGeometry):
                                       - new_vector_ab)
             return self
         raise ValueError("Line Length cannot be set to 0")
+
     def set_x_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_length_from_a`, but only along the x axis and does 
         not raise a ValueError if set to 0.
         """
         return self._update_axis_length(value, 0, True)
+
     def set_x_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_length_from_b`, but only along the x axis and does 
         not raise a ValueError if set to 0.
         """
         return self._update_axis_length(value, 0, False)
+
     def set_y_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_a`, but only along the y axis."""
         return self._update_axis_length(value, 1, True)
+
     def set_y_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_b`, but only along the y axis."""
         return self._update_axis_length(value, 1, False)
+
     def set_z_length_from_a(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_a`, but only along the z axis."""
         return self._update_axis_length(value, 2, True)
+
     def set_z_length_from_b(self, value: Real) -> Self:
         """Same as :meth:`set_x_length_from_b`, but only along the z axis."""
         return self._update_axis_length(value, 2, False)
+
     def update(self, other: LineSegment) -> Self:
         """Updates the points of the line segment to match the points of another 
         line segment.
@@ -276,6 +301,7 @@ class LineSegment(AbstractGeometry):
         :returns: The updated LineSegment.
         """
         return self.update_points(other.start, other.end)
+
     def update_points(self, start: Point, end: Point) -> Self:
         """Updates (or initializes if not available) the points of the line 
         segment. Raises ValueErrors if the points are the same or if the points 
@@ -292,6 +318,7 @@ class LineSegment(AbstractGeometry):
         self._start.cartesian = start.cartesian
         self._end.cartesian = end.cartesian
         return self
+
     def _update_axis_length(self,
                             value: Real,
                             axis: int,
@@ -312,16 +339,19 @@ class LineSegment(AbstractGeometry):
             self.start.cartesian = (np.array(self.end.cartesian)
                                       - new_vector_ab)
         return self
-    # Python Dunders #
+
+    # Python Dunders
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
             return ";".join(map(str, [*self.start, *self.end]))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
+
     def __copy__(self) -> LineSegment:
         """Returns a copy of the LineSegment that has the same points and line, 
         but no assigned uid.
         """
         return self.copy()
+
     def __eq__(self, other: LineSegment) -> bool:
         """Rich comparison for LineSegment equality that allows for line
         segments to be directly compared with ==.
@@ -336,11 +366,13 @@ class LineSegment(AbstractGeometry):
                 and self.end == other.end
             )
         return NotImplemented
+
     def __len__(self) -> int:
         """Returns the number of elements in the line segment's start, which 
         is equivalent to the line segment's number of dimnesions.
         """
         return len(self.start)
+
     def __str__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):

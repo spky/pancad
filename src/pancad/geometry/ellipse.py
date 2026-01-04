@@ -20,6 +20,7 @@ from pancad.utils.trigonometry import angle_mod, rotation_2
 
 _isclose = partial(comparison.isclose, nan_equal=False)
 
+
 def updates_reference_points(func):
     """A wrapper to update the EllipseParts reference points after a change to 
     the other parts.
@@ -34,6 +35,7 @@ def updates_reference_points(func):
         return result
     return wrapper
 
+
 @dataclass
 class EllipseParts:
     """A dataclass containing the geometric parts of an Ellipse."""
@@ -43,10 +45,12 @@ class EllipseParts:
     major_axis: Line
     minor_axis: Line
     reference_points: dict[ConstraintReference, Point] = field(init=False)
+
     @property
     def linear_eccentricity(self) -> Real:
         """Returns the linear eccentricity value of the Ellipse."""
         return sqrt(self.major_semidiameter**2 - self.minor_semidiameter**2)
+
     @property
     def component_map(self) -> dict[tuple, dict[ConstraintReference, Real]]:
         """Maps the reference point's direction and constraint reference to a 
@@ -64,6 +68,7 @@ class EllipseParts:
                 ConstraintReference.Y_MIN: -self.minor_semidiameter,
             },
         }
+
     def __post_init__(self):
         self.reference_points = {}
         for direction, distance_map in self.component_map.items():
@@ -91,6 +96,7 @@ class Ellipse(AbstractGeometry):
     :raises ValueError: When minor_direction is provided for a 2D ellipse or not 
         provided for a 3D ellipse.
     """
+
     @overload
     def __init__(self,
                  center: Point | VectorLike,
@@ -98,6 +104,7 @@ class Ellipse(AbstractGeometry):
                  semi_minor_axis: Real,
                  major_direction: VectorLike,
                  uid: str | None=None) -> None: ...
+
     @overload
     def __init__(self,
                  center: Point | VectorLike,
@@ -106,6 +113,7 @@ class Ellipse(AbstractGeometry):
                  major_direction: VectorLike,
                  minor_direction: VectorLike,
                  uid: str | None=None) -> None: ...
+
     def __init__(self, center, semi_major_axis, semi_minor_axis,
                  major_direction, minor_direction=None, uid=None):
         if isinstance(center, VectorLike):
@@ -130,7 +138,8 @@ class Ellipse(AbstractGeometry):
         for reference, point in self.parts.reference_points.items():
             references[reference] = point
         super().__init__(references)
-    # Class Methods #
+
+    # Class Methods
     @classmethod
     def from_angle(cls,
                    center: Point | VectorLike,
@@ -161,7 +170,8 @@ class Ellipse(AbstractGeometry):
                    semi_minor_axis,
                    major_direction,
                    uid=uid)
-    # Getters #
+
+    # Properties
     @property
     def center(self) -> Point:
         """Center point of the ellipse.
@@ -182,14 +192,17 @@ class Ellipse(AbstractGeometry):
         self.parts.center.update(point)
         for axis in [self.parts.major_axis, self.parts.minor_axis]:
             axis.move_to_point(point)
+
     @property
     def focal_point_minus(self) -> Point:
         """Focal point in the negative direction of the Ellipse major axis."""
         return self.parts.reference_points[ConstraintReference.FOCAL_MINUS]
+
     @property
     def focal_point_plus(self) -> Point:
         """Focal point in the positive direction of the Ellipse major axis."""
         return self.parts.reference_points[ConstraintReference.FOCAL_PLUS]
+
     @property
     @two_dimensional_only
     def major_axis_angle(self) -> Real:
@@ -203,6 +216,7 @@ class Ellipse(AbstractGeometry):
         :raises ValueError: When the Ellipse not 2D.
         """
         return self.major_axis_line.phi
+
     @major_axis_angle.setter
     @two_dimensional_only
     @updates_reference_points
@@ -211,10 +225,12 @@ class Ellipse(AbstractGeometry):
         minor_direction = (self.parts.major_axis.direction
                            @ np.array([[0, 1], [-1, 0]]))
         self.parts.minor_axis.update(Line(self.center, minor_direction))
+
     @property
     def major_axis_line(self) -> Line:
         """The line representing the major axis of the ellipse."""
         return self.parts.major_axis
+
     @property
     def major_axis_direction(self) -> tuple[Real]:
         """The direction vector of the major axis of the ellipse.
@@ -225,24 +241,28 @@ class Ellipse(AbstractGeometry):
             location.
         """
         return self.major_axis_line.direction
+
     @major_axis_direction.setter
     @updates_reference_points
     def major_axis_direction(self, direction: VectorLike) -> None:
         self.parts.major_axis.update(Line(self.center, direction))
         minor_direction = direction @ np.array([[0, 1], [-1, 0]])
         self.parts.minor_axis.update(Line(self.center, minor_direction))
+
     @property
     def major_axis_max(self) -> Point:
         """The intersection point of the positive direction of the major axis 
         and the ellipse's curve.
         """
         return self.parts.reference_points[ConstraintReference.X_MAX]
+
     @property
     def major_axis_min(self) -> Point:
         """The intersection point of the negative direction of the major axis 
         and the ellipse's curve.
         """
         return self.parts.reference_points[ConstraintReference.X_MIN]
+
     @property
     @two_dimensional_only
     def minor_axis_angle(self) -> Real:
@@ -265,10 +285,12 @@ class Ellipse(AbstractGeometry):
         major_direction = (self.parts.minor_axis.direction
                            @ np.array([[0, -1], [1, 0]]))
         self.parts.major_axis.update(Line(self.center, major_direction))
+
     @property
     def minor_axis_line(self) -> Line:
         """The line representing the minor axis of the ellipse."""
         return self.parts.minor_axis
+
     @property
     def minor_axis_direction(self) -> tuple[Real]:
         """The direction vector of the minor axis of the ellipse.
@@ -284,18 +306,21 @@ class Ellipse(AbstractGeometry):
         self.parts.minor_axis.update(Line(self.center, direction))
         major_direction = direction @ np.array([[0, -1], [1, 0]])
         self.parts.major_axis.update(Line(self.center, major_direction))
+
     @property
     def minor_axis_max(self) -> Point:
         """The intersection point of the positive direction of the minor axis 
         and the ellipse's curve.
         """
         return self.parts.reference_points[ConstraintReference.Y_MAX]
+
     @property
     def minor_axis_min(self) -> Point:
         """The intersection point of the negative direction of the minor axis 
         and the ellipse's curve.
         """
         return self.parts.reference_points[ConstraintReference.Y_MIN]
+
     @property
     def semi_major_axis(self) -> Real:
         """The length of the ellipse's semi-major axis."""
@@ -304,6 +329,7 @@ class Ellipse(AbstractGeometry):
     @updates_reference_points
     def semi_major_axis(self, length: Real) -> None:
         self.parts.major_semidiameter = length
+
     @property
     def semi_minor_axis(self) -> Real:
         """The length of the ellipse's semi-minor axis."""
@@ -312,6 +338,7 @@ class Ellipse(AbstractGeometry):
     @updates_reference_points
     def semi_minor_axis(self, length: Real) -> None:
         self.parts.minor_semidiameter = length
+
     # Public Methods #
     def copy(self) -> Ellipse:
         """Returns a copy of the Ellipse at the same position, size, and 
@@ -327,9 +354,11 @@ class Ellipse(AbstractGeometry):
                        self.semi_minor_axis,
                        self.major_axis_direction,
                        self.minor_axis_direction)
+
     def get_linear_eccentricity(self) -> float:
         """Returns the linear eccentricity value of the Ellipse."""
         return self.parts.linear_eccentricity
+
     @no_dimensional_mismatch
     @updates_reference_points
     def update(self, other: Ellipse) -> Self:
@@ -338,6 +367,7 @@ class Ellipse(AbstractGeometry):
         self.parts.center.update(other.parts.center)
         self.parts.major_axis.update(other.parts.major_axis)
         self.parts.minor_axis.update(other.parts.minor_axis)
+
     # Private Methods #
     @two_dimensional_only
     def _get_point_at_angle(self, angle: Real) -> Point:
@@ -357,9 +387,11 @@ class Ellipse(AbstractGeometry):
         # in the Y direction.
         coordinates = major_axis_rotation @ canon_location + self.center
         return Point(coordinates)
+
     # Python Dunders #
     def __copy__(self) -> Ellipse:
         return self.copy()
+
     def __eq__(self, other: Ellipse) -> bool:
         if isinstance(other, Ellipse):
             if len(self) == len(other):
@@ -370,9 +402,11 @@ class Ellipse(AbstractGeometry):
                         and self.minor_axis_line == other.minor_axis_line)
             return False
         return NotImplemented
+
     def __len__(self) -> int:
         """Returns whether the ellipse is 2D or 3D."""
         return len(self.center)
+
     def __str__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
         prefix = super().__str__()

@@ -49,7 +49,8 @@ class Circle(AbstractGeometry):
                 ConstraintReference.CENTER: self.center,
             }
          )
-    # Getters #
+
+    # Properties
     @property
     def center(self) -> Point:
         """Center point of the circle.
@@ -58,6 +59,14 @@ class Circle(AbstractGeometry):
         :setter: Updates the internal center point with values from a new point.
         """
         return self._center
+    @center.setter
+    def center(self, point: Point) -> None:
+        if len(point) == len(self):
+            self._center.update(point)
+        else:
+            raise ValueError(f"Dimension mismatch: Provided center point is"
+                             f" {len(point)}D, Circle is {len(self)}D")
+
     @property
     def radius(self) -> Real:
         """Radius of the circle.
@@ -67,21 +76,14 @@ class Circle(AbstractGeometry):
             or equal to 0. Raises a ValueError if the radius is less than 0.
         """
         return self._radius
-    # Setters #
-    @center.setter
-    def center(self, point: Point) -> None:
-        if len(point) == len(self):
-            self._center.update(point)
-        else:
-            raise ValueError(f"Dimension mismatch: Provided center point is"
-                             f" {len(point)}D, Circle is {len(self)}D")
     @radius.setter
     def radius(self, value: Real) -> None:
         if value >= 0:
             self._radius = value
         else:
             raise ValueError(f"Radius cannot be < 0. Given: {value}")
-    # Public Methods #
+
+    # Public Methods
     def update(self, other: Circle) -> Self:
         """Updates the center point, radius, and orientation vectors to match 
         the other circle.
@@ -94,13 +96,15 @@ class Circle(AbstractGeometry):
             self.radius = other.radius
             return self
         raise ValueError("Cannot update circle to a different dimension")
-    # Private Methods #
+
+    # Private Methods
     def _validate_circle_parameters(self) -> None:
         """Validates all the circle's parameters to check they make geometric 
         sense.
         """
         if self.radius < 0:
             raise ValueError(f"Radius cannot be < 0. Given: {self.radius}")
+
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol):
         """Conforms the circle's values for storage in sqlite. 2D circles are 
@@ -114,11 +118,13 @@ class Circle(AbstractGeometry):
             dimensions = [*self.center, self.radius]
             return ";".join(map(str, dimensions))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
+
     def __copy__(self) -> Circle:
         """Returns a copy of the circle with the same radius, center point, and 
         orientation vectors, but with no assigned uid.
         """
         return Circle(self.center, self.radius)
+
     def __eq__(self, other: Circle) -> bool:
         """Rich comparison for circle equality that allows for circles to be 
         directly compared with ==.
@@ -133,13 +139,16 @@ class Circle(AbstractGeometry):
                 and isclose(self.radius, other.radius)
             )
         return NotImplemented
+
     def __len__(self) -> int:
         """Returns whether the circle is 2D or 3D."""
         return len(self.center)
+
     def __repr__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
         string = f"<pancadCircle'{self.uid}'{center_str}r{self.radius}"
         return string + ">"
+
     def __str__(self) -> str:
         string = (f"pancad Circle '{self.uid}' with center"
                   f" {self.center.cartesian} and radius {self.radius}")

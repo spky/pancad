@@ -18,10 +18,7 @@ from pancad.utils.geometry import (
 )
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import (
-    get_unit_vector,
-    to_1d_tuple,
-    phi_of_cartesian,
-    polar_to_cartesian,
+    get_unit_vector, to_1d_tuple, phi_of_cartesian, polar_to_cartesian,
 )
 
 if TYPE_CHECKING:
@@ -135,7 +132,7 @@ class CircularArc(AbstractGeometry):
         return cls(center, radius, start_vector, end_vector, is_clockwise,
                    uid=uid)
 
-    # Getters #
+    # Properties #
     @property
     def center(self) -> Point:
         """Center point of the arc.
@@ -296,7 +293,7 @@ class CircularArc(AbstractGeometry):
             self.normal_vector = other.normal_vector
         return self
 
-    # Python Dunders #
+    # Python Dunders
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
             if len(self) == 3:

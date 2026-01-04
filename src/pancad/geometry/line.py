@@ -52,7 +52,8 @@ class Line(AbstractGeometry):
         else:
             self._point_closest_to_origin = None
         super().__init__({ConstraintReference.CORE: self})
-    # Class Methods #
+
+    # Class Methods
     @classmethod
     def from_two_points(cls,
                         a: Point | VectorLike,
@@ -81,6 +82,7 @@ class Line(AbstractGeometry):
             raise ValueError("Defining points are at the same position")
         a_vector, b_vector = np.array(points[0]), np.array(points[1])
         return cls(Point(a_vector), b_vector - a_vector, uid)
+
     @classmethod
     def from_slope_and_y_intercept(cls,
                                    slope: Real,
@@ -98,6 +100,7 @@ class Line(AbstractGeometry):
         else:
             points = (Point(0, intercept), Point(1, slope + intercept))
         return Line.from_two_points(*points, uid)
+
     @classmethod
     def from_point_and_angle(cls,
                              point: Point | VectorLike,
@@ -130,6 +133,7 @@ class Line(AbstractGeometry):
             direction_end_pt = Point(1, 0, 0)
             direction_end_pt.spherical = (1, phi, theta)
         return cls(point, tuple(direction_end_pt), uid)
+
     @classmethod
     def from_x_intercept(cls, x_intercept: Real, uid: str=None) -> Self:
         """Returns a 2D vertical line that passes through the x intercept.
@@ -139,6 +143,7 @@ class Line(AbstractGeometry):
         :returns: A vertical line coincident with (x_intercept, 0).
         """
         return cls(Point(x_intercept, 0), (0, 1), uid)
+
     @classmethod
     def from_y_intercept(cls, y_intercept: Real, uid: str=None) -> Self:
         """Returns a 2D horizontal line that passes through the y intercept.
@@ -148,7 +153,8 @@ class Line(AbstractGeometry):
         :returns: A horizontal line coincident with (0, y_intercept).
         """
         return cls(Point(0, y_intercept), (1, 0), uid)
-    # Getters #
+
+    # Properties
     @property
     def direction(self) -> tuple[Real]:
         """The unique direction of the line with cartesian components.
@@ -169,6 +175,14 @@ class Line(AbstractGeometry):
             direction of the Line.
         """
         return self._direction
+    @direction.setter
+    def direction(self, vector: VectorLike) -> None:
+        if vector is not None:
+            vector = trig.to_1d_np(vector)
+            self._direction = Line._unique_direction(vector)
+        else:
+            self._direction = None
+
     @property
     def direction_polar(self) -> tuple[Real]:
         """The unique direction of the line with polar components.
@@ -179,6 +193,10 @@ class Line(AbstractGeometry):
             the direction of the Line.
         """
         return trig.cartesian_to_polar(self.direction)
+    @direction_polar.setter
+    def direction_polar(self, vector: VectorLike) -> None:
+        self.direction = trig.polar_to_cartesian(vector)
+
     @property
     def direction_spherical(self) -> tuple[Real]:
         """The unique direction of the line with spherical components.
@@ -190,6 +208,10 @@ class Line(AbstractGeometry):
             as the direction of the Line.
         """
         return trig.cartesian_to_spherical(self.direction)
+    @direction_spherical.setter
+    def direction_spherical(self, vector: VectorLike) -> None:
+        self.direction = trig.spherical_to_cartesian(vector)
+
     @property
     def phi(self) -> Real:
         """The polar/spherical azimuth component of the line's direction in 
@@ -199,6 +221,7 @@ class Line(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.phi_of_cartesian(self.direction)
+
     @property
     def reference_point(self) -> Point:
         """The closest point to the origin on the line.
@@ -207,6 +230,7 @@ class Line(AbstractGeometry):
         :setter: Read-only.
         """
         return self._point_closest_to_origin.copy()
+
     @property
     def slope(self) -> Real:
         """The slope of the line (m in y = mx + b), only available if the line 
@@ -221,6 +245,7 @@ class Line(AbstractGeometry):
                 return math.nan
             return self.direction[1] / self.direction[0]
         raise ValueError("slope is not defined for a 3D line")
+
     @property
     def theta(self) -> Real:
         """The spherical inclination component of the line's direction in 
@@ -230,6 +255,7 @@ class Line(AbstractGeometry):
         :setter: Read-only.
         """
         return trig.theta_of_cartesian(self.direction)
+
     @property
     def x_intercept(self) -> Real:
         """The x-intercept of the 2D line (x when y = 0 in y = mx + b), raises
@@ -247,6 +273,7 @@ class Line(AbstractGeometry):
             return ((self.slope*self.reference_point.x - self.reference_point.y)
                     / self.slope)
         raise ValueError("x-intercept is not defined for a 3D line")
+
     @property
     def y_intercept(self) -> Real:
         """The y-intercept of the line (b in y = mx + b), only available if 
@@ -261,27 +288,15 @@ class Line(AbstractGeometry):
                 return math.nan
             return self.reference_point.y - self.slope*self.reference_point.x
         raise ValueError("y-intercept is not defined for a 3D line")
-    # Setters #
-    @direction.setter
-    def direction(self, vector: VectorLike) -> None:
-        if vector is not None:
-            vector = trig.to_1d_np(vector)
-            self._direction = Line._unique_direction(vector)
-        else:
-            self._direction = None
-    @direction_polar.setter
-    def direction_polar(self, vector: VectorLike) -> None:
-        self.direction = trig.polar_to_cartesian(vector)
-    @direction_spherical.setter
-    def direction_spherical(self, vector: VectorLike) -> None:
-        self.direction = trig.spherical_to_cartesian(vector)
-    # Public Methods #
+
+    # Public Methods
     def copy(self) -> Line:
         """Returns a copy of the Line.
         
         :returns: A new Line with the same position and direction as this Line.
         """
         return Line(self.reference_point, self.direction)
+
     def get_parametric_point(self, t: Real) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by 
         the unique unit vector direction of the line and initialized at the 
@@ -292,6 +307,7 @@ class Line(AbstractGeometry):
         """
         return Point(np.array(self.reference_point)
                      + trig.to_1d_np(self.direction)*t)
+
     def get_parametric_constants(self) -> tuple[Real]:
         """Returns a tuple containing parameters for the line. The reference 
         point is used for the initial position and the line's direction vector 
@@ -300,6 +316,7 @@ class Line(AbstractGeometry):
         :returns: Line parameters (x0, y0, z0, a, b, c)
         """
         return (*self.reference_point.cartesian, *self.direction)
+
     def move_to_point(self,
                       point: Point,
                       phi: Real=None,
@@ -329,6 +346,7 @@ class Line(AbstractGeometry):
         self._point_closest_to_origin = self.closest_to_origin(point,
                                                                self.direction)
         return self
+
     def update(self, other: Line) -> Self:
         """Updates the line to match the position and direction of another line.
         
@@ -338,7 +356,8 @@ class Line(AbstractGeometry):
         self._point_closest_to_origin.update(other.reference_point)
         self.direction = other.direction
         return self
-    # Static Methods #
+
+    # Static Methods
     @staticmethod
     def closest_to_origin(point: Point, vector: VectorLike) -> Point:
         """Returns the point on a line created by the point and vector closest 
@@ -370,6 +389,7 @@ class Line(AbstractGeometry):
                 point_vector - dot_product * unit_vector
             )
         return point_closest_to_origin
+
     @staticmethod
     def _unique_direction(vector: np.ndarray) -> np.ndarray:
         """Returns a unit vector that can uniquely identify the direction of 
@@ -396,18 +416,21 @@ class Line(AbstractGeometry):
                 unit_vector = -unit_vector
         # Add 0 to ensure negative zero representations are eliminated
         return trig.to_1d_tuple(unit_vector + 0)
+
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
             dimensions = [*self.reference_point, *self.direction]
             return ";".join(map(str, dimensions))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
+
     def __copy__(self) -> Line:
         """Returns a copy of the line that has the same closest to origin 
         point and direction, but a different uid. Can be used with the python 
         copy module.
         """
         return self.copy()
+
     def __eq__(self, other: Line) -> bool:
         """Rich comparison for line equality that allows for lines to be 
         directly compared with ==.
@@ -423,11 +446,13 @@ class Line(AbstractGeometry):
                 and isclose(self.direction, other.direction)
             )
         return NotImplemented
+
     def __len__(self) -> int:
         """Returns the number of elements in the line's direction tuple, 
         which is equivalent to the line's number of dimnesions.
         """
         return len(self.direction)
+
     def __repr__(self) -> str:
         """Returns the short string representation of the line."""
         pt_strs, direction_strs = [], []
@@ -443,6 +468,7 @@ class Line(AbstractGeometry):
         point_str = ",".join(pt_strs)
         direction_str = ",".join(direction_strs)
         return f"<pancadLine'{self.uid}'({point_str})({direction_str})>"
+
     def __str__(self) -> str:
         """String function to output the line's description, closest 
         cartesian point to the origin, and unique cartesian direction 

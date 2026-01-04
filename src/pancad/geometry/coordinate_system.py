@@ -30,6 +30,7 @@ isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 # TODO: Add expected conditions to the test_system_parts_rotation_3d test
 
+
 def updates_planes(func):
     """A wrapper to sync up SystemParts planes after the axes are updated."""
     def wrapper(self, *args, **kwargs):
@@ -41,6 +42,7 @@ def updates_planes(func):
         return result
     return wrapper
 
+
 @dataclass
 class SystemParts:
     """A dataclass containing the geometric parts of a CoordinateSystem."""
@@ -51,18 +53,23 @@ class SystemParts:
     xy: Plane = None
     xz: Plane = None
     yz: Plane = None
+
     def _get_typed(self, type_: str) -> list[Point | Line | Plane]:
         """Returns the non-None values of a specified type."""
         values = [getattr(self, field.name)
                   for field in fields(self) if field.type == type_]
         return [value for value in values if value is not None]
+
     get_axes = partialmethod(_get_typed, type_="Line")
+
     get_planes = partialmethod(_get_typed, type_="Plane")
+
     @singledispatchmethod
     @updates_planes
     def rotate(self, rotation) -> Self:
         """Applies rotation to the axes and planes about the origin."""
         raise TypeError(f"Expected numpy array or quaternion, got {rotation}")
+
     @rotate.register
     def _matrix(self, matrix: np.ndarray) -> Self:
         """Rotate with a rotation matrix."""
@@ -73,6 +80,7 @@ class SystemParts:
         for axis in self.get_axes():
             axis.update(Line(self.origin, matrix @ axis.direction))
         return self
+
     @rotate.register
     def _quaternion(self, quat: quaternion.quaternion) -> Self:
         if self.z is None:
@@ -173,17 +181,20 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                                 context=context,
                                 name=name)
         return coordinate_system.rotate(quat)
-    # Getters #
+
+    # Properties
     @property
     def context(self) -> AbstractFeature | None:
         return self._context
     @context.setter
     def context(self, context_feature: AbstractFeature | None) -> None:
         self._context = context_feature
+
     @property
     def parts(self) -> SystemParts:
         """The geometric parts of the coordinate system. Read-only."""
         return self._parts
+
     @property
     def origin(self) -> Point:
         """The origin point of the coordinate system.
@@ -198,19 +209,23 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         if isinstance(point, VectorLike):
             point = Point(point)
         self._parts.origin.update(point)
+
     @property
     def x_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's x-axis. Read-only."""
         return self._parts.x.direction
+
     @property
     def y_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's y-axis. Read-only."""
         return self._parts.y.direction
+
     @property
     def z_vector(self) -> tuple[Real]:
         """The direction vector of the coordinate system's z-axis. Read-only."""
         return self._parts.z.direction
-    # Public Methods #
+
+    # Public Methods
     def copy(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem.
         
@@ -218,22 +233,28 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
             uid.
         """
         return CoordinateSystem(self.origin).update(self)
+
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
         if self.context is None:
             return tuple()
         return (self.context,)
+
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""
         return self._parts.x
+
     def get_axis_line_y(self) -> Line:
         """Returns the infinite line coincident with the y-axis."""
         return self._parts.y
+
     def get_axis_line_z(self) -> Line:
         """Returns the infinite line coincident with the z-axis."""
         return self._parts.z
+
     def get_axis_vectors(self) -> tuple[tuple[Real]]:
         """Returns a tuple of the coordinate system's axis direction tuples."""
         return tuple(axis.direction for axis in self._parts.get_axes())
+
     def get_quaternion(self) -> np.quaternion:
         """Returns a quaternion that can be used to rotate other vectors from 
         the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
@@ -258,15 +279,19 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         sin_half_theta = np.sqrt((1 - normed_dot)/2)
         quat_vector = euler_axis * sin_half_theta
         return np.quaternion(cos_half_theta, *quat_vector)
+
     def get_xy_plane(self) -> Plane:
         """Returns the XY plane of the CoordinateSystem."""
         return self._parts.xy
+
     def get_xz_plane(self) -> Plane:
         """Returns the XZ plane of the CoordinateSystem."""
         return self._parts.xz
+
     def get_yz_plane(self) -> Plane:
         """Returns the YZ plane of the CoordinateSystem."""
         return self._parts.yz
+
     def update(self, other: CoordinateSystem) -> Self:
         """Updates the origin, axes, and planes of the CoordinateSystem to match 
         another CoordinateSystem.
@@ -279,17 +304,20 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                 getattr(other.parts, field.name)
             )
         return Self
+
     def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
         """Rotates the system with a rotation matrix or quaternion."""
         self.parts.rotate(rotation)
         return self
-    # Python Dunders #
+
+    # Python Dunders
     def __copy__(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem that has the same origin, 
         axes, planes and context, but not the same uid. Can be used with the 
         python copy module.
         """
         return self.copy()
+
     def __repr__(self) -> str:
         pt_strs, axis_strs = [], []
         for component in self.origin:
@@ -312,11 +340,13 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         axis_str = "".join(axis_strs)
         point_str = ",".join(pt_strs)
         return f"<pancadCoordSys'{self.name}'({point_str}){axis_str}>"
+
     def __len__(self) -> int:
         """Returns the number of dimensions of the coordinate system by 
         returning the number of dimensions of the origin point.
         """
         return len(self.origin)
+
     def __str__(self) -> str:
         indentation = "    "
         pt_strs, axis_strs = [], []

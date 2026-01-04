@@ -94,6 +94,14 @@ class FeatureContainer(AbstractFeature):
     @property
     def context(self) -> FeatureContainer | None:
         return self._context
+    @context.setter
+    def context(self, feature: FeatureContainer | None) -> None:
+        if isinstance(feature, FeatureContainer) or feature is None:
+            self._context = feature
+        else:
+            raise TypeError("FeatureContainers can only be contained by other"
+                            " FeatureContainers or None, provided:"
+                            f" {feature}")
 
     @property
     def features(self) -> tuple[AbstractFeature]:
@@ -104,17 +112,6 @@ class FeatureContainer(AbstractFeature):
             to the container if it does not already have a context.
         """
         return self._features
-
-    # Setters #
-    @context.setter
-    def context(self, feature: FeatureContainer | None) -> None:
-        if isinstance(feature, FeatureContainer) or feature is None:
-            self._context = feature
-        else:
-            raise TypeError("FeatureContainers can only be contained by other"
-                            " FeatureContainers or None, provided:"
-                            f" {feature}")
-
     @features.setter
     def features(self, features: Sequence[AbstractFeature]) -> None:
         self._features = tuple()
