@@ -29,7 +29,11 @@ class AbstractConstraint(PancadThing):
         self.__pairs = value
 
     def get_parents(self) -> tuple[AbstractGeometry]:
-        """Returns the geometry or geometries being constrained."""
+        """Returns highest geometry scope being constrained for each geometry.
+
+        Example: A circle's center point would return the circle object, but a 
+        standalone point would just return the point.
+        """
         return tuple(geometry for geometry, _ in self._pairs)
 
     def get_geometry(self) -> tuple[AbstractGeometry]:

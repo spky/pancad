@@ -25,14 +25,19 @@ class AbstractGeometry(PancadThing):
 
     @property
     def parent(self) -> AbstractGeometry | None:
-        """The parent of the geometry. Example: A circle center point's parent 
-        would be the circle, but if the point's parent is None then the point 
-        is its own parent. Should never be set by the instance itself, only by 
-        the parent to claim ownership.
+        """The parent of the geometry.
+
+        Example: A circle center point's parent would be the circle, but if the 
+        point's parent is None then the point is its own parent. Should 
+        never be set by the instance itself, only by the parent to claim 
+        ownership.
         """
-        if hasattr(self, "_parent"):
-            return self._parent
-        return None
+        if not hasattr(self, "_parent"):
+            return None
+        parent = self._parent
+        while parent.parent:
+            parent = parent.parent
+        return parent
     @parent.setter
     def parent(self, value: AbstractGeometry) -> None:
         self._parent = value
