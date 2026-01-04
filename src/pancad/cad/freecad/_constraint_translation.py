@@ -106,12 +106,11 @@ def _add_state_or_snapto(self,
         self._constraint_map.get_constrained_ids(constraint_id),
         self._constraint_map.get_constrained_sub_parts(constraint_id),
     )
-    pancad_paired_inputs = []
+    constraint_geometry = []
     for freecad_id, sub_part in constraint_pairs:
-        pancad_paired_inputs.extend(
-            _get_pancad_pair(self, freecad_id, sub_part)
-        )
-    return make_constraint(constraint_type, *pancad_paired_inputs)
+        geometry, reference = _get_pancad_pair(self, freecad_id, sub_part)
+        constraint_geometry.append(geometry.get_reference(reference))
+    return make_constraint(constraint_type, *constraint_geometry)
 
 def _add_distance(self,
                   constraint_id: SketchElementID,
@@ -131,14 +130,12 @@ def _add_distance(self,
         self._constraint_map.get_constrained_ids(constraint_id),
         self._constraint_map.get_constrained_sub_parts(constraint_id),
     )
-    pancad_paired_inputs = []
+    constraint_geometry = []
     for freecad_id, sub_part in constraint_pairs:
-        pancad_paired_inputs.extend(
-            _get_pancad_pair(self, freecad_id, sub_part)
-        )
-    
+        geometry, reference = _get_pancad_pair(self, freecad_id, sub_part)
+        constraint_geometry.append(geometry.get_reference(reference))
     return make_constraint(constraint_type,
-                           *pancad_paired_inputs,
+                           *constraint_geometry,
                            value=freecad_constraint.Value,
                            unit="mm")
 

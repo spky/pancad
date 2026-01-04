@@ -178,7 +178,7 @@ def ellipse(coordinate_system: CoordinateSystem=None,
                     name=name)
     sketch.constraints = [
         make_constraint(SC.COINCIDENT, e.center, sketch.two_origin),
-        make_constraint(SC.HORIZONTAL, e.x),
+        make_constraint(SC.HORIZONTAL, e.major_axis_line),
         make_constraint(SC.DISTANCE, e.major_axis_min, e.major_axis_max,
                         value=a, unit=unit),
         make_constraint(SC.DISTANCE, e.minor_axis_min, e.minor_axis_max,

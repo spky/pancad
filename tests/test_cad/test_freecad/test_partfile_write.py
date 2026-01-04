@@ -86,10 +86,10 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.b, self.r, self.t, self.l = self.sketch.geometry
         # bottom, right, top, left
         self.constraints = [ # Constraints in every sketch
-            make_constraint(SC.COINCIDENT, self.b, CR.START, self.l, CR.END),
-            make_constraint(SC.COINCIDENT, self.b, CR.END, self.r, CR.START),
-            make_constraint(SC.COINCIDENT, self.r, CR.END, self.t, CR.START),
-            make_constraint(SC.COINCIDENT, self.t, CR.END, self.l, CR.START),
+            make_constraint(SC.COINCIDENT, self.b.start, self.l.end),
+            make_constraint(SC.COINCIDENT, self.b.end, self.r.start),
+            make_constraint(SC.COINCIDENT, self.r.end, self.t.start),
+            make_constraint(SC.COINCIDENT, self.t.end, self.l.start),
         ]
         self.dump = os.path.dirname(dump.__file__)
     
@@ -108,15 +108,15 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.file = PartFile(stack()[0].function + ".FCStd")
         self.constraints.extend(
             [
-                make_constraint(SC.HORIZONTAL, self.b, CR.CORE),
-                make_constraint(SC.VERTICAL, self.r, CR.CORE),
-                make_constraint(SC.HORIZONTAL, self.t, CR.CORE),
-                make_constraint(SC.VERTICAL, self.l, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.r, CR.CORE),
-                make_constraint(SC.DISTANCE, self.b, CR.START, self.b, CR.END,
+                make_constraint(SC.HORIZONTAL, self.b),
+                make_constraint(SC.VERTICAL, self.r),
+                make_constraint(SC.HORIZONTAL, self.t),
+                make_constraint(SC.VERTICAL, self.l),
+                make_constraint(SC.EQUAL, self.b, self.r),
+                make_constraint(SC.DISTANCE, self.b.start, self.b.end,
                                 value=self.side, unit=self.unit),
                 make_constraint(SC.COINCIDENT,
-                                self.b, CR.START, self.sketch, CR.ORIGIN),
+                                self.b.start, self.sketch.two_origin),
             ]
         )
         self.finish_to_freecad()
@@ -125,17 +125,15 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.file = PartFile(stack()[0].function + ".FCStd")
         self.constraints.extend(
             [
-                make_constraint(SC.HORIZONTAL, self.b, CR.CORE),
-                make_constraint(SC.VERTICAL, self.r, CR.CORE),
-                make_constraint(SC.HORIZONTAL, self.t, CR.CORE),
-                make_constraint(SC.VERTICAL, self.l, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.r, CR.CORE),
-                make_constraint(SC.DISTANCE, self.b, CR.START, self.b, CR.END,
+                make_constraint(SC.HORIZONTAL, self.b),
+                make_constraint(SC.VERTICAL, self.r),
+                make_constraint(SC.HORIZONTAL, self.t),
+                make_constraint(SC.VERTICAL, self.l),
+                make_constraint(SC.EQUAL, self.b, self.r),
+                make_constraint(SC.DISTANCE, self.b.start, self.b.end,
                                 value=self.side, unit=self.unit),
-                make_constraint(SC.COINCIDENT,
-                                self.b, CR.CORE, self.sketch, CR.ORIGIN),
-                make_constraint(SC.COINCIDENT,
-                                self.l, CR.CORE, self.sketch, CR.ORIGIN),
+                make_constraint(SC.COINCIDENT, self.b, self.sketch.two_origin),
+                make_constraint(SC.COINCIDENT, self.l, self.sketch.two_origin),
             ]
         )
         self.finish_to_freecad()
@@ -144,15 +142,15 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.file = PartFile(stack()[0].function + ".FCStd")
         self.constraints.extend(
             [
-                make_constraint(SC.HORIZONTAL, self.b, CR.CORE),
-                make_constraint(SC.VERTICAL, self.l, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.r, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.t, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.DISTANCE, self.b, CR.START, self.b, CR.END,
+                make_constraint(SC.HORIZONTAL, self.b),
+                make_constraint(SC.VERTICAL, self.l),
+                make_constraint(SC.EQUAL, self.b, self.r),
+                make_constraint(SC.EQUAL, self.b, self.t),
+                make_constraint(SC.EQUAL, self.b, self.l),
+                make_constraint(SC.DISTANCE, self.b.start, self.b.end,
                                 value=self.side, unit=self.unit),
                 make_constraint(SC.COINCIDENT,
-                                self.b, CR.START, self.sketch, CR.ORIGIN),
+                                self.b.start, self.sketch.two_origin),
             ]
         )
         self.finish_to_freecad()
@@ -161,16 +159,15 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.file = PartFile(stack()[0].function + ".FCStd")
         self.constraints.extend(
             [
-                make_constraint(SC.HORIZONTAL, self.b, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.r, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.t, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.PERPENDICULAR,
-                                self.b, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.DISTANCE, self.b, CR.START, self.b, CR.END,
+                make_constraint(SC.HORIZONTAL, self.b),
+                make_constraint(SC.EQUAL, self.b, self.r),
+                make_constraint(SC.EQUAL, self.b, self.t),
+                make_constraint(SC.EQUAL, self.b, self.l),
+                make_constraint(SC.PERPENDICULAR, self.b, self.l),
+                make_constraint(SC.DISTANCE, self.b.start, self.b.end,
                                 value=self.side, unit=self.unit),
                 make_constraint(SC.COINCIDENT,
-                                self.b, CR.START, self.sketch, CR.ORIGIN),
+                                self.b.start, self.sketch.two_origin),
             ]
         )
         self.finish_to_freecad()
@@ -179,16 +176,15 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.file = PartFile(stack()[0].function + ".FCStd")
         self.constraints.extend(
             [
-                make_constraint(SC.HORIZONTAL, self.b, CR.CORE),
-                make_constraint(SC.EQUAL, self.b, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.PERPENDICULAR,
-                                self.b, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.PARALLEL, self.r, CR.CORE, self.l, CR.CORE),
-                make_constraint(SC.PARALLEL, self.b, CR.CORE, self.t, CR.CORE),
-                make_constraint(SC.DISTANCE, self.b, CR.START, self.b, CR.END,
+                make_constraint(SC.HORIZONTAL, self.b),
+                make_constraint(SC.EQUAL, self.b, self.l),
+                make_constraint(SC.PERPENDICULAR, self.b, self.l),
+                make_constraint(SC.PARALLEL, self.r, self.l),
+                make_constraint(SC.PARALLEL, self.b, self.t),
+                make_constraint(SC.DISTANCE, self.b.start, self.b.end,
                                 value=self.side, unit=self.unit),
                 make_constraint(SC.COINCIDENT,
-                                self.b, CR.START, self.sketch, CR.ORIGIN),
+                                self.b.start, self.sketch.two_origin),
             ]
         )
         self.finish_to_freecad()

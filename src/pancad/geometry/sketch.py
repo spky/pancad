@@ -600,12 +600,12 @@ class Sketch(AbstractFeature, AbstractGeometry):
     @property
     def two_x_axis(self) -> Line:
         """The X axis of the two dimensional sketch coordinate_system."""
-        return self._settings.two_system.x
+        return self._settings.two_system.get_axis_line_x()
 
     @property
     def two_y_axis(self) -> Line:
         """The Y axis of the two dimensional sketch coordinate_system."""
-        return self._settings.two_system.y
+        return self._settings.two_system.get_axis_line_y()
 
     # Public Functions #
     def add_constraint(self, constraint: AbstractConstraint) -> Self:

@@ -51,13 +51,10 @@ class TestSketches(unittest.TestCase):
             name += "_StartStart"
         sketch = Sketch(geometry=[line_segment], name=name)
         sketch.constraints = [
-            Coincident(line_segment, ConstraintReference.START,
-                       sketch, ConstraintReference.ORIGIN),
-            Distance(line_segment, ConstraintReference.START,
-                     line_segment, ConstraintReference.END,
+            Coincident(line_segment, sketch.two_origin),
+            Distance(line_segment.start, line_segment.end,
                      value=length, unit="in"),
-            Angle(sketch, ConstraintReference.X,
-                  line_segment, ConstraintReference.CORE,
+            Angle(sketch.two_x_axis, line_segment,
                   value=angle_degrees, quadrant=quadrant),
         ]
         return sketch
