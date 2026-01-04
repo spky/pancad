@@ -7,10 +7,10 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 from pancad.geometry import PancadThing
+from pancad.geometry.constants import ConstraintReference
 
 if TYPE_CHECKING:
     from typing import Self
-    from pancad.geometry.constants import ConstraintReference
 
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""
@@ -36,6 +36,18 @@ class AbstractGeometry(PancadThing):
     @parent.setter
     def parent(self, value: AbstractGeometry) -> None:
         self._parent = value
+
+    @property
+    def self_reference(self) -> ConstraintReference:
+        """The ConstraintReference that applies to this instance of geometry.
+        Example: A circle's curve would be CORE, but its center point would
+        be CENTER. A point with no parent would be CORE.
+        """
+        if self.parent is None:
+            return ConstraintReference.CORE
+        uid_to_child = {geometry.uid: reference
+                        for reference, geometry in self.parent.children.items()}
+        return uid_to_child[self.uid]
 
     @property
     def children(self) -> dict[ConstraintReference, AbstractGeometry]:
