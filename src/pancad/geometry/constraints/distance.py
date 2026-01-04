@@ -12,9 +12,9 @@ from numbers import Real
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
-from pancad.utils.constraints import constraint_args
 
 if TYPE_CHECKING:
+    from pancad.geometry import AbstractGeometry
     from pancad.geometry.constants import ConstraintReference
     from pancad.utils.constraints import GeometryReference
 
@@ -50,10 +50,6 @@ class AbstractValue(AbstractConstraint):
         if include_unit:
             return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
         return str(self.value)
-    # Abstract Private Methods #
-    @abstractmethod
-    def _validate(self) -> None:
-        """Raises an error if the constraint is badly defined."""
     # Shared Dunder Methods
     def __eq__(self, other: AbstractValue) -> bool:
         """Checks whether two value relations are functionally the same by 
@@ -97,12 +93,17 @@ class Angle(AbstractValue):
     QUADRANTS = [1, 2, 3, 4]
     """The allowed quadrant choices for where to place the angle."""
     def __init__(self,
-                 *reference_pairs: GeometryReference,
+                 *geometry: AbstractGeometry,
                  value: Real,
                  quadrant: int,
                  uid: str=None,
                  is_radians: bool=False) -> None:
-        self._pairs = constraint_args(*reference_pairs)
+        if len(geometry) != 2:
+            raise ValueError(f"Expected 2 geometries, provided {geometry}")
+        if any(len(g) != 2 for g in geometry):
+            non_two_dimensional = [g for g in geometry if len(g) != 2]
+            raise ValueError(f"Non-2D Geometry provided: {non_two_dimensional}")
+        self._geometry = geometry
         self.uid = uid
         self.quadrant = quadrant
         self.unit = "degrees"
@@ -110,7 +111,8 @@ class Angle(AbstractValue):
             self.value = math.degrees(value)
         else:
             self.value = value
-    # Getters #
+
+    # Properties
     @property
     def quadrant(self) -> int:
         """The quadrant that the angle constraint is applied to.
@@ -123,6 +125,7 @@ class Angle(AbstractValue):
         if value not in self.QUADRANTS:
             raise ValueError(f"Quadrant must be one of {self.QUADRANTS}")
         self._quadrant = value
+
     @property
     def value(self) -> Real:
         """Value of the angle constraint in degrees.
@@ -133,7 +136,7 @@ class Angle(AbstractValue):
     @value.setter
     def value(self, value: Real) -> None:
         self._value = value
-        self._validate()
+
     # Public Methods #
     def get_value(self, in_radians: bool=False) -> Real:
         """Returns the value of the angle constraint.
@@ -146,15 +149,6 @@ class Angle(AbstractValue):
         if in_radians:
             return math.radians(self.value)
         return self.value
-    # Private Methods #
-    def _validate(self) -> None:
-        if any(len(geometry.get_reference(reference)) != 2
-                for geometry, reference in self._pairs):
-            raise ValueError("Geometry not 2D")
-        if not isinstance(self.value, Real):
-            raise TypeError("Value must be Real")
-        if len(self._pairs) != 2:
-            raise ValueError(f"Expected 2 pairs, given {self._pairs}")
 
 class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more 
@@ -169,15 +163,9 @@ class AbstractDistance(AbstractValue):
         return self._value
     @value.setter
     def value(self, value: Real) -> None:
+        if value < 0:
+            raise ValueError(f"Negative length not allowed: {value}")
         self._value = value
-        self._validate()
-    # Shared Private Methods #
-    def _validate(self) -> None:
-        """Raises errors if the value of the constraint is badly defined."""
-        if not isinstance(self.value, Real):
-            raise TypeError("Value must be Real")
-        if self.value < 0:
-            raise ValueError("Distance cannot be stored negative")
 
 class Abstract2GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly two** 
@@ -192,24 +180,16 @@ class Abstract2GeometryDistance(AbstractDistance):
     :raises ValueError: When not provided 2 pairs or when the subgeometries are 
         not the same dimension.
     """
-    def __init__(self,
-                 *reference_pairs: GeometryReference,
-                 value: Real,
-                 uid: str=None,
-                 unit: str=None) -> None:
+    def __init__(self, *geometry: AbstractGeometry,
+                 value: Real, uid: str=None, unit: str=None) -> None:
         self.uid = uid
-        self._pairs = constraint_args(*reference_pairs)
+        if len(geometry) != 2:
+            raise ValueError(f"Expected 2 geometries, provided {geometry}")
+        if len(set(len(g) for g in geometry)) != 1:
+            raise ValueError(f"Geometry not all the same dimension: {geometry}")
+        self._geometry = geometry
         self.unit = unit
         self.value = value
-    def _validate(self) -> None:
-        super()._validate()
-        if len(self._pairs) != 2:
-            raise ValueError(f"Expected 2 pairs, given {self._pairs}")
-        iterator = iter(len(geometry.get_reference(reference))
-                        for geometry, reference in self._pairs)
-        first_length = next(iterator)
-        if not all(first_length == length for length in iterator):
-            raise ValueError("Not all subgeometry are the same dimension")
 
 class Abstract1GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly one** 
@@ -222,19 +202,12 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     """
-    def __init__(self,
-                 *reference_pairs: GeometryReference,
-                 value: Real,
-                 uid: str=None,
-                 unit: str=None) -> None:
+    def __init__(self, geometry: AbstractGeometry,
+                 value: Real, uid: str=None, unit: str=None) -> None:
         self.uid = uid
-        self._pairs = constraint_args(*reference_pairs)
+        self._geometry = [geometry]
         self.unit = unit
         self.value = value
-    def _validate(self) -> None:
-        super()._validate()
-        if len(self._pairs) != 1:
-            raise ValueError(f"Expected 1 pair, given {self._pairs}")
 
 # 2D and 3D Distance Classes #
 ################################################################################
@@ -248,12 +221,11 @@ class Distance(Abstract2GeometryDistance):
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    # Private Methods #
-    def _validate(self) -> None:
-        super()._validate()
-        if any(len(geometry.get_reference(reference)) != 2
-                for geometry, reference in self._pairs):
-            raise ValueError("geometry must be 2D")
+    def __init__(self, *geometry: AbstractGeometry, **kwargs) -> None:
+        if any(len(g) != 2 for g in geometry):
+            non_two_dimensional = [g for g in geometry if len(g) != 2]
+            raise ValueError(f"Non-2D geometry provided: {non_two_dimensional}")
+        super().__init__(*geometry, **kwargs)
 
 class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements."""

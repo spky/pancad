@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""
-    # Public Methods #
     def __init__(self,
                  references: dict[ConstraintReference, AbstractGeometry]
                  ) -> None:
@@ -23,6 +22,7 @@ class AbstractGeometry(PancadThing):
             if child.uid != self.uid:
                 child.parent = self
 
+    # Properties
     @property
     def parent(self) -> AbstractGeometry | None:
         """The parent of the geometry.
@@ -62,7 +62,7 @@ class AbstractGeometry(PancadThing):
         return {reference: self.get_reference(reference)
                 for reference in self.get_all_references()}
 
-    # Abstract Methods
+    # Public Methods
     def get_reference(self, reference: ConstraintReference) -> AbstractGeometry:
         """Returns the subgeometry associated with the reference."""
         return self._references[reference]
@@ -71,6 +71,7 @@ class AbstractGeometry(PancadThing):
         """Returns the constraint references available for the geometry."""
         return list(self._references.keys())
 
+    # Abstract Methods
     @abstractmethod
     def update(self, other: AbstractGeometry) -> Self:
         """Takes geometry of the same type as the calling geometry and updates 

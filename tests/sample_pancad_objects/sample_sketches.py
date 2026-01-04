@@ -37,8 +37,8 @@ def circle(coordinate_system: CoordinateSystem=None,
                     geometry=[circle],
                     name=name)
     sketch.constraints = [
-        Diameter(circle, CR.CORE, value=radius, unit=unit),
-        Coincident(circle, CR.CENTER, sketch, CR.ORIGIN)
+        Diameter(circle, value=radius, unit=unit),
+        Coincident(circle.center, sketch.two_origin)
     ]
     return sketch
 
@@ -70,17 +70,17 @@ def square(coordinate_system: CoordinateSystem=None,
     
     if include_constraints:
         sketch.constraints = [
-            Horizontal(b, CR.CORE),
-            Vertical(r, CR.CORE),
-            Horizontal(t, CR.CORE),
-            Vertical(l, CR.CORE),
-            Coincident(b, CR.START, l, CR.END),
-            Coincident(b, CR.END, r, CR.START),
-            Coincident(r, CR.END, t, CR.START),
-            Coincident(t, CR.END, l, CR.START),
-            Distance(b, CR.CORE, t, CR.CORE, value=side, unit="mm"),
-            Distance(r, CR.CORE, l, CR.CORE, value=side, unit="mm"),
-            Coincident(b, CR.START, sketch, CR.ORIGIN),
+            Horizontal(b),
+            Vertical(r),
+            Horizontal(t),
+            Vertical(l),
+            Coincident(b.start, l.end),
+            Coincident(b.end, r.start),
+            Coincident(r.end, t.start),
+            Coincident(t.end, l.start),
+            Distance(b, t, value=side, unit="mm"),
+            Distance(r, l, value=side, unit="mm"),
+            Coincident(b.start, sketch.two_origin),
         ]
     
     return sketch
@@ -135,22 +135,22 @@ def rounded_square(coordinate_system: CoordinateSystem=None,
     
     if include_constraints:
         sketch.constraints = [
-            Horizontal(b, CR.CORE),
-            Vertical(r, CR.CORE),
-            Horizontal(t, CR.CORE),
-            Vertical(l, CR.CORE),
-            Coincident(l, CR.END, a_bl, CR.START),
-            Coincident(a_bl, CR.END, b, CR.START),
-            Coincident(b, CR.END, a_br, CR.START),
-            Coincident(a_br, CR.END, r, CR.START),
-            Coincident(r, CR.END, a_tr, CR.START),
-            Coincident(a_tr, CR.END, t, CR.START),
-            Coincident(t, CR.END, a_tl, CR.START),
-            Coincident(a_tl, CR.END, l, CR.START),
-            Distance(b, CR.CORE, t, CR.CORE, value=side, unit="mm"),
-            Distance(r, CR.CORE, l, CR.CORE, value=side, unit="mm"),
-            Coincident(b, CR.CORE, sketch, CR.ORIGIN),
-            Coincident(l, CR.CORE, sketch, CR.ORIGIN),
+            Horizontal(b),
+            Vertical(r),
+            Horizontal(t),
+            Vertical(l),
+            Coincident(l.end, a_bl.start),
+            Coincident(a_bl.end, b.start),
+            Coincident(b.end, a_br.start),
+            Coincident(a_br.end, r.start,),
+            Coincident(r.end, a_tr.start),
+            Coincident(a_tr.end, t.start),
+            Coincident(t.end, a_tl.start),
+            Coincident(a_tl.end, l.start),
+            Distance(b, t, value=side, unit="mm"),
+            Distance(r, l, value=side, unit="mm"),
+            Coincident(b, sketch.two_origin),
+            Coincident(l, sketch.two_origin),
         ]
     
     return sketch
@@ -177,11 +177,11 @@ def ellipse(coordinate_system: CoordinateSystem=None,
                     geometry=geometry,
                     name=name)
     sketch.constraints = [
-        make_constraint(SC.COINCIDENT, e, CR.CENTER, sketch, CR.ORIGIN),
-        make_constraint(SC.HORIZONTAL, e, CR.X),
-        make_constraint(SC.DISTANCE, e, CR.X_MIN, e, CR.X_MAX,
+        make_constraint(SC.COINCIDENT, e.center, sketch.two_origin),
+        make_constraint(SC.HORIZONTAL, e.x),
+        make_constraint(SC.DISTANCE, e.major_axis_min, e.major_axis_max,
                         value=a, unit=unit),
-        make_constraint(SC.DISTANCE, e, CR.Y_MIN, e, CR.Y_MAX,
+        make_constraint(SC.DISTANCE, e.minor_axis_min, e.minor_axis_max,
                         value=b, unit=unit),
     ]
     return sketch

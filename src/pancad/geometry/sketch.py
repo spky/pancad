@@ -15,7 +15,6 @@ import dataclasses
 
 from pancad.geometry import AbstractFeature, AbstractGeometry, CoordinateSystem
 from pancad.geometry.constants import SketchConstraint, ConstraintReference
-from pancad.geometry.constraints import make_constraint
 from pancad.utils.constraints import parse_pairs
 from pancad.utils.initialize import get_pancad_config
 from pancad.utils.geometry import (three_dimensions_required,
@@ -336,6 +335,18 @@ class SketchGeometrySystem(AbstractGeometry):
     def constraints(self, values: Sequence[AbstractConstraint]) -> None:
         self._constraints = ConstraintList(self, values)
 
+    @property
+    def origin(self) -> Point:
+        return self.coordinate_system.origin
+
+    @property
+    def x_axis(self) -> Line:
+        return self.coordinate_system.get_axis_line_x()
+
+    @property
+    def y_axis(self) -> Line:
+        return self.coordinate_system.get_axis_line_y()
+
     # Public Methods
     def get_applied_constraints(self, geometry: AbstractGeometry
                                 ) -> list[AbstractConstraint]:
@@ -581,6 +592,21 @@ class Sketch(AbstractFeature, AbstractGeometry):
     def plane_reference(self, reference: ConstraintReference):
         dataclasses.replace(self._settings, system_plane=reference)
 
+    @property
+    def two_origin(self) -> Point:
+        """The origin of the two dimensional sketch coordinate_system"""
+        return self._settings.two_system.origin
+
+    @property
+    def two_x_axis(self) -> Line:
+        """The X axis of the two dimensional sketch coordinate_system."""
+        return self._settings.two_system.x
+
+    @property
+    def two_y_axis(self) -> Line:
+        """The Y axis of the two dimensional sketch coordinate_system."""
+        return self._settings.two_system.y
+
     # Public Functions #
     def add_constraint(self, constraint: AbstractConstraint) -> Self:
         """Adds an already generated constraint to the sketch.
@@ -598,60 +624,6 @@ class Sketch(AbstractFeature, AbstractGeometry):
         missing = filter(lambda d: d not in self, dependencies)
         raise LookupError(f"Dependencies for {repr(constraint)} are missing"
                          f" from sketch: {list(missing)}")
-
-    def add_constraint_by_uid(
-                self, type_: SketchConstraint,
-                *uid_pairs: (tuple[str | UUID, ConstraintReference]
-                             | str
-                             | UUID
-                             | ConstraintReference),
-                **kwargs
-            ) -> Self:
-        """Adds a sketch constraint between two geometry elements selected by 
-        their uids. Prefixes the new constraint's uid with the sketch's uid. All 
-        geometry must already be in the sketch's geometry.
-        :attr:`~pancad.geometry.constants.ConstraintReference.CS` can be used 
-        instead of any of the uid inputs to refer to the sketch's coordinate 
-        system.
-        
-        :param type_: The SketchConstraint of the constraint to be added.
-        :param uid_pairs: Pairs of (UUID, ConstraintReference) for each geometry
-        :returns: The updated sketch.
-        """
-        reference_pairs = []
-        for uid, reference in parse_pairs(uid_pairs):
-            reference_pairs.extend([self.get_geometry_by_uid(uid), reference])
-        constraint = make_constraint(type_, *reference_pairs, **kwargs)
-        self.add_constraint(constraint)
-        return self
-
-    def add_constraint_by_index(
-                self, type_: SketchConstraint,
-                *index_pairs: (tuple[int, ConstraintReference]
-                               | int
-                               | ConstraintReference),
-                **kwargs
-            ) -> Self:
-        """Adds a sketch constraint between two geometry elements selected by 
-        their indices. Prefixes the new constraint's uid with the sketch's uid. 
-        All geometry must already be in the sketch's geometry.
-        :attr:`~pancad.geometry.constants.ConstraintReference.CS` can be used 
-        instead of any of the index inputs to refer to the sketch's coordinate 
-        system.
-        
-        :param sketch_constraint: The SketchConstraint of the new constraint 
-            type.
-        :param index_pairs: Pairs of (int, ConstraintReference) for each geometry
-        :returns: The updated sketch.
-        """
-        reference_pairs = []
-        for index, reference in parse_pairs(index_pairs):
-            reference_pairs.extend(
-                [self._get_geometry_by_index(index), reference]
-            )
-        constraint = make_constraint(type_, *reference_pairs, **kwargs)
-        self.add_constraint(constraint)
-        return self
 
     def add_geometry(self,
                      geometry: AbstractGeometry,

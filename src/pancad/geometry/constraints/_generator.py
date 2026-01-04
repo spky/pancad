@@ -24,7 +24,6 @@ from . import (
     Vertical,
     VerticalDistance,
 )
-from pancad.utils.constraints import GeometryReference
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -48,26 +47,20 @@ SKETCH_CONSTRAINT_TO_CLASS = {
 }
 
 @overload
-def make_constraint(type_: SketchConstraint,
-                    *reference_pairs: GeometryReference,
+def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,
                     uid: UUID | str=None) -> AbstractStateConstraint: ...
 
 @overload
-def make_constraint(type_: SketchConstraint,
-                    *reference_pairs: GeometryReference,
-                    value: Real,
-                    unit: str | None=None,
-                    uid: UUID | str=None) -> AbstractDistance: ...
+def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,
+                    value: Real, unit: str | None=None, uid: UUID | str=None
+                    ) -> AbstractDistance: ...
 
 @overload
-def make_constraint(type_: SketchConstraint,
-                    *reference_pairs: GeometryReference,
-                    value: Real,
-                    uid: UUID | str=None,
-                    quadrant: int,
-                    is_radians: bool=False) -> Angle: ...
+def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,
+                    value: Real, uid: UUID | str=None,
+                    quadrant: int, is_radians: bool=False) -> Angle: ...
 
-def make_constraint(type_, *reference_pairs, **kwargs) -> AbstractConstraint:
+def make_constraint(type_, *geometry, **kwargs) -> AbstractConstraint:
     """Creates a new pancad constraint.
     
     :param type_: The SketchConstraint value for the constraint to be created.
@@ -92,4 +85,4 @@ def make_constraint(type_, *reference_pairs, **kwargs) -> AbstractConstraint:
         if type_ in [SketchConstraint.SYMMETRIC, SketchConstraint.TANGENT]:
             raise NotImplementedError("See issue #82 or #85") from err
         raise KeyError from err
-    return class_(*reference_pairs, **kwargs)
+    return class_(*geometry, **kwargs)

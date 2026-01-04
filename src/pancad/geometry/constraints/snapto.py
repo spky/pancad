@@ -9,11 +9,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.geometry.constraints import AbstractConstraint
-from pancad.utils.constraints import constraint_args
 
 if TYPE_CHECKING:
     from typing import NoReturn
     from pancad.utils.constraints import GeometryReference
+    from pancad.geometry import AbstractGeometry
     from pancad.geometry.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
@@ -24,26 +24,16 @@ class AbstractSnapTo(AbstractConstraint):
         the geometry to be constrained.
     :param uid: The unique id of the constraint.
     """
-    def __init__(self,
-                 *reference_pairs: GeometryReference,
-                 uid: str=None) -> None:
+    def __init__(self, *geometry: AbstractGeometry, uid: str=None) -> None:
         self.uid = uid
-        self._pairs = constraint_args(*reference_pairs)
-        self._validate()
-    # Private Methods #
-    def _validate(self) -> None:
-        if any(len(geometry.get_reference(reference)) != 2
-               for geometry, reference in self._pairs):
-            raise ValueError("subgeometry must be 2D to be constrained")
-        if len(self._pairs) not in [1, 2]:
-            raise ValueError("Expected 1 or 2 reference_pairs,"
-                             f" provided {len(self._pairs)}")
-        iterator = iter(len(geometry.get_reference(reference))
-                        for geometry, reference in self._pairs)
-        first_length = next(iterator)
-        if not all(first_length == length for length in iterator):
-            raise ValueError("Not all subgeometry are the same dimension")
-    # Python Dunders #
+        if len(geometry) not in [1, 2]:
+            raise ValueError(f"Expected 1 or 2 geometries, got: {geometry}")
+        if any(len(g) != 2 for g in geometry):
+            non_two_dimensional = [g for g in geometry if len(g) != 2]
+            raise ValueError(f"Non-2D Geometry provided: {non_two_dimensional}")
+        self._geometry = geometry
+
+    # Python Dunders
     def __eq__(self, other: AbstractSnapTo) -> bool:
         """Checks whether two snapto relations are functionally the same by 
         comparing the memory ids of their constrained geometries.

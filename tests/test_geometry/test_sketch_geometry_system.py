@@ -49,13 +49,13 @@ def multiple_geometry_list(empty_geometry_list, request) -> GeometryList:
 @pytest.fixture
 def horizontal_line_segment() -> tuple[list[LineSegment], list[Horizontal]]:
     line = LineSegment((0, 0), (1, 0))
-    yield [line], [Horizontal(line, CR.CORE)]
+    yield [line], [Horizontal(line)]
 
 @pytest.fixture
 def line_segment_coincident_with_origin(empty_system) -> tuple[list[LineSegment],
                                                                list[Coincident]]:
     line = LineSegment((0, 0), (1, 0))
-    yield [line], [Coincident(line, CR.CORE, empty_system, CR.ORIGIN)]
+    yield [line], [Coincident(line, empty_system.origin)]
 
 @pytest.fixture(
     params = [

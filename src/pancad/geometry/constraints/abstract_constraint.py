@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from pancad.geometry import PancadThing
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from pancad.geometry import AbstractGeometry
     from pancad.geometry.constants import ConstraintReference
 
@@ -21,6 +23,14 @@ class AbstractConstraint(PancadThing):
     """
 
     @property
+    def _geometry(self) -> list[AbstractGeometry]:
+        """The geometry being constrained"""
+        return self.__geometry
+    @_geometry.setter
+    def _geometry(self, values: Sequence[AbstractGeometry]) -> None:
+        self.__geometry = list(values)
+
+    @property
     def _pairs(self) -> list[tuple[AbstractGeometry, ConstraintReference]]:
         return self.__pairs
     @_pairs.setter
@@ -28,32 +38,33 @@ class AbstractConstraint(PancadThing):
                                        ConstraintReference]]) -> None:
         self.__pairs = value
 
-    def get_parents(self) -> tuple[AbstractGeometry]:
+    def get_parents(self) -> list[AbstractGeometry]:
         """Returns highest geometry scope being constrained for each geometry.
 
         Example: A circle's center point would return the circle object, but a 
         standalone point would just return the point.
         """
-        return tuple(geometry for geometry, _ in self._pairs)
+        parents = []
+        for geometry in self._geometry:
+            if geometry.parent is None:
+                parents.append(geometry)
+            else:
+                parents.append(geometry.parent)
+        return parents
 
-    def get_geometry(self) -> tuple[AbstractGeometry]:
+    def get_geometry(self) -> list[AbstractGeometry]:
         """Returns the portions of the constrained geometry being constrained. 
         
         Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or 
         the start point of a :class:`~pancad.geometry.LineSegment`.
         """
-        return tuple(geometry.get_reference(reference)
-                     for geometry, reference in self._pairs)
+        return self._geometry
 
     def get_references(self) -> tuple[ConstraintReference]:
         """Returns a tuple of the constrained geometrys' ConstraintReferences in 
         the same order as the tuple returned by :meth:`get_constrained`.
         """
-        return tuple(reference for _, reference in self._pairs)
-
-    @abstractmethod
-    def _validate(self) -> None:
-        """Checks whether the constraint is badly formed."""
+        return tuple(geometry.self_reference for geometry in self._geometry)
 
     def __repr__(self) -> str:
         return str(self)
