@@ -50,7 +50,7 @@ class ConstraintType(StrEnum):
         if constraint.Type in _TO_SKETCH_CONSTRAINT:
             return _TO_SKETCH_CONSTRAINT[constraint.Type]
         if constraint.Type == ConstraintType.TANGENT:
-            geometry = mapping.get_constrained(constraint_id)
+            geometry = mapping.get_parents(constraint_id)
             if all(isinstance(g, FreeCADLineSegment) for g in geometry):
                 # FreeCAD uses Tangent to mean coincident or collinear when
                 # applied to two line segments.

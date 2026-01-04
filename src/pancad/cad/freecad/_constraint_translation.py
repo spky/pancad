@@ -225,7 +225,7 @@ def _link_constraints(self,
     :param freecad_constraint: The FreeCADID for the FreeCAD constraint to link.
     """
     constrained_ids = tuple()
-    for geometry, reference in zip(pancad_constraint.get_constrained(),
+    for geometry, reference in zip(pancad_constraint.get_parents(),
                                    pancad_constraint.get_references()):
         freecad_id = self.get_freecad_id(geometry, reference)
         constrained_ids = constrained_ids + ((*freecad_id, reference),)
@@ -251,7 +251,7 @@ def _pancad_to_freecad_constraint(self, constraint: AbstractConstraint
 def _angle(self, constraint: Angle) -> FreeCADConstraint:
     constraint_type = ConstraintType.from_pancad(constraint)
     indices = []
-    for geometry, reference in zip(constraint.get_constrained(),
+    for geometry, reference in zip(constraint.get_parents(),
                                    constraint.get_references()):
         # Need indices of the line segments
         freecad_id = self.get_freecad_id(geometry, reference)
@@ -282,7 +282,7 @@ def _coincident(self, constraint: Coincident) -> FreeCADConstraint:
     # Coincident constraints holding two geometry elements together.
     constraint_type = ConstraintType.from_pancad(constraint)
     inputs = []
-    pairs = zip(constraint.get_constrained(), constraint.get_references())
+    pairs = zip(constraint.get_parents(), constraint.get_references())
     match constraint_type:
         case ConstraintType.COINCIDENT:
             # Points being constrained to other points
@@ -325,7 +325,7 @@ def _index_and_value(self, constraint: Diameter | Radius) -> FreeCADConstraint:
     constraint_type = ConstraintType.from_pancad(constraint)
     # Assumes that there is only one constrained geometry, which should be the 
     # case for Diameter and Radius
-    freecad_id = self.get_freecad_id(constraint.get_constrained()[0],
+    freecad_id = self.get_freecad_id(constraint.get_parents()[0],
                                      constraint.get_references()[0])
     index = self._constraint_map.get_constraint_index(freecad_id)
     freecad_value = App.Units.Quantity(f"{constraint.value} {constraint.unit}")
@@ -338,16 +338,16 @@ def _index_and_subpart_optional(self, constraint: Horizontal | Vertical
     # index and a subpart.
     
     constraint_type = ConstraintType.from_pancad(constraint)
-    if len(constraint.get_constrained()) == 1:
+    if len(constraint.get_parents()) == 1:
         # Needs just an index
-        geometry = constraint.get_constrained()[0]
+        geometry = constraint.get_parents()[0]
         reference = constraint.get_references()[0]
         freecad_id = self.get_freecad_id(geometry, reference)
         index = self._constraint_map.get_constraint_index(freecad_id)
         return Sketcher.Constraint(constraint_type, index)
     else:
         inputs = []
-        for geometry, reference in zip(constraint.get_constrained(),
+        for geometry, reference in zip(constraint.get_parents(),
                                        constraint.get_references()):
             # Needs pairs of indices and edge sub parts
             freecad_id = self.get_freecad_id(geometry, reference)
@@ -364,7 +364,7 @@ def _index_only(self, constraint: Equal | Parallel | Perpendicular
     
     inputs = []
     constraint_type = ConstraintType.from_pancad(constraint)
-    for geometry, reference in zip(constraint.get_constrained(),
+    for geometry, reference in zip(constraint.get_parents(),
                                    constraint.get_references()):
         # Needs list of indices
         freecad_id = self.get_freecad_id(geometry, reference)
@@ -383,7 +383,7 @@ def _distance(self,
     inputs = []
     constraint_type = ConstraintType.from_pancad(constraint)
     pancad_pairs = list(
-        zip(constraint.get_constrained(), constraint.get_references())
+        zip(constraint.get_parents(), constraint.get_references())
     )
     for geometry, reference in pancad_pairs:
         # Needs pairs of indices and edge sub parts

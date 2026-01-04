@@ -69,7 +69,7 @@ class AbstractStateConstraint(AbstractConstraint):
             found with the second type.
         :returns: Whether the relation matches the combination.
         """
-        constrained = list(self.get_constrained())
+        constrained = list(self.get_parents())
         references = list(self.get_references())
         iterator = iter(self._pairs)
         first, _ = next(iterator)

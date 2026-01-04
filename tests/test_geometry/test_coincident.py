@@ -23,7 +23,7 @@ class TestInit(unittest.TestCase):
         original_a = self.a.copy()
         new_a = Point(1, 1)
         self.a.update(new_a)
-        self.assertEqual(c.get_constrained()[0], new_a)
+        self.assertEqual(c.get_parents()[0], new_a)
 
 class TestValidation(unittest.TestCase):
     def test_combination_validation_line_circle_edges(self):

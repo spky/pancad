@@ -106,7 +106,7 @@ class ConstraintList(MutableSequence):
     def missing_dependencies(self, constraint: AbstractConstraint
                              ) -> list[AbstractGeometry]:
         """Returns missing geometry dependencies for a constraint."""
-        return [geometry for geometry in constraint.get_constrained()
+        return [geometry for geometry in constraint.get_parents()
                 if geometry not in self._system]
 
     def _raise_if_duped_uid(self, constraint: AbstractConstraint) -> None:
@@ -343,7 +343,7 @@ class SketchGeometrySystem(AbstractGeometry):
         constraints = []
         for constraint in self.constraints:
             if any(constrained.uid == geometry.uid
-                   for constrained in constraint.get_constrained()):
+                   for constrained in constraint.get_parents()):
                 constraints.append(constraint)
         return constraints
 
@@ -368,9 +368,9 @@ class SketchGeometrySystem(AbstractGeometry):
         :raises LookupError: Raised when the constraint's dependencies are not in 
             the sketch.
         """
-        if all(geometry in self for geometry in constraint.get_constrained()):
+        if all(geometry in self for geometry in constraint.get_parents()):
             self.constraints.append(constraint)
-        missing = [geometry for geometry in constraint.get_constrained()
+        missing = [geometry for geometry in constraint.get_parents()
                    if geometry not in self]
         raise LookupError(f"{repr(constraint)} dependencies missing: {missing}")
 
@@ -591,7 +591,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
         :raises LookupError: Raised when the constraint's dependencies are not in 
             the sketch.
         """
-        dependencies = constraint.get_constrained()
+        dependencies = constraint.get_parents()
         if all(d in self for d in dependencies):
             self._constraints = self._constraints + (constraint,)
             return self
@@ -797,7 +797,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
     # def _validate_constraint_references(self, constraint) -> None:
         # """Checks whether a constraint references geometry in the sketch's
         # geometry or externals"""
-        # references = constraint.get_constrained()
+        # references = constraint.get_parents()
         # if not all([self.has_geometry(g) for g in references]):
             # raise ValueError(f"The {repr(constraint)} constraint references"
                              # " geometry that is not in the sketch."
@@ -867,7 +867,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     # @_get_summary_info.register
     # def _state_constraint(self, constraint: AbstractStateConstraint) -> dict:
-        # geometry_a, geometry_b = constraint.get_constrained()
+        # geometry_a, geometry_b = constraint.get_parents()
         # reference_a, reference_b = constraint.get_references()
         # return {"Index": self.get_index_of(constraint),
                 # "Type": constraint.__class__.__name__,
@@ -886,7 +886,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     # @_get_summary_info.register
     # def _state_constraint(self, constraint: AbstractSnapTo) -> dict:
-        # geometry = constraint.get_constrained()
+        # geometry = constraint.get_parents()
         # references = constraint.get_references()
         # if len(geometry) == 1:
             # geometry_a = geometry[0]
@@ -926,7 +926,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     # @_get_summary_info.register
     # def _1_geo_distance(self, constraint: Abstract1GeometryDistance) -> dict:
-        # geometry_a = constraint.get_constrained()[0]
+        # geometry_a = constraint.get_parents()[0]
         # reference_a = constraint.get_references()[0]
         # return {
             # "Index": self.get_index_of(constraint),
@@ -942,7 +942,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     # @_get_summary_info.register
     # def _2_geo_distance(self, constraint: Abstract2GeometryDistance) -> dict:
-        # geometry_a, geometry_b = constraint.get_constrained()
+        # geometry_a, geometry_b = constraint.get_parents()
         # reference_a, reference_b = constraint.get_references()
         # return {
             # "Index": self.get_index_of(constraint),
@@ -964,7 +964,7 @@ class Sketch(AbstractFeature, AbstractGeometry):
 
     # @_get_summary_info.register
     # def _angle(self, constraint: Angle) -> dict:
-        # geometry_a, geometry_b = constraint.get_constrained()
+        # geometry_a, geometry_b = constraint.get_parents()
         # reference_a, reference_b = constraint.get_references()
         # return {
             # "Index": self.get_index_of(constraint),

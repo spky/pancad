@@ -28,7 +28,7 @@ class AbstractConstraint(PancadThing):
                                        ConstraintReference]]) -> None:
         self.__pairs = value
 
-    def get_constrained(self) -> tuple[AbstractGeometry]:
+    def get_parents(self) -> tuple[AbstractGeometry]:
         """Returns the geometry or geometries being constrained."""
         return tuple(geometry for geometry, _ in self._pairs)
 
@@ -59,7 +59,7 @@ class AbstractConstraint(PancadThing):
         if self.STR_VERBOSE:
             strings.append(f"'{self.uid}'")
         strings.append("-")
-        constrained = self.get_constrained()
+        constrained = self.get_parents()
         references = self.get_references()
         geometry_strings = []
         for geometry, reference in zip(constrained, references):
