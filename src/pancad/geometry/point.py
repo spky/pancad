@@ -339,7 +339,7 @@ class Point(AbstractGeometry):
             return self.cartesian[i]
         raise StopIteration
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         pt_strs = []
         for component in self.cartesian:
             if isclose0(component):
@@ -347,8 +347,7 @@ class Point(AbstractGeometry):
             else:
                 pt_strs.append(f"{component:g}")
         point_str = ",".join(pt_strs)
-        prefix = super().__str__()
-        return f"{prefix}({point_str})>"
+        return super().__repr__().format(details=f"({point_str})")
 
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:

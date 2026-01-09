@@ -209,7 +209,4 @@ class Plane(AbstractGeometry):
                     vector_strings.append(f"{component:g}")
             strings.append(",".join(vector_strings))
         point, normal = strings
-        return f"<pancad_Plane({point})({normal})>"
-
-    def __str__(self) -> str:
-        return self.__repr__()
+        return super().__repr__().format(f"({point})({normal})")

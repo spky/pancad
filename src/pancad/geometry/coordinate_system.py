@@ -166,8 +166,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         :param quat: A numpy quaternion used to rotate the coordinate system 
             from the canonical cartesian coordinate orientation to its desired 
             location.
-        :param right-handed: Whether the coordinate system is right-handed. 
-            Right-handed if true, left-handed if false.
         :param uid: The unique ID of the coordinate system.
         :returns: A 3D CoordinateSystem rotated according to the quaternion.
         """
@@ -183,13 +181,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return coordinate_system.rotate(quat)
 
     # Properties
-    @property
-    def context(self) -> AbstractFeature | None:
-        return self._context
-    @context.setter
-    def context(self, context_feature: AbstractFeature | None) -> None:
-        self._context = context_feature
-
     @property
     def parts(self) -> SystemParts:
         """The geometric parts of the coordinate system. Read-only."""

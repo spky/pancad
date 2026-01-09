@@ -8,10 +8,13 @@ between applications.
 """
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 from textwrap import indent
 from typing import TYPE_CHECKING
 
+from pancad.exceptions import DupeUidError, HasDependentsError
 from pancad.geometry import AbstractFeature, Sketch
+from pancad.geometry.unique_lists import FeatureList
 
 if TYPE_CHECKING:
     from typing import Sequence, Self
@@ -20,16 +23,16 @@ class FeatureContainer(AbstractFeature):
     """A class representing a grouping of features in CAD applications. Strictly 
     defines only the software ownership, not what geometry the features modify 
     or create.
-    
-    :param features: The features that the new container will have inside it. 
-        Any features with their context set to None will have it set to the new 
+
+    :param features: The features that the new container will have inside it.
+        Any features with their context set to None will have it set to the new
         FeatureContainer.
-    :param uid: The unique id of the FeatureContainer. When set to None the uid 
+    :param uid: The unique id of the FeatureContainer. When set to None the uid
         is automatically generated.
     :param name: The name of the feature displayed to the users in CAD.
-    :param context: The feature that acts as the context for 
-        this feature, usually a :class:`~pancad.geometry.FeatureContainer` or 
-        None. None indicates that this FeatureContainer is a top level CAD 
+    :param context: The feature that acts as the direct context for 
+        this feature, usually a :class:`~pancad.geometry.FeatureContainer` or
+        None. None indicates that this FeatureContainer is a top level CAD
         object.
     """
     def __init__(self,
@@ -38,18 +41,18 @@ class FeatureContainer(AbstractFeature):
                  name: str=None,
                  context: FeatureContainer=None,) -> None:
         self.uid = uid
+        self._features = FeatureList(self, features)
         self.name = name
         self.context = context
         self._uid_to_feature = {self.uid: self}
-        self.features = features
 
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:
         """Adds a feature to the FeatureContainer.
-        
+
         :param feature: The feature to add.
         :returns: The updated FeatureContainer.
-        :raises LookupError: Raised if the feature's dependencies are not 
+        :raises LookupError: Raised if the feature's dependencies are not
             already in the FeatureContainer.
         """
         dependencies = feature.get_dependencies()
@@ -75,9 +78,9 @@ class FeatureContainer(AbstractFeature):
         return self._features + (self.context,)
 
     def get_feature_by_name(self, name: str) -> AbstractFeature:
-        """Returns a feature with the name from the FeatureContainer or its 
+        """Returns a feature with the name from the FeatureContainer or its
         subcontainers.
-        
+
         :raises LookupError: Raised if there is no feature with the name.
         """
         for feature in self.features:
@@ -90,34 +93,30 @@ class FeatureContainer(AbstractFeature):
                     pass
         raise LookupError(f"No feature named '{name}' found!")
 
-    # Getters #
-    @property
-    def context(self) -> FeatureContainer | None:
-        return self._context
-    @context.setter
-    def context(self, feature: FeatureContainer | None) -> None:
-        if isinstance(feature, FeatureContainer) or feature is None:
-            self._context = feature
-        else:
-            raise TypeError("FeatureContainers can only be contained by other"
-                            " FeatureContainers or None, provided:"
-                            f" {feature}")
-
+    # Properties
     @property
     def features(self) -> tuple[AbstractFeature]:
         """The features inside of the FeatureContainer.
-        
+
         :getter: Returns the features inside the container.
         :setter: Sets the features inside the container and sets their context 
             to the container if it does not already have a context.
         """
         return self._features
     @features.setter
-    def features(self, features: Sequence[AbstractFeature]) -> None:
-        self._features = tuple()
-        if features is not None:
-            for feature in features:
-                self.add_feature(feature)
+    def features(self, values: Sequence[AbstractFeature]) -> None:
+        new_uids = {value.uid for value in values}
+        old_uids = {value.uid for value in self.features}
+        errors = []
+        for uid in old_uids - new_uids:
+            value = self.features.get_by_uid(uid)
+            try:
+                del self.features[self.features.index(value)]
+            except HasDependentsError as err:
+                errors.append(err)
+        if errors:
+            raise ExceptionGroup("Errors while replacing FeatureList", errors)
+        self._features = FeatureList(self, values)
 
     # Python Dunders #
     def __contains__(self, item: object) -> bool:
@@ -138,36 +137,6 @@ class FeatureContainer(AbstractFeature):
 
     def __repr__(self) -> str:
         n_features = len(self.features)
-        return f"<pancadFeatureContainer'{self.name}'({n_features}feats)>"
-
-    def __str__(self) -> str:
-        """Returns a summary of what is inside of the FeatureContainer."""
-        indentation = "    "
-        summary = []
-        if self.context is None:
-            context_name = "None"
-        else:
-            context_name = self.context.name
-        summary.append(f"FeatureContainer '{self.name}',"
-                       f" Context: {context_name}")
-        for feature in self.features:
-            dependency_lines = []
-            for dependency in feature.get_dependencies():
-                dependency_lines.append(
-                    f"{dependency.__class__.__name__} '{dependency.name}'"
-                )
-            dependency_iter = iter(dependency_lines)
-            preface = "Dependencies: "
-            dependency_summary = [preface + next(dependency_iter)]
-            dep_indent = " "*len(preface)
-            dependency_summary.extend(
-                [indent(line, dep_indent) for line in dependency_iter]
-            )
-            feature_str = "\n".join(str(feature).split("\n")[1:])
-            feature_summary = "\n".join(
-                [f"{feature.__class__.__name__} '{feature.name}'",
-                 indent("\n".join(dependency_summary), indentation),
-                 indent(feature_str, indentation),]
-            )
-            summary.append(indent(feature_summary, indentation))
-        return "\n".join(summary)
+        return super().__repr__().format(
+            details=f"'{self.name}'({n_features}feats)"
+        )

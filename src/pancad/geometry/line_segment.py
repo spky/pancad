@@ -373,7 +373,7 @@ class LineSegment(AbstractGeometry):
         """
         return len(self.start)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
             if isclose0(self.start[i]):
@@ -384,7 +384,8 @@ class LineSegment(AbstractGeometry):
                 pt_b_strs.append("0")
             else:
                 pt_b_strs.append(f"{self.end[i]:g}")
-        pt_a_str = ",".join(pt_a_strs)
-        pt_b_str = ",".join(pt_b_strs)
-        prefix = super().__str__()
-        return f"{prefix}({pt_a_str})({pt_b_str})>"
+        start_str = ",".join(pt_a_strs)
+        end_str = ",".join(pt_b_strs)
+        return super().__repr__().format(
+            details=f"({start_str})({end_str})"
+        )

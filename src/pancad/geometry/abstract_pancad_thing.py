@@ -3,7 +3,7 @@ share.
 """
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -14,9 +14,11 @@ class PancadThing(ABC):
     """An abstract class defining the properties and methods that all pancad 
     elements, constraints, or whatever must have with no exceptions.
     """
+
     STR_VERBOSE = False
     """A flag allowing pancad objects to print detailed strings and reprs."""
-    # Properties #
+
+    # Properties
     @property
     def uid(self) -> str | UUID:
         """The unique id of the element, used for CAD interoperability. Can be 
@@ -30,3 +32,14 @@ class PancadThing(ABC):
             self._uid = uuid4()
         else:
             self._uid = value
+
+    @abstractmethod
+    def __repr__(self) -> str:
+        strings = ["<", self.__class__.__name__, "{details}", ">"]
+        if self.STR_VERBOSE:
+            class_index = strings.index(self.__class__.__name__)
+            strings.insert(class_index + 1, f"'{self.uid}'")
+        return "".join(strings)
+
+    def __str__(self) -> str:
+        return repr(self)

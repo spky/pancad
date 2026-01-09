@@ -467,24 +467,6 @@ class Line(AbstractGeometry):
                 direction_strs.append(f"{component:g}")
         point_str = ",".join(pt_strs)
         direction_str = ",".join(direction_strs)
-        return f"<pancadLine'{self.uid}'({point_str})({direction_str})>"
-
-    def __str__(self) -> str:
-        """String function to output the line's description, closest 
-        cartesian point to the origin, and unique cartesian direction 
-        unit vector.
-        """
-        pt_strs, direction_strs = [], []
-        for i, component in enumerate(self.direction):
-            if isclose0(self._point_closest_to_origin[i]):
-                pt_strs.append("0")
-            else:
-                pt_strs.append(f"{self._point_closest_to_origin[i]:g}")
-            if isclose0(component):
-                direction_strs.append("0")
-            else:
-                direction_strs.append(f"{component:g}")
-        point_str = ", ".join(pt_strs)
-        direction_str = ", ".join(direction_strs)
-        return ("pancad Line with a point closest to the origin at"
-                f" ({point_str}) and in the direction ({direction_str})")
+        return super().__repr__().format(
+            details=f"({point_str})({direction_str})"
+        )

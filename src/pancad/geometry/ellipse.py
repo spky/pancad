@@ -407,9 +407,8 @@ class Ellipse(AbstractGeometry):
         """Returns whether the ellipse is 2D or 3D."""
         return len(self.center)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
-        prefix = super().__str__()
-        string = (f"{prefix}{center_str}"
-                  f"a{self.semi_major_axis}b{self.semi_minor_axis}>")
-        return string
+        details = (f"{center_str}"
+                   f"a{self.semi_major_axis}b{self.semi_minor_axis}>")
+        return super().__repr__().format(details=details)

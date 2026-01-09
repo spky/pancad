@@ -337,11 +337,10 @@ class CircularArc(AbstractGeometry):
         """Returns whether the arc is 2D or 3D."""
         return len(self.center)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         center_str = str(self.center.cartesian).replace(" ","")
         start_str = str(self.start.cartesian).replace(" ","")
         end_str = str(self.end.cartesian).replace(" ","")
-        prefix = super().__str__()
-        string = (f"{prefix}"
-                  f"{center_str}c{start_str}s{end_str}e{self.radius}r")
-        return string + ">"
+        return super().__repr__().format(
+            details=f"{center_str}c{start_str}s{end_str}e{self.radius}r"
+        )

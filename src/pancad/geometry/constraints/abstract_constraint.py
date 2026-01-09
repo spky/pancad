@@ -3,7 +3,6 @@ pancad constraint classes.
 """
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 from pancad.geometry import PancadThing
@@ -11,17 +10,18 @@ from pancad.geometry import PancadThing
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pancad.geometry import AbstractGeometry
+    from pancad.geometry.abstract_geometry import AbstractGeometry
+    from pancad.geometry.abstract_feature import AbstractFeature
     from pancad.geometry.constants import ConstraintReference
+    from pancad.geometry.sketch import SketchGeometrySystem
 
-# TODO: Make it possible to initialize constraints with just subgeometry and 
-# determine the parent by going up the tree.
 
 class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint 
     Elements.
     """
 
+    # Properties
     @property
     def _geometry(self) -> list[AbstractGeometry]:
         """The geometry being constrained"""
@@ -37,6 +37,25 @@ class AbstractConstraint(PancadThing):
     def _pairs(self, value: list[tuple[AbstractGeometry,
                                        ConstraintReference]]) -> None:
         self.__pairs = value
+
+    @property
+    def system(self) -> SketchGeometrySystem | None:
+        """The system the constraint is in. This defaults to None unless set by 
+        a higher level context like a SketchGeometrySystem object.
+        """
+        if not hasattr(self, "_system"):
+            return None
+        return self._system
+    @system.setter
+    def system(self, value: SketchGeometrySystem) -> None:
+        self._system = value
+
+    # Public Methods
+    def get_dependencies(self) -> list[AbstractFeature]:
+        """Returns the features that this constraint depends on."""
+        geometry_deps = [geometry.system.feature
+                         for geometry in self.get_parents()]
+        return list(set([self.system.feature] + geometry_deps))
 
     def get_parents(self) -> list[AbstractGeometry]:
         """Returns highest geometry scope being constrained for each geometry.
@@ -66,6 +85,7 @@ class AbstractConstraint(PancadThing):
         """
         return tuple(geometry.self_reference for geometry in self._geometry)
 
+    # Dunders
     def __repr__(self) -> str:
         return str(self)
 

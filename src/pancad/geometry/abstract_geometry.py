@@ -12,6 +12,8 @@ from pancad.geometry.constants import ConstraintReference
 if TYPE_CHECKING:
     from typing import Self
 
+    from pancad.geometry.sketch import SketchGeometrySystem
+
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""
     def __init__(self,
@@ -62,6 +64,20 @@ class AbstractGeometry(PancadThing):
         return {reference: self.get_reference(reference)
                 for reference in self.get_all_references()}
 
+    @property
+    def system(self) -> SketchGeometrySystem | None:
+        """The system the geometry is in. Some geometry can exist by itself, 
+        coordinate systems and planes can be in 3D sketches or exist as 
+        separate features, for example, so this defaults to None unless set by a 
+        higher level like a SketchGeometrySystem.
+        """
+        if not hasattr(self, "_system"):
+            return None
+        return self._system
+    @system.setter
+    def system(self, value: SketchGeometrySystem) -> None:
+        self._system = value
+
     # Public Methods
     def get_reference(self, reference: ConstraintReference) -> AbstractGeometry:
         """Returns the subgeometry associated with the reference."""
@@ -84,13 +100,3 @@ class AbstractGeometry(PancadThing):
         """Implements the Python len() function to return whether the geometry 
         is 2D or 3D.
         """
-
-    def __repr__(self) -> str:
-        return str(self)
-
-    @abstractmethod
-    def __str__(self) -> str:
-        strings = ["<", self.__class__.__name__]
-        if self.STR_VERBOSE:
-            strings.append(f"'{self.uid}'")
-        return "".join(strings)

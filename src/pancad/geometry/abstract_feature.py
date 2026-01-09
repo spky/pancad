@@ -13,21 +13,26 @@ if TYPE_CHECKING:
 
 class AbstractFeature(PancadThing):
     """A class defining the interfaces provided by pancad Feature elements."""
-    # Public Methods #
+    # Abstract Methods
     @abstractmethod
     def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
         """Returns the feature's external dependencies. Example: A 
         :class:`~pancad.geometry.Sketch` returns the sketch's coordinate 
         system and its external geometry references.
         """
-    # Abstract Properties
+
+    # Public Methods
     @property
-    @abstractmethod
     def context(self) -> AbstractFeature | None:
         """Returns the feature that contains the feature. If context is None, 
         then the feature's context is the top level of the file that the feature 
         is inside of.
         """
+        return self._context
+    @context.setter
+    def context(self, value: AbstractFeature | None) -> None:
+        self._context = value
+
     # Properties #
     @property
     def name(self) -> str:

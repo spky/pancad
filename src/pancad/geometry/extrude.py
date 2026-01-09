@@ -102,13 +102,6 @@ class Extrude(AbstractFeature):
 
     # Properties #
     @property
-    def context(self) -> AbstractFeature | None:
-        return self._context
-    @context.setter
-    def context(self, feature: AbstractFeature | None) -> None:
-        self._context = feature
-
-    @property
     def length(self) -> Real:
         """The linear length of the extrude in its normal direction."""
         return self.settings.length
@@ -172,18 +165,4 @@ class Extrude(AbstractFeature):
 
     # Python Dunders #
     def __repr__(self) -> str:
-        return f"<pancad{repr(self.type_)}Extrude'{self.name}'>"
-
-    def __str__(self) -> str:
-        type_name = self.type_.name \
-                              .replace("_", " ") \
-                              .title()
-        summary = []
-        summary.append(f"Extrude '{self.name}' of profile '{self.profile.uid}'")
-        summary_info = {
-            "Active Type": type_name,
-            "Length": self.get_length_string(),
-            "Opposite Length": self.get_opposite_length_string(),
-        }
-        summary.append(indent(get_table_string(summary_info), "  "))
-        return "\n".join(summary)
+        return super().__repr__(details=f"'{self.name}'{self.type_}")

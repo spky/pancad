@@ -85,6 +85,18 @@ class ConstraintReference(Flag):
     """
     COORDINATE_SYSTEM = CS
     """An alias for CS."""
+    FRONT = auto()
+    """The front orientation plane of an object, used when front can be well 
+    defined. Example: The front of a Pose used for sketch placement.
+    """
+    RIGHT = auto()
+    """The right side orientation plane of an object, used when right can be well 
+    defined.
+    """
+    TOP = auto()
+    """The top orientation plane of an object, used when top can be well 
+    defined.
+    """
     def __repr__(self) -> str:
         return f"{self.name}"
 

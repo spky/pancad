@@ -145,11 +145,4 @@ class Circle(AbstractGeometry):
         return len(self.center)
 
     def __repr__(self) -> str:
-        center_str = str(self.center.cartesian).replace(" ","")
-        string = f"<pancadCircle'{self.uid}'{center_str}r{self.radius}"
-        return string + ">"
-
-    def __str__(self) -> str:
-        string = (f"pancad Circle '{self.uid}' with center"
-                  f" {self.center.cartesian} and radius {self.radius}")
-        return string
+        return super().__repr__().format(details=f"{center_str}r{self.radius}")
