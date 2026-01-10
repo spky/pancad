@@ -1,7 +1,7 @@
 """A module providing GenericAlias constants for use in FreeCAD-pancad mapping.
 """
-from pancad.geometry import PancadThing
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import PancadThing
+from pancad.constants import ConstraintReference
 
 from ._application_types import FreeCADCADObject
 from .constants import ListName, InternalAlignmentType

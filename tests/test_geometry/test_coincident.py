@@ -1,7 +1,7 @@
 import unittest
 
-from pancad.geometry import Point
-from pancad.geometry.constraints import Coincident
+from pancad.geometry.point import Point
+from pancad.constraints.state_constraint import Coincident
 
 class TestInit(unittest.TestCase):
     

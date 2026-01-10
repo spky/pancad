@@ -12,8 +12,8 @@ from typing import Self, TYPE_CHECKING
 
 import numpy as np
 
-from pancad.geometry import AbstractGeometry
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintReference
 from pancad.utils import trigonometry as trig, comparison
 from pancad.utils.geometry import parse_vector
 

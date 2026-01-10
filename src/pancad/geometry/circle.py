@@ -7,9 +7,11 @@ from functools import partial
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
-from pancad.geometry import AbstractGeometry, Point
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.point import Point
 from pancad.utils import comparison
+# TODO: Put VectorLike into a _typing module
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:

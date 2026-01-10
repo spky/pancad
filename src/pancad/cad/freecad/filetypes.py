@@ -7,7 +7,7 @@ from __future__ import annotations
 import pathlib
 from typing import Self, NoReturn, TYPE_CHECKING
 
-from pancad.filetypes import PartFile
+from pancad.filetypes.part_file import PartFile
 
 try:
     import FreeCAD as App

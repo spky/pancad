@@ -11,8 +11,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from pancad.geometry import AbstractGeometry, Point, Line
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
 from pancad.utils import comparison, trigonometry as trig
 from pancad.utils.geometry import parse_vector
 from pancad.utils.pancad_types import VectorLike

@@ -18,17 +18,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from textwrap import indent
 
-from pancad.geometry import (
-    CoordinateSystem,
-    FeatureContainer,
-    PancadThing,
-    Sketch,
-)
+from pancad.abstract import PancadThing
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.feature_container import FeatureContainer
+from pancad.geometry.sketch import Sketch
 
 if TYPE_CHECKING:
     from uuid import UUID
     from typing import Self
-    from pancad.geometry import AbstractFeature, AbstractGeometry
+
+    from pancad.abstract import AbstractFeature, AbstractGeometry
 
 class PartFile(PancadThing):
     """A class representing a part file in CAD applications. pancad defines a 

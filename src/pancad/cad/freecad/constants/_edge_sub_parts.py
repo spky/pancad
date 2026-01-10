@@ -5,12 +5,15 @@ https://wiki.freecad.org/Sketcher_scripting#Identifying_the_numbering_of_the_sub
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
-from pancad.geometry import Sketch, CircularArc
-from pancad.geometry.constants import ConstraintReference
+from pancad.constants import ConstraintReference
+from pancad.geometry.sketch import Sketch
+from pancad.geometry.circular_arc import CircularArc
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from pancad.geometry import AbstractGeometry
 
 class EdgeSubPart(IntEnum):

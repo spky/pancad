@@ -5,13 +5,13 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from pancad.geometry import Point
-from pancad.geometry.constants import SketchConstraint
+from pancad.constants import SketchConstraint
+from pancad.geometry.point import Point
 
 from pancad.cad.freecad._application_types import FreeCADLineSegment
 
 if TYPE_CHECKING:
-    from pancad.geometry.constraints import AbstractConstraint
+    from pancad.abstract import AbstractConstraint
     from pancad.cad.freecad._application_types import FreeCADConstraint
     from pancad.cad.freecad._feature_mappers import FreeCADMap
     from pancad.cad.freecad._map_typing import SketchElementID

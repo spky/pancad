@@ -3,25 +3,18 @@
 from math import radians
 from numbers import Real
 
-from pancad.geometry import (
-    Circle,
-    CircularArc,
-    CoordinateSystem,
-    Ellipse,
-    LineSegment,
-    Sketch,
-)
+from pancad.geometry.circle import Circle
+from pancad.geometry.circular_arc import CircularArc
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.ellipse import Ellipse
+from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.sketch import Pose, Sketch, SketchGeometrySystem
-from pancad.geometry.constants import (ConstraintReference as CR,
-                                       SketchConstraint as SC)
-from pancad.geometry.constraints import (
-    make_constraint,
-    Coincident,
-    Diameter,
-    Distance,
-    Horizontal,
-    Vertical,
-)
+from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
+
+from pancad.constraints._generator import make_constraint
+from pancad.constraints.snapto import Horizontal, Vertical
+from pancad.constraints.state_constraint import Coincident
+from pancad.constraints.distance import Distance, Diameter
 
 def circle(pose: Pose=None,
            name: str="Test Circle",

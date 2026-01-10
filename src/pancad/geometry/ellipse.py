@@ -11,8 +11,10 @@ from typing import overload, Self
 
 import numpy as np
 
-from pancad.geometry import AbstractGeometry, Point, Line
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.constants import ConstraintReference
 from pancad.utils import comparison
 from pancad.utils.geometry import two_dimensional_only, no_dimensional_mismatch
 from pancad.utils.pancad_types import VectorLike

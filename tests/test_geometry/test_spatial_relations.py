@@ -5,7 +5,11 @@ from math import radians, degrees
 import os
 import unittest
 
-from pancad.geometry import Point, Line, LineSegment, Plane, spatial_relations
+from pancad.geometry import spatial_relations
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.plane import Plane
 from pancad.utils import verification, trigonometry as trig
 from pancad.constants import AngleConvention as AC
 

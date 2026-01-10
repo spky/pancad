@@ -16,7 +16,12 @@ from pancad.graphics.svg import (
 from pancad.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
 from pancad.graphics.svg.parsers import to_number
 
-from pancad.geometry import LineSegment, Point, Line, Plane, CoordinateSystem
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.plane import Plane
+from pancad.geometry.point import Point
+from pancad.geometry.coordinate_system import CoordinateSystem
+
 
 class Path:
     """A class that represents svg path elements and syncs them with pancad 

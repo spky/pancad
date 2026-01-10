@@ -5,30 +5,22 @@ from __future__ import annotations
 
 from typing import overload, TYPE_CHECKING
 
-from pancad.geometry.constants import SketchConstraint
-
-from . import (
-    AbstractConstraint,
-    AbstractStateConstraint,
-    AbstractDistance,
-    Angle,
-    Coincident,
-    Diameter,
-    Distance,
-    Equal,
-    Horizontal,
-    HorizontalDistance,
-    Parallel,
-    Perpendicular,
-    Radius,
-    Vertical,
-    VerticalDistance,
+from pancad.constants import SketchConstraint
+from pancad.constraints.distance import (
+    Angle, Diameter, Distance, HorizontalDistance, Radius, VerticalDistance
+)
+from pancad.constraints.snapto import Horizontal, Vertical
+from pancad.constraints.state_constraint import (
+    Coincident, Equal, Parallel, Perpendicular
 )
 
 if TYPE_CHECKING:
     from uuid import UUID
     from numbers import Real
-    from pancad.geometry import AbstractGeometry
+
+    from pancad.abstract import AbstractGeometry, AbstractConstraint
+    from pancad.constraints.distance import AbstractDistance
+    from pancad.constraints.distance import AbstractStateConstraint
     from pancad.geometry.constants import ConstraintReference
 
 SKETCH_CONSTRAINT_TO_CLASS = {

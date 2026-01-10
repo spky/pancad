@@ -5,10 +5,13 @@ from inspect import stack
 import unittest
 
 import pancad
-from pancad.filetypes import PartFile
-from pancad.geometry import Sketch, LineSegment, Point
-from pancad.geometry.constants import ConstraintReference
-from pancad.geometry.constraints import Angle, Coincident, Distance, Equal
+from pancad.filetypes.part_file import PartFile
+from pancad.geometry.sketch import Sketch
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.point import Point
+from pancad.constants import ConstraintReference
+from pancad.constraints.distance import Angle, Distance
+from pancad.constraints.state_constraint import Coincident, Equal
 from pancad.cad.freecad.filetypes import FreeCADFile
 from pancad.cad.freecad.freecad_python import validate_freecad
 

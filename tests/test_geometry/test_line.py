@@ -6,7 +6,9 @@ import unittest
 import numpy as np
 
 from pancad.utils import trigonometry as trig
-from pancad.geometry import Point, Line, spatial_relations
+from pancad.geometry import spatial_relations
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
 from pancad.utils import verification
 
 ROUNDING_PLACES = 10

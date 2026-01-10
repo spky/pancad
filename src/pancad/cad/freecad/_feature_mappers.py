@@ -8,15 +8,12 @@ from typing import Self, NoReturn, TYPE_CHECKING
 from uuid import UUID
 from xml.etree import ElementTree
 
-from pancad.geometry import (
-    AbstractFeature,
-    AbstractGeometry,
-    FeatureContainer,
-    PancadThing,
-    Sketch,
+from pancad.abstract import (
+    AbstractGeometry, AbstractFeature, PancadThing, AbstractConstraint
 )
-from pancad.geometry.constants import ConstraintReference
-from pancad.geometry.constraints import AbstractConstraint
+from pancad.constants import ConstraintReference
+from pancad.geometry.feature_container import FeatureContainer
+from pancad.geometry.sketch import Sketch
 
 from ._application_types import (
     FreeCADBody,
@@ -45,7 +42,7 @@ from ._map_typing import (
 if TYPE_CHECKING:
     from types import GenericAlias
     
-    from pancad import PartFile
+    from pancad.filetypes.part_file import PartFile
     
     from ._application_types import FreeCADDocument
     from ._map_typing import InternalAlignmentMap, SubFeatureMap, SubGeometryMap

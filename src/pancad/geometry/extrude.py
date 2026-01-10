@@ -4,18 +4,19 @@ starting from a sketch profile.
 from __future__ import annotations
 
 import dataclasses
-from numbers import Real
 from textwrap import indent
 from typing import TYPE_CHECKING
 
-from pancad.geometry import AbstractFeature
-from pancad.geometry.constants import FeatureType
+from pancad.abstract import AbstractFeature
+from pancad.constants import FeatureType
 from pancad.utils.text_formatting import get_table_string
 from pancad.utils.initialize import get_pancad_config
 
 if TYPE_CHECKING:
+    from numbers import Real
     from typing import NoReturn, Self
-    from pancad.geometry import AbstractGeometry, Sketch
+    from pancad.abstract import AbstractGeometry
+    from pancad.geometry.sketch import Sketch
 
 DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["extrude"]
 

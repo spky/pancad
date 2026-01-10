@@ -4,7 +4,7 @@ from enum import Flag, auto
 
 class AngleConvention(Flag):
     """An enumeration defining which angle convention to use. 3D angles are 
-    bounded between 0 and π, or 0 and 180° if using degrees, unless explicitly 
+    bounded between 0 and pi, or 0 and 180° if using degrees, unless explicitly 
     stated otherwise.
     """
     PLUS_PI = auto()

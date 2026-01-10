@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from pancad.geometry import AbstractGeometry, Point
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig, comparison
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.geometry import three_dimensions_required

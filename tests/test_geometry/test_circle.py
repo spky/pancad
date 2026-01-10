@@ -1,6 +1,7 @@
 import unittest
 
-from pancad.geometry import Circle, Point
+from pancad.geometry.circle import Circle
+from pancad.geometry.point import Point
 from pancad.utils.verification import assertPancadAlmostEqual
 
 ROUNDING_PLACES = 10

@@ -3,7 +3,7 @@ Alignment Types options.
 """
 from enum import IntEnum
 
-from pancad.geometry.constants import ConstraintReference as CR
+from pancad.constants import ConstraintReference as CR
 from pancad.cad.freecad.constants import EdgeSubPart as ESP
 
 class InternalAlignmentType(IntEnum):

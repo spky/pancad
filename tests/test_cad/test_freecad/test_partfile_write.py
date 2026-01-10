@@ -4,10 +4,10 @@ import os
 import unittest
 
 from pancad import PartFile
-from pancad.geometry import CoordinateSystem, Extrude
-from pancad.geometry.constants import (ConstraintReference as CR,
-                                       SketchConstraint as SC)
-from pancad.geometry.constraints import make_constraint
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.extrude import Extrude
+from pancad.constants import ConstraintReference as CR, SketchConstraint as SC)
+from pancad.constraints._generator import make_constraint
 from pancad.cad.freecad.freecad_python import validate_freecad
 
 from tests.sample_pancad_objects import sample_sketches

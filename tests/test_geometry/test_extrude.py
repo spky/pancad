@@ -3,11 +3,12 @@ import unittest
 import pytest
 
 from pancad.geometry.extrude import Extrude, ExtrudeSettings, DEFAULT_NAME
-from pancad.geometry.constraints import (
-    Coincident, Vertical, Horizontal,
-    Distance, HorizontalDistance, VerticalDistance,
+from pancad.constraints.state_constraint import Coincident
+from pancad.constraints.snapto import Horizontal, Vertical
+from pancad.constraints.distance import (
+    HorizontalDistance, VerticalDistance, Distance
 )
-from pancad.geometry.constants import FeatureType as FT, ConstraintReference as CR
+from pancad.constants import FeatureType as FT, ConstraintReference as CR
 
 from tests.sample_pancad_objects import sample_sketches
 

@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pancad.geometry.constraints import AbstractConstraint
+from pancad.abstract import AbstractConstraint
 
 if TYPE_CHECKING:
-    from typing import NoReturn
-    from pancad.utils.constraints import GeometryReference
-    from pancad.geometry import AbstractGeometry
-    from pancad.geometry.constants import ConstraintReference
+    from pancad.abstract import AbstractGeometry
+    from pancad.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
     """An abstract class of constraints that can be applied to a set of **one 

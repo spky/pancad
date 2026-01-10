@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from pancad.geometry import Point
+from pancad.geometry.point import Point
 from pancad.utils import verification
 
 ROUNDING_PLACES = 10

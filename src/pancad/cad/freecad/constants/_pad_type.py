@@ -3,7 +3,7 @@ FreeCAD pad types like Length, UpToShape, etc.
 """
 
 from enum import StrEnum
-from pancad.geometry.constants import FeatureType
+from pancad.constants import FeatureType
 
 MIDPLANE = "midplane"
 REVERSED = "reversed"

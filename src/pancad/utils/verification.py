@@ -4,6 +4,12 @@ from functools import singledispatch
 import math
 
 from pancad.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.plane import Plane
+from pancad.geometry.coordinate_system import CoordinateSystem
+
 
 def assertTupleAlmostEqual(self_input, 
                            tuple_a: tuple, tuple_b: tuple, places: int = 7):

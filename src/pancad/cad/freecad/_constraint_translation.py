@@ -15,23 +15,18 @@ except ImportError:
     import FreeCAD as App
     import Sketcher
 
-from pancad.geometry import LineSegment, Point
-from pancad.geometry.constraints import (
-    Angle,
-    Coincident,
-    Diameter,
-    Distance,
-    Equal,
-    Horizontal,
-    HorizontalDistance,
-    Parallel,
-    Perpendicular,
-    Radius,
-    Vertical,
-    VerticalDistance,
-    make_constraint,
+from pancad.constants import ConstraintReference
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.point import Point
+from pancad.constraints.distance import (
+    Angle, Diameter, Distance, HorizontalDistance, Radius, VerticalDistance
 )
-from pancad.geometry.constants import ConstraintReference
+from pancad.constraints.state_constraint import (
+    Coincident, Equal, Parallel, Perpendicular
+)
+from pancad.constraints.snapto import Horizontal, Vertical
+# TODO: Rename generator to non-private
+from pancad.constraints._generator import make_constraint
 
 from ._application_types import FreeCADConstraint
 from .constants import (
@@ -40,12 +35,16 @@ from .constants import (
 
 if TYPE_CHECKING:
     from uuid import UUID
-    from pancad.geometry import Sketch, AbstractGeometry, AbstractFeature
-    from pancad.geometry.constants import SketchConstraint
-    from pancad.geometry.constraints import (AbstractConstraint,
-                                             AbstractStateConstraint,
-                                             AbstractSnapTo,
-                                             Abstract2GeometryDistance)
+
+    from pancad.abstract import (
+        AbstractGeometry, AbstractFeature, AbstractConstraint
+    )
+    from pancad.constants import SketchConstraint
+    from pancad.geometry.sketch import Sketch
+    from pancad.constraints.distance import Abstract2GeometryDistance
+    from pancad.constraints.snapto import AbstractSnapTo
+    from pancad.constraints.state_constraint import AbstractStateConstraint
+
     from ._application_types import FreeCADSketch
     from ._map_typing import SketchElementID
 

@@ -7,9 +7,8 @@ from itertools import islice
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from pancad.geometry import AbstractGeometry
-from pancad.geometry.constants import ConstraintReference
-from pancad.geometry.constraints import AbstractConstraint
+from pancad.abstract import AbstractGeometry, AbstractConstraint
+from pancad.constants import ConstraintReference
 from pancad.utils.geometry import parse_pairs
 
 if TYPE_CHECKING:

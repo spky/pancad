@@ -14,10 +14,9 @@ if TYPE_CHECKING:
     from typing import Sequence
     from uuid import UUID
 
-    from pancad.geometry.abstract_feature import AbstractFeature
-    from pancad.geometry.abstract_geometry import AbstractGeometry
-    from pancad.geometry.abstract_pancad_thing import PancadThing
-    from pancad.geometry.constraints.abstract_constraint import AbstractConstraint
+    from pancad.abstract import (
+        AbstractFeature, AbstractGeometry, AbstractConstraint, PancadThing
+    )
     from pancad.geometry.sketch import SketchGeometrySystem
     from pancad.geometry.feature_container import FeatureContainer
 

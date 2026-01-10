@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pancad.exceptions import (
-    SketchGeometryHasConstraintsError
-)
-from pancad.geometry import AbstractFeature, AbstractGeometry, CoordinateSystem
-from pancad.geometry.constraints import AbstractConstraint
+from pancad.abstract import AbstractFeature, AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.exceptions import SketchGeometryHasConstraintsError
+from pancad.geometry.coordinate_system import CoordinateSystem
 from pancad.geometry.unique_lists import GeometryList, ConstraintList
-from pancad.geometry.constants import ConstraintReference
 from pancad.utils.initialize import get_pancad_config
 from pancad.utils.geometry import two_dimensions_required
 from pancad.utils.pancad_types import VectorLike
@@ -25,8 +23,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Self
 
-    from pancad.geometry.abstract_pancad_thing import PancadThing
-    from pancad.geometry import Plane, Line, Point
+    from pancad.abstract import AbstractConstraint, PancadThing
+    from pancad.geometry.line import Line
+    from pancad.geometry.plane import Plane
+    from pancad.geometry.point import Point
 
 DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["sketch"]
 

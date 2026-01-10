@@ -11,12 +11,11 @@ from typing import TYPE_CHECKING, Self
 import numpy as np
 import quaternion
 
-from pancad.geometry import (AbstractFeature,
-                             AbstractGeometry,
-                             Point,
-                             Line,
-                             Plane)
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractFeature, AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.plane import Plane
 from pancad.utils import comparison
 from pancad.utils.trigonometry import yaw_pitch_roll, rotation_2
 from pancad.utils.pancad_types import VectorLike

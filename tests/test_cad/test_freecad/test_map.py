@@ -23,12 +23,12 @@ from pancad.cad.freecad._map_typing import (
     SketchSubGeometryID,
 )
 from pancad.cad.freecad.constants import ListName
-from pancad.geometry import (LineSegment,
-                             CoordinateSystem,
-                             Sketch,
-                             FeatureContainer,
-                             Extrude,)
-from pancad.geometry.constants import ConstraintReference
+from pancad.constants import ConstraintReference
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.sketch import Sketch
+from pancad.geometry.feature_container import FeatureContainer
+from pancad.geometry.extrude import Extrude
 
 from tests.sample_pancad_objects import sample_sketches
 from tests import sample_freecad

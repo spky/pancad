@@ -2,8 +2,8 @@ import unittest
 from inspect import stack
 
 from pancad import PartFile
-from pancad.filetypes import PartFile
-from pancad.geometry import Extrude
+from pancad.filetypes.part_file import PartFile
+from pancad.geometry.extrude import Extrude
 
 from tests.sample_pancad_objects import sample_sketches
 

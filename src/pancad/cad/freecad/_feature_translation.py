@@ -16,21 +16,17 @@ except ImportError:
     import Part
     import FreeCAD as App
 
-from pancad.geometry import (
-    AbstractFeature,
-    AbstractGeometry,
-    Circle,
-    CircularArc,
-    CoordinateSystem,
-    Ellipse,
-    Extrude,
-    FeatureContainer,
-    LineSegment,
-    Point,
-    Sketch,
-)
-from pancad.geometry.extrude import ExtrudeSettings
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractFeature, AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.circle import Circle
+from pancad.geometry.circular_arc import CircularArc
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.ellipse import Ellipse
+from pancad.geometry.extrude import Extrude, ExtrudeSettings
+from pancad.geometry.feature_container import FeatureContainer
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.sketch import Sketch
 from .constants import ListName, ObjectType, PadType
 from ._application_types import (
     FreeCADBody,

@@ -3,7 +3,9 @@ import math
 import unittest
 
 import numpy as np
-from pancad.geometry import Point, Line, LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
 from pancad.utils import trigonometry as trig
 # from pancad.utils import verification
 from pancad.utils.verification import assertPancadAlmostEqual

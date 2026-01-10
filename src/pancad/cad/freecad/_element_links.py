@@ -6,16 +6,13 @@ from __future__ import annotations
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING
 
-from pancad.geometry import (
-    AbstractGeometry,
-    AbstractFeature,
-    CoordinateSystem,
-    Ellipse,
-    FeatureContainer,
-    Sketch,
-    Extrude,
-)
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry, AbstractFeature
+from pancad.constants import ConstraintReference
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.ellipse import Ellipse
+from pancad.geometry.feature_container import FeatureContainer
+from pancad.geometry.sketch import Sketch
+from pancad.geometry.extrude import Extrude
 
 from .constants import InternalAlignmentType, ListName, SketchNumber
 from ._application_types import (

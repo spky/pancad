@@ -6,11 +6,17 @@ import tomllib
 from pathlib import Path
 
 from pancad import resources, geometry
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.circle import Circle
+from pancad.geometry.circular_arc import CircularArc
+from pancad.geometry.coordinate_system import CoordinateSystem
 
-def _point(value: bytes) -> geometry.Point:
-    return geometry.Point(*map(float, value.split(b";")))
+def _point(value: bytes) -> Point:
+    return Point(*map(float, value.split(b";")))
 
-def _circle(value: bytes) -> geometry.Circle:
+def _circle(value: bytes) -> Circle:
     PARAM_COUNT_2D = 3
     if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
         *center, radius = dimensions
@@ -20,9 +26,9 @@ def _circle(value: bytes) -> geometry.Circle:
         raise NotImplementedError("3D Circles not implemented yet")
     center = tuple(map(float, center))
     radius = float(radius)
-    return geometry.Circle(center, radius)
+    return Circle(center, radius)
 
-def _line(value: bytes) -> geometry.Line:
+def _line(value: bytes) -> Line:
     PARAM_COUNT_2D = 4
     PARAM_COUNT_3D = 6
     if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
@@ -32,13 +38,13 @@ def _line(value: bytes) -> geometry.Line:
         closest_x, closest_y, closest_z, *direction = dimensions
         closest = [closest_x, closest_y, closest_z]
     else:
-        class_ = geometry.Line.__name__
+        class_ = Line.__name__
         raise ValueError(f"Wrong {class_} param count ({len(dimensions)})!")
     closest = tuple(map(float, closest))
     direction = tuple(map(float, direction))
-    return geometry.Line(geometry.Point(closest), direction)
+    return Line(Point(closest), direction)
 
-def _line_segment(value: bytes) -> geometry.LineSegment:
+def _line_segment(value: bytes) -> LineSegment:
     PARAM_COUNT_2D = 4
     PARAM_COUNT_3D = 6
     if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
@@ -48,13 +54,13 @@ def _line_segment(value: bytes) -> geometry.LineSegment:
         a_x, a_y, a_z, *b = dimensions
         a = [a_x, a_y, a_z]
     else:
-        class_ = geometry.Line.__name__
+        class_ = Line.__name__
         raise ValueError(f"Wrong {class_} param count ({len(dimensions)})!")
     a = tuple(map(float, a))
     b = tuple(map(float, b))
-    return geometry.LineSegment(a, b)
+    return LineSegment(a, b)
 
-def _circular_arc(value: bytes) -> geometry.CircularArc:
+def _circular_arc(value: bytes) -> CircularArc:
     PARAM_COUNT_2D = 5
     PARAM_COUNT_3D = 6
     if len(dimensions := value.split(b"|")) == PARAM_COUNT_2D:
@@ -67,16 +73,16 @@ def _circular_arc(value: bytes) -> geometry.CircularArc:
     elif len(dimensions) == PARAM_COUNT_3D:
         raise NotImplementedError("3D CircularArcs not implemented yet")
     else:
-        class_ = geometry.CircularArc.__name__
+        class_ = CircularArc.__name__
         raise ValueError(f"Wrong {class_} param count ({len(dimensions)})!")
     is_clockwise = bool(int(is_clockwise))
     radius = float(radius)
-    return geometry.CircularArc(center, radius, start, end, is_clockwise, normal)
+    return CircularArc(center, radius, start, end, is_clockwise, normal)
 
 def _ellipse(value: bytes) -> geometry.Ellipse:
     raise NotImplementedError
 
-def _coordinate_system(value: bytes) -> geometry.CoordinateSystem:
+def _coordinate_system(value: bytes) -> CoordinateSystem:
     raise NotImplementedError
 
 def _plane(value: bytes) -> geometry.Plane:

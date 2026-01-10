@@ -34,6 +34,7 @@ def test_get_system_dependencies(default_sketch):
 
 def test_get_sketch_dependencies(default_sketch):
     dependencies = default_sketch.get_dependencies()
+    breakpoint()
     assert len(dependencies) == 0
 
 if __name__ == "__main__":

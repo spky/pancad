@@ -6,17 +6,17 @@ to be limited to the x or y direction respectively.
 """
 from __future__ import annotations
 
-from abc import abstractmethod
 import math
-from numbers import Real
+from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from pancad.geometry.constraints import AbstractConstraint
+from pancad.abstract import AbstractConstraint
 
 if TYPE_CHECKING:
-    from pancad.geometry import AbstractGeometry
-    from pancad.geometry.constants import ConstraintReference
-    from pancad.utils.constraints import GeometryReference
+    from numbers import Real
+
+    from pancad.abstract import AbstractGeometry
+    from pancad.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more 

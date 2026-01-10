@@ -6,8 +6,10 @@ from math import radians, sqrt, cos, sin
 import numpy as np
 import quaternion
 
-from pancad.geometry import CoordinateSystem, Point, Line, Plane
-from pancad.geometry.coordinate_system import SystemParts
+from pancad.geometry.point import Point
+from pancad.geometry.coordinate_system import CoordinateSystem, SystemParts
+from pancad.geometry.line import Line
+from pancad.geometry.plane import Plane
 from pancad.utils.verification import assertPancadAlmostEqual
 from pancad.utils.trigonometry import (
     rotation_x, rotation_y, rotation_z, rotation_2, yaw_pitch_roll

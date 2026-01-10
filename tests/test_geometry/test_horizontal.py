@@ -1,8 +1,8 @@
 import unittest
 
-from pancad.geometry import Point, Line, LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.constraints import Horizontal
-from pancad.geometry.constants import ConstraintReference as CR
 
 class TestInit(unittest.TestCase):
     

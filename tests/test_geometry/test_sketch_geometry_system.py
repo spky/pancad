@@ -6,16 +6,18 @@ from __future__ import annotations
 import pytest
 from typing import TYPE_CHECKING
 
-from pancad.geometry import Point, AbstractGeometry, LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.sketch import SketchGeometrySystem
 from pancad.exceptions import (DupeUidError,
                                HasDependentsError,
                                MissingCADDependencyError)
 from pancad.geometry.unique_lists import GeometryList, ConstraintList
-from pancad.geometry.constraints import Horizontal, Coincident
+from pancad.constraints.snapto import Horizontal
+from pancad.constraints.state_constraint import Coincident
 
 if TYPE_CHECKING:
-    from pancad.geometry.constraints import AbstractConstraint
+    from pancad.abstract import AbstractConstraint, AbstractGeometry
 
 # Setting up Fixtures
 @pytest.fixture

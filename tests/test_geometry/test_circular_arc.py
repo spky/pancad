@@ -6,7 +6,8 @@ import pytest
 from numpy import array, allclose
 from numpy.testing import assert_allclose
 
-from pancad.geometry import CircularArc, Point
+from pancad.geometry.point import Point
+from pancad.geometry.circular_arc import CircularArc
 from pancad.utils.text_formatting import get_table_string
 
 def test_no_dimensional_mismatch():
