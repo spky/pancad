@@ -15,12 +15,12 @@ from typing import TYPE_CHECKING
 from pancad.exceptions import DupeUidError, HasDependentsError
 from pancad.abstract import AbstractFeature
 from pancad.geometry.sketch import Sketch
+from pancad.geometry.system import ThreeDSystem
 from pancad.geometry.unique_lists import FeatureList
 
 if TYPE_CHECKING:
     from typing import Sequence, Self
 
-# TODO: Rename to FeatureSystem
 
 class FeatureContainer(AbstractFeature):
     """A class representing a grouping of features in CAD applications. Strictly 
@@ -45,9 +45,9 @@ class FeatureContainer(AbstractFeature):
                  context: FeatureContainer=None,) -> None:
         self.uid = uid
         self._features = FeatureList(self, features)
-        self.name = name
         self.context = context
         self._uid_to_feature = {self.uid: self}
+        super().__init__(name)
 
     # Public Methods #
     def add_feature(self, feature: AbstractFeature) -> Self:

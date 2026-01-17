@@ -8,7 +8,9 @@ from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
 from pancad.geometry.ellipse import Ellipse
 from pancad.geometry.line_segment import LineSegment
-from pancad.geometry.sketch import Pose, Sketch, SketchGeometrySystem
+from pancad.geometry.system import TwoDSketchSystem
+from pancad.geometry.sketch import Pose, Sketch
+
 from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
 
 from pancad.constraints._generator import make_constraint
@@ -26,7 +28,7 @@ def circle(pose: Pose=None,
     if center is None:
         center = (0, 0)
     circle = Circle(center, radius)
-    system = SketchGeometrySystem([circle])
+    system = TwoDSketchSystem([circle])
     if pose is None:
         pose = Pose.from_yaw_pitch_roll((0, 0, 0), 0, 0, 0)
     system.constraints.extend(
@@ -54,7 +56,7 @@ def square(pose: Pose=None,
     right = LineSegment(bottom_right, top_right)
     top = LineSegment(top_right, top_left)
     left = LineSegment(top_left, bottom_left)
-    system = SketchGeometrySystem([bottom, right, top, left])
+    system = TwoDSketchSystem([bottom, right, top, left])
     if include_constraints:
         system.constraints.extend(
             [
@@ -116,7 +118,7 @@ def rounded_square(pose: Pose=None,
     a_tr = CircularArc(c_tr, radius, (1, 0), (0, 1), False)
     a_tl = CircularArc(c_tl, radius, (0, 1), (-1, 0), False)
     geometry = [b, r, t, l, a_bl, a_br, a_tr, a_tl]
-    system = SketchGeometrySystem(geometry)
+    system = TwoDSketchSystem(geometry)
     if include_constraints:
         system.constraints.extend(
             [
@@ -159,7 +161,7 @@ def ellipse(pose: CoordinateSystem=None,
     b = 10
     unit = "mm"
     geometry = [ellipse]
-    system = SketchGeometrySystem([ellipse])
+    system = TwoDSketchSystem([ellipse])
     if include_constraints:
         system.constraints.extend(
             [

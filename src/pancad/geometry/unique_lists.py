@@ -165,8 +165,48 @@ class FeatureList(UniqueCADList):
             return self._parent
         return super().__getitem__(index)
 
+class FeatureGeometryList(UniqueCADList):
+    """A class managing the list of geometry that a feature owns. Feature 
+    geometry includes any geometry that would need to be deleted if the 
+    feature was deleted.
+    """
+    __type_name = "Feature Geometry"
 
-class UniqueSketchList(UniqueCADList):
+    def __init__(self, parent: AbstractFeature,
+                 values: Sequence[AbstractGeometry]) -> None:
+        super().__init__(parent, values)
+
+    def insert(self, index: int, value: AbstractGeometry) -> None:
+        """Inserts the object into the list and assigns its feature to the 
+        list's parent.
+        """
+        super().insert(index, value)
+        self._assign_feature(value)
+
+    def _assign_feature(self, value: AbstractGeometry) -> None:
+        if value.feature is not None:
+            raise ValueError(f"{self._type_name} '{value}' is already"
+                             f" in another feature: '{value.feature}'")
+        value.feature = self._parent
+
+    def __delitem__(self, index: int) -> None:
+        """Deletes object from list and removes its feature."""
+        previous_value = self._values[index]
+        super().__delitem__(index)
+        # Remove the feature from exiting geometry
+        previous_value.feature = None
+
+    def __setitem__(self, index: int,
+                    value: AbstractConstraint | AbstractGeometry) -> None:
+        """Replaces object in list and removes the old object's feature."""
+        previous_value = self._values[index]
+        super().__setitem__(index, value)
+        self._assign_feature(value)
+        # Remove the feature from exiting geometry
+        previous_value.feature = None
+
+
+class UniqueSketchElementList(UniqueCADList):
     """A class managing the interfaces for CAD sketch lists."""
     def insert(self, index: int,
                value: AbstractConstraint | AbstractGeometry) -> None:
@@ -179,18 +219,23 @@ class UniqueSketchList(UniqueCADList):
     # Private Methods
     def _assign_system(self,
                        value: AbstractConstraint | AbstractGeometry) -> None:
-        """Assigns the system of the object to the list's parent."""
+        """Assigns the system of the sketch element to the list's parent and the 
+        feature to the parent's feature.
+        """
         if value.system is not None:
             raise ValueError(f"{self._type_name} '{value}' is already"
                              f" in another system: '{value.system}'")
         value.system = self._parent
+        value.feature = self._parent.feature
 
     # Dunders
     def __delitem__(self, index: int) -> None:
         """Deletes object from list and removes its system."""
         previous_value = self._values[index] # -1 is not allowed here
         super().__delitem__(index)
-        previous_value.system = None # Remove the system from exiting geometry
+        # Remove the system from exiting element
+        previous_value.system = None
+        previous_value.feature = None
 
     def __setitem__(self, index: int,
                     value: AbstractConstraint | AbstractGeometry) -> None:
@@ -198,13 +243,14 @@ class UniqueSketchList(UniqueCADList):
         previous_value = self._values[index] # -1 is not allowed here
         super().__setitem__(index, value)
         self._assign_system(value)
-        previous_value.system = None # Remove the system from exiting geometry
+        # Remove the system from exiting element
+        previous_value.system = None
+        previous_value.feature = None
 
 
-class GeometryList(UniqueSketchList):
-    """A class managing a mutable list of sketch geometry. The sketch's 
-    coordinate_system does not contribute to the lists's length, but is 
-    accessible at index -1.
+class SketchGeometryList(UniqueSketchElementList):
+    """A class managing a mutable list of geometry. The list's parent does not 
+    contribute to the lists's length, but is accessible at index -1.
 
     :param parent: The SketchGeometrySystem that contains this list.
     :param values: Geometry to initialize the list with.
@@ -227,7 +273,7 @@ class GeometryList(UniqueSketchList):
         return super().__getitem__(index)
 
 
-class ConstraintList(UniqueSketchList):
+class SketchConstraintList(UniqueSketchElementList):
     """A class managing a mutable list of sketch constraints and their 
     dependencies.
 
@@ -249,7 +295,7 @@ class ConstraintList(UniqueSketchList):
     def insert(self, index: int, value: AbstractConstraint) -> None:
         """Inserts the constraint into the constraint list.
         
-        :raises SketchMissingDependencyError: When not all constraint 
+        :raises MissingCADDependencyError: When not all constraint
             dependencies are in the constraint lists's associated system.
         """
         self._raise_if_missing_dependencies(value)
@@ -263,7 +309,7 @@ class ConstraintList(UniqueSketchList):
 
     # Private Methods
     def _raise_if_missing_dependencies(self, value: AbstractConstraint):
-        """Raises a SketchMissingDependencyError when not all of a constraint's 
+        """Raises a MissingCADDependencyError when not all of a constraint's 
         dependencies are in the list's system.
         """
         if missing := self.missing_dependencies(value):
@@ -273,7 +319,7 @@ class ConstraintList(UniqueSketchList):
     def __setitem__(self, index: int, value: AbstractConstraint) -> None:
         """Sets the index to the constraint.
         
-        :raises SketchMissingDependencyError: When not all constraint 
+        :raises MissingCADDependencyError: When not all constraint 
             dependencies are in the constraint lists's parent.
         """
         self._raise_if_missing_dependencies(value)

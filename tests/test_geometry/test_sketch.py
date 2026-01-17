@@ -20,7 +20,7 @@ def default_sketch(request):
 
 @pytest.fixture
 def constraint_in_sketch(default_sketch):
-    yield default_sketch.system.constraints[0]
+    yield default_sketch.geometry_system.constraints[0]
 
 def test_get_constraint_dependencies(constraint_in_sketch, default_sketch):
     dependencies = constraint_in_sketch.get_dependencies()
@@ -28,13 +28,12 @@ def test_get_constraint_dependencies(constraint_in_sketch, default_sketch):
     assert dependencies[0] is default_sketch
 
 def test_get_system_dependencies(default_sketch):
-    dependencies = default_sketch.system.get_dependencies()
+    dependencies = default_sketch.geometry_system.get_dependencies()
     assert len(dependencies) == 1
     assert dependencies[0] is default_sketch
 
 def test_get_sketch_dependencies(default_sketch):
     dependencies = default_sketch.get_dependencies()
-    breakpoint()
     assert len(dependencies) == 0
 
 if __name__ == "__main__":

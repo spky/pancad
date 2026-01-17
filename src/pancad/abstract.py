@@ -14,13 +14,13 @@ if TYPE_CHECKING:
     from typing import Self
     from uuid import UUID
 
-    from pancad.geometry.sketch import SketchGeometrySystem
-
 
 class PancadThing(ABC):
     """An abstract class defining the properties and methods that all pancad 
     elements, constraints, or whatever must have with no exceptions.
     """
+    def __init__(self, system: PancadThing=None):
+        self.system = system
 
     STR_VERBOSE = False
     """A flag allowing pancad objects to print detailed strings and reprs."""
@@ -40,6 +40,25 @@ class PancadThing(ABC):
         else:
             self._uid = value
 
+    @property
+    def system(self) -> PancadThing | None:
+        """The system that defines the object's location and dependencies. Some 
+        objects like files representing parts or assemblies can exist by 
+        themselves, which should be represented by settings those objects' 
+        system to None.
+        """
+        return self._system
+    @system.setter
+    def system(self, value: PancadThing | None) -> None:
+        self._system = value
+
+    @abstractmethod
+    def get_dependencies(self) -> list[PancadThing]:
+        """Returns the object's external dependencies. Dependencies are anything 
+        that if deleted or not present in the object's system the object 
+        would not be able to function.
+        """
+
     @abstractmethod
     def __repr__(self) -> str:
         strings = ["<", self.__class__.__name__, "{details}", ">"]
@@ -51,25 +70,12 @@ class PancadThing(ABC):
     def __str__(self) -> str:
         return repr(self)
 
-
 class AbstractFeature(PancadThing):
     """A class defining the interfaces provided by pancad Feature elements."""
-    # Abstract Methods
-    @abstractmethod
-    def get_dependencies(self) -> tuple[AbstractFeature]:
-        """Returns the feature's external dependencies."""
 
-    # Public Methods
-    @property
-    def context(self) -> AbstractFeature | None:
-        """Returns the feature that contains the feature. If context is None, 
-        then the feature's context is the top level of the file that the feature 
-        is inside of.
-        """
-        return self._context
-    @context.setter
-    def context(self, value: AbstractFeature | None) -> None:
-        self._context = value
+    def __init__(self, system: PancadThing=None, name: str="") -> None:
+        super().__init__(system)
+        self._name = name
 
     # Properties #
     @property
@@ -77,25 +83,68 @@ class AbstractFeature(PancadThing):
         """The name of the feature. Usually user assigned or automatically 
         generated. Does not need to be unique.
         """
-        if hasattr(self, "_name"):
-            return self._name
-        return ""
+        return self._name
     @name.setter
     def name(self, value: str) -> str | None:
         self._name = value
 
+    # Abstract Methods
+    @abstractmethod
+    def get_dependencies(self) -> tuple[AbstractFeature]:
+        """Returns the feature's external feature dependencies."""
+
+class AbstractFeatureSystem(AbstractFeature):
+    """A feature managing the locations and dependencies of features inside 
+    it.
+    """
+
+    @abstractmethod
+    def get_dependencies(self) -> list[AbstractFeature]:
+        """Must return the features that the system depends on."""
+
+    @abstractmethod
+    def get_dependents(self, element: PancadThing) -> list[PancadThing]:
+        """Must return any elements that depend on the element in the context of
+        the system.
+        """
 
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""
-    def __init__(self,
-                 references: dict[ConstraintReference, AbstractGeometry]
+    def __init__(self, references: dict[ConstraintReference, AbstractGeometry],
+                 *,
+                 system: AbstractGeometrySystem=None,
+                 feature: AbstractFeature=None,
                  ) -> None:
         self._references = references
+        super().__init__(system)
+        self.feature = feature
         for _, child in self.children.items():
             if child.uid != self.uid:
                 child.parent = self
 
-    # Properties
+    @property
+    def feature(self) -> AbstractFeature:
+        """The feature that owns this geometry element."""
+        return self._feature
+    @feature.setter
+    def feature(self, value: AbstractFeature) -> None:
+        self._feature = value
+        for child in self.children:
+            if child is self:
+                continue
+            child.feature = value
+
+    @property
+    def system(self) -> PancadThing | None:
+        return self._system
+    @system.setter
+    def system(self, value: PancadThing | None) -> None:
+        self._system = value
+        for child in self.children:
+            if child is self:
+                continue
+            child.system = value
+
     @property
     def parent(self) -> AbstractGeometry | None:
         """The parent of the geometry.
@@ -135,21 +184,14 @@ class AbstractGeometry(PancadThing):
         return {reference: self.get_reference(reference)
                 for reference in self.get_all_references()}
 
-    @property
-    def system(self) -> SketchGeometrySystem | None:
-        """The system the geometry is in. Some geometry can exist by itself, 
-        coordinate systems and planes can be in 3D sketches or exist as 
-        separate features, for example, so this defaults to None unless set by a 
-        higher level like a SketchGeometrySystem.
-        """
-        if not hasattr(self, "_system"):
-            return None
-        return self._system
-    @system.setter
-    def system(self, value: SketchGeometrySystem) -> None:
-        self._system = value
-
     # Public Methods
+    def get_dependencies(self) -> list[AbstractFeature]:
+        """Returns the features that this geometry element depends on."""
+        dependencies = []
+        if self.feature:
+            dependencies.append(self.feature)
+        return dependencies
+
     def get_reference(self, reference: ConstraintReference) -> AbstractGeometry:
         """Returns the subgeometry associated with the reference."""
         return self._references[reference]
@@ -172,13 +214,42 @@ class AbstractGeometry(PancadThing):
         is 2D or 3D.
         """
 
+class AbstractGeometrySystem(AbstractGeometry):
+    """A type of geometry defining interfaces provided by systems of pancad 
+    Geometry elements. A geometry system is a system managing interfaces between 
+    geometry and constraints. All geometry system geometry is defined relative 
+    to the geometry system's internal coordinate system.
+    """
+
+    @abstractmethod
+    def get_dependencies(self) -> list[AbstractFeature]:
+        """Must return the features that the system depends on."""
+
+    @abstractmethod
+    def get_dependents(self, element: PancadThing) -> list[PancadThing]:
+        """Must return any elements that depend on the element in the context of
+        the system.
+        """
 
 class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint 
     Elements.
     """
+    def __init__(self,
+                 system: AbstractGeometrySystem=None,
+                 feature: AbstractFeature=None) -> None:
+        self.system = system
+        self.feature = feature
 
     # Properties
+    @property
+    def feature(self) -> AbstractFeature:
+        """The feature that owns this constraint."""
+        return self._feature
+    @feature.setter
+    def feature(self, value: AbstractFeature):
+        self._feature = value
+
     @property
     def _geometry(self) -> list[AbstractGeometry]:
         """The geometry being constrained"""
@@ -196,7 +267,7 @@ class AbstractConstraint(PancadThing):
         self.__pairs = value
 
     @property
-    def system(self) -> SketchGeometrySystem | None:
+    def system(self) -> AbstractGeometrySystem | None:
         """The system the constraint is in. This defaults to None unless set by 
         a higher level context like a SketchGeometrySystem object.
         """
@@ -204,14 +275,19 @@ class AbstractConstraint(PancadThing):
             return None
         return self._system
     @system.setter
-    def system(self, value: SketchGeometrySystem) -> None:
+    def system(self, value: AbstractGeometrySystem) -> None:
         self._system = value
 
     # Public Methods
     def get_dependencies(self) -> list[AbstractFeature]:
         """Returns the features that this constraint depends on."""
-        geometry_deps = [geometry.system.feature
-                         for geometry in self.get_parents()]
+        geometry_deps = []
+        for geometry in self.get_parents():
+            if geometry.feature is None:
+                raise ValueError(f"Geometry '{geometry}' cannot be constrained"
+                                 " if its feature is None")
+            geometry_deps.append(geometry.feature)
+        geometry_deps = [geometry.feature for geometry in self.get_parents()]
         return list(set([self.system.feature] + geometry_deps))
 
     def get_parents(self) -> list[AbstractGeometry]:
