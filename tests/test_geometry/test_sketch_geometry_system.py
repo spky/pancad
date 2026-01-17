@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 
 from pancad.geometry.point import Point
 from pancad.geometry.line_segment import LineSegment
-from pancad.geometry.sketch import SketchGeometrySystem
+from pancad.geometry.system import TwoDSketchSystem
 from pancad.exceptions import (DupeUidError,
                                HasDependentsError,
                                MissingCADDependencyError)
-from pancad.geometry.unique_lists import GeometryList, ConstraintList
+from pancad.geometry.unique_lists import SketchGeometryList, SketchConstraintList
 from pancad.constraints.snapto import Horizontal
 from pancad.constraints.state_constraint import Coincident
 
@@ -21,19 +21,19 @@ if TYPE_CHECKING:
 
 # Setting up Fixtures
 @pytest.fixture
-def empty_system() -> SketchGeometrySystem:
-    yield SketchGeometrySystem()
+def empty_system() -> TwoDSketchSystem:
+    yield TwoDSketchSystem()
 
 @pytest.fixture
 def single_point() -> Point:
     yield Point(0, 0)
 
 @pytest.fixture
-def empty_geometry_list(empty_system) -> GeometryList:
+def empty_geometry_list(empty_system) -> SketchGeometryList:
     yield empty_system.geometry
 
 @pytest.fixture
-def empty_constraint_list(empty_system) -> GeometryList:
+def empty_constraint_list(empty_system) -> SketchGeometryList:
     yield empty_system.constraints
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def list_of_points() -> list[Point]:
     yield [Point(0, 0), Point(1, 1), Point(2, 2)]
 
 @pytest.fixture(params=["list_of_points"])
-def multiple_geometry_list(empty_geometry_list, request) -> GeometryList:
+def multiple_geometry_list(empty_geometry_list, request) -> SketchGeometryList:
     empty_geometry_list.extend(request.getfixturevalue(request.param))
     yield empty_geometry_list
 
@@ -111,11 +111,13 @@ def test_geometry_list_index(multiple_geometry_list):
 def test_assign_system(system_just_geometry):
     for geometry in system_just_geometry.geometry:
         assert geometry.system is system_just_geometry
+        assert geometry.feature is None
 
 def test_delete_geometry_system(system_just_geometry):
     geometry = system_just_geometry.geometry[0]
     del system_just_geometry.geometry[0]
     assert geometry.system is None
+    assert geometry.feature is None
 
 def test_delete_geometry_with_constraints(system_with_constraints):
     with pytest.raises(HasDependentsError):
