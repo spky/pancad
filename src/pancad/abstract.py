@@ -93,20 +93,6 @@ class AbstractFeature(PancadThing):
     def get_dependencies(self) -> tuple[AbstractFeature]:
         """Returns the feature's external feature dependencies."""
 
-class AbstractFeatureSystem(AbstractFeature):
-    """A feature managing the locations and dependencies of features inside 
-    it.
-    """
-
-    @abstractmethod
-    def get_dependencies(self) -> list[AbstractFeature]:
-        """Must return the features that the system depends on."""
-
-    @abstractmethod
-    def get_dependents(self, element: PancadThing) -> list[PancadThing]:
-        """Must return any elements that depend on the element in the context of
-        the system.
-        """
 
 class AbstractGeometry(PancadThing):
     """A class defining the interfaces provided by pancad Geometry Elements."""

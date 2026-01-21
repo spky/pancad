@@ -24,3 +24,4 @@ CoordinateSystem = "CoordinateSystem"
 [features.default_names]
 extrude = "Extrude"
 sketch = "Sketch"
+feature_container = "Container"

@@ -363,3 +363,69 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                    indent(f"Origin ({point_str})", indentation),
                    indent("\n".join(axis_strs), indentation),]
         return "\n".join(summary)
+
+class Pose(AbstractGeometry):
+    """The position and orientation of a 3D object."""
+    def __init__(self, coordinate_system: CoordinateSystem,
+                 *, uid: str=None) -> None:
+        self.uid = uid
+        if (dimensions := len(coordinate_system)) != 3:
+            raise ValueError("Expected 3D coordinate system,"
+                             f" got {dimensions}D: {coordinate_system}")
+        self._coordinate_system = coordinate_system
+        super().__init__(
+            {
+                ConstraintReference.CORE: self,
+                ConstraintReference.ORIGIN: self._coordinate_system.origin,
+                ConstraintReference.FRONT: self._coordinate_system.get_xy_plane(),
+                ConstraintReference.RIGHT: self._coordinate_system.get_xz_plane(),
+                ConstraintReference.TOP: self._coordinate_system.get_yz_plane(),
+                ConstraintReference.CS: self._coordinate_system,
+            }
+        )
+
+    @classmethod
+    def from_yaw_pitch_roll(cls, position: Point | VectorLike,
+                            yaw: Real=0, pitch: Real=0, roll: Real=0,
+                            **kwargs) -> None:
+        """Initializes a Pose from yaw, pitch, and roll angles in radians."""
+        coordinate_system = CoordinateSystem(position, yaw, pitch, roll)
+        return cls(coordinate_system, **kwargs)
+
+    @property
+    def coordinate_system(self) -> CoordinateSystem:
+        """Internal coordinate_system representing the the Pose."""
+        return self.get_reference(ConstraintReference.CS)
+
+    @property
+    def origin(self) -> Point:
+        """The origin point of the Pose's internal coordinate_system."""
+        return self.get_reference(ConstraintReference.ORIGIN)
+
+    @property
+    def front(self) -> Plane:
+        """Front plane of the Pose."""
+        return self.get_reference(ConstraintReference.FRONT)
+
+    @property
+    def right(self) -> Plane:
+        """Right plane of the Pose."""
+        return self.get_reference(ConstraintReference.RIGHT)
+
+    @property
+    def top(self) -> Plane:
+        """Top plane of the Pose."""
+        return self.get_reference(ConstraintReference.TOP)
+
+    def update(self, other: Pose) -> Self:
+        """Updates the position and orientation of the Pose to the other Pose."""
+        self.coordinate_system.update(other.coordinate_system)
+        return self
+
+    def __len__(self) -> int:
+        """Returns the number of dimensions of the Pose. Poses are always 3D."""
+        return 3
+
+    def __repr__(self) -> str:
+        origin = str(tuple(self.origin)).replace(" ", "")
+        return super().__repr__().format(details=f"{origin}")

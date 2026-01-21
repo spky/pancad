@@ -15,7 +15,7 @@ from pancad.utils.initialize import get_pancad_config
 if TYPE_CHECKING:
     from numbers import Real
     from typing import NoReturn, Self
-    from pancad.abstract import AbstractGeometry
+    from pancad.abstract import AbstractGeometry, AbstractFeatureSystem
     from pancad.geometry.sketch import Sketch
 
 DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["extrude"]
@@ -23,7 +23,7 @@ DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["extrude"]
 @dataclasses.dataclass
 class ExtrudeSettings:
     """A dataclass containing the constant settings for an Extrude feature.
-    
+
     :param type_: The active type of the Extrude that sets whether the extrude 
         is linear, midplane, etc.
     :param length: The length of the Extrude when a static length is active.
@@ -38,10 +38,7 @@ class ExtrudeSettings:
     length: Real = 0
     opposite_length: Real = 0
     unit: str = None
-    name: str = DEFAULT_NAME
     def __post_init__(self):
-        if self.name is None:
-            self.name = DEFAULT_NAME
         if self.length < 0:
             raise ValueError(f"length cannot be <0, got {self.length}")
         if self.opposite_length < 0:
@@ -71,20 +68,22 @@ class Extrude(AbstractFeature):
     VALUE_STR_FORMAT = "{value}{unit}"
     # Feature Type Checking Class Constants #
     def __init__(self, profile: Sketch, settings: ExtrudeSettings,
-                 *, uid: str=None, context: AbstractFeature=None) -> None:
+                 *,
+                 name: str=DEFAULT_NAME, uid: str=None,
+                 system: AbstractFeature=None) -> None:
+        super().__init__(system, name)
+        self.uid = uid
         self.profile = profile
         self.settings = settings
-        self.uid = uid
-        self.context = context
 
     # Class Methods #
     @classmethod
     def from_length(cls, profile: Sketch, length: Real, *,
-                    context: AbstractFeature=None, uid: str=None,
-                    **settings) -> Self:
+                    name: str=DEFAULT_NAME, uid: str=None,
+                    system: AbstractFeature=None, **settings) -> Self:
         """Initializes a linear extrude from length dimensions.
-        
-        :param profile: The sketch defining the extrusion 2D shape.
+
+        :param profile: The Sketch feature defining the extrusion's 2D shape.
         :param length: The length of the extrusion the direction specified by 
             the extrusion type relative to the profile sketch.
         :param uid: The unique id of the Extrude. Defaults to None.
@@ -99,7 +98,7 @@ class Extrude(AbstractFeature):
             raise TypeError(f"type_ '{type_}' needs more than one length.")
         settings.pop("type_", None)
         return cls(profile, ExtrudeSettings(type_, length, **settings),
-                   uid=uid, context=context)
+                   name=name, uid=uid, system=system)
 
     # Properties #
     @property
@@ -109,13 +108,6 @@ class Extrude(AbstractFeature):
     @length.setter
     def length(self, value: Real) -> None:
         self.settings = dataclasses.replace(self.settings, length=value)
-
-    @property
-    def name(self) -> str:
-        return self.settings.name
-    @name.setter
-    def name(self, value: str) -> None:
-        self.settings = dataclasses.replace(self.settings, name=value)
 
     @property
     def opposite_length(self) -> Real:
@@ -142,8 +134,11 @@ class Extrude(AbstractFeature):
         self.settings = dataclasses.replace(self.unit, unit=value)
 
     # Public Methods #
-    def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
-        return (self.profile,)
+    def get_dependencies(self) -> list[AbstractFeature]:
+        dependencies = [self.profile]
+        if self.system is not None:
+            dependencies.append(self.system.feature)
+        return dependencies
 
     def get_length_string(self) -> str:
         """Return length value with the associated unit."""
@@ -166,4 +161,4 @@ class Extrude(AbstractFeature):
 
     # Python Dunders #
     def __repr__(self) -> str:
-        return super().__repr__(details=f"'{self.name}'{self.type_}")
+        return super().__repr__().format(details=f"'{self.name}'{self.type_!r}")

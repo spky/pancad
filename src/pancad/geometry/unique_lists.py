@@ -17,8 +17,7 @@ if TYPE_CHECKING:
     from pancad.abstract import (
         AbstractFeature, AbstractGeometry, AbstractConstraint, PancadThing
     )
-    from pancad.geometry.sketch import SketchGeometrySystem
-    from pancad.geometry.feature_container import FeatureContainer
+    from pancad.geometry.system import SketchGeometrySystem, FeatureSystem
 
 
 class UniqueCADList(MutableSequence):
@@ -33,7 +32,7 @@ class UniqueCADList(MutableSequence):
     __type_name = "PancadThing"
 
     def __init__(self,
-                 parent: FeatureContainer,
+                 parent: PancadThing,
                  values: Sequence[PancadThing]=None) -> None:
         self._parent = parent
         self._values = []
@@ -60,7 +59,7 @@ class UniqueCADList(MutableSequence):
             ) from exc
 
     def insert(self, index: int, value: PancadThing) -> None:
-        """Inserts the feature into the feature list.
+        """Inserts the pancad element into the list.
 
         :raises DupeUidError: When a duped uid value is added to the list.
         """
@@ -79,18 +78,16 @@ class UniqueCADList(MutableSequence):
         list. Used when trying to add geometry to the list.
         """
         if value in self:
-            raise DupeUidError(
-                f"{self._type_name} {value} uid: {value.uid} already in list."
-            )
+            msg = f"{self._type_name} {value} uid: {value.uid} already in list."
+            raise DupeUidError(msg)
 
     def _raise_if_has_dependents(self, value: PancadThing) -> None:
-        """Raises a SketchGeometryHasConstraintsError if geometry still has 
+        """Raises a HasDependentsError if geometry still has 
         constraints. Used when trying to delete geometry from list.
         """
         if dependents := self._parent.get_dependents(value):
-            raise HasDependentsError(
-                f"{self._type_name} {value} has dependents: {dependents}"
-            )
+            msg = f"{self._type_name} {value} has dependents: {dependents}"
+            raise HasDependentsError(msg)
 
     # Dunders
     def __getitem__(self, index: int) -> PancadThing:
@@ -129,21 +126,29 @@ class UniqueCADList(MutableSequence):
         return str(self._values)
 
 
-class FeatureList(UniqueCADList):
-    """A class managing a mutable list of CAD features. The list's parent 
-    does not contribute to the lists's length, but is accessible at index -1.
+class SystemFeatureList(UniqueCADList):
+    """A class managing a mutable list of CAD features inside of a 
+    FeatureSystem. The list's parent does not contribute to the lists's 
+    length, but is accessible at index -1.
 
-    :param parent: The FeatureContainer containing this list.
+    :param parent: The system containing this list.
     :param values: Features to initialize the list with.
     """
     __type_name = "Feature"
 
     def __init__(self,
-                 parent: FeatureContainer,
+                 parent: FeatureSystem,
                  values: Sequence[AbstractFeature]) -> None:
         super().__init__(parent, values)
 
     # Public Methods
+    def insert(self, index: int, value: AbstractFeature) -> None:
+        """Inserts the object into the list and assigns its system to the 
+        list's parent.
+        """
+        super().insert(index, value)
+        self._assign_system(value)
+
     def get_by_name(self, name: str) -> AbstractFeature:
         """Returns the first feature with the matching name.
 
@@ -152,18 +157,35 @@ class FeatureList(UniqueCADList):
         try:
             return next(value for value in self if value.name == name)
         except StopIteration as exc:
-            raise LookupError(
-                f"No {self._type_name} with name '{name}' found."
-            ) from exc
+            msg = f"No {self._type_name} with name '{name}' found."
+            raise LookupError(msg) from exc
 
     def get_contents(self) -> list[AbstractFeature]:
-        return [self._parent] + super().get_contents()
+        if self._parent.feature is not None:
+            return [self._parent.feature] + super().get_contents()
+        return super().get_contents()
+
+    #Private Methods
+    def _assign_system(self, value: AbstractFeature) -> None:
+        if value.system is not None:
+            raise ValueError(f"{self._type_name} '{value}' is already"
+                             f" in another system: '{value.system}'")
+        value.system = self._parent
 
     # Dunders
     def __getitem__(self, index: int) -> AbstractFeature:
         if index == -1:
-            return self._parent
+            return self._parent.feature
         return super().__getitem__(index)
+
+    def __setitem__(self, index: int,
+                    value: AbstractConstraint | AbstractGeometry) -> None:
+        """Replaces object in list and removes the old object's system."""
+        previous_value = self._values[index] # -1 is not allowed here
+        super().__setitem__(index, value)
+        self._assign_system(value)
+        # Remove the system from exiting element
+        previous_value.system = None
 
 class FeatureGeometryList(UniqueCADList):
     """A class managing the list of geometry that a feature owns. Feature 
@@ -205,6 +227,31 @@ class FeatureGeometryList(UniqueCADList):
         # Remove the feature from exiting geometry
         previous_value.feature = None
 
+class FeatureConstraintList(UniqueCADList):
+    """A class managing the mutable list of constraints between features and 
+    their dependencies.
+    """
+    __type_name = "Constraint"
+
+    def __init__(self,
+                 parent: FeatureSystem,
+                 values: Sequence[AbstractConstraint]) -> None:
+        
+        super().__init__(parent, values)
+
+    def missing_dependencies(self,
+                             value: AbstractConstraint) -> list[AbstractFeature]:
+        """Returns missing feature dependencies for a constraint."""
+        return [geometry.feature for geometry in value.get_parents()
+                if geometry.feature not in self._parent]
+
+    def _raise_if_missing_dependencies(self, value: AbstractConstraint):
+        """Raises a MissingCADDependencyError when not all of a constraint's 
+        dependencies are in the list's system.
+        """
+        if missing := self.missing_dependencies(value):
+            msg = f"Constraint '{value}' missing feature dependency: {missing}"
+            raise MissingCADDependencyError(msg)
 
 class UniqueSketchElementList(UniqueCADList):
     """A class managing the interfaces for CAD sketch lists."""
