@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from pancad.abstract import AbstractConstraint
 
 if TYPE_CHECKING:
-    from pancad.abstract import AbstractGeometry
+    from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
 class AbstractSnapTo(AbstractConstraint):
@@ -22,8 +22,10 @@ class AbstractSnapTo(AbstractConstraint):
         the geometry to be constrained.
     :param uid: The unique id of the constraint.
     """
-    def __init__(self, *geometry: AbstractGeometry, uid: str=None) -> None:
+    def __init__(self, *geometry: AbstractGeometry,
+                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
         self.uid = uid
+        super().__init__(system)
         if len(geometry) not in [1, 2]:
             raise ValueError(f"Expected 1 or 2 geometries, got: {geometry}")
         if any(len(g) != 2 for g in geometry):

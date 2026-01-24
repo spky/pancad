@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from pancad.abstract import AbstractConstraint
 
 if TYPE_CHECKING:
-    from pancad.abstract import AbstractGeometry
+    from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
 
 class AbstractStateConstraint(AbstractConstraint):
     """An abstract class for constraints that force **exactly two** geometry
@@ -22,24 +22,13 @@ class AbstractStateConstraint(AbstractConstraint):
     :param geometry: The geometries to be constrained.
     :param uid: The unique id of the constraint.
     """
-    def __init__(self, *geometry: AbstractGeometry, uid: str=None) -> None:
+    def __init__(self, *geometry: AbstractGeometry,
+                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
         self.uid = uid
+        super().__init__(system)
         if len(geometry) != 2:
             raise ValueError(f"Expected 2 geometries, provided {geometry}")
         self._geometry = geometry
-
-    # Python Dunders #
-    def __eq__(self, other: AbstractStateConstraint) -> bool:
-        """Checks whether two state constraints are functionally the same by
-        comparing the memory ids of their geometries.
-
-        :param other: Another constraint of the same type.
-        :returns: Whether the relations are the same.
-        """
-        geometry_zip = zip(self.get_geometry(), other.get_geometry())
-        if isinstance(other, self.__class__):
-            return all(g is other_g for g, other_g in geometry_zip)
-        return NotImplemented
 
 class Coincident(AbstractStateConstraint):
     """A constraint that forces two geometry elements to occupy the same

@@ -142,6 +142,11 @@ class SystemFeatureList(UniqueCADList):
         super().__init__(parent, values)
 
     # Public Methods
+    def index(self, value: AbstractFeature) -> int:
+        if value is self._parent.feature:
+            return -1
+        return super().index(value)
+
     def insert(self, index: int, value: AbstractFeature) -> None:
         """Inserts the object into the list and assigns its system to the 
         list's parent.
@@ -187,6 +192,67 @@ class SystemFeatureList(UniqueCADList):
         # Remove the system from exiting element
         previous_value.system = None
 
+class FeatureConstraintList(UniqueCADList):
+    """A class managing the mutable list of constraints between features and 
+    their dependencies.
+    """
+    __type_name = "Constraint"
+
+    def __init__(self,
+                 parent: FeatureSystem,
+                 values: Sequence[AbstractConstraint]) -> None:
+        # TODO: Check for constraint dependencies
+        for value in values:
+            self._raise_if_missing_dependencies(value)
+        super().__init__(parent, values)
+
+    # Public Methods
+    def insert(self, index: int, value: AbstractConstraint) -> None:
+        """Inserts the object into the list and assigns its system to the 
+        list's parent.
+        """
+        super().insert(index, value)
+        self._assign_system(value)
+
+    def missing_dependencies(self,
+                             value: AbstractConstraint) -> list[AbstractFeature]:
+        """Returns missing feature dependencies for a constraint."""
+        return [geometry.feature for geometry in value.get_parents()
+                if geometry.feature not in self._parent]
+
+    #Private Methods
+    def _assign_system(self, value: AbstractConstraint) -> None:
+        if value.system is not None:
+            msg = (f"{self._type_name} '{value}' is already"
+                   f" in another system: '{value.system}'")
+            raise ValueError(msg)
+        if value.feature is not None:
+            msg = (f"{self._type_name} '{value}' is already"
+                   f" in another feature: '{value.feature}'")
+            raise ValueError(msg)
+        value.system = self._parent
+        value.feature = self._parent.feature
+
+    def _raise_if_missing_dependencies(self, value: AbstractConstraint):
+        """Raises a MissingCADDependencyError when not all of a constraint's 
+        dependencies are in the list's system.
+        """
+        if missing := self.missing_dependencies(value):
+            msg = f"Constraint '{value}' missing feature dependency: {missing}"
+            raise MissingCADDependencyError(msg)
+
+    # Dunders
+    def __setitem__(self, index: int, value: AbstractConstraint) -> None:
+        """Replaces object in list and removes the old object's system and 
+        feature.
+        """
+        previous_value = self._values[index] # -1 is not allowed here
+        super().__setitem__(index, value)
+        self._assign_system(value)
+        # Remove the system from exiting element
+        previous_value.system = None
+        previous_value.feature = None
+
 class FeatureGeometryList(UniqueCADList):
     """A class managing the list of geometry that a feature owns. Feature 
     geometry includes any geometry that would need to be deleted if the 
@@ -226,32 +292,6 @@ class FeatureGeometryList(UniqueCADList):
         self._assign_feature(value)
         # Remove the feature from exiting geometry
         previous_value.feature = None
-
-class FeatureConstraintList(UniqueCADList):
-    """A class managing the mutable list of constraints between features and 
-    their dependencies.
-    """
-    __type_name = "Constraint"
-
-    def __init__(self,
-                 parent: FeatureSystem,
-                 values: Sequence[AbstractConstraint]) -> None:
-        
-        super().__init__(parent, values)
-
-    def missing_dependencies(self,
-                             value: AbstractConstraint) -> list[AbstractFeature]:
-        """Returns missing feature dependencies for a constraint."""
-        return [geometry.feature for geometry in value.get_parents()
-                if geometry.feature not in self._parent]
-
-    def _raise_if_missing_dependencies(self, value: AbstractConstraint):
-        """Raises a MissingCADDependencyError when not all of a constraint's 
-        dependencies are in the list's system.
-        """
-        if missing := self.missing_dependencies(value):
-            msg = f"Constraint '{value}' missing feature dependency: {missing}"
-            raise MissingCADDependencyError(msg)
 
 class UniqueSketchElementList(UniqueCADList):
     """A class managing the interfaces for CAD sketch lists."""

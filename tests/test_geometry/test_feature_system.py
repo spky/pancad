@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from pancad.constraints.state_constraint import AlignAxes
 from pancad.geometry.feature_container import FeatureContainer
 from pancad.geometry.extrude import Extrude
 from pancad.geometry.system import FeatureSystem
@@ -36,6 +37,28 @@ def init_system(init_container) -> FeatureSystem:
     yield init_container.feature_system
 
 def test_add_extrude(init_system, iso_sketch, iso_extrude):
-    init_system.features.extend([iso_sketch, iso_extrude])
-    print(init_system)
-    print([(feature, feature.get_dependencies()) for feature in init_system.features])
+    constraints = [
+        AlignAxes(init_system.coordinate_system,
+                  iso_sketch.pose.coordinate_system),
+    ]
+    init_system.features.append(iso_sketch)
+    init_system.constraints.extend(constraints)
+    init_system.features.append(iso_extrude)
+    # print(init_system)
+    # print([(feature, feature.get_dependencies()) for feature in init_system.features])
+    from pprint import pp
+    print("\nDirect Dependents")
+    pp(
+        {feature: init_system.get_direct_dependents(feature)
+         for feature in init_system.features.get_contents()}
+    )
+    print("\nTopo Dependents")
+    pp(
+        {feature: init_system.get_dependents(feature)
+         for feature in init_system.features.get_contents()}
+    )
+    print("\nDependencies")
+    pp(
+        {feature: feature.get_dependencies()
+         for feature in init_system.features.get_contents()}
+    )

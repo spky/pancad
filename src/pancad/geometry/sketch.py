@@ -47,10 +47,6 @@ class Sketch(AbstractFeature):
         application requires a human-readable name for the sketch element.
     :param uid: The unique id of the Sketch. Defaults to None.
     """
-    # Class Constants
-    CONSTRAINT_GEOMETRY_TYPE_STR = "{0}-{1}"
-    """Sets the format of constraint constrained geometry summaries."""
-
     def __init__(self, geometry_system: TwoDSketchSystem, pose: Pose,
                  *,
                  system: AbstractFeatureSystem=None,
@@ -87,11 +83,12 @@ class Sketch(AbstractFeature):
 
     # Public Functions #
     def get_dependencies(self) -> tuple[AbstractFeature]:
-        dependencies = [dep for dep in self.geometry_system.get_dependencies()
-                        if dep.uid != self.uid]
-        if self.system is not None:
-            dependencies.append(self.system.feature)
-        return dependencies
+        dependencies = set(super().get_dependencies())
+        dependencies.update(
+            {dep for dep in self.geometry_system.get_dependencies()
+             if dep.uid != self.uid}
+        )
+        return list(dependencies)
 
     # Python Dunders #
     def __repr__(self) -> str:

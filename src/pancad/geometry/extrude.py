@@ -135,10 +135,9 @@ class Extrude(AbstractFeature):
 
     # Public Methods #
     def get_dependencies(self) -> list[AbstractFeature]:
-        dependencies = [self.profile]
-        if self.system is not None:
-            dependencies.append(self.system.feature)
-        return dependencies
+        dependencies = set(super().get_dependencies())
+        dependencies.add(self.profile)
+        return list(dependencies)
 
     def get_length_string(self) -> str:
         """Return length value with the associated unit."""

@@ -14,6 +14,7 @@ from pancad.geometry.unique_lists import (
     SystemFeatureList,
     FeatureConstraintList,
 )
+import graphlib
 
 if TYPE_CHECKING:
     from pancad.abstract import (
@@ -101,6 +102,8 @@ class FeatureSystem(AbstractGeometrySystem):
             if child is self:
                 continue
             child.feature = value
+        for constraint in self.constraints:
+            constraint.feature = value
 
     #Public Methods
     def get_dependencies(self) -> list[AbstractFeature]:
@@ -111,9 +114,90 @@ class FeatureSystem(AbstractGeometrySystem):
             dependencies.update(constraint.get_dependencies())
         return list(dependencies)
 
-    def get_dependents(self) -> list[AbstractFeature]:
-        # TODO: Implement FeatureSystem.get_dependents
-        raise NotImplementedError("Not yet!")
+    def get_topo_index(self, value: AbstractFeature | AbstractConstraint) -> int:
+        """Returns the index of the value that defines its place in the system's 
+        topological ordering.
+        
+        :raises LookupError: When the value is not in the system.
+        """
+        if value not in self:
+            msg = f"Provided value '{value}' is not in system '{self}'"
+            raise LookupError(msg)
+        # Determine the topological index of the value
+        if value in self.constraints:
+            # Constraint topological indices are the index of its last
+            # constrained feature, since the constraint can't exist without all
+            # of its features.
+            return max(self.features.index(feat)
+                       for feat in value.get_dependencies())
+        else:
+            return self.features.index(value)
+
+    def get_constraints_on(self, value: AbstractFeature
+                           ) -> list[AbstractConstraint]:
+        """Returns the constraints applied to the value inside the system."""
+        constraints = []
+        for constraint in self.constraints:
+            deps = constraint.get_dependencies()
+            if any(dep.uid == value.uid for dep in deps):
+                constraints.append(constraint)
+        return constraints
+
+    def get_topo_dependencies(self, value: AbstractFeature | AbstractConstraint
+                              ) -> list[AbstractFeature]:
+        """Returns the dependencies of the value from its topological ordering
+        For example, a sketch inside the system would be dependent on the 
+        features involved in constraining its pose.
+        """
+        dependencies = set()
+        index = self.get_topo_index(value)
+
+        # Find dependencies from constraints
+        for constraint in self.get_constraints_on(value):
+            dependencies.update(dep for dep in constraint.get_dependencies()
+                                if self.get_topo_index(dep) < index)
+        return list(dependencies)
+
+    def get_dependents(self, value: AbstractFeature | AbstractConstraint=None
+                       ) -> list[AbstractFeature]:
+        """Returns features that depend on the element, accounting for the
+        topological ordering of the features.
+        """
+        dependents = []
+        if value not in self:
+            msg = f"Provided value '{value}' is not in system '{self}'"
+            raise LookupError(msg)
+        index = self.get_topo_index(value)
+        return [dep for dep in self.get_direct_dependents(value)
+                if self.get_topo_index(dep) > index]
+
+    def get_direct_dependents(self, feature: AbstractFeature
+                              ) -> list[AbstractFeature]:
+        """Finds the dependencies of the feature not accounting for topological
+        order.
+        """
+        if feature not in self:
+            msg = f"Provided feature '{feature}' is not in system '{self}'"
+            raise LookupError(msg)
+        dependents = set()
+
+        # Get features constrained together with the feature.
+        for constraint in self.get_constraints_on(feature):
+            deps = constraint.get_dependencies()
+            dependents.update(dep for dep in deps if dep.uid != feature.uid)
+
+        # Check for features directly referencing the feature.
+        for other in self.features:
+            if other.uid == feature.uid:
+                continue
+            if any(dep.uid == feature.uid for dep in other.get_dependencies()):
+                dependents.add(other)
+        return list(dependents)
+
+    def get_topo_order(self) -> list[AbstractFeature]:
+        """Returns a non-unique topological ordering of the features."""
+        # dependency_graph = {feature.uid: 
+        # sorter = graphlib.TopologicalSorter(
 
     def update(self, other: FeatureSystem) -> Self:
         """Updates the coordinate_system of the system to match 
@@ -125,7 +209,7 @@ class FeatureSystem(AbstractGeometrySystem):
 
     # Python Dunders
     def __contains__(self, item: PancadThing) -> bool:
-        return item in self.features or item in self.constraints
+        return item in [*self.features, *self.constraints, self.feature]
 
     def __len__(self) -> int:
         return len(self.coordinate_system)
@@ -316,8 +400,8 @@ class SketchGeometrySystem(AbstractGeometrySystem):
                 dependents.append(constraint)
         return dependents
 
-    def get_applied_constraints(self, geometry: AbstractGeometry
-                                ) -> list[AbstractConstraint]:
+    def get_constraints_on(self, geometry: AbstractGeometry
+                           ) -> list[AbstractConstraint]:
         """Returns the sketch constraints that are applied to the geometry."""
         constraints = []
         for constraint in self.constraints:

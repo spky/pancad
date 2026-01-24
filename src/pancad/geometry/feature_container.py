@@ -74,15 +74,6 @@ class FeatureContainer(AbstractFeature):
     def pose(self, value: Pose) -> None:
         self._pose.update(value)
 
-    # Public Methods #
-    def get_dependencies(self) -> tuple[AbstractFeature]:
-        if self.context is None:
-            return self._features
-        return self._features + (self.context,)
-
-    def get_dependents(self, element: AbstractFeature) -> list[AbstractFeature]:
-        raise NotImplementedError("Not yet!")
-
     # Python Dunders #
     def __contains__(self, item: object) -> bool:
         if item.uid in self._uid_to_feature:

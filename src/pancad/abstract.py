@@ -88,10 +88,14 @@ class AbstractFeature(PancadThing):
     def name(self, value: str) -> str | None:
         self._name = value
 
-    # Abstract Methods
-    @abstractmethod
-    def get_dependencies(self) -> tuple[AbstractFeature]:
+    def get_dependencies(self) -> list[AbstractFeature]:
         """Returns the feature's external feature dependencies."""
+        if self.system is not None and self is not self.system:
+            dependencies = set()
+            dependencies.add(self.system.feature)
+            dependencies.update(self.system.get_topo_dependencies(self))
+            return list(dependencies)
+        return []
 
 
 class AbstractGeometry(PancadThing):
@@ -222,14 +226,16 @@ class AbstractConstraint(PancadThing):
     Elements.
     """
     def __init__(self,
-                 system: AbstractGeometrySystem=None,
-                 feature: AbstractFeature=None) -> None:
+                 system: AbstractGeometrySystem=None) -> None:
         self.system = system
-        self.feature = feature
+        if system:
+            self.feature = system.feature
+        else:
+            self.feature = None
 
     # Properties
     @property
-    def feature(self) -> AbstractFeature:
+    def feature(self) -> AbstractFeature | None:
         """The feature that owns this constraint."""
         return self._feature
     @feature.setter
