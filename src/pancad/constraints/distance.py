@@ -51,18 +51,6 @@ class AbstractValue(AbstractConstraint):
             return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
         return str(self.value)
     # Shared Dunder Methods
-    def __eq__(self, other: AbstractValue) -> bool:
-        """Checks whether two value relations are functionally the same by 
-        comparing the memory ids of their geometries and the values of the 
-        constraints.
-        
-        :param other: Another value constraint of the same type.
-        :returns: Whether the relations are functionally the same.
-        """
-        geometry_zip = zip(self.get_geometry(), other.get_geometry())
-        if isinstance(other, self.__class__):
-            return all(g is other_g for g, other_g in geometry_zip)
-        return NotImplemented
     def __str__(self) -> str:
         super_str = super().__str__().removesuffix(">")
         return f"{super_str}[{self.value}{self.unit}]>"

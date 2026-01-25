@@ -33,19 +33,6 @@ class AbstractSnapTo(AbstractConstraint):
             raise ValueError(f"Non-2D Geometry provided: {non_two_dimensional}")
         self._geometry = geometry
 
-    # Python Dunders
-    def __eq__(self, other: AbstractSnapTo) -> bool:
-        """Checks whether two snapto relations are functionally the same by 
-        comparing the memory ids of their constrained geometries.
-        
-        :param other: Another SnapTo relationship of the same type.
-        :returns: Whether the relations are the same.
-        """
-        geometry_zip = zip(self.get_geometry(), other.get_geometry())
-        if isinstance(other, self.__class__):
-            return all(g is other_g for g, other_g in geometry_zip)
-        return NotImplemented
-
 class Horizontal(AbstractSnapTo):
     """A constraint that sets either a single geometry horizontal or a pair of 
     geometries horizontal relative to each other in a 2D coordinate system. Can 

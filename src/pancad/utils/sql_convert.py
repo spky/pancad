@@ -12,6 +12,8 @@ from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.geometry.ellipse import Ellipse
+from pancad.geometry.plane import Plane
 
 def _point(value: bytes) -> Point:
     return Point(*map(float, value.split(b";")))
@@ -79,13 +81,13 @@ def _circular_arc(value: bytes) -> CircularArc:
     radius = float(radius)
     return CircularArc(center, radius, start, end, is_clockwise, normal)
 
-def _ellipse(value: bytes) -> geometry.Ellipse:
+def _ellipse(value: bytes) -> Ellipse:
     raise NotImplementedError
 
 def _coordinate_system(value: bytes) -> CoordinateSystem:
     raise NotImplementedError
 
-def _plane(value: bytes) -> geometry.Plane:
+def _plane(value: bytes) -> Plane:
     raise NotImplementedError
 
 

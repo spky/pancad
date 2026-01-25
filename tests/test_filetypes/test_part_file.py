@@ -1,7 +1,6 @@
 import unittest
 from inspect import stack
 
-from pancad import PartFile
 from pancad.filetypes.part_file import PartFile
 from pancad.geometry.extrude import Extrude
 

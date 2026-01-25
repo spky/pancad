@@ -2,7 +2,7 @@ import unittest
 
 from pancad.geometry.point import Point
 from pancad.geometry.line_segment import LineSegment
-from pancad.geometry.constraints import Horizontal
+from pancad.constraints.snapto import Horizontal
 
 class TestInit(unittest.TestCase):
     

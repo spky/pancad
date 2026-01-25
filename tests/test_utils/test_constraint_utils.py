@@ -1,7 +1,6 @@
 import pytest
 
 from pancad.geometry.line_segment import LineSegment
-from pancad.geometry import LineSegment
 from pancad.constants import ConstraintReference
 from pancad.utils.constraints import constraint_args
 

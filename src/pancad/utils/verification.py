@@ -3,7 +3,6 @@ correctly."""
 from functools import singledispatch
 import math
 
-from pancad.geometry import Point, Line, LineSegment, Plane, CoordinateSystem
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment

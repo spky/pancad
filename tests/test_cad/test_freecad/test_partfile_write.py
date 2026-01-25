@@ -3,10 +3,10 @@ from inspect import stack
 import os
 import unittest
 
-from pancad import PartFile
+from pancad.filetypes.part_file import PartFile
 from pancad.geometry.coordinate_system import CoordinateSystem
 from pancad.geometry.extrude import Extrude
-from pancad.constants import ConstraintReference as CR, SketchConstraint as SC)
+from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
 from pancad.constraints._generator import make_constraint
 from pancad.cad.freecad.freecad_python import validate_freecad
 

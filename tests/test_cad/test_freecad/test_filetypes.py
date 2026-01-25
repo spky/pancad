@@ -2,7 +2,7 @@ from os.path import join
 from pathlib import Path
 import unittest
 
-from pancad import PartFile
+from pancad.filetypes.part_file import PartFile
 from pancad.cad.freecad.filetypes import FreeCADFile
 from tests import SAMPLE_FREECAD
 from tests.utils import delete_all_suffix

@@ -14,7 +14,7 @@ except ImportError:
     import Sketcher
     import Part
 
-from pancad import PartFile
+from pancad.filetypes.part_file import PartFile
 from pancad.cad.freecad._feature_mappers import FreeCADMap
 from pancad.cad.freecad._map_typing import (
     FeatureID,

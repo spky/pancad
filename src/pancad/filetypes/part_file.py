@@ -33,7 +33,7 @@ class PartFile(PancadThing):
     """A class representing a part file in CAD applications. pancad defines a 
     part file that contains geometry definition for one object and different 
     geometry configurations of that object.
-    
+
     :param filename: The name of the file. Any extension at the end of the file 
         will be removed. Defaults to 'New_PartFile'.
     :param container: The primary container for the PartFile. Contains all 
@@ -98,7 +98,7 @@ class PartFile(PancadThing):
     @property
     def filename(self) -> str:
         """The filename of the PartFile. Does not contain a path or extension.
-        
+
         :getter: Returns the filename of the PartFile.
         :setter: Sets the filename of the PartFile. Removes any extensions from 
             the input string.
@@ -107,7 +107,7 @@ class PartFile(PancadThing):
     @property
     def features(self) -> tuple[AbstractFeature]:
         """The features inside the PartFile.
-        
+
         :getter: Returns the features inside the PartFile's FeatureContainer.
         :setter: Replaces the features inside the feature's FeatureContainer. 
             Adds a default settings coordinate system if the first element in 
@@ -136,7 +136,7 @@ class PartFile(PancadThing):
         is added before adding the feature. If a sketch without a coordinate 
         system is provided, the coordinate system at index 0 will be 
         assigned to it.
-        
+
         :param feature: The feature to add.
         :returns: The updated PartFile.
         :raises LookupError: Raised if the feature's dependencies are not 
@@ -161,7 +161,7 @@ class PartFile(PancadThing):
         return self
     def get_feature(self, uid: str | UUID) -> AbstractFeature:
         """Returns the feature with the given uid.
-        
+
         :raises LookupError: When no feature with the uid is in the file or its 
             subcontainers.
         """
