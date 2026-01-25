@@ -151,6 +151,7 @@ class SystemFeatureList(UniqueCADList):
         """Inserts the object into the list and assigns its system to the 
         list's parent.
         """
+        self._raise_if_missing_dependencies(value)
         super().insert(index, value)
         self._assign_system(value)
 
@@ -170,6 +171,20 @@ class SystemFeatureList(UniqueCADList):
             return [self._parent.feature] + super().get_contents()
         return super().get_contents()
 
+    def missing_dependencies(self,
+                             value: AbstractFeature) -> list[AbstractFeature]:
+        """Returns missing feature dependencies for a feature."""
+        return [feature for feature in value.get_dependencies()
+                if feature not in self._parent]
+
+    def _raise_if_missing_dependencies(self, value: AbstractFeature):
+        """Raises a MissingCADDependencyError when not all of a constraint's 
+        dependencies are in the list's system.
+        """
+        if missing := self.missing_dependencies(value):
+            msg = f"{self.__type_name} '{value}' missing dependency: {missing}"
+            raise MissingCADDependencyError(msg)
+
     #Private Methods
     def _assign_system(self, value: AbstractFeature) -> None:
         if value.system is not None:
@@ -186,6 +201,7 @@ class SystemFeatureList(UniqueCADList):
     def __setitem__(self, index: int,
                     value: AbstractConstraint | AbstractGeometry) -> None:
         """Replaces object in list and removes the old object's system."""
+        self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
         super().__setitem__(index, value)
         self._assign_system(value)
@@ -211,6 +227,7 @@ class FeatureConstraintList(UniqueCADList):
         """Inserts the object into the list and assigns its system to the 
         list's parent.
         """
+        self._raise_if_missing_dependencies(value)
         super().insert(index, value)
         self._assign_system(value)
 
@@ -247,6 +264,7 @@ class FeatureConstraintList(UniqueCADList):
         feature.
         """
         previous_value = self._values[index] # -1 is not allowed here
+        self._raise_if_missing_dependencies(value)
         super().__setitem__(index, value)
         self._assign_system(value)
         # Remove the system from exiting element

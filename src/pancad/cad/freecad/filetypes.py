@@ -22,29 +22,32 @@ from .freecad_python import validate_freecad
 from ._feature_mappers import FreeCADMap
 
 if TYPE_CHECKING:
-    from ._application_types import FreeCADBody
+    from ._application_types import FreeCADBody, FreeCADDocument
 
 class FreeCADFile:
     """A class representing FreeCAD files. Provides functionality to translate 
     the file to a pancad filetype.
-    
+
     :param filepath: The location of the FreeCAD file.
     """
     STORED_UNIT = "mm" # Values are always stored internally as this unit
     EXTENSION = ".FCStd"
-    
-    def __init__(self, filepath: str) -> None:
-        self.filepath = filepath
-        self._document = App.open(self.filepath)
-        no_bodies = len(self._get_bodies())
-        if no_bodies == 0:
+
+    def __init__(self, document: FreeCADDocument) -> None:
+        self._document = document
+        if (no_bodies := self._get_bodies()) == 0:
             raise NotImplementedError("Files without a body are not supported")
         elif no_bodies == 1:
             self._init_part_file_like()
         else:
             raise NotImplementedError("Multiple bodies are not supported")
-    
-    # Class Methods #
+
+    # Class Methods
+    @classmethod
+    def from_fcstd(cls, filepath: str | Path) -> Self:
+        document = App.open(filepath)
+        return cls(document)
+
     @classmethod
     def from_partfile(cls, part_file: PartFile, filepath: str) -> Self:
         """Creates and saves a FreeCAD file from a pancad PartFile.
@@ -54,24 +57,31 @@ class FreeCADFile:
         :returns: The new FreeCADFile.
         :raises ValueError: When part_file is not a PartFile.
         """
+        document = App.newDocument()
+        document.FileName = filepath
+        mapping = FreeCADMap(document, part_file)
+        if part_file.container.name is None:
+            # FreeCAD bodies have to be named or FreeCAD won't add it
+            part_file.container.name = "Body"
+        mapping.add_pancad_feature(part_file.container)
         if isinstance(part_file, PartFile):
             # Use __new__ to bypass the init function
             new_file = cls.__new__(cls)
             new_file._document = App.newDocument()
             new_file.filepath = filepath
             new_file.document.FileName = new_file.filepath
-            
+
             mapping = FreeCADMap(new_file.document, part_file)
             if part_file.container.name is None:
                 # The body has to be named or FreeCAD won't add it
                 part_file.container.name = "Body"
             mapping.add_pancad_feature(part_file.container)
-            
+
             new_file.save()
             return new_file
         else:
             raise ValueError(f"Filetype {file.__class__} not recognized")
-    
+
     # Getters #
     @property
     def document(self) -> App.Document:
@@ -81,7 +91,7 @@ class FreeCADFile:
         :setter: Read-only.
         """
         return self._document
-    
+
     @property
     def filepath(self) -> str:
         """The filepath of the FreeCADFile.
@@ -152,10 +162,8 @@ class FreeCADFile:
     # Private Methods #
     def _get_bodies(self) -> list[FreeCADBody]:
         """Returns a list of all body objects in the file."""
-        return list(
-            filter(lambda obj: obj.TypeId == ObjectType.BODY,
-                   self._document.Objects)
-        )
+        doc_objects = self._document.Objects
+        return [obj for obj in doc_objects if obj.TypeId == ObjectType.BODY]
     
     def _init_part_file_like(self) -> None:
         """Initializes a part-like file from FreeCAD."""
@@ -165,7 +173,7 @@ class FreeCADFile:
         self._mapping = FreeCADMap(self._document, self._part_file)
         body = self._get_bodies()[0]
         self._mapping.add_freecad_feature(body)
-    
+
     # Python Dunders #
     def __fs_path__(self):
         return self.filepath

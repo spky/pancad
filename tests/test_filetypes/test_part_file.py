@@ -20,7 +20,7 @@ class TestPartFileInitialization(unittest.TestCase):
         for filename in tests:
             with self.subTest(string_in=filename, expected=expected):
                 file = PartFile(filename)
-                self.assertEqual(file.filename, expected)
+                self.assertEqual(file.name, expected)
 
 class TestPartFile(unittest.TestCase):
     def setUp(self):
