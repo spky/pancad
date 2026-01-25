@@ -76,20 +76,7 @@ class FeatureContainer(AbstractFeature):
 
     # Python Dunders #
     def __contains__(self, item: object) -> bool:
-        if item.uid in self._uid_to_feature:
-            return True
-        for subcontainer in filter(lambda f: isinstance(f, FeatureContainer),
-                                   self.features):
-            # Search through all FeatureContainers inside this FeatureContainer
-            # Also search through their subcontainers.
-            if item in subcontainer:
-                return True
-        for sketch in filter(lambda f: isinstance(f, Sketch),
-                             self.features):
-            # Search through sketches for sketch geometry.
-            if item in sketch:
-                return True
-        return False
+        return item is self or item in self.feature_system or item is self.pose
 
     def __repr__(self) -> str:
         return super().__repr__().format(details=f"'{self.name}'")

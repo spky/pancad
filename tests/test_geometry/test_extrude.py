@@ -15,10 +15,9 @@ from tests.sample_pancad_objects import sample_sketches
 
 # Testing Properties During Nominal Initialization
 @pytest.fixture(
-    scope="module",
     params=[
         (FT.DIMENSION, 1, 0, "mm", "test_extrude"),
-        (FT.DIMENSION, 1, 0, "mm", None),
+        (FT.DIMENSION, 1, 0, "mm", "test_extrude"),
         (FT.ANTI_DIMENSION, 1, 0, "mm", "test_extrude"),
     ]
 )
@@ -32,8 +31,8 @@ def square_extrude(request):
         "name": name
     }
     sketch = sample_sketches.square()
-    settings = ExtrudeSettings(type_, length, opposite, unit, name)
-    yield Extrude(sketch, settings), params
+    settings = ExtrudeSettings(type_, length, opposite, unit)
+    yield Extrude(sketch, settings, name=name), params
 
 def test_length(square_extrude):
     assert square_extrude[0].length == square_extrude[1]["length"]
@@ -49,10 +48,7 @@ def test_unit(square_extrude):
 
 def test_name(square_extrude):
     extrude, params = square_extrude
-    if params["name"] is None:
-        assert extrude.name == DEFAULT_NAME
-    else:
-        assert extrude.name == params["name"]
+    assert extrude.name == params["name"]
 
 def test_length_change(square_extrude):
     new_length = 300

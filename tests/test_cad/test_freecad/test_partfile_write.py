@@ -1,5 +1,6 @@
 from functools import partial
 from inspect import stack
+from pathlib import Path
 import os
 import unittest
 
@@ -22,7 +23,8 @@ class TestPartFileToFreeCADSingleBody(unittest.TestCase):
         self.dump = os.path.dirname(dump.__file__)
     
     def tearDown(self):
-        os.remove(self.filepath)
+        path = Path(self.filepath)
+        path.unlink(missing_ok=True)
         delete_all_suffix(self.dump, ".FCBak")
     
     def test_create_body(self):
@@ -94,8 +96,8 @@ class TestPartFileSquareSketchVariationsToFreeCAD(unittest.TestCase):
         self.dump = os.path.dirname(dump.__file__)
     
     def tearDown(self):
-        filepath = os.path.join(self.dump, self.file.filename + ".FCStd")
-        os.remove(filepath)
+        path = Path(self.dump) / (self.file.filename + ".FCStd")
+        path.unlink(missing_ok=True)
     
     def finish_to_freecad(self):
         filepath = os.path.join(self.dump, self.file.filename + ".FCStd")

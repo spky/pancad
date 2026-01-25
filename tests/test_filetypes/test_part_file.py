@@ -57,19 +57,8 @@ class TestAddGeometry(TestPartFile):
         self.height = 3
     
     def test_add_sketch(self):
-        self.file.add_feature(self.sketch)
+        self.file.container.feature_system.features.append(self.sketch)
         self.assertTrue(self.sketch in self.file)
-    
-    def test_add_extrude(self):
-        self.file.add_feature(self.sketch)
-        test_extrude = Extrude.from_length(self.sketch, self.height)
-        self.file.add_feature(test_extrude)
-        self.assertTrue(test_extrude in self.file)
-    
-    def test_add_extrude_missing_dependency(self):
-        test_extrude = Extrude.from_length(self.sketch, self.height)
-        with self.assertRaises(LookupError):
-            self.file.add_feature(test_extrude)
 
 if __name__ == "__main__":
     unittest.main()

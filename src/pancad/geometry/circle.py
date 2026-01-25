@@ -147,4 +147,5 @@ class Circle(AbstractGeometry):
         return len(self.center)
 
     def __repr__(self) -> str:
+        center_str = str(self.center.cartesian).replace(" ", "")
         return super().__repr__().format(details=f"{center_str}r{self.radius}")

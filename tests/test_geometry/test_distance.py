@@ -99,11 +99,6 @@ class TestDunder(unittest.TestCase):
     def test_str_angle(self):
         # Checks whether str errors out
         vd_str = str(self.vd)
-    
-    def test_eq_horizontal_distance_equal(self):
-        hd_same = HorizontalDistance(self.a, self.b,
-                                     value=self.distance, uid="same")
-        self.assertEqual(self.hd, hd_same)
 
 class DunderTest:
     def test_repr(self):

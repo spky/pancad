@@ -2,6 +2,7 @@ import os
 from math import sqrt, radians
 from numbers import Real
 from inspect import stack
+from pathlib import Path
 import unittest
 
 import pancad
@@ -63,7 +64,8 @@ class TestSketches(unittest.TestCase):
         return sketch
     
     def tearDown(self):
-        os.remove(os.path.join(self.dump, self.file.filename + ".FCStd"))
+        path = Path(self.dump) / (self.file.name + ".FCStd")
+        path.unlink(missing_ok=True)
     
     def test_line_angled_to_x_axis(self):
         self.file = PartFile(stack()[0].function + ".FCStd")
@@ -82,6 +84,6 @@ class TestSketches(unittest.TestCase):
         for quadrant, angle, start_to_end in quadrant_angle:
             sketch = self.line_angled_to_x_axis(quadrant, angle, start_to_end)
             self.file.add_feature(sketch)
-        filepath = os.path.join(self.dump, self.file.filename + ".FCStd")
+        filepath = os.path.join(self.dump, self.file.name + ".FCStd")
         self.file.to_freecad(filepath)
         validate_freecad(filepath)

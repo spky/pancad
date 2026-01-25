@@ -210,4 +210,4 @@ class Plane(AbstractGeometry):
                     vector_strings.append(f"{component:g}")
             strings.append(",".join(vector_strings))
         point, normal = strings
-        return super().__repr__().format(f"({point})({normal})")
+        return super().__repr__().format(details=f"({point})({normal})")
