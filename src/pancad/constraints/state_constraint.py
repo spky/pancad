@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.abstract import AbstractConstraint
+from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
@@ -59,3 +60,4 @@ class AlignAxes(AbstractStateConstraint):
     """A constraint that forces two coordinate systems to share the same
     location and the same respective axis directions.
     """
+    type_ = SketchConstraint.ALIGN_AXES

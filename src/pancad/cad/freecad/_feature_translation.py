@@ -57,7 +57,7 @@ def _pancad_to_freecad_feature(self,
 
 @_pancad_to_freecad_feature.register
 def _coordinate_system(self, system: CoordinateSystem) -> FreeCADOrigin:
-    parent = self[system.context]
+    parent = self[system.feature]
     origin = parent.Origin
     self._id_map[origin.ID] = origin
     for subfeature in origin.OriginFeatures:
@@ -78,22 +78,42 @@ def _extrude(self, pancad_extrude: Extrude) -> FreeCADFeature:
 
 @_pancad_to_freecad_feature.register
 def _feature_container(self, container: FeatureContainer) -> FreeCADBody:
+    # A container creates a FreeCAD Body. FreeCAD Bodies have an origin, axes, 
+    # and planes created inside of them when initialized.
     body = self._document.addObject(ObjectType.BODY, container.name)
+    origin = body.Origin
+    sys = container.feature_system
+    to_origin_feats = {
+        "X_Axis": sys.x_axis,
+        "Y_Axis": sys.y_axis,
+        "Z_Axis": sys.z_axis,
+        "XY_Plane": sys.xy_plane,
+        "XZ_Plane": sys.xz_plane,
+        "YZ_Plane": sys.yz_plane,
+    }
     self._id_map[body.ID] = body
+    self._id_map[origin.ID] = origin
+    for feature in origin.OriginFeatures:
+        self._id_map[feature.ID] = feature
+        pc_geo = to_origin_feats[feature.Name]
+        self._pancad_to_freecad[pc_geo.uid] = (pc_geo, feature.ID)
     return body
 
 @_pancad_to_freecad_feature.register
 def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     # Creates both the feature and the equivalent geometry inside the sketch.
     sketch = self._document.addObject(ObjectType.SKETCH, pancad_sketch.name)
-    sketch_plane = self[pancad_sketch.coordinate_system,
-                        pancad_sketch.plane_reference]
-    parent = self[pancad_sketch.context]
+    feat_sys = pancad_sketch.system
+    support = pancad_sketch.get_support()
+    sketch_plane = self[support]
+    breakpoint()
+    parent = self[feat_sys.feature]
     parent.addObject(sketch)
     sketch.AttachmentSupport = (sketch_plane, [""])
     sketch.MapMode = "FlatFace"
     sketch.Label = pancad_sketch.name
     self._id_map[sketch.ID] = sketch
+    geo_sys = sketch.geometry_system
     
     # Add geometry in the sketch
     pancad_pairs = zip(pancad_sketch.geometry, pancad_sketch.construction)

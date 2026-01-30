@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.abstract import AbstractFeature, AbstractGeometry
-from pancad.constants import ConstraintReference
+from pancad.constants import ConstraintReference, SketchConstraint
 from pancad.exceptions import SketchGeometryHasConstraintsError
 from pancad.geometry.coordinate_system import Pose
 from pancad.geometry.unique_lists import FeatureGeometryList
@@ -47,13 +47,17 @@ class Sketch(AbstractFeature):
         application requires a human-readable name for the sketch element.
     :param uid: The unique id of the Sketch. Defaults to None.
     """
-    def __init__(self, geometry_system: TwoDSketchSystem, pose: Pose,
+    def __init__(self, geometry_system: TwoDSketchSystem=None, pose: Pose=None,
                  *,
                  system: AbstractFeatureSystem=None,
                  name: str=DEFAULT_NAME,
                  uid: str=None):
         super().__init__(system, name)
         self.uid = uid
+        if pose is None:
+            pose = Pose.from_yaw_pitch_roll((0, 0, 0), 0, 0, 0)
+        if geometry_system is None:
+            geometry_system = TwoDSketchSystem()
         self._pose = pose
         self._geometry_system = geometry_system
         self._feature_geometry = FeatureGeometryList(
@@ -89,6 +93,38 @@ class Sketch(AbstractFeature):
              if dep.uid != self.uid}
         )
         return list(dependencies)
+
+    def get_support(self) -> AbstractFeature:
+        """Returns the features supporting the sketch in space.
+        
+        :raises ValueError: When the sketch is not supported or not in a system.
+        """
+        sys = self.system
+        index = sys.get_topo_index(self)
+        # Constraints placing the feature should have the same topological index 
+        # as the feature.
+        constraints = [c for c in self.system.get_constraints_on(self)
+                       if sys.get_topo_index(c) == index]
+        # Check whether it's possible to get the support
+        if not self.system:
+            raise ValueError(f"Sketch '{self.name}' is not in a system")
+        if not constraints:
+            sys_feat = self.system.feature
+            msg = (f"Sketch '{self.name}' is not supported in system in feature"
+                   f" '{sys_feat.name}'")
+            raise ValueError(msg)
+
+        if len(constraints) != 1:
+            raise NotImplementedError("Multiple constraints placing a sketch is"
+                                      f" not yet supported: {constraints}")
+        constraint = constraints[0]
+        if constraint.type_ == SketchConstraint.ALIGN_AXES:
+            feat = next(f for f in constraint.get_dependencies()
+                        if f is not self)
+            return feat.feature_system.coordinate_system.get_xy_plane()
+        else:
+            raise ValueError("Unsupported constraint type for placing sketches:"
+                             f" {constraint}")
 
     # Python Dunders #
     def __repr__(self) -> str:

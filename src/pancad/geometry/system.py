@@ -76,6 +76,41 @@ class FeatureSystem(AbstractGeometrySystem):
         return self._coordinate_system
 
     @property
+    def origin(self) -> Point:
+        """The origin of the system's coordinate system."""
+        return self.coordinate_system.origin
+
+    @property
+    def x_axis(self) -> Line:
+        """The x axis of the system's coordinate system."""
+        return self.coordinate_system.get_axis_line_x()
+
+    @property
+    def y_axis(self) -> Line:
+        """The y axis of the system's coordinate system."""
+        return self.coordinate_system.get_axis_line_y()
+
+    @property
+    def z_axis(self) -> Line:
+        """The z axis of the system's coordinate system."""
+        return self.coordinate_system.get_axis_line_z()
+
+    @property
+    def xy_plane(self) -> Plane:
+        """The xy plane of the system's coordinate system."""
+        return self.coordinate_system.get_xy_plane()
+
+    @property
+    def xz_plane(self) -> Plane:
+        """The xz plane of the system's coordinate system."""
+        return self.coordinate_system.get_xz_plane()
+
+    @property
+    def yz_plane(self) -> Plane:
+        """The yz plane of the system's coordinate system."""
+        return self.coordinate_system.get_yz_plane()
+
+    @property
     def features(self) -> SystemFeatureList:
         return self._features
     @features.setter

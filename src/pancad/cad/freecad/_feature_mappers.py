@@ -229,7 +229,7 @@ class FreeCADMap(MutableMapping):
     def _feature_container(self, container: FeatureContainer) -> Self:
         body = self._pancad_to_freecad_feature(container)
         self[container] = body
-        for subfeature in container.features:
+        for subfeature in container.feature_system.features:
             self.add_pancad_feature(subfeature)
         return self
     
@@ -377,7 +377,7 @@ class FreeCADMap(MutableMapping):
     
     def __repr__(self) -> str:
         from os.path import basename
-        return (f"<FreeCADMap:'{self._part_file.filename}'"
+        return (f"<FreeCADMap:'{self._part_file.name}'"
                 f"*'{basename(self._document.FileName)}'>")
     
     def __str__(self) -> str:

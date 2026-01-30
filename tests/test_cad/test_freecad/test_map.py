@@ -8,7 +8,7 @@ try:
     import Part
 except ImportError:
     import sys
-    from ._bootstrap import get_app_dir
+    from pancad.cad.freecad._bootstrap import get_app_dir
     sys.path.append(str(get_app_dir()))
     import FreeCAD as App
     import Sketcher
@@ -24,6 +24,7 @@ from pancad.cad.freecad._map_typing import (
 )
 from pancad.cad.freecad.constants import ListName
 from pancad.constants import ConstraintReference
+from pancad.constraints.state_constraint import AlignAxes
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.coordinate_system import CoordinateSystem
 from pancad.geometry.sketch import Sketch
@@ -60,12 +61,14 @@ class TestPancadtoFreeCAD(unittest.TestCase):
     
     def test_map_add_feature_container(self):
         container = FeatureContainer(name="TestBucket")
-        coordinate_system = CoordinateSystem((0, 0, 0))
+        sketch = Sketch(name="Test Mapping Sketch")
+        container.feature_system.features.append(sketch)
+        container.feature_system.constraints.append(
+            AlignAxes(container.feature_system.coordinate_system,
+                      sketch.pose.coordinate_system)
+        )
         line = LineSegment((0, 0), (1, 1))
-        sketch = Sketch(name="Test Mapping Sketch",
-                        geometry=[line],
-                        coordinate_system=coordinate_system)
-        container.features = [coordinate_system, sketch]
+        sketch.geometry_system.geometry.append(line)
         self.test_map.add_pancad_feature(container)
     
     def test_map_cube_extrude(self):

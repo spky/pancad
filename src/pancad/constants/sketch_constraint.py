@@ -5,6 +5,9 @@ from enum import Flag, auto
 
 class SketchConstraint(Flag):
     """An enumeration used to refer to a type of sketch constraint."""
+    ALIGN_AXES = auto()
+    """Refers to constraints aligning all axes between two coordinate systems.
+    """
     ANGLE = auto()
     """Refers to constraints on the angle between two geometry elements."""
     COINCIDENT = auto()
