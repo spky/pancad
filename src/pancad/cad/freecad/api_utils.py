@@ -3,32 +3,131 @@ API.
 """
 from __future__ import annotations
 
+from collections import namedtuple
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
-
-FEATURE_UID_TEMPLATE = "{document_uid}_feature_{feature_id}"
-SKETCH_GEO_UID_TEMPLATE = "{document_uid}_sketchgeo_{feature_id}_{geometry_id}"
-SKETCH_CONSTRAINT_UID_TEMPLATE = (
-    "{document_uid}_sketchcons_{feature_id}_{type_id}_"
-    "{id_1}_{pos_1}_{id_2}_{pos_2}_{id_3}_{pos_3}"
-)
-"""Unique id calculated for a FreeCAD constraint. The first/second/third id is 
-NOT the geoemtry index. It has to be the freecad geometry id of the 
-targets.
-"""
+if TYPE_CHECKING:
+    from typing import NamedTuple
 
 GEO_EXT_TYPE_XPATH = "GeoExtensions/GeoExtension[@type='{type_}']"
 GEO_LIST_XPATH = "Properties/Property[@name='Geometry']/GeometryList"
+CONSTRAINT_LIST_XPATH = "Properties/Property[@name='Constraints']/ConstraintList"
 
-def feature_uid(feature, document) -> str:
-    """Returns a uid for the feature in a freecad file.
-    
-    :param feature: A FreeCAD object with an ID.
-    :param document: The document that the FreeCAD object is in.
+FeatureUidInfo = namedtuple(
+    "FeatureUidInfo",
+    ["file_uid", "type_", "feature_id"]
+)
+SketchGeometryUidInfo = namedtuple(
+    "SketchGeometryUidInfo",
+    ["file_uid", "type_", "feature_id", "geometry_id"]
+)
+SketchConstraintUidInfo = namedtuple(
+    "SketchConstraintUidInfo",
+    [
+        "file_uid", "type_", "feature_id", "constraint_type",
+        "id_1", "pos_1", "id_2", "pos_2", "id_3", "pos_3"
+    ]
+)
+
+class FreeCADUID(str):
+    """A class to make it easy to access freecad uid information from their 
+    strings. All attributes of this class should stay constant after 
+    initialization.
+
+    :raises ValueError: When the number/type of uid parts are invalid for the uid 
+        type.
     """
-    return FEATURE_UID_TEMPLATE.format(document_uid=document.Uid,
-                                       feature_id=feature.ID)
+    delim = "_"
+    """Delimiter between information parts in the uid."""
+    type_info_types = {
+        "feature": FeatureUidInfo,
+        "sketchgeo": SketchGeometryUidInfo,
+        "sketchcons": SketchConstraintUidInfo,
+    }
+    """Mapping from type names to their namedtuple types."""
+
+    def __new__(cls, string):
+        new = super().__new__(cls, string)
+        parts = string.split(cls.delim)
+        try:
+            new._file_uid, new._type, *parts = parts
+        except ValueError as exc:
+            msg = "Invalid number of parts for any available uid types"
+            raise ValueError(msg, parts) from exc
+        try:
+            for i, part in enumerate(parts):
+                parts[i] = int(part)
+        except ValueError as exc:
+            exc.add_note("Could not convert all parts into ints")
+            raise
+        try:
+            new._data = cls.type_info_types[new._type](new.file_uid, new._type,
+                                                       *parts)
+        except TypeError as exc:
+            expected = len(cls.type_info_types[new._type]._fields)
+            all_parts = string.split(cls.delim)
+            got = len(all_parts)
+            msg = (f"Expected {expected} parts for '{new.type_}'"
+                   f" type uid, got {got}")
+            raise ValueError(msg, all_parts) from exc
+        except KeyError as exc:
+            raise ValueError("Invalid uid type", exc.args[0]) from exc
+        return new
+
+    @classmethod
+    def from_feature(cls, feature, document):
+        """Returns a feature type FreeCADUID from FreeCAD api objects."""
+        parts = [document.Uid, "feature", feature.ID]
+        return cls(cls.delim.join(map(str, parts)))
+
+    @classmethod
+    def from_sketch_geometry(cls, geometry, sketch, document):
+        """Returns a sketchgeo type FreeCADUID from FreeCAD api objects."""
+        id_ = get_geometry_sketch_id(geometry, sketch)
+        parts = [document.Uid, "sketchgeo", sketch.ID, id_]
+        return cls(cls.delim.join(map(str, parts)))
+
+    @classmethod
+    def from_sketch_constraint(cls, constraint, sketch, document):
+        constraint_xml = read_element_xml(constraint)
+        element = constraint_xml.find("Constrain")
+        if element is None:
+            msg = "Could not read Constrain element from the constraint xml"
+            raise TypeError(msg, element)
+        parts = [document.Uid, "sketchcons", sketch.ID, element.attrib["Type"]]
+        # Get the geometry ids for each constrained geometry since indexes 
+        # can/will change.
+        for constrained in ["First", "Second", "Third"]:
+            index = int(element.attrib[constrained])
+            if index == -2000: # FreeCAD labels empty indices with -2000
+                geometry_id = -2000
+            else:
+                geometry_id = get_geometry_sketch_id(sketch.Geometry[index],
+                                                     sketch)
+            parts.extend([geometry_id, element.attrib[constrained + "Pos"]])
+        return cls(cls.delim.join(map(str, parts)))
+
+    @property
+    def file_uid(self) -> str:
+        """The uid of the file that the FreeCAD object is inside of. Common to 
+        all FreeCAD uids.
+        """
+        return self._file_uid
+
+    @property
+    def type_(self) -> str:
+        """The type of FreeCAD object this uid is for. Common to all FreeCAD 
+        uids.
+        """
+        return self._type
+
+    @property
+    def data(self) -> NamedTuple:
+        """The data represented inside the string of the uid."""
+        return self._data
+
 
 def read_element_xml(element) -> ElementTree:
     """Reads the xml Content of a FreeCAD element in an ElementTree."""
@@ -50,6 +149,22 @@ def get_geometry_details(geometry) -> Element:
         raise ValueError("No candidates found in geometry content", tree)
     return candidates.pop()
 
+def get_sketch_geometry_list_xml(sketch) -> Element:
+    """Returns the sketch's GeometryList element."""
+    tree = read_element_xml(sketch)
+    geo_list = tree.find(GEO_LIST_XPATH)
+    if geo_list is None:
+        raise TypeError("sketch does not contain a GeometryList", sketch)
+    return geo_list
+
+def get_sketch_constraint_list_xml(sketch) -> Element:
+    """Returns the sketch's GeometryList element."""
+    tree = read_element_xml(sketch)
+    constraint_list = tree.find(CONSTRAINT_LIST_XPATH)
+    if constraint_list is None:
+        raise TypeError("sketch does not contain a ConstraintList", sketch)
+    return constraint_list
+
 def get_geometry_sketch_id(geometry, sketch) -> int:
     """Returns the id of the geometry inside its xml 
     Sketcher::SketchGeometryExtension GeoExtension contents.
@@ -66,9 +181,7 @@ def get_geometry_sketch_id(geometry, sketch) -> int:
         except ValueError as exc:
             raise TypeError("Invalid geometry element", geometry) from exc
         # Read Sketch content instead
-        tree = read_element_xml(sketch)
-        if (geo_list := tree.find(GEO_LIST_XPATH)) is None:
-            raise TypeError("sketch does not contain a GeometryList", sketch)
+        geo_list = get_sketch_geometry_list_xml(sketch)
         try:
             geo_element = next(ele for ele in geo_list
                                if details == get_geometry_details(ele).attrib)
@@ -81,34 +194,70 @@ def get_geometry_sketch_id(geometry, sketch) -> int:
     try:
         return int(ext.attrib["id"])
     except KeyError as exc:
-        raise TypeError("Invalid geometry, no 'id' found in extension", content)
+        msg = "Invalid geometry, no 'id' found in extension"
+        raise TypeError(msg, ext) from exc
 
-def get_geometry_sketch_index(geometry, sketch) -> int:
-    """Returns the index of the element in the sketch."""
-    tree = read_element_xml(sketch)
+def get_geometry_by_sketch_id(id_: int, sketch):
+    """Returns the api geometry object corresponding to the id from the sketch.
+    """
+    index = get_geometry_index_by_sketch_id(id_, sketch)
+    return sketch.Geometry[index]
+
+def get_geometry_index_by_sketch_id(id_: int, sketch) -> int:
+    """Returns the index of geometry corresponding to the id from the sketch."""
     ext_type = "Sketcher::SketchGeometryExtension"
     ext_match = GEO_EXT_TYPE_XPATH.format(type_=ext_type)
 
-    id_ = get_geometry_sketch_id(geometry, sketch)
-
-    if (geo_list := tree.find(GEO_LIST_XPATH)) is None:
-        raise TypeError("sketch xml does not contain a GeometryList", sketch)
-    for index, element in enumerate(geo_list):
+    for index, element in enumerate(get_sketch_geometry_list_xml(sketch)):
         ext = element.find(ext_match)
         try:
             element_id = int(ext.attrib["id"])
         except (AttributeError, KeyError) as exc:
-            raise TypeError("Could not read id from sketch geometry xml", element)
+            msg = "Could not read id from sketch geometry xml"
+            raise TypeError(msg, element) from exc
         if id_ == element_id:
             return index
-    raise KeyError("Could not find geometry in sketch", geometry)
+    raise LookupError("Could not find geometry in sketch", geometry)
 
-def get_sketch_constraint_uid(constraint, sketch, document) -> str:
-    pass
-
-def get_sketch_geometry_uid(geometry, sketch, document) -> str:
-    """Returns a uid for the sketch geometry element in a freecad file."""
+def get_geometry_sketch_index(geometry, sketch) -> int:
+    """Returns the index of the element in the sketch."""
     id_ = get_geometry_sketch_id(geometry, sketch)
-    return SKETCH_GEO_UID_TEMPLATE.format(
-        document_uid=document.Uid, feature_id=sketch.ID, geometry_id=id_
-    )
+    return get_geometry_index_by_sketch_id(id_, sketch)
+
+def get_constraint_sketch_index(constraint, sketch) -> int:
+    ext_type = "Sketcher::SketchGeometryExtension"
+    ext_match = GEO_EXT_TYPE_XPATH.format(type_=ext_type)
+
+    # Get constraint xml
+    constraint_xml = read_element_xml(constraint)
+    constraint_ele = constraint_xml.find("Constrain")
+    if constraint_ele is None:
+        msg = "Could not read Constrain element from the constraint xml"
+        raise TypeError(msg, constraint)
+
+    # Check through sketch xml for constraint xml's attrib
+    for index, element in enumerate(get_sketch_constraint_list_xml(sketch)):
+        if element.attrib == constraint_ele.attrib:
+            return index
+    raise LookupError("Could not find constraint in sketch", constraint)
+
+def get_by_uid(uid: str | FreeCADUID, document):
+    """Returns the corresponding FreeCAD API object from the document."""
+    if not isinstance(uid, FreeCADUID):
+        uid = FreeCADUID(uid)
+    if uid.file_uid != document.Uid:
+        raise LookupError("uid is not in the document", uid)
+
+    try:
+        feature = next(o for o in document.Objects if o.ID == uid.data.feature_id)
+    except StopIteration as exc:
+        msg = f"uid's feature id '{uid.data.feature_id}' is not in the document"
+        raise LookupError(msg, uid) from exc
+
+    if uid.type_ == "feature":
+        return feature
+    if uid.type_ == "sketchgeo":
+        index = get_geometry_index_by_sketch_id(uid.data.geometry_id, feature)
+        return feature.Geometry[index]
+    msg = f"uid type '{uid.type_}' is not yet supported"
+    raise NotImplementedError(msg, uid)
