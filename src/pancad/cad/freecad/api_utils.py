@@ -3,7 +3,6 @@ API.
 """
 from __future__ import annotations
 
-from collections import namedtuple
 from dataclasses import dataclass
 from itertools import islice
 from typing import TYPE_CHECKING, Literal
@@ -66,6 +65,7 @@ class SketchGeometryReference:
 
     @property
     def list_name(self) -> str:
+        """The name of the sketch list the geometry is in."""
         return LIST_INT_XML_MAP[self.list_]
 
 @dataclass(frozen=True)
@@ -97,6 +97,7 @@ class SketchConstraintUidInfo:
     def from_parts(cls, file_uid: str, type_: str,
                    feature_id: int, constraint_type: int,
                    *parts: list[int]):
+        """Returns a SketchConstraintUidInfo from a series of integer parts."""
         parts_iter = iter(parts)
         batch_n = 3
         references = []
@@ -109,14 +110,19 @@ class SketchConstraintUidInfo:
         if (no_references := len(references)) != 3:
             msg = f"Expected 3 sets of references, got {no_references}"
             raise TypeError(msg, references)
-        return cls(file_uid, type_, feature_id, constraint_type, *references)
+        return cls(file_uid, type_, feature_id, constraint_type,
+                   references[0], references[1], references[2])
 
     @property
     def references(self) -> list[SketchGeometryReference]:
+        """Returns a list of the geometry references used by the constraint."""
         return [self.first, self.second, self.third]
 
     @property
     def reference_map(self) -> dict[str, SketchGeometryReference]:
+        """Returns a dict of the freecad names to the geometry references used by 
+        the constraint.
+        """
         return {"First": self.first, "Second": self.second, "Third": self.third}
 
 class FreeCADUID(str):
@@ -205,13 +211,13 @@ class FreeCADUID(str):
             if index == EMPTY_CONSTRAINED:
                 list_name = "Geometry"
                 geo_id = EMPTY_CONSTRAINED
-            elif index < 0:
-                geometry = sketch.ExternalGeo[-1 - index]
-                list_name = "ExternalGeo"
             else:
-                list_name = "Geometry"
-                geometry = sketch.Geometry[index]
-            if index != EMPTY_CONSTRAINED:
+                if index < 0:
+                    list_name = "ExternalGeo"
+                    geometry = sketch.ExternalGeo[-1 - index]
+                else:
+                    list_name = "Geometry"
+                    geometry = sketch.Geometry[index]
                 geo_id = get_geometry_sketch_id(geometry, list_name, sketch)
             parts.extend(
                 [
@@ -247,10 +253,7 @@ class FreeCADUID(str):
 
 def read_element_xml(element) -> ElementTree:
     """Reads the xml Content of a FreeCAD element in an ElementTree."""
-    try:
-        content = f"<element>{element.Content}</element>"
-    except:
-        breakpoint()
+    content = f"<element>{element.Content}</element>"
     return ElementTree.fromstring(content)
 
 def get_geometry_details(geometry) -> Element:
@@ -369,6 +372,7 @@ def get_geometry_by_sketch_id(id_: int,
 ################################################################################
 
 def get_constraint_sketch_index(constraint, sketch) -> int:
+    """Returns the index of the constraint API object inside the sketch."""
     # Get constraint xml
     constraint_xml = read_element_xml(constraint)
     constraint_ele = constraint_xml.find("Constrain")
