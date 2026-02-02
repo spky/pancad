@@ -38,6 +38,7 @@ def sketches(freecad_doc):
 def uid_pairs(freecad_doc) -> list[tuple[api_utils.FreeCADUID, object]]:
     """pairing of uid to the corresponding FreeCAD API object."""
     pairs = []
+    pairs.append((api_utils.FreeCADUID.from_document(freecad_doc), freecad_doc))
     for obj in freecad_doc.Objects:
         pairs.append((api_utils.FreeCADUID.from_feature(obj, freecad_doc), obj))
         if obj.TypeId == "Sketcher::SketchObject":
