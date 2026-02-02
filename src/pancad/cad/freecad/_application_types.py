@@ -43,3 +43,7 @@ FreeCADCADObject = (FreeCADFeature
                     | FreeCADGeometry
                     | FreeCADConstraint
                     | FreeCADBody)
+FreeCADAPIObject = (FreeCADDocument
+                    | FreeCADFeature
+                    | FreeCADGeometry
+                    | FreeCADConstraint)
