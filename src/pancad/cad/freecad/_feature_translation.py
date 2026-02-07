@@ -9,6 +9,7 @@ from math import pi
 import numpy as np
 import warnings
 import logging
+import itertools
 
 try:
     import FreeCAD as App
@@ -21,9 +22,10 @@ except ImportError:
     sys.path.append(str(app_path))
     import FreeCAD as App
     import Part
+    import Sketcher
 
 from pancad.abstract import AbstractFeature, AbstractGeometry
-from pancad.constants import ConstraintReference as CR
+from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
@@ -36,9 +38,9 @@ from pancad.geometry.sketch import Sketch
 from pancad.geometry.system import SketchGeometrySystem
 
 from pancad.cad.freecad import api_utils
-from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintPair
+from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
 from pancad.cad.freecad.constants import (
-    ListName, ObjectType, PadType, ConstraintType, EdgeSubPart
+    ListName, ObjectType, PadType, ConstraintType as CT, EdgeSubPart as ESP
 )
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
@@ -196,9 +198,8 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     new_uid_map_items[feature.uid] = FreeCADUID.from_feature(fc_sketch, document)
     uid_map.update(new_uid_map_items)
     _add_sketch_geometry_from_pancad(feature, document, uid_map)
-    # for constraint in geo_sys.constraints:
-        # new_constraint_from_pancad(constraint, document, uid_map)
-    breakpoint()
+    _add_sketch_constraints_from_pancad(feature, document, uid_map)
+    return fc_sketch
 
 def _add_sketch_geometry_from_pancad(sketch: Sketch,
                                      document: FreeCADDocument,
@@ -233,8 +234,14 @@ def _add_sketch_constraints_from_pancad(sketch: Sketch,
     """
     fc_sketch = api_utils.get_by_uid(uid_map[sketch.uid], document)
     new_uid_map_items = {}
-    for pc_cons in system.geometry_system.constraints:
-        breakpoint()
+    for pc_cons in sketch.geometry_system.constraints:
+        fc_cons = new_constraint_from_pancad(pc_cons, document, uid_map)
+        fc_sketch.addConstraint(fc_cons)
+        fc_cons_uid = FreeCADUID.from_sketch_constraint(fc_cons, fc_sketch,
+                                                        document)
+        new_uid_map_items[pc_cons.uid] = fc_cons_uid
+    uid_map.update(new_uid_map_items)
+    return fc_sketch
 
 @singledispatchmethod
 def _pancad_to_freecad_feature(self,
@@ -414,23 +421,113 @@ def _one_to_one_cases(self,
 # pancad ---> FreeCAD Constraints
 ################################################################################
 
+def get_constraint_type_from_pancad(constraint: AbstractConstraint) -> CT:
+    type_map = {
+        SC.ANGLE: CT.ANGLE,
+        SC.DISTANCE: CT.DISTANCE,
+        SC.DISTANCE_HORIZONTAL: CT.DISTANCE_X,
+        SC.DISTANCE_VERTICAL: CT.DISTANCE_Y,
+        SC.DISTANCE_DIAMETER: CT.DIAMETER,
+        SC.DISTANCE_RADIUS: CT.RADIUS,
+        SC.EQUAL: CT.EQUAL,
+        SC.HORIZONTAL: CT.HORIZONTAL,
+        SC.PARALLEL: CT.PARALLEL,
+        SC.PERPENDICULAR: CT.PERPENDICULAR,
+        SC.VERTICAL: CT.VERTICAL,
+    }
+    if constraint.type_name in type_map: # One-to-one checks
+        return type_map[constraint.type_name]
+    if constraint.type_name == SC.TANGENT:
+        raise NotImplementedError("Tangent constraints aren't available yet.",
+                                  constraint)
+
+    geometries = constraint.get_geometry()
+    if constraint.type_name == SC.COINCIDENT:
+        if all(isinstance(g, Point) for g in geometries):
+            return CT.COINCIDENT
+        if any(isinstance(g, Point) for g in geometries):
+            return CT.POINT_ON_OBJECT
+        return CT.TANGENT
+    msg = f"Unrecognized constraint type '{constraint.__class__}'"
+    raise TypeError(msg, constraint)
+
 def new_constraint_from_pancad(constraint: AbstractConstraint,
                                document: FreeCADDocument,
                                uid_map: dict[str, FreeCADUID]) -> FreeCADConstraint:
     """Creates a new FreeCAD Constraint from a pancad constraint and adds it to
     the provided uid_map.
     """
-    type_ = ConstraintType.from_pancad(constraint)
+    constraints_input_map = { 
+        # If present, the integer is the number of points in the references.
+        CT.EQUAL: "indexes_only",
+        CT.PARALLEL: "indexes_only",
+        CT.PERPENDICULAR: "indexes_only",
+        CT.COINCIDENT: "original_order",
+        CT.ANGLE: "quadrant_order",
+        CT.POINT_ON_OBJECT: "points_first",
+        (CT.TANGENT, 0): "indexes_only",
+        (CT.TANGENT, 1): "points_first",
+        (CT.TANGENT, 2): "original_order",
+        (CT.DISTANCE, 0): "bugged_distance",
+        (CT.DISTANCE_X, 0): "bugged_distance",
+        (CT.DISTANCE_Y, 0): "bugged_distance",
+        (CT.DISTANCE, 1): "points_first",
+        (CT.DISTANCE_X, 1): "points_first",
+        (CT.DISTANCE_Y, 1): "points_first",
+        (CT.DISTANCE, 2): "original_order",
+        (CT.DISTANCE_X, 2): "original_order",
+        (CT.DISTANCE_Y, 2): "original_order",
+    }
     fc_sketch_uid = uid_map[constraint.system.feature.uid]
-    constraint_inputs = [type_]
 
-    pairs = []
+    # TODO: Add a check for whether there are point-to-point tangents
+    refs = []
     for geo in constraint.get_geometry():
-        pairs.append(get_constraint_pair_from_pancad(geo, document, uid_map))
+        geo_ref = get_constraint_pair_from_pancad(geo, document, uid_map)
+        refs.append(geo_ref)
 
-    no_pairs = len(pairs)
-    if no_pairs == 1:
-        constraint_inputs.append(pairs[0].index)
+    if len(refs) == 3:
+        msg = f"Unsupported type with 3 geometries '{constraint.__class__}'"
+        raise TypeError(msg, constraint)
+
+    type_ = get_constraint_type_from_pancad(constraint)
+    no_points = [r.is_point for r in refs].count(True)
+    if len(refs) == 1:
+        input_type = "indexes_only"
+    elif type_ in constraints_input_map:
+        input_type = constraints_input_map[type_]
+    elif (type_, no_points) in constraints_input_map:
+        input_type = constraints_input_map[type_, no_points]
+    else:
+        msg = ("Unexpected constraint type and points combination:"
+              f" '{constraint.__class__}', num points: {no_points}")
+        raise TypeError(msg, constraint)
+
+    constraint_inputs = [type_]
+    match input_type:
+        case "indexes_only":
+            constraint_inputs.extend(r.index for r in refs)
+        case "original_order":
+            constraint_inputs.extend(i for r in refs for i in r.pair)
+        case "points_first":
+            sorted_refs = sorted(refs, key=lambda r: int(r.is_point),
+                                 reverse=True)
+            first, second = sorted_refs
+            constraint_inputs.extend([first.index, first.part, second.index])
+        case "bugged_distance":
+            first, second = refs
+            constraint_inputs.extend([first.index, ESP.START, second.index])
+        case "quadrant_order":
+            first, second = refs
+            quadrant_map = {
+                1: (first.index, ESP.START, second.index, ESP.START),
+                2: (second.index, ESP.START, first.index, ESP.END),
+                3: (first.index, ESP.END, second.index, ESP.START),
+                4: (second.index, ESP.START, first.index, ESP.START),
+            }
+            constraint_inputs.extend(quadrant_map[constraint.quadrant])
+        case _:
+            raise ValueError(f"Unexpected input type '{input_type}'", constraint)
 
     # Add value if available from pancad constraint for distance, etc.
     pc_value = getattr(constraint, "value", None)
@@ -443,7 +540,7 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
 def get_constraint_pair_from_pancad(geometry: AbstractGeometry,
                                     document: FreeCADDocument,
                                     uid_map: dict[str, FreeCADUID]
-                                    ) -> FreeCADConstraintPair:
+                                    ) -> FreeCADConstraintGeoRef:
     """Finds the equivalent constraint index and edge sub part to constrain the
     pancad equivalent geometry in FreeCAD.
     """
@@ -468,23 +565,26 @@ def get_constraint_pair_from_pancad(geometry: AbstractGeometry,
     else:
         sub_part_key = geometry.self_reference
     sub_part_map = {
-        CR.CORE: EdgeSubPart.EDGE,
-        CR.ORIGIN: EdgeSubPart.START, # Sketch Origin is at start of x-axis.
-        CR.X_MIN: EdgeSubPart.START,
-        CR.Y_MIN: EdgeSubPart.START,
-        CR.X_MAX: EdgeSubPart.END,
-        CR.Y_MAX: EdgeSubPart.END,
-        CR.X: EdgeSubPart.CORE, # Either sketch or ellipse x-axis.
-        CR.Y: EdgeSubPart.CORE, # Either sketch or ellipse y-axis.
-        CR.CENTER: EdgeSubPart.CENTER,
+        CR.CORE: ESP.EDGE,
+        CR.ORIGIN: ESP.START, # Sketch Origin is at start of x-axis.
+        CR.X_MIN: ESP.START,
+        CR.Y_MIN: ESP.START,
+        CR.X_MAX: ESP.END,
+        CR.Y_MAX: ESP.END,
+        CR.X: ESP.EDGE, # Either sketch or ellipse x-axis.
+        CR.Y: ESP.EDGE, # Either sketch or ellipse y-axis.
+        CR.CENTER: ESP.CENTER,
+        CR.START: ESP.START,
+        CR.END: ESP.END,
         # Standalone Points are always START.
-        (CR.CORE, "GeomPoint"): EdgeSubPart.START,
+        (CR.CORE, "GeomPoint"): ESP.START,
         # All FreeCAD arcs are counterclockwise. Clockwise arcs must be reversed
-        (CR.START, "clockwise"): EdgeSubPart.END,
-        (CR.END, "clockwise"): EdgeSubPart.START,
+        (CR.START, "clockwise"): ESP.END,
+        (CR.END, "clockwise"): ESP.START,
     }
-    ref_index = api_utils.get_reference_index_by_uid(fc_geo_uid)
-    return FreeCADConstraintPair(ref_index, sub_part_map[sub_part_key])
+    ref_index = api_utils.get_reference_index_by_uid(fc_geo_uid, document)
+    sub_part = sub_part_map[sub_part_key]
+    return FreeCADConstraintGeoRef(ref_index, sub_part, geo_type)
 
 ################################################################################
 # FreeCAD ---> pancad Features

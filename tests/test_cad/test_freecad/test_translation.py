@@ -13,6 +13,7 @@ from tests.sample_pancad_objects.sample_part_files import (
 from pancad.cad.freecad._feature_translation import new_document_from_part
 
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
+DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
 
 # @pytest.fixture(params=["cube_1x1x1.FCStd"])
 # def freecad_doc(request):
@@ -30,3 +31,6 @@ def test_new_document_from_part(part_file_fixture, expected, request):
     part_file = request.getfixturevalue(part_file_fixture)
     document = new_document_from_part(part_file)
     assert len(document.Objects) == expected
+    # document.recompute()
+    # document.FileName = str(DUMP / (part_file_fixture + ".FCStd"))
+    # document.save()

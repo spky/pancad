@@ -82,19 +82,19 @@ class ConstraintType(StrEnum):
         raise TypeError(f"Unsupported type {type_}")
 
 _TO_SKETCH_CONSTRAINT = {
-    ConstraintType.ANGLE: SketchConstraint.ANGLE,
-    ConstraintType.COINCIDENT: SketchConstraint.COINCIDENT,
-    ConstraintType.DIAMETER: SketchConstraint.DISTANCE_DIAMETER,
+    ConstraintType.ANGLE: SketchConstraint.ANGLE, # Done
+    ConstraintType.COINCIDENT: SketchConstraint.COINCIDENT, # Done
+    ConstraintType.DIAMETER: SketchConstraint.DISTANCE_DIAMETER, # Done
     ConstraintType.DISTANCE: SketchConstraint.DISTANCE,
     ConstraintType.DISTANCE_X: SketchConstraint.DISTANCE_HORIZONTAL,
     ConstraintType.DISTANCE_Y: SketchConstraint.DISTANCE_VERTICAL,
-    ConstraintType.EQUAL: SketchConstraint.EQUAL,
-    ConstraintType.HORIZONTAL: SketchConstraint.HORIZONTAL,
-    ConstraintType.PARALLEL: SketchConstraint.PARALLEL,
-    ConstraintType.PERPENDICULAR: SketchConstraint.PERPENDICULAR,
-    ConstraintType.POINT_ON_OBJECT: SketchConstraint.COINCIDENT,
-    ConstraintType.RADIUS: SketchConstraint.DISTANCE_RADIUS,
-    ConstraintType.VERTICAL: SketchConstraint.VERTICAL,
+    ConstraintType.EQUAL: SketchConstraint.EQUAL, # Done
+    ConstraintType.HORIZONTAL: SketchConstraint.HORIZONTAL, # Done
+    ConstraintType.PARALLEL: SketchConstraint.PARALLEL, # Done
+    ConstraintType.PERPENDICULAR: SketchConstraint.PERPENDICULAR, # Done
+    ConstraintType.POINT_ON_OBJECT: SketchConstraint.COINCIDENT, # Done
+    ConstraintType.RADIUS: SketchConstraint.DISTANCE_RADIUS, # Done
+    ConstraintType.VERTICAL: SketchConstraint.VERTICAL, # Done
 }
 """A map for one-to-one translations from ConstraintType to SketchConstraint."""
 _TO_CONSTRAINT_TYPE = {

@@ -149,16 +149,34 @@ def _get_constraint_by_uid(data: SketchConstraintUidInfo,
 ################################################################################
 
 @dataclass(frozen=True)
-class FreeCADConstraintPair:
-    """Class for keeping track of a FreeCAD constraint's index reference and
-    subpart for one geometry.
+class FreeCADConstraintGeoRef:
+    """Class for keeping track of a FreeCAD constraint's index reference,
+    subpart, and geometry type for one geometry.
 
     :param index: The constraint reference index of the pair. Negative for
         ExternalGeo, positive for Geometry.
     :param part: The edge sub part of the geometry.
+    :param geo_type: The geometry type of the geometry at the index, not 
+        necessarily the same type as the geometry at the index + subpart.
     """
     index: int
     part: int
+    geo_type: str
+
+    @property
+    def is_point(self) -> bool:
+        """Returns whether the reference is to a point, either a standalone 
+        point or a subpart point. Subparts: 0 (entire edge), 1 (start), 2, 
+        (end), 3 (center), 4+ (poles of b-spline).
+        """
+        return self.part > 0
+
+    @property
+    def pair(self) -> tuple[int, int]:
+        """Returns the pair of index and subpart that constraints are defined 
+        with in FreeCAD sketches.
+        """
+        return self.index, self.part
 
 @dataclass(frozen=True)
 class DocumentUidInfo:
@@ -566,8 +584,8 @@ def get_geometry_index_by_uid(uid: FreeCADUID,
     :param document: A FreeCAD API document object containing the geometry.
     """
     geometry = get_by_uid(uid, document)
-    sketch = get_by_uid(geometry.sketch_uid, document)
-    return get_geometry_sketch_index(geometry, uid.list_name, sketch)
+    sketch = get_by_uid(uid.data.sketch_uid, document)
+    return get_geometry_sketch_index(geometry, uid.data.list_name, sketch)
 
 def get_geometry_sketch_index(geometry: FreeCADGeometry,
                               list_: Literal["Geometry", "ExternalGeo"],
@@ -657,4 +675,4 @@ def get_reference_index_by_uid(uid: FreeCADUID,
     :param document: A FreeCAD API document object containing the geometry.
     """
     index = get_geometry_index_by_uid(uid, document)
-    return get_reference_index(index, uid.list_name)
+    return get_reference_index(index, uid.data.list_name)
