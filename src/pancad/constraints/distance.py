@@ -11,11 +11,12 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 from pancad.abstract import AbstractConstraint
+from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
     from numbers import Real
 
-    from pancad.abstract import AbstractGeometry
+    from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
@@ -78,14 +79,19 @@ class Angle(AbstractValue):
     :raises ValueError: When the subgeometries are not 2D or if not exactly 2
         pairs are provided.
     """
-    QUADRANTS = [1, 2, 3, 4]
+
+    type_name = SketchConstraint.ANGLE
+
+    quadrants = [1, 2, 3, 4]
     """The allowed quadrant choices for where to place the angle."""
+
     def __init__(self,
                  *geometry: AbstractGeometry,
                  value: Real,
                  quadrant: int,
                  uid: str=None,
-                 is_radians: bool=False) -> None:
+                 is_radians: bool=False,
+                 system: AbstractGeometrySystem=None) -> None:
         if len(geometry) != 2:
             raise ValueError(f"Expected 2 geometries, provided {geometry}")
         if any(len(g) != 2 for g in geometry):
@@ -93,6 +99,7 @@ class Angle(AbstractValue):
             raise ValueError(f"Non-2D Geometry provided: {non_two_dimensional}")
         self._geometry = geometry
         self.uid = uid
+        super().__init__(system)
         self.quadrant = quadrant
         self.unit = "degrees"
         if is_radians:
@@ -110,8 +117,8 @@ class Angle(AbstractValue):
         return self._quadrant
     @quadrant.setter
     def quadrant(self, value: int) -> None:
-        if value not in self.QUADRANTS:
-            raise ValueError(f"Quadrant must be one of {self.QUADRANTS}")
+        if value not in self.quadrants:
+            raise ValueError(f"Quadrant must be one of {self.quadrants}")
         self._quadrant = value
 
     @property
@@ -169,8 +176,10 @@ class Abstract2GeometryDistance(AbstractDistance):
         not the same dimension.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 value: Real, uid: str=None, unit: str=None) -> None:
+                 value: Real, uid: str=None, unit: str=None,
+                 system: AbstractGeometrySystem=None) -> None:
         self.uid = uid
+        super().__init__(system)
         if len(geometry) != 2:
             raise ValueError(f"Expected 2 geometries, provided {geometry}")
         if len(set(len(g) for g in geometry)) != 1:
@@ -191,8 +200,10 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param unit: The unit of the distance value. Defaults to None.
     """
     def __init__(self, geometry: AbstractGeometry,
-                 value: Real, uid: str=None, unit: str=None) -> None:
+                 value: Real, uid: str=None, unit: str=None,
+                 system: AbstractGeometrySystem=None) -> None:
         self.uid = uid
+        super().__init__(system)
         self._geometry = [geometry]
         self.unit = unit
         self.value = value
@@ -204,6 +215,7 @@ class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D 
     or 3D.
     """
+    type_name = SketchConstraint.DISTANCE
 
 # 2D Only Classes #
 ################################################################################
@@ -218,11 +230,19 @@ class AbstractDistance2D(Abstract2GeometryDistance):
 class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements."""
 
+    type_name = SketchConstraint.DISTANCE_HORIZONTAL
+
 class VerticalDistance(AbstractDistance2D):
     """A constraint that sets the vertical distance between two elements."""
+
+    type_name = SketchConstraint.DISTANCE_VERTICAL
 
 class Radius(Abstract1GeometryDistance):
     """A constraint that sets the radius of a curve."""
 
+    type_name = SketchConstraint.DISTANCE_RADIUS
+
 class Diameter(Abstract1GeometryDistance):
     """A constraint that sets the diameter of a curve."""
+
+    type_name = SketchConstraint.DISTANCE_DIAMETER

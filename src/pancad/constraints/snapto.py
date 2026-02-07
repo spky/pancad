@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pancad.abstract import AbstractConstraint
+from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
@@ -39,8 +40,12 @@ class Horizontal(AbstractSnapTo):
     constrain:
     """
 
+    type_name = SketchConstraint.HORIZONTAL
+
 class Vertical(AbstractSnapTo):
     """A constraint that sets either a single geometry vertical or a pair of 
     geometries vertical relative to each other in a 2D coordinate system. Can 
     constrain:
     """
+
+    type_name = SketchConstraint.VERTICAL

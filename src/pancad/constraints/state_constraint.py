@@ -36,28 +36,39 @@ class Coincident(AbstractStateConstraint):
     location.
     """
 
+    type_name = SketchConstraint.COINCIDENT
+
 class Equal(AbstractStateConstraint):
     """A constraint that forces two geometry elements to have the same
     context-specific value, such as two line segments sharing the same length.
     """
+
+    type_name = SketchConstraint.EQUAL
 
 class Parallel(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be side by side and
     have the same distance continuously between them.
     """
 
+    type_name = SketchConstraint.PARALLEL
+
 class Perpendicular(AbstractStateConstraint):
     """A constraint that forces two geometry elements to be angled 90 degrees
     relative to each other.
     """
+
+    type_name = SketchConstraint.PERPENDICULAR
 
 class Tangent(AbstractStateConstraint):
     """A constraint that forces a line to touch a curve at a point while not
     also crossing the curve at that point.
     """
 
+    type_name = SketchConstraint.TANGENT
+
 class AlignAxes(AbstractStateConstraint):
     """A constraint that forces two coordinate systems to share the same
     location and the same respective axis directions.
     """
-    type_ = SketchConstraint.ALIGN_AXES
+
+    type_name = SketchConstraint.ALIGN_AXES

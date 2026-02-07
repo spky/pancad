@@ -273,10 +273,10 @@ class AbstractConstraint(PancadThing):
         self._system = value
 
     # Abstract Properties
-    # @property
-    # @abstractmethod
-    # def type_name(self) -> SketchConstraint:
-        # """Returns the SketchConstraint enum value for the constraint type."""
+    @property
+    @abstractmethod
+    def type_name(self) -> SketchConstraint:
+        """Returns the SketchConstraint enum value for the constraint type."""
 
     # Public Methods
     def get_dependencies(self) -> list[AbstractFeature]:
