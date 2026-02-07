@@ -1,4 +1,4 @@
-"""A module providing abstract classes to define the interfaces between pancad 
+"""A module providing abstract classes to define the interfaces between pancad
 CAD objects.
 """
 from __future__ import annotations
@@ -14,9 +14,11 @@ if TYPE_CHECKING:
     from typing import Self
     from uuid import UUID
 
+    from pancad.constants import SketchConstraint
+
 
 class PancadThing(ABC):
-    """An abstract class defining the properties and methods that all pancad 
+    """An abstract class defining the properties and methods that all pancad
     elements, constraints, or whatever must have with no exceptions.
     """
     def __init__(self, system: PancadThing=None):
@@ -28,8 +30,8 @@ class PancadThing(ABC):
     # Properties
     @property
     def uid(self) -> str | UUID:
-        """The unique id of the element, used for CAD interoperability. Can be 
-        manually set, but is usually randomly generated or read from an existing 
+        """The unique id of the element, used for CAD interoperability. Can be
+        manually set, but is usually randomly generated or read from an existing
         file.
         """
         return self._uid
@@ -42,9 +44,9 @@ class PancadThing(ABC):
 
     @property
     def system(self) -> PancadThing | None:
-        """The system that defines the object's location and dependencies. Some 
-        objects like files representing parts or assemblies can exist by 
-        themselves, which should be represented by settings those objects' 
+        """The system that defines the object's location and dependencies. Some
+        objects like files representing parts or assemblies can exist by
+        themselves, which should be represented by settings those objects'
         system to None.
         """
         return self._system
@@ -54,8 +56,8 @@ class PancadThing(ABC):
 
     @abstractmethod
     def get_dependencies(self) -> list[PancadThing]:
-        """Returns the object's external dependencies. Dependencies are anything 
-        that if deleted or not present in the object's system the object 
+        """Returns the object's external dependencies. Dependencies are anything
+        that if deleted or not present in the object's system the object
         would not be able to function.
         """
 
@@ -80,7 +82,7 @@ class AbstractFeature(PancadThing):
     # Properties #
     @property
     def name(self) -> str:
-        """The name of the feature. Usually user assigned or automatically 
+        """The name of the feature. Usually user assigned or automatically
         generated. Does not need to be unique.
         """
         return self._name
@@ -139,9 +141,9 @@ class AbstractGeometry(PancadThing):
     def parent(self) -> AbstractGeometry | None:
         """The parent of the geometry.
 
-        Example: A circle center point's parent would be the circle, but if the 
-        point's parent is None then the point is its own parent. Should 
-        never be set by the instance itself, only by the parent to claim 
+        Example: A circle center point's parent would be the circle, but if the
+        point's parent is None then the point is its own parent. Should
+        never be set by the instance itself, only by the parent to claim
         ownership.
         """
         if not hasattr(self, "_parent"):
@@ -168,7 +170,7 @@ class AbstractGeometry(PancadThing):
 
     @property
     def children(self) -> dict[ConstraintReference, AbstractGeometry]:
-        """The mapping of the geometry's constraint references to its child 
+        """The mapping of the geometry's constraint references to its child
         geometries. Read-only.
         """
         return {reference: self.get_reference(reference)
@@ -193,21 +195,21 @@ class AbstractGeometry(PancadThing):
     # Abstract Methods
     @abstractmethod
     def update(self, other: AbstractGeometry) -> Self:
-        """Takes geometry of the same type as the calling geometry and updates 
-        the calling geometry to match the new geometry while maintaining its 
+        """Takes geometry of the same type as the calling geometry and updates
+        the calling geometry to match the new geometry while maintaining its
         uid. Should return itself afterwards.
         """
 
     # Python Dunders #
     def __len__(self) -> int:
-        """Implements the Python len() function to return whether the geometry 
+        """Implements the Python len() function to return whether the geometry
         is 2D or 3D.
         """
 
 class AbstractGeometrySystem(AbstractGeometry):
-    """A type of geometry defining interfaces provided by systems of pancad 
-    Geometry elements. A geometry system is a system managing interfaces between 
-    geometry and constraints. All geometry system geometry is defined relative 
+    """A type of geometry defining interfaces provided by systems of pancad
+    Geometry elements. A geometry system is a system managing interfaces between
+    geometry and constraints. All geometry system geometry is defined relative
     to the geometry system's internal coordinate system.
     """
 
@@ -222,7 +224,7 @@ class AbstractGeometrySystem(AbstractGeometry):
         """
 
 class AbstractConstraint(PancadThing):
-    """A class defining the interfaces provided by all pancad Constraint 
+    """A class defining the interfaces provided by all pancad Constraint
     Elements.
     """
     def __init__(self,
@@ -260,7 +262,7 @@ class AbstractConstraint(PancadThing):
 
     @property
     def system(self) -> AbstractGeometrySystem | None:
-        """The system the constraint is in. This defaults to None unless set by 
+        """The system the constraint is in. This defaults to None unless set by
         a higher level context like a SketchGeometrySystem object.
         """
         if not hasattr(self, "_system"):
@@ -269,6 +271,12 @@ class AbstractConstraint(PancadThing):
     @system.setter
     def system(self, value: AbstractGeometrySystem) -> None:
         self._system = value
+
+    # Abstract Properties
+    # @property
+    # @abstractmethod
+    # def type_name(self) -> SketchConstraint:
+        # """Returns the SketchConstraint enum value for the constraint type."""
 
     # Public Methods
     def get_dependencies(self) -> list[AbstractFeature]:
@@ -285,7 +293,7 @@ class AbstractConstraint(PancadThing):
     def get_parents(self) -> list[AbstractGeometry]:
         """Returns highest geometry scope being constrained for each geometry.
 
-        Example: A circle's center point would return the circle object, but a 
+        Example: A circle's center point would return the circle object, but a
         standalone point would just return the point.
         """
         parents = []
@@ -297,15 +305,15 @@ class AbstractConstraint(PancadThing):
         return parents
 
     def get_geometry(self) -> list[AbstractGeometry]:
-        """Returns the portions of the constrained geometry being constrained. 
-        
-        Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or 
+        """Returns the portions of the constrained geometry being constrained.
+
+        Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or
         the start point of a :class:`~pancad.geometry.LineSegment`.
         """
         return self._geometry
 
     def get_references(self) -> tuple[ConstraintReference]:
-        """Returns a tuple of the constrained geometrys' ConstraintReferences in 
+        """Returns a tuple of the constrained geometrys' ConstraintReferences in
         the same order as the tuple returned by :meth:`get_constrained`.
         """
         return tuple(geometry.self_reference for geometry in self._geometry)

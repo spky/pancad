@@ -1,4 +1,4 @@
-"""A module providing methods for FreeCADMap to translate features to and from 
+"""A module providing methods for FreeCADMap to translate features to and from
 FreeCAD.
 """
 from __future__ import annotations
@@ -239,8 +239,8 @@ def _add_sketch_constraints_from_pancad(sketch: Sketch,
 @singledispatchmethod
 def _pancad_to_freecad_feature(self,
                                feature: AbstractFeature) -> FreeCADFeature:
-    """Creates a FreeCAD equivalent to the pancad feature and adds its id to the 
-    id map. Will also create geometry inside of features if any exist and add 
+    """Creates a FreeCAD equivalent to the pancad feature and adds its id to the
+    id map. Will also create geometry inside of features if any exist and add
     them to the map.
     """
     raise TypeError(f"Unrecognized pancad feature type {key.__class__}")
@@ -268,7 +268,7 @@ def _extrude(self, pancad_extrude: Extrude) -> FreeCADFeature:
 
 @_pancad_to_freecad_feature.register
 def _feature_container(self, container: FeatureContainer) -> FreeCADBody:
-    # A container creates a FreeCAD Body. FreeCAD Bodies have an origin, axes, 
+    # A container creates a FreeCAD Body. FreeCAD Bodies have an origin, axes,
     # and planes created inside of them when initialized.
     body = self._document.addObject(ObjectType.BODY, container.name)
     origin = body.Origin
@@ -304,7 +304,7 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     sketch.Label = pancad_sketch.name
     self._id_map[sketch.ID] = sketch
     geo_sys = sketch.geometry_system
-    
+
     # Add geometry in the sketch
     pancad_pairs = zip(pancad_sketch.geometry, pancad_sketch.construction)
     for pancad_geometry, construction in pancad_pairs:
@@ -312,9 +312,9 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
         geometry_id = self._freecad_add_to_sketch(geometry,
                                                   sketch,
                                                   construction)
-        # The initial map between the pancad sketch geometry and the core 
-        # element of the freecad sketch geometry has to be set here because 
-        # there's no way to know which element corresponds to which unless 
+        # The initial map between the pancad sketch geometry and the core
+        # element of the freecad sketch geometry has to be set here because
+        # there's no way to know which element corresponds to which unless
         # the single core relationship is mapped during generation.
         self._pancad_to_freecad[pancad_geometry.uid] = (pancad_geometry,
                                                         geometry_id)
@@ -352,7 +352,7 @@ def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
     center = App.Vector(tuple(arc.center) + (0,))
     normal = App.Vector((0, 0, 1))
     circle =  Part.Circle(center, normal, arc.radius)
-    
+
     if arc.is_clockwise:
         # All FreeCAD circular arcs are drawn counterclockwise
         end = arc.start_angle
@@ -360,7 +360,7 @@ def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
     else:
         start = arc.start_angle
         end = arc.end_angle
-    
+
     # FreeCAD's circular arc angles are all positive
     if start < 0:
         start += 2 * pi
@@ -377,8 +377,8 @@ def _freecad_add_to_sketch(self,
                            geometry: FreeCADGeometry,
                            sketch: FreeCADSketch,
                            construction: bool) -> SketchElementID:
-    """Adds the geometry to the FreeCAD sketch and returns its unique pancad 
-    derived id. Updates the internal FreeCADMap's id map to include the new 
+    """Adds the geometry to the FreeCAD sketch and returns its unique pancad
+    derived id. Updates the internal FreeCADMap's id map to include the new
     geometry and any sub geometry.
     """
     raise TypeError(f"Unsupported pancad element type: {geometry}")
@@ -392,7 +392,7 @@ def _ellipse(self,
     sketch.addGeometry(ellipse, construction)
     sketch.exposeInternalGeometry(initial_index)
     for index in range(initial_index, initial_index + 4):
-        geometry_id = (sketch.ID, ListName.GEOMETRY, index) 
+        geometry_id = (sketch.ID, ListName.GEOMETRY, index)
         self._id_map[geometry_id] = sketch.Geometry[index]
     # Returns the id of the ellipse element, not the sub elements
     return (sketch.ID, ListName.GEOMETRY, initial_index)
@@ -506,7 +506,7 @@ def _freecad_to_pancad_feature(self,
             pancad_feature = _ftpf_coordinate_system(self, feature)
         case _:
             raise TypeError(f"Unrecognized TypeId '{feature.TypeId}'")
-    
+
     # Eliminate duplicate parents
     parent_list = list(set(feature.Parents))
     if len(parent_list) == 1:
@@ -578,7 +578,7 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
             # internal geometry, so this function can be run on each item and
             # then pancad can just ignore the errors
             pass
-    
+
     # Actually translate geometry
     for i, freecad_geometry in enumerate(freecad_sketch.Geometry):
         geometry = self._freecad_to_pancad_geometry(freecad_geometry)
