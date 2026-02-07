@@ -47,3 +47,5 @@ FreeCADAPIObject = (FreeCADDocument
                     | FreeCADFeature
                     | FreeCADGeometry
                     | FreeCADConstraint)
+
+FreeCADPlacement = FreeCAD.Placement

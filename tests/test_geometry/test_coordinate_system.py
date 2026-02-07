@@ -60,6 +60,16 @@ def test_system_parts_rotation_3d(parts, ypr_angles, expected, request):
     matrix = yaw_pitch_roll(*map(radians, ypr_angles))
     system_parts.rotate(matrix)
 
+@pytest.fixture
+def unrotated_3d_system():
+    return CoordinateSystem((0, 0, 0))
+
+def test_unrotated_3d_system_quaternion(unrotated_3d_system):
+    quat = unrotated_3d_system.get_quaternion()
+    assert quat == np.quaternion(1, 0, 0, 0)
+
+
+
 class TestCSInit(unittest.TestCase):
     def test_point_init_2d(self):
         pt = Point(0, 0)

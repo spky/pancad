@@ -5,6 +5,11 @@ class DupeUidError(ValueError):
     mutable sequence designed to contain only unique values.
     """
 
+class DupeNameError(ValueError):
+    """Raised when attempting to rename a CAD element but an element already has
+    that name in that context.
+    """
+
 class HasDependentsError(ValueError):
     """Raised when attempting to remove an element while it still has detectable
     dependents. Should be used to disposition what actions should be taken, for

@@ -3,6 +3,8 @@
 from math import radians
 from numbers import Real
 
+import pytest
+
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem

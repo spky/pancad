@@ -8,6 +8,10 @@ from itertools import islice
 from typing import TYPE_CHECKING, Literal
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
+import re
+
+from pancad.exceptions import DupeNameError
+import logging
 
 if TYPE_CHECKING:
     from typing import NamedTuple
@@ -20,6 +24,9 @@ if TYPE_CHECKING:
         FreeCADSketch,
         FreeCADAPIObject,
     )
+
+logger = logging.getLogger(__name__)
+
 
 ################################################################################
 # Constant Definitions
@@ -50,8 +57,108 @@ CONSTRAINT_LIST_XPATH = "Properties/Property[@name='Constraints']/ConstraintList
 """Xpath to find a sketch's ConstraintList."""
 
 ################################################################################
+# Modifying API Properties
+################################################################################
+
+def relabel_object(object_: FreeCADFeature | FreeCADDocument,
+                   label: str, allow_empty: bool=False) -> None:
+    """Relabels the object.
+
+    :raises DupeNameError: If FreeCAD says the name already exists.
+    :raises ValueError: If new label does not match the expected label for an
+        unhandled reason.
+    """
+    object_.Label = label
+    if label == "" and not allow_empty:
+        raise ValueError("New label cannot be empty")
+    if object_.Label != label:
+        if object_.Label.startswith(label):
+            msg = ("FreeCAD returned a modified label due to there already"
+                   " being an object with the provided label.")
+            raise DupeNameError(msg, object_.Label)
+        raise ValueError("Unhandled FreeCAD relabel behavior with:", label)
+
+################################################################################
+# Querying API Properties
+################################################################################
+
+def get_map_name(raw_name: str) -> str:
+    """Returns the unique part of the name that sometimes identifies what the
+    feature is used for. That name can then be used to map the object. For
+    example: 'X_Axis001' will return 'X_Axis'
+    """
+    regex = re.compile(r".*[^0-9](?=[0-9]|$)")
+    match = regex.match(raw_name)
+    if match is None:
+        raise ValueError(f"No mapping name found in '{raw_name}", raw_name)
+    return match.group(0)
+
+def get_by_uid(uid: str | FreeCADUID,
+               document: FreeCADDocument) -> FreeCADAPIObject:
+    """Returns the corresponding FreeCAD API object from the document.
+
+    :param uid: A FreeCADUID or a compatible str.
+    :param document: The document the uid is in.
+    """
+    if not isinstance(uid, FreeCADUID):
+        uid = FreeCADUID(uid)
+    if uid.file_uid != document.Uid:
+        raise LookupError("uid is not in the document", uid)
+    data = uid.data
+    if data.type_ == "document":
+        return document
+
+    try:
+        feature = next(o for o in document.Objects if o.ID == data.feature_id)
+    except StopIteration as exc:
+        msg = f"uid's feature id '{data.feature_id}' is not in the document"
+        raise LookupError(msg, uid) from exc
+
+    if data.type_ == "feature":
+        return feature
+    if data.type_ == "sketchgeo":
+        return get_geometry_by_sketch_id(data.geometry_id, data.list_name,
+                                         feature)
+    if data.type_ == "sketchcons":
+        return _get_constraint_by_uid(data, feature)
+    msg = f"uid type '{data.type_}' is not yet supported"
+    raise NotImplementedError(msg, uid)
+
+def _get_constraint_by_uid(data: SketchConstraintUidInfo,
+                           sketch: FreeCADSketch) -> FreeCADConstraint:
+    """Returns the constraint api object from a sketch api object."""
+    attribs = {"Type": str(data.constraint_type)}
+    for name, reference in data.reference_map.items():
+        if reference.id_ == -2000:
+            geo_index = -2000
+        else:
+            geo_index = get_geometry_index_by_sketch_id(reference.id_,
+                                                        reference.list_name,
+                                                        sketch)
+            if reference.list_name == "ExternalGeo":
+                geo_index = -1 - geo_index
+        attribs.update({name: str(geo_index), name + "Pos": str(reference.pos)})
+    for index, constraint in enumerate(get_sketch_constraint_list_xml(sketch)):
+        constraint_attribs = {name: constraint.attrib[name] for name in attribs}
+        if constraint_attribs == attribs:
+            return sketch.Constraints[index]
+    raise LookupError("Could not find constraint in sketch", data)
+
+################################################################################
 # Data Structure Definitions
 ################################################################################
+
+@dataclass(frozen=True)
+class FreeCADConstraintPair:
+    """Class for keeping track of a FreeCAD constraint's index reference and
+    subpart for one geometry.
+
+    :param index: The constraint reference index of the pair. Negative for
+        ExternalGeo, positive for Geometry.
+    :param part: The edge sub part of the geometry.
+    """
+    index: int
+    part: int
 
 @dataclass(frozen=True)
 class DocumentUidInfo:
@@ -118,6 +225,12 @@ class SketchGeometryUidInfo:
         """The name of the sketch list the geometry is in."""
         return LIST_INT_XML_MAP[self.list_]
 
+    @property
+    def sketch_uid(self) -> FreeCADUID:
+        """The uid of the FreeCAD sketch the geometry is in"""
+        sketch_parts = [self.file_uid, "feature", str(self.feature_id)]
+        return FreeCADUID(FreeCADUID.delim.join(sketch_parts))
+
 @dataclass(frozen=True)
 class SketchConstraintUidInfo:
     """Class for keeping track of constraint info inside a uid string.
@@ -182,6 +295,12 @@ class SketchConstraintUidInfo:
         the constraint.
         """
         return {"First": self.first, "Second": self.second, "Third": self.third}
+
+    @property
+    def sketch_uid(self) -> FreeCADUID:
+        """The uid of the FreeCAD sketch the constraint is in"""
+        sketch_parts = [self.file_uid, "feature", str(self.feature_id)]
+        return FreeCADUID(FreeCADUID.delim.join(sketch_parts))
 
 class FreeCADUID(str):
     """A class to make it easy to access freecad uid information from their 
@@ -344,6 +463,10 @@ def get_geometry_details(geometry: FreeCADGeometry | Element) -> Element:
         raise ValueError("No candidates found in geometry content", tree)
     return candidates.pop()
 
+def get_geometry_type(geometry: FreeCADGeometry | Element) -> str:
+    """Get the name of the geometry type from its xml content."""
+    return get_geometry_details(geometry).tag
+
 def get_sketch_geometry_list_xml(sketch: FreeCADSketch,
                                  list_: Literal["Geometry", "ExternalGeo"]
                                  ) -> Element:
@@ -434,6 +557,18 @@ def get_geometry_index_by_sketch_id(id_: int,
             return index
     raise LookupError("Could not find geometry with id in sketch", id_)
 
+def get_geometry_index_by_uid(uid: FreeCADUID,
+                              document: FreeCADDocument) -> int:
+    """Returns the sketch index of the geometry corresponding to the uid
+    inside of the document.
+
+    :param uid: A sketchgeo FreeCADUID
+    :param document: A FreeCAD API document object containing the geometry.
+    """
+    geometry = get_by_uid(uid, document)
+    sketch = get_by_uid(geometry.sketch_uid, document)
+    return get_geometry_sketch_index(geometry, uid.list_name, sketch)
+
 def get_geometry_sketch_index(geometry: FreeCADGeometry,
                               list_: Literal["Geometry", "ExternalGeo"],
                               sketch: FreeCADSketch) -> int:
@@ -490,53 +625,36 @@ def get_constraint_sketch_index(constraint: FreeCADConstraint,
             return index
     raise LookupError("Could not find constraint in sketch", constraint)
 
-def get_by_uid(uid: str | FreeCADUID,
-               document: FreeCADDocument) -> FreeCADAPIObject:
-    """Returns the corresponding FreeCAD API object from the document.
+def get_reference_index(index: int,
+                        list_: Literal["Geometry", "ExternalGeo"]) -> int:
+    """Returns the index that FreeCAD constraints use to reference geometry in
+    sketch lists. Geometry is positive and zero-indexed, ExternalGeo is negative
+    and starts at -1. -1 is the x-axis and origin of the sketch coordinate
+    system. -2 is the y-axis of the sketch coordinate system.
 
-    :param uid: A FreeCADUID or a compatible str.
-    :param document: The document the uid is in.
+    :param index: An index in a FreeCAD geometry list.
+    :param list_: The name of the list the geometry is in.
+    :raises ValueError: When provided a negative number for index.
     """
-    if not isinstance(uid, FreeCADUID):
-        uid = FreeCADUID(uid)
-    if uid.file_uid != document.Uid:
-        raise LookupError("uid is not in the document", uid)
-    data = uid.data
-    if data.type_ == "document":
-        return document
+    if index < 0:
+        raise ValueError("index must be 0 or positive", index)
+    match list_:
+        case "Geometry":
+            return index
+        case "ExternalGeo":
+            return -1 - index
+        case _:
+            msg = ("Expected 'Geometry' or 'ExternalGeo' for list_name,"
+                   f" got '{list_name}'")
+            raise TypeError(msg, list_name)
 
-    try:
-        feature = next(o for o in document.Objects if o.ID == data.feature_id)
-    except StopIteration as exc:
-        msg = f"uid's feature id '{data.feature_id}' is not in the document"
-        raise LookupError(msg, uid) from exc
+def get_reference_index_by_uid(uid: FreeCADUID,
+                               document: FreeCADDocument) -> int:
+    """Returns the index that FreeCAD constraints use to reference geometry in
+    sketch lists.
 
-    if data.type_ == "feature":
-        return feature
-    if data.type_ == "sketchgeo":
-        return get_geometry_by_sketch_id(data.geometry_id, data.list_name,
-                                         feature)
-    if data.type_ == "sketchcons":
-        return _get_constraint_by_uid(data, feature)
-    msg = f"uid type '{data.type_}' is not yet supported"
-    raise NotImplementedError(msg, uid)
-
-def _get_constraint_by_uid(data: SketchConstraintUidInfo,
-                           sketch: FreeCADSketch) -> FreeCADConstraint:
-    """Returns the constraint api object from a sketch api object."""
-    attribs = {"Type": str(data.constraint_type)}
-    for name, reference in data.reference_map.items():
-        if reference.id_ == -2000:
-            geo_index = -2000
-        else:
-            geo_index = get_geometry_index_by_sketch_id(reference.id_,
-                                                        reference.list_name,
-                                                        sketch)
-            if reference.list_name == "ExternalGeo":
-                geo_index = -1 - geo_index
-        attribs.update({name: str(geo_index), name + "Pos": str(reference.pos)})
-    for index, constraint in enumerate(get_sketch_constraint_list_xml(sketch)):
-        constraint_attribs = {name: constraint.attrib[name] for name in attribs}
-        if constraint_attribs == attribs:
-            return sketch.Constraints[index]
-    raise LookupError("Could not find constraint in sketch", data)
+    :param uid: A sketchgeo FreeCADUID.
+    :param document: A FreeCAD API document object containing the geometry.
+    """
+    index = get_geometry_index_by_uid(uid, document)
+    return get_reference_index(index, uid.list_name)

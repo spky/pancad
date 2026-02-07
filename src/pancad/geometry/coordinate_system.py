@@ -3,6 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from collections import namedtuple
 from dataclasses import dataclass, fields
 from functools import partial, singledispatchmethod, partialmethod
 from textwrap import indent
@@ -29,6 +30,7 @@ isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 # TODO: Add expected conditions to the test_system_parts_rotation_3d test
 
+SystemAxes3D = namedtuple("SystemAxes3D", ["x", "y", "z"])
 
 def updates_planes(func):
     """A wrapper to sync up SystemParts planes after the axes are updated."""
@@ -149,6 +151,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                 }
             )
         super().__init__(references)
+
     # Class Methods #
     @classmethod
     def from_quaternion(cls,
@@ -250,15 +253,32 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
         (0, 0, 1) to this coordinate system.
         """
-        canon_axis = (0, 0, 1)
-        if (np.allclose(canon_axis, self.z_vector)
-                or np.allclose(canon_axis, -self.z_vector)):
-            # Protect against the situation where the coordinate system is
-            # rotated around the z axis by switching to x axis
-            canon_axis = (1, 0, 0)
-            current_axis = self.x_vector
-        else:
-            current_axis = self.z_vector
+        canon_vectors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+        system_vectors = [self.x_vector, self.y_vector, self.z_vector]
+        canon = SystemAxes3D(*[np.array(axis) for axis in canon_vectors])
+        sys = SystemAxes3D(*[np.array(axis) for axis in system_vectors])
+        canon_z_axis = np.array((0, 0, 1))
+        z_axis = np.array(self.z_vector)
+
+        x_axis = np.array(self.x_vector)
+        canon_x_axis = np.array((1, 0, 0))
+
+        if all(np.isclose(np.dot(c, s), 1) for c, s in zip(canon, sys)):
+            # Check if the axes are all close to the canon axis directions and
+            # return a quaternion with no rotation if so.
+            return np.quaternion(1, 0, 0, 0)
+        parallel_to_canons = [np.isclose(abs(np.dot(c, s)), 1)
+                              for c, s in zip(canon, sys)]
+        if all(parallel_to_canons):
+            # Can only happen if all axes are counter-parallel, since they've all
+            # been checked for whether they are the exact same. That would mean
+            # that this is an opposite-handed coordinate system and wouldn't be
+            # possible to rotate to.
+            msg =("Cannot create a quaternion to rotate to this coordinate"
+                  "system from a canon right-handed coordinate_system")
+            raise ValueError(msg)
+        canon_axis = canon[parallel_to_canons.index(False)]
+        current_axis = sys[parallel_to_canons.index(False)]
         euler_axis = np.cross(canon_axis, current_axis)
         euler_axis = euler_axis / np.linalg.norm(euler_axis)
         normed_dot = (

@@ -61,7 +61,7 @@ class FreeCADMap(MutableMapping):
         _freecad_to_pancad_feature,
         _freecad_to_pancad_geometry,
         _pancad_to_freecad_feature,
-        _pancad_to_freecad_geometry,
+        pancad_to_freecad_geometry,
     )
     from ._element_links import (
         _link_features,
@@ -82,7 +82,7 @@ class FreeCADMap(MutableMapping):
         # Maps from pancad objects to their associated FreeCAD objects
         self._freecad_to_pancad = dict()
         # Maps from FreeCAD IDs to their associated pancad objects
-        
+
         self._id_map = _FreeCADIDMap()
         # Maps FreeCAD IDs to their objects
         self._feature_map = _FreeCADFeatureMap(self._id_map)

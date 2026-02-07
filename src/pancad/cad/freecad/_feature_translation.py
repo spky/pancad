@@ -1,23 +1,29 @@
 """A module providing methods for FreeCADMap to translate features to and from 
 FreeCAD.
 """
-from functools import singledispatchmethod
+from __future__ import annotations
 
+from functools import singledispatchmethod, singledispatch
+from typing import TYPE_CHECKING
 from math import pi
 import numpy as np
+import warnings
+import logging
 
 try:
-    import Part
     import FreeCAD as App
+    import Part
+    import Sketcher
 except ImportError:
     import sys
-    from ._bootstrap import get_app_dir
-    sys.path.append(str(get_app_dir()))
-    import Part
+    from pancad.cad.freecad._bootstrap import get_app_dir
+    app_path = get_app_dir()
+    sys.path.append(str(app_path))
     import FreeCAD as App
+    import Part
 
 from pancad.abstract import AbstractFeature, AbstractGeometry
-from pancad.constants import ConstraintReference
+from pancad.constants import ConstraintReference as CR
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
@@ -27,8 +33,14 @@ from pancad.geometry.feature_container import FeatureContainer
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.point import Point
 from pancad.geometry.sketch import Sketch
-from .constants import ListName, ObjectType, PadType
-from ._application_types import (
+from pancad.geometry.system import SketchGeometrySystem
+
+from pancad.cad.freecad import api_utils
+from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintPair
+from pancad.cad.freecad.constants import (
+    ListName, ObjectType, PadType, ConstraintType, EdgeSubPart
+)
+from pancad.cad.freecad._application_types import (
     FreeCADBody,
     FreeCADCircle,
     FreeCADCircularArc,
@@ -43,9 +55,187 @@ from ._application_types import (
 )
 from ._map_typing import SketchElementID
 
+if TYPE_CHECKING:
+    from pancad.abstract import AbstractConstraint
+    from pancad.geometry.coordinate_system import Pose
+    from pancad.filetypes.part_file import PartFile
+
+    from pancad.cad.freecad._application_types import (
+        FreeCADDocument, FreeCADPlacement, FreeCADConstraint,
+    )
+
+logger = logging.getLogger(__name__)
+
+################################################################################
+# pancad ---> FreeCAD Geometry
+################################################################################
+def new_placement_from_pose(pose: Pose) -> FreeCADPlacement:
+    """Creates a FreeCADPlacement from a pancad Pose."""
+    placement = App.Placement()
+    placement.Base = tuple(pose.origin)
+    quat = pose.coordinate_system.get_quaternion()
+    # FreeCAD Quaternions have their real component at the end.
+    placement.Rotation.Q = (quat.x, quat.y, quat.z, quat.w)
+    return placement
+
+
 ################################################################################
 # pancad ---> FreeCAD Features
 ################################################################################
+def new_document_from_part(part: PartFile) -> FreeCADDocument:
+    """Creates a new FreeCADDocument from a PartFile"""
+    document = App.newDocument()
+    api_utils.relabel_object(document, part.name)
+
+    uid_map = {part.uid: FreeCADUID.from_document(document)}
+    # TODO: Move the body to the correct location in the tree
+    new_feature_from_pancad(part.container, document, uid_map)
+    return document
+
+def new_feature_from_pancad(feature: AbstractFeature, document: FreeCADDocument,
+                            uid_map: dict[str, FreeCADUID]) -> FreeCADFeature:
+    """Creates a new FreeCAD Feature from a pancad feature and adds it to the
+    provided uid_map.
+    """
+    # TODO: Think of a less jank way to dispatch features to the right
+    # functions, maybe someday. Maybe by having each feature type have a
+    # dispatch string. singledispatch requires importing FreeCAD types.
+    # It might also be possible to truly have each feature have common
+    # interfaces, but that would need to be mapped out thoroughly for stuff like
+    # sketches.
+    funcs = [
+        (FeatureContainer, _new_body_from_container),
+        (Sketch, _new_sketch_from_pancad_sketch),
+    ]
+    try:
+        feature_func = next(f for f in funcs if isinstance(feature, f[0]))[1]
+    except StopIteration as exc:
+        msg = f"Unsupported feature type '{feature.__class__}'"
+        raise TypeError(msg, feature)
+    return feature_func(feature, document, uid_map)
+
+def _new_body_from_container(feature: FeatureContainer,
+                             document: FreeCADDocument,
+                             uid_map: dict[str, FreeCADUID]) -> FreeCADBody:
+    """Adds a new body to the FreeCADDocument from a FeatureContainer"""
+    if feature.uid in uid_map:
+        msg = "pancad uid of container already in uid map"
+        raise ValueError(msg, feature)
+    body = document.addObject(ObjectType.BODY)
+    api_utils.relabel_object(body, feature.name)
+
+    body.Placement = new_placement_from_pose(feature.pose)
+
+    # Map Origin and OriginFeatures to names that can map to container children
+    origin = body.Origin
+    origin_map = {"Coordinate_System": origin}
+    origin_map.update(
+        {api_utils.get_map_name(f.Name): f for f in origin.OriginFeatures}
+    )
+    reference_to_name = {
+        (CR.CS, "Coordinate_System"),
+        (CR.ORIGIN, "Coordinate_System"),
+        # There is no center point on the Origin object, so the origin point is
+        # mapped to the Origin where other systems can derive the location.
+        (CR.X, "X_Axis"),
+        (CR.Y, "Y_Axis"),
+        (CR.Z, "Z_Axis"),
+        (CR.XY, "XY_Plane"),
+        (CR.XZ, "XZ_Plane"),
+        (CR.YZ, "YZ_Plane"),
+    }
+
+    new_uid_map_items = {}
+    system = feature.feature_system
+    for reference, map_name in reference_to_name:
+        pancad_uid = system.children[reference].uid
+        if pancad_uid in uid_map:
+            element = system.children[reference]
+            msg = "pancad uid of element already in uid map"
+            raise ValueError(msg, element)
+        freecad_uid = FreeCADUID.from_feature(origin_map[map_name],
+                                                        document)
+        new_uid_map_items[pancad_uid] = freecad_uid
+
+    body_uid = FreeCADUID.from_feature(body, document)
+    new_uid_map_items[feature.uid] = body_uid
+    uid_map.update(new_uid_map_items)
+    for feature in system.features:
+        new_feature_from_pancad(feature, document, uid_map)
+    return body
+
+def _new_sketch_from_pancad_sketch(feature: Sketch,
+                                   document: FreeCADDocument,
+                                   uid_map: dict[str, FreeCADUID]
+                                   ) -> FreeCADSketch:
+    # Get relevant pancad mapping info
+    fc_parent_uid = uid_map[feature.system.feature.uid]
+    fc_plane_uid = uid_map[feature.get_support().uid]
+
+    # Add equivalent objects to freecad
+    fc_sketch = document.addObject(ObjectType.SKETCH)
+    api_utils.relabel_object(fc_sketch, feature.name)
+    api_utils.get_by_uid(fc_parent_uid, document).addObject(fc_sketch)
+    fc_sketch.AttachmentSupport = api_utils.get_by_uid(fc_plane_uid, document)
+    # TODO: Add logic for assigning MapMode and raising errors around it
+    fc_sketch.MapMode = "FlatFace"
+
+    new_uid_map_items = {}
+    geo_sys = feature.geometry_system
+    sys_pairs = [
+        (0, geo_sys.coordinate_system),
+        (0, geo_sys.origin),
+        (0, geo_sys.x_axis),
+        (1, geo_sys.y_axis),
+    ]
+    for index, pc_geo in sys_pairs:
+        fc_geo = fc_sketch.ExternalGeo[index]
+        new_uid_map_items[pc_geo.uid] = FreeCADUID.from_sketch_geometry(
+            fc_geo, "ExternalGeo", fc_sketch, document
+        )
+    new_uid_map_items[feature.uid] = FreeCADUID.from_feature(fc_sketch, document)
+    uid_map.update(new_uid_map_items)
+    _add_sketch_geometry_from_pancad(feature, document, uid_map)
+    # for constraint in geo_sys.constraints:
+        # new_constraint_from_pancad(constraint, document, uid_map)
+    breakpoint()
+
+def _add_sketch_geometry_from_pancad(sketch: Sketch,
+                                     document: FreeCADDocument,
+                                     uid_map: dict[str, FreeCADUID]
+                                     ) -> FreeCADSketch:
+    """Adds all the sketch geometry in a pancad sketch to the mapped FreeCAD
+    sketch.
+    """
+    fc_sketch = api_utils.get_by_uid(uid_map[sketch.uid], document)
+
+    system = sketch.geometry_system
+    new_uid_map_items = {}
+    for pc_geo, is_construction in zip(system.geometry, system.construction):
+        fc_geo = pancad_to_freecad_geometry(pc_geo)
+        fc_sketch.addGeometry(fc_geo, is_construction)
+        new_uid_map_items[pc_geo.uid] = FreeCADUID.from_sketch_geometry(
+            fc_geo, "Geometry", fc_sketch, document
+        )
+        if fc_geo.TypeId == "Part::GeomEllipse":
+            # TODO: Implement Ellipse mapping
+            msg = "Ellipse mapping hasn't been implemented yet!"
+            raise NotImplementedError(msg, fc_geo)
+    uid_map.update(new_uid_map_items)
+    return fc_sketch
+
+def _add_sketch_constraints_from_pancad(sketch: Sketch,
+                                        document: FreeCADDocument,
+                                        uid_map: dict[str, FreeCADUID]
+                                        ) -> FreeCADSketch:
+    """Adds all the sketch constraints in a pancad sketch to the mapped FreeCAD
+    sketch.
+    """
+    fc_sketch = api_utils.get_by_uid(uid_map[sketch.uid], document)
+    new_uid_map_items = {}
+    for pc_cons in system.geometry_system.constraints:
+        breakpoint()
+
 @singledispatchmethod
 def _pancad_to_freecad_feature(self,
                                feature: AbstractFeature) -> FreeCADFeature:
@@ -118,7 +308,7 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     # Add geometry in the sketch
     pancad_pairs = zip(pancad_sketch.geometry, pancad_sketch.construction)
     for pancad_geometry, construction in pancad_pairs:
-        geometry = self._pancad_to_freecad_geometry(pancad_geometry)
+        geometry = self.pancad_to_freecad_geometry(pancad_geometry)
         geometry_id = self._freecad_add_to_sketch(geometry,
                                                   sketch,
                                                   construction)
@@ -133,36 +323,31 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
 ################################################################################
 # pancad ---> FreeCAD Geometry
 ################################################################################
-@singledispatchmethod
-@staticmethod
-def _pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
+@singledispatch
+def pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
     """Returns an equivalent FreeCAD geometry element from pancad Geometry."""
     raise TypeError(f"Unsupported pancad element type: {geometry}")
 
-@_pancad_to_freecad_geometry.register
-@staticmethod
+@pancad_to_freecad_geometry.register
 def _line_segment(line_segment: LineSegment) -> FreeCADLineSegment:
     start = App.Vector(tuple(line_segment.start) + (0,))
     end = App.Vector(tuple(line_segment.end) + (0,))
     return Part.LineSegment(start, end)
 
-@_pancad_to_freecad_geometry.register
-@staticmethod
+@pancad_to_freecad_geometry.register
 def _ellipse(ellipse: Ellipse) -> FreeCADEllipse:
     major_axis_point = App.Vector(tuple(ellipse.major_axis_max) + (0,))
     minor_axis_point = App.Vector(tuple(ellipse.minor_axis_max) + (0,))
     center = App.Vector(tuple(ellipse.center) + (0,))
     return Part.Ellipse(major_axis_point, minor_axis_point, center)
 
-@_pancad_to_freecad_geometry.register
-@staticmethod
+@pancad_to_freecad_geometry.register
 def _circle(circle: Circle) -> FreeCADCircle:
     center = App.Vector(tuple(circle.center) + (0,))
     normal = App.Vector((0, 0, 1))
     return Part.Circle(center, normal, circle.radius)
 
-@_pancad_to_freecad_geometry.register
-@staticmethod
+@pancad_to_freecad_geometry.register
 def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
     center = App.Vector(tuple(arc.center) + (0,))
     normal = App.Vector((0, 0, 1))
@@ -224,6 +409,82 @@ def _one_to_one_cases(self,
     geometry_id = (sketch.ID, ListName.GEOMETRY, index)
     self._id_map[geometry_id] = geometry
     return geometry_id
+
+################################################################################
+# pancad ---> FreeCAD Constraints
+################################################################################
+
+def new_constraint_from_pancad(constraint: AbstractConstraint,
+                               document: FreeCADDocument,
+                               uid_map: dict[str, FreeCADUID]) -> FreeCADConstraint:
+    """Creates a new FreeCAD Constraint from a pancad constraint and adds it to
+    the provided uid_map.
+    """
+    type_ = ConstraintType.from_pancad(constraint)
+    fc_sketch_uid = uid_map[constraint.system.feature.uid]
+    constraint_inputs = [type_]
+
+    pairs = []
+    for geo in constraint.get_geometry():
+        pairs.append(get_constraint_pair_from_pancad(geo, document, uid_map))
+
+    no_pairs = len(pairs)
+    if no_pairs == 1:
+        constraint_inputs.append(pairs[0].index)
+
+    # Add value if available from pancad constraint for distance, etc.
+    pc_value = getattr(constraint, "value", None)
+    if pc_value is not None:
+        unit_map = {"degrees": "deg"}
+        unit = unit_map.setdefault(constraint.unit, constraint.unit)
+        constraint_inputs.append(App.Units.Quantity(f"{pc_value} {unit}"))
+    return Sketcher.Constraint(*constraint_inputs)
+
+def get_constraint_pair_from_pancad(geometry: AbstractGeometry,
+                                    document: FreeCADDocument,
+                                    uid_map: dict[str, FreeCADUID]
+                                    ) -> FreeCADConstraintPair:
+    """Finds the equivalent constraint index and edge sub part to constrain the
+    pancad equivalent geometry in FreeCAD.
+    """
+    # The FreeCAD UID is mapped directly to the geometry or the parent geometry.
+    # Get the geometry uid and the api geometry element.
+    if geometry.uid in uid_map:
+        fc_geo_uid = uid_map[geometry.uid]
+    else:
+        try:
+            fc_geo_uid = uid_map[geometry.parent.uid]
+        except KeyError as exc:
+            msg = "Neither the geometry or parent geometry is in the uid_map"
+            raise LookupError(msg, geometry) from exc
+    fc_geo = api_utils.get_by_uid(fc_geo_uid, document)
+    geo_type = api_utils.get_geometry_type(fc_geo)
+
+    # Get the sub part corresponding to the geometry and its parent.
+    if geo_type == "GeomPoint":
+        sub_part_key = (geometry.self_reference, geo_type)
+    elif getattr(geometry, "is_clockwise", False):
+        sub_part_key = (geometry.self_reference, "clockwise")
+    else:
+        sub_part_key = geometry.self_reference
+    sub_part_map = {
+        CR.CORE: EdgeSubPart.EDGE,
+        CR.ORIGIN: EdgeSubPart.START, # Sketch Origin is at start of x-axis.
+        CR.X_MIN: EdgeSubPart.START,
+        CR.Y_MIN: EdgeSubPart.START,
+        CR.X_MAX: EdgeSubPart.END,
+        CR.Y_MAX: EdgeSubPart.END,
+        CR.X: EdgeSubPart.CORE, # Either sketch or ellipse x-axis.
+        CR.Y: EdgeSubPart.CORE, # Either sketch or ellipse y-axis.
+        CR.CENTER: EdgeSubPart.CENTER,
+        # Standalone Points are always START.
+        (CR.CORE, "GeomPoint"): EdgeSubPart.START,
+        # All FreeCAD arcs are counterclockwise. Clockwise arcs must be reversed
+        (CR.START, "clockwise"): EdgeSubPart.END,
+        (CR.END, "clockwise"): EdgeSubPart.START,
+    }
+    ref_index = api_utils.get_reference_index_by_uid(fc_geo_uid)
+    return FreeCADConstraintPair(ref_index, sub_part_map[sub_part_key])
 
 ################################################################################
 # FreeCAD ---> pancad Features
@@ -313,8 +574,8 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
         try:
             freecad_sketch.exposeInternalGeometry(i)
         except ValueError:
-            # FreeCAD doesn't provide a way to check whether something has 
-            # internal geometry, so this function can be run on each item and 
+            # FreeCAD doesn't provide a way to check whether something has
+            # internal geometry, so this function can be run on each item and
             # then pancad can just ignore the errors
             pass
     
@@ -325,8 +586,7 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
         geometry_id = (freecad_sketch.ID, ListName.GEOMETRY, i)
         self._id_map[geometry_id] = freecad_geometry
         self._pancad_to_freecad[geometry.uid] = (geometry, geometry_id)
-        self._freecad_to_pancad[geometry_id] = (geometry,
-                                                ConstraintReference.CORE)
+        self._freecad_to_pancad[geometry_id] = (geometry, CR.CORE)
     return sketch
 
 ################################################################################

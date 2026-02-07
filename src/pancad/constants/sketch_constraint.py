@@ -1,9 +1,9 @@
 """A module providing an enumeration for the constraint types available to 2D 
 sketches"""
 
-from enum import Flag, auto
+from enum import StrEnum, auto
 
-class SketchConstraint(Flag):
+class SketchConstraint(StrEnum):
     """An enumeration used to refer to a type of sketch constraint."""
     ALIGN_AXES = auto()
     """Refers to constraints aligning all axes between two coordinate systems.

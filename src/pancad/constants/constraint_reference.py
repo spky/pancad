@@ -36,9 +36,7 @@ class ConstraintReference(Flag):
     axis.
     """
     ORIGIN = auto()
-    """An alias for the center of the geometry. Example: The origin point of a 
-    coordinate system.
-    """
+    """The origin point of a coordinate system."""
     X = auto()
     """The X-Axis of the geometry. Examples: The X axis of a coordinate system 
     or the major axis of an ellipse.
