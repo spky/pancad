@@ -25,7 +25,11 @@ except ImportError:
     import Sketcher
 
 from pancad.abstract import AbstractFeature, AbstractGeometry
-from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
+from pancad.constants import (
+    ConstraintReference as CR,
+    SketchConstraint as SC,
+    FeatureType as FT,
+)
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
@@ -108,6 +112,7 @@ def new_feature_from_pancad(feature: AbstractFeature, document: FreeCADDocument,
     funcs = [
         (FeatureContainer, _new_body_from_container),
         (Sketch, _new_sketch_from_pancad_sketch),
+        (Extrude, _new_pad_from_pancad_extrude),
     ]
     try:
         feature_func = next(f for f in funcs if isinstance(feature, f[0]))[1]
@@ -200,6 +205,50 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     _add_sketch_geometry_from_pancad(feature, document, uid_map)
     _add_sketch_constraints_from_pancad(feature, document, uid_map)
     return fc_sketch
+
+def _new_pad_from_pancad_extrude(feature: Extrude,
+                                 document: FreeCADDocument,
+                                 uid_map: dict[str, FreeCADUID]) -> FreeCADPad:
+    fc_parent_uid = uid_map[feature.system.feature.uid]
+    fc_profile_uid = uid_map[feature.profile.uid]
+    fc_profile = api_utils.get_by_uid(fc_profile_uid, document)
+
+    pad = document.addObject(ObjectType.PAD)
+    api_utils.relabel_object(pad, feature.name)
+    api_utils.get_by_uid(fc_parent_uid, document).addObject(pad)
+    pad.Profile = fc_profile
+
+    if feature.unit is None:
+        msg = "The unit of Extrude '{feature.name}' is not set, assuming mm"
+        warnings.warn(msg)
+        unit = "mm"
+    else:
+        unit = feature.unit
+    angle_unit = "deg"
+
+    pad.Length = f"{feature.length} {unit}"
+    pad.Length2 = f"{feature.opposite_length} {unit}"
+    pad.TaperAngle = f"{feature.taper_angle} {angle_unit}"
+    pad.TaperAngle2 = f"{feature.opposite_taper_angle} {angle_unit}"
+    pad.UseCustomVector = False
+    pad.ReferenceAxis = (fc_profile, ["N_Axis"])
+    pad_type_map = { # Type name, Reversed bool, Midplane bool
+        FT.DIMENSION: ("Length", False, False),
+        FT.ANTI_DIMENSION: ("Length", True, False),
+        FT.SYMMETRIC: ("Length", False, True),
+        FT.TWO_DIMENSIONS: ("TwoLengths", False, False),
+        FT.ANTI_TWO_DIMENSIONS: ("TwoLengths", True, False),
+    }
+    pad.Type, pad.Reversed, pad.Midplane = pad_type_map[feature.type_]
+
+    # TODO: Once Extrude supports UpToFace, add offset and UpToFace logic.
+    pad.UpToFace = None
+    pad.Offset = 0
+
+    fc_profile.Visibility = False
+    uid_map[feature.uid] = FreeCADUID.from_feature(pad, document)
+    return pad
+
 
 def _add_sketch_geometry_from_pancad(sketch: Sketch,
                                      document: FreeCADDocument,

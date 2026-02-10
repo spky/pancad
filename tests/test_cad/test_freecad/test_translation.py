@@ -7,6 +7,7 @@ import pytest
 
 from tests.sample_pancad_objects.sample_part_files import (
     empty_part_file,
+    square_sketch_part_file,
     cube_part_file,
 )
 
@@ -24,7 +25,8 @@ DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
     "part_file_fixture, expected",
     [
         ("empty_part_file", 8),
-        ("cube_part_file", 9),
+        ("square_sketch_part_file", 9),
+        ("cube_part_file", 10),
     ]
 )
 def test_new_document_from_part(part_file_fixture, expected, request):

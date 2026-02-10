@@ -30,13 +30,19 @@ class ExtrudeSettings:
     :param opposite_length: The opposite length of the Extrude when a static 
         opposite length is active. Ignored if the Extrude is midplane.
     :param unit: The unit of the Extrude's length values.
-    :param name: The name of the feature displayed to the users in CAD.
+    :param taper_angle: The angle that the default length's extrusion tapers in 
+        degrees. A positive angle flares the extrude out while a negative angle 
+        tapers the extrude inwards.
+    :param opposite_taper_angle: The equivalent of the taper_angle, but for the 
+        opposite side.
     :raises ValueError: When a negative number is provided for length or 
         opposite_length.
     """
     type_: FeatureType
     length: Real = 0
     opposite_length: Real = 0
+    taper_angle: Real = 0
+    opposite_taper_angle: Real = 0
     unit: str = None
     def __post_init__(self):
         if self.length < 0:
@@ -56,7 +62,7 @@ class Extrude(AbstractFeature):
     to a one dimension extrusion and back again. Extrude also saves this 
     suppressed information and uses a FeatureType enumeration value to 
     determine which information is relevant currently.
-    
+
     :param profile: The sketch defining the extrusion 2D shape.
     :param settings: The constant settings of the Extrude, stored inside a 
         ExtrudeSettings dataclass.
@@ -124,6 +130,23 @@ class Extrude(AbstractFeature):
     @type_.setter
     def type_(self, value: FeatureType) -> None:
         self.settings = dataclasses.replace(self.settings, type_=value)
+
+    @property
+    def taper_angle(self) -> Real:
+        """The angle the extrude tapers in its default direction in degrees."""
+        return self.settings.taper_angle
+    @taper_angle.setter
+    def taper_angle(self, value: Real) -> None:
+        self.settings = dataclasses.replace(self.settings, taper_angle=value)
+
+    @property
+    def opposite_taper_angle(self) -> Real:
+        """The angle the extrude tapers in its opposite direction in degrees."""
+        return self.settings.opposite_taper_angle
+    @opposite_taper_angle.setter
+    def opposite_taper_angle(self, value: Real) -> None:
+        self.settings = dataclasses.replace(self.settings,
+                                            opposite_taper_angle=value)
 
     @property
     def unit(self) -> str | None:

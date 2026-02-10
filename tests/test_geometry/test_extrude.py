@@ -31,7 +31,10 @@ def square_extrude(request):
         "name": name
     }
     sketch = sample_sketches.square()
-    settings = ExtrudeSettings(type_, length, opposite, unit)
+    settings = ExtrudeSettings(type_=type_,
+                               length=length,
+                               opposite_length=opposite,
+                               unit=unit)
     yield Extrude(sketch, settings, name=name), params
 
 def test_length(square_extrude):
