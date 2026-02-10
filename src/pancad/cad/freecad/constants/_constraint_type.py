@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class ConstraintType(StrEnum):
     """An enumeration used to define which FreeCAD constraints are supported."""
+
     ANGLE = "Angle"
     COINCIDENT = "Coincident"
     DIAMETER = "Diameter"
@@ -33,6 +34,7 @@ class ConstraintType(StrEnum):
     RADIUS = "Radius"
     TANGENT = "Tangent"
     VERTICAL = "Vertical"
+
     def get_sketch_constraint(self,
                               mapping: FreeCADMap,
                               constraint: FreeCADConstraint,
@@ -61,6 +63,7 @@ class ConstraintType(StrEnum):
                              " INTERNAL_ALIGNMENT, should stay internal"
                              " to FreeCAD.")
         raise ValueError(f"Unsupported type {self}")
+
     @classmethod
     def from_pancad(cls, constraint: AbstractConstraint) -> ConstraintType:
         """Returns the pancad constraint's equivalent ConstraintType.
@@ -81,6 +84,7 @@ class ConstraintType(StrEnum):
             return ConstraintType.TANGENT # Curve/Line on Curve/Line -> Tangent
         raise TypeError(f"Unsupported type {type_}")
 
+
 _TO_SKETCH_CONSTRAINT = {
     ConstraintType.ANGLE: SketchConstraint.ANGLE, # Done
     ConstraintType.COINCIDENT: SketchConstraint.COINCIDENT, # Done
@@ -97,6 +101,8 @@ _TO_SKETCH_CONSTRAINT = {
     ConstraintType.VERTICAL: SketchConstraint.VERTICAL, # Done
 }
 """A map for one-to-one translations from ConstraintType to SketchConstraint."""
+
+
 _TO_CONSTRAINT_TYPE = {
     "Angle": ConstraintType.ANGLE,
     "Diameter": ConstraintType.DIAMETER,

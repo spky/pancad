@@ -1,4 +1,4 @@
-"""A module providing an enumeration class for the FreeCAD constraint sub-part 
+"""A module providing an enumeration class for the FreeCAD constraint sub-part
 options. See the following link for more information:
 https://wiki.freecad.org/Sketcher_scripting#Identifying_the_numbering_of_the_sub-parts_of_a_line
 """
@@ -17,28 +17,33 @@ if TYPE_CHECKING:
     from pancad.geometry import AbstractGeometry
 
 class EdgeSubPart(IntEnum):
-    """An enumeration class used to define FreeCAD constraints with the 
+    """An enumeration class used to define FreeCAD constraints with the
     sub-parts of the geometry they reference.
-    
-    :note: FreeCAD also supports n for the nth pole of the B-spline, but that 
-        should be passed as a number and is outside the scope of this 
+
+    :note: FreeCAD also supports n for the nth pole of the B-spline, but that
+        should be passed as a number and is outside the scope of this
         enumeration.
     """
+
     EDGE = 0
     """Constraint affects the entire edge."""
+
     START = 1
     """Constraint affects the start point of an edge."""
+
     END = 2
     """Constraint affects the end point of an edge."""
+
     CENTER = 3
     """Constraint affects the center point of an edge."""
+
     @classmethod
     def from_constraint_reference(cls,
                                   geometry: AbstractGeometry,
                                   reference: ConstraintReference) -> Self:
-        """Returns the EdgeSubPart that matches the pancad ConstraintReference 
+        """Returns the EdgeSubPart that matches the pancad ConstraintReference
         when translating from pancad to FreeCAD.
-        
+
         :param reference: A ConstraintReference to a portion of geometry.
         :returns: The FreeCAD equivalent to the reference.
         """
@@ -69,20 +74,21 @@ class EdgeSubPart(IntEnum):
             case ConstraintReference.CENTER:
                 return EdgeSubPart.CENTER
         raise ValueError(f"Unsupported reference: {reference}")
+
     def get_constraint_reference(self,
                                  geometry: AbstractGeometry,
                                  reference: ConstraintReference,
                                  ) -> ConstraintReference:
         """Returns the EdgeSubPart's equivalent
-        :class:`pancad.geometry.constants.ConstraintReference` based on the part 
+        :class:`pancad.geometry.constants.ConstraintReference` based on the part
         of the equivalent pancad geometry that it's applied to.
-        
+
         :param geometry: The parent geometry.
-        :param reference: A ConstraintReference to the portion of the parent 
+        :param reference: A ConstraintReference to the portion of the parent
             geometry.
-        :returns: The equivalent ConstraintReference for the parent's child 
+        :returns: The equivalent ConstraintReference for the parent's child
             geometry.
-        :raises ValueError: Raised when there is not an equivalent 
+        :raises ValueError: Raised when there is not an equivalent
             ConstraintReference.
         """
         if isinstance(geometry, Sketch):
@@ -110,9 +116,11 @@ SKETCH_REFERENCE = {
     (ConstraintReference.X, EdgeSubPart.START): ConstraintReference.ORIGIN,
     (ConstraintReference.Y, EdgeSubPart.EDGE): ConstraintReference.Y,
 }
-"""A map for unconditional translations from FreeCAD reference to 
+"""A map for unconditional translations from FreeCAD reference to
 ConstraintReference for sketches
 """
+
+
 CIRCULAR_ARC_REFERENCE = {
     (EdgeSubPart.EDGE, True): ConstraintReference.CORE,
     (EdgeSubPart.EDGE, False): ConstraintReference.CORE,
@@ -123,16 +131,18 @@ CIRCULAR_ARC_REFERENCE = {
     (EdgeSubPart.END, True): ConstraintReference.START,
     (EdgeSubPart.END, False): ConstraintReference.END,
 }
-"""A map for unconditional translations from FreeCAD reference to 
-ConstraintReference for Arc of Circles. The second map argument is True for 
+"""A map for unconditional translations from FreeCAD reference to
+ConstraintReference for Arc of Circles. The second map argument is True for
 clockwise arcs and False for counterclockwise arcs.
 """
+
+
 DEFAULT_REFERENCE = {
     EdgeSubPart.EDGE: ConstraintReference.CORE,
     EdgeSubPart.START: ConstraintReference.START,
     EdgeSubPart.END: ConstraintReference.END,
     EdgeSubPart.CENTER: ConstraintReference.CENTER,
 }
-"""A map for unconditional translations from FreeCAD reference to 
+"""A map for unconditional translations from FreeCAD reference to
 ConstraintReference for non-special cases.
 """

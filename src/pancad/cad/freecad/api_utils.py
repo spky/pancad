@@ -129,8 +129,8 @@ def _get_constraint_by_uid(data: SketchConstraintUidInfo,
     """Returns the constraint api object from a sketch api object."""
     attribs = {"Type": str(data.constraint_type)}
     for name, reference in data.reference_map.items():
-        if reference.id_ == -2000:
-            geo_index = -2000
+        if reference.id_ == EMPTY_CONSTRAINED:
+            geo_index = EMPTY_CONSTRAINED
         else:
             geo_index = get_geometry_index_by_sketch_id(reference.id_,
                                                         reference.list_name,
