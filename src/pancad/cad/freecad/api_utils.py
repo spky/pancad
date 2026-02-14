@@ -6,12 +6,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import islice
 from typing import TYPE_CHECKING, Literal
-from xml.etree import ElementTree
+from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element
 import re
+import logging
+import graphlib
 
 from pancad.exceptions import DupeNameError
-import logging
+from pancad.cad.freecad import read_xml
 
 if TYPE_CHECKING:
     from typing import NamedTuple
@@ -143,6 +145,24 @@ def _get_constraint_by_uid(data: SketchConstraintUidInfo,
         if constraint_attribs == attribs:
             return sketch.Constraints[index]
     raise LookupError("Could not find constraint in sketch", data)
+
+def get_topo_reading_order(document: FreeCADDocument) -> list[int]:
+    """Returns the list of object ids in the order that they would need to be 
+    read to avoid missing dependencies.
+    """
+    xml_doc = read_xml.FreeCADDocumentXML.from_string(document.Content)
+    obj = xml_doc.get_object("Pad")
+    print(obj.get_property("Profile").value)
+    # tree = ET.fromstring(document.Content)
+    # object_info = read_xml.object_info(tree)
+    # for info in object_info:
+        # name = info["name"]
+        # data = read_xml.get_objectdata(tree, name)
+        # parents = read_xml.get_linked_parents(tree, name)
+        # print(name)
+        # print([p.get("name") for p in parents])
+    breakpoint()
+    # ts = graphlib.TopologicalSorter(name_graph)
 
 ################################################################################
 # Data Structure Definitions
@@ -461,10 +481,10 @@ class FreeCADUID(str):
 # Reading API Element XML
 ################################################################################
 
-def read_element_xml(element: FreeCADAPIObject) -> ElementTree:
+def read_element_xml(element: FreeCADAPIObject) -> ET:
     """Reads the xml Content of a FreeCAD element in an ElementTree."""
     content = f"<element>{element.Content}</element>"
-    return ElementTree.fromstring(content)
+    return ET.fromstring(content)
 
 def get_geometry_details(geometry: FreeCADGeometry | Element) -> Element:
     """Returns the geometry details element from its content."""

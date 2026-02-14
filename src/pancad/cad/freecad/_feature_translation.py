@@ -40,6 +40,7 @@ from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.point import Point
 from pancad.geometry.sketch import Sketch
 from pancad.geometry.system import SketchGeometrySystem
+from pancad.filetypes.part_file import PartFile
 
 from pancad.cad.freecad import api_utils
 from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
@@ -64,7 +65,6 @@ from ._map_typing import SketchElementID
 if TYPE_CHECKING:
     from pancad.abstract import AbstractConstraint
     from pancad.geometry.coordinate_system import Pose
-    from pancad.filetypes.part_file import PartFile
 
     from pancad.cad.freecad._application_types import (
         FreeCADDocument, FreeCADPlacement, FreeCADConstraint,
@@ -84,6 +84,15 @@ def new_placement_from_pose(pose: Pose) -> FreeCADPlacement:
     placement.Rotation.Q = (quat.x, quat.y, quat.z, quat.w)
     return placement
 
+################################################################################
+# FreeCAD ---> pancad Features
+################################################################################
+def new_part_from_document(path: str) -> PartFile:
+    document = App.open(path)
+    part = PartFile(document.Label)
+    uid_map = {}
+    ordered_ids = api_utils.get_topo_reading_order(document)
+    return part
 
 ################################################################################
 # pancad ---> FreeCAD Features
@@ -98,7 +107,8 @@ def new_document_from_part(part: PartFile) -> FreeCADDocument:
     new_feature_from_pancad(part.container, document, uid_map)
     return document
 
-def new_feature_from_pancad(feature: AbstractFeature, document: FreeCADDocument,
+def new_feature_from_pancad(feature: AbstractFeature,
+                            document: FreeCADDocument,
                             uid_map: dict[str, FreeCADUID]) -> FreeCADFeature:
     """Creates a new FreeCAD Feature from a pancad feature and adds it to the
     provided uid_map.

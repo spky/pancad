@@ -11,15 +11,17 @@ from tests.sample_pancad_objects.sample_part_files import (
     cube_part_file,
 )
 
-from pancad.cad.freecad._feature_translation import new_document_from_part
+from pancad.cad.freecad._feature_translation import (
+    new_document_from_part, new_part_from_document
+)
 
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
 DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
 
-# @pytest.fixture(params=["cube_1x1x1.FCStd"])
-# def freecad_doc(request):
-    # """Generic 1x1x1 cube file for easy testing."""
-    # return freecad.open(str(SAMPLE_FREECAD / request.param))
+@pytest.fixture(params=["cube_1x1x1.FCStd"])
+def freecad_doc(request):
+    """Generic 1x1x1 cube file for easy testing."""
+    yield str(SAMPLE_FREECAD / request.param)
 
 @pytest.mark.parametrize(
     "part_file_fixture, expected",
@@ -36,3 +38,6 @@ def test_new_document_from_part(part_file_fixture, expected, request):
     # document.recompute()
     # document.FileName = str(DUMP / (part_file_fixture + ".FCStd"))
     # document.save()
+
+def test_new_part_from_document(freecad_doc):
+    part_file = new_part_from_document(freecad_doc)
