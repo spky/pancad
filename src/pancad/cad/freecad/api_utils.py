@@ -153,10 +153,12 @@ def get_topo_reading_order(document: FreeCADDocument) -> list[int]:
     xml_doc = read_xml.FreeCADDocumentXML.from_string(document.Content)
     obj = xml_doc.get_object("Sketch")
     print()
-    properties = ["Visibility", "AttachmentSupport"]
+    properties = ["Visibility", "AttachmentSupport", "Geometry"]
     for prop in properties:
         print(f"{prop}:", obj.get_property(prop).value)
-    breakpoint()
+    geometry = obj.get_property("Geometry").value
+    for g in geometry:
+        print(g._geometry)
     # ts = graphlib.TopologicalSorter(name_graph)
 
 ################################################################################

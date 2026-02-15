@@ -9,9 +9,31 @@ if TYPE_CHECKING:
     from typing import Any, NoReturn
     from xml.etree.ElementTree import Element, ElementTree
 
+def read_attr(element: Element, name: str) -> str:
+    """Reads an attribute from an element that is expected to always be there.
+
+    :raises ValueError: When the attribute is not on the element.
+    """
+    try:
+        return element.attrib[name]
+    except KeyError as exc:
+        tag = element.tag
+        msg = f"Unexpected {tag} format, could not find '{name}' attribute"
+        raise ValueError(msg, element) from exc
+
+def find_single(context: Element | ElementTree, xpath: str) -> Element:
+    """Reads an element from an xpath that is always expected to be there.
+
+    :raises LookupError: When no element was found at the xpath.
+    """
+    element = context.find(xpath)
+    if element is None:
+        raise LookupError("No element was found using the xpath", xpath)
+    return element
+
 def read_bool(string: str) -> bool:
-    """Converts a boolean string value into a bool"""
-    return string.lower() == "true"
+    """Converts a boolean string value read from xml into a bool"""
+    return string.lower() in ["true", "1"]
 
 def convert_str(func: Callable[..., str], converter: Callable[str, Any]):
     """A wrapper function to convert property string outputs to another type

@@ -6,6 +6,7 @@ from functools import partialmethod, cache
 from collections import namedtuple
 from pathlib import Path
 import logging
+from math import isclose
 import tomllib
 from typing import TYPE_CHECKING
 import warnings
@@ -432,6 +433,7 @@ class FreeCADPropertyXML:
             self._read_str_list: ["App::PropertyLinkList"],
             self._read_link_sub: ["App::PropertyLinkSub"],
             self._read_link_sub_list: ["App::PropertyLinkSubList"],
+            self._read_geometry: ["Part::PropertyGeometryList"],
         }
         self._type_func_dispatch = {}
         for func, types in func_to_types.items():
@@ -538,6 +540,12 @@ class FreeCADPropertyXML:
             links.append(FreeCADLinkSub(obj_name, sub_name, shadow))
         return links
 
+    def _read_geometry(self) -> list[FreeCADGeometryXML]:
+        geometry = []
+        for element in self._read_first():
+            geometry.append(FreeCADGeometryXML(element, self))
+        return geometry
+
 def object_type(tree: ElementTree,
                 type_: App | Sketcher | PartDesign
                 ) -> list[dict[str, FreecadPropertyValueType]]:
@@ -568,6 +576,173 @@ def object_type(tree: ElementTree,
                 properties[property_name] = err.__class__.__name__
         data.append(properties)
     return data
+
+@dataclasses.dataclass
+class GeometryExtension:
+    """A dataclass for tracking all FreeCAD GeometryExtensions."""
+    geometry: FreeCADGeometryXML
+    type_: str
+
+@dataclasses.dataclass
+class SketchGeoExt(GeometryExtension):
+    """A dataclass tracking Sketcher::SketchGeometryExtension values."""
+    id_: int
+    internal_geometry_type: int
+    geometry_mode_flags: int
+    geometry_layer: int
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> SketchGeoExt:
+        """Returns a SketchGeoExt from a GeoExtension xml element typed as a 
+        Sketch Extension.
+        """
+        type_ = xml_utils.read_attr(element, "type")
+        attr_map = [
+            ("id", int, "id_"),
+            ("internalGeometryType", int, "internal_geometry_type"),
+            ("geometryModeFlags", lambda x: int(x, base=2), "geometry_mode_flags"),
+            ("geometryLayer", int, "geometry_layer")
+        ]
+        attrs = {}
+        for name, func, input_name in attr_map:
+            try:
+                attrs[input_name] = func(xml_utils.read_attr(element, name))
+            except ValueError as exc:
+                msg ="Exception from reading Sketcher::SketchGeometryExtension"
+                exc.add_note(msg)
+                raise
+        return cls(parent, type_, **attrs)
+
+@dataclasses.dataclass
+class GeomData:
+    """Dataclass for tracking data common to all FreeCAD Geometry."""
+    parent: FreeCADGeometryXML
+    type_: str
+    tag: str
+
+@dataclasses.dataclass
+class GeomPoint(GeomData):
+    """Dataclass for tracking FreeCAD Sketch Point info."""
+    location: tuple[float, float]
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> GeomPoint:
+        """Returns a GeomPoint from a GeomPoint xml element"""
+        attr_names = ["X", "Y", "Z"]
+        attrs = [float(xml_utils.read_attr(element, a)) for a in attr_names]
+        if not isclose(attrs[-1], 0):
+            raise ValueError("Unexpected Point Value: Z is not 0", element)
+        del attrs[-1]
+        return cls(parent, parent.type_, element.tag, tuple(attrs))
+
+@dataclasses.dataclass
+class GeomLineSegment(GeomData):
+    """Dataclass for tracking FreeCAD Sketch Line Segment info."""
+    start: tuple[float, float]
+    end: tuple[float, float]
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> GeomLineSegment:
+        """Returns a GeomLineSegment from a LineSegment xml element"""
+        point_to_input = [("Start", "start"), ("End", "end")]
+        points = {}
+        for point_name, input_name in point_to_input:
+            location = []
+            for component in ["X", "Y", "Z"]:
+                name = point_name + component
+                location.append(float(xml_utils.read_attr(element, name)))
+            if not isclose(location[-1], 0):
+                msg = f"Unexpected Line {point_name} Value: Z is not 0"
+                raise ValueError(msg, element)
+            del location[-1]
+            points[input_name] = tuple(location)
+        return cls(parent, parent.type_, element.tag, **points)
+
+class FreeCADGeometryXML:
+    """A class providing interfaces to FCStd Document.xml geometry elements.
+
+    :param element: The xml Geometry element inside an FCStd 
+        Part::PropertyGeometryList type xml property list.
+    :param parent: The FreeCADPropertyXML this geometry is inside of.
+    """
+    tag = "Geometry"
+
+    def __init__(self, element: Element, parent: FreeCADPropertyXML):
+        self._parent = parent
+        self._type = xml_utils.read_attr(element, "type")
+        self._id = int(xml_utils.read_attr(element, "id"))
+        self._element = element
+        self._sketch_ext = self._get_sketch_geometry_extension()
+        self._is_construction = self._get_construction()
+        self._geometry = self._get_geom()
+
+    @property
+    def type_(self) -> str:
+        """The TypeId string of the geometry."""
+        return self._type
+
+    @property
+    def id_(self) -> int:
+        """The sketch-unique FreeCAD integer id of the geometry."""
+        return self._id
+
+    @property
+    def parent(self) -> FreeCADPropertyXML:
+        """The object this geometry is inside of."""
+        return self._parent
+
+    @property
+    def is_construction(self) -> bool:
+        """Whether the geometry is sketch construction geometry."""
+        return self._is_construction
+
+    def _get_geo_extension(self, type_: str) -> Element:
+        """Returns the GeoExtension of the provided type.
+
+        :raises LookupError: When the extension is not found.
+        """
+        xpath = f"GeoExtensions/GeoExtension[@type='{type_}']"
+        return xml_utils.find_single(self._element, xpath)
+
+    def _get_geom(self) -> Element:
+        tag = self.type_.removeprefix("Part::")
+        if tag != "GeomPoint": # Point is the only one that keeps the 'Geom'
+            tag = tag.removeprefix("Geom")
+        element = xml_utils.find_single(self._element, tag)
+        tag_to_dataclass = {
+            "GeomPoint": GeomPoint,
+            "LineSegment": GeomLineSegment,
+        }
+        return tag_to_dataclass[tag].from_element(self, element)
+
+    def _get_sketch_geometry_extension(self) -> SketchGeoExt:
+        """Returns the Sketcher::SketchGeometryExtension that all geometry has
+        to have.
+        """
+        type_ = "Sketcher::SketchGeometryExtension"
+        try:
+            element = self._get_geo_extension(type_)
+        except LookupError as exc:
+            msg = "Unexpected Geometry format: No SketchGeometryExtension found"
+            raise ValueError(msg, self._element) from exc
+        return SketchGeoExt.from_element(self, element)
+
+    def _get_construction(self) -> bool:
+        try:
+            element = xml_utils.find_single(self._element, "Construction")
+        except LookupError as exc:
+            msg = "Unexpected Geometry format: No Construction element found"
+            raise ValueError(msg, self._element) from exc
+        try:
+            value = xml_utils.read_attr(element, "value")
+        except ValueError as exc:
+            msg ="Exception from reading Geometry element"
+            exc.add_note(msg)
+            raise
+        return xml_utils.read_bool(value)
 
 def object_types(tree: ElementTree) -> list[str]:
     """Returns the types of each object type in the file."""
