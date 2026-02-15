@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import wraps, partialmethod
 from typing import TYPE_CHECKING
+from math import isclose
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -34,6 +35,27 @@ def find_single(context: Element | ElementTree, xpath: str) -> Element:
 def read_bool(string: str) -> bool:
     """Converts a boolean string value read from xml into a bool"""
     return string.lower() in ["true", "1"]
+
+def read_vector(element: Element, names: tuple[str, str, str], is_2d: bool=True
+                ) -> tuple[float, float] | tuple[float, float, float]:
+    """Reads a geometry vector tuple of floats from the xml element.
+
+    :param element: An xml element with point data.
+    :param names: The attribute names of the point in the order x, y, z.
+    :param is_2d: Sets whether to drop the Z component of the point. Defaults to 
+        True.
+    :raises ValueError: When is_2d is True and the Z component is non-zero.
+    """
+    components = []
+    for attr in names:
+        components.append(float(read_attr(element, attr)))
+    if is_2d:
+        if not isclose(components[-1], 0):
+            attr_names = ", ".join(map(lambda x: f"'{x}'", names))
+            msg = f"Unexpected non-zero Z for vector with attrs: {attr_names}"
+            raise ValueError(msg, element)
+        del components[-1]
+    return tuple(components)
 
 def convert_str(func: Callable[..., str], converter: Callable[str, Any]):
     """A wrapper function to convert property string outputs to another type

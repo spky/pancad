@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 import warnings
 from xml.etree import ElementTree as ET
 
+import numpy as np
+
 from pancad import resources
 
 from .xml_properties import (
@@ -543,7 +545,10 @@ class FreeCADPropertyXML:
     def _read_geometry(self) -> list[FreeCADGeometryXML]:
         geometry = []
         for element in self._read_first():
-            geometry.append(FreeCADGeometryXML(element, self))
+            try:
+                geometry.append(FreeCADGeometryXML(element, self))
+            except NotImplementedError as exc:
+                warnings.warn(f"Failed to read geometry element: {exc}")
         return geometry
 
 def object_type(tree: ElementTree,
@@ -609,16 +614,15 @@ class SketchGeoExt(GeometryExtension):
             try:
                 attrs[input_name] = func(xml_utils.read_attr(element, name))
             except ValueError as exc:
-                msg ="Exception from reading Sketcher::SketchGeometryExtension"
-                exc.add_note(msg)
+                exc.add_note(f"Exception occurred on GeoExtension type {type_}")
                 raise
         return cls(parent, type_, **attrs)
 
 @dataclasses.dataclass
 class GeomData:
     """Dataclass for tracking data common to all FreeCAD Geometry."""
-    parent: FreeCADGeometryXML
-    type_: str
+    parent: FreeCADGeometryXML = dataclasses.field(repr=False)
+    type_: str = dataclasses.field(repr=False)
     tag: str
 
 @dataclasses.dataclass
@@ -629,13 +633,9 @@ class GeomPoint(GeomData):
     @classmethod
     def from_element(cls, parent: FreeCADGeometryXML, element: Element
                      ) -> GeomPoint:
-        """Returns a GeomPoint from a GeomPoint xml element"""
-        attr_names = ["X", "Y", "Z"]
-        attrs = [float(xml_utils.read_attr(element, a)) for a in attr_names]
-        if not isclose(attrs[-1], 0):
-            raise ValueError("Unexpected Point Value: Z is not 0", element)
-        del attrs[-1]
-        return cls(parent, parent.type_, element.tag, tuple(attrs))
+        """Returns a GeomPoint from a GeomPoint xml element."""
+        point = xml_utils.read_vector(element, ("X", "Y", "Z"))
+        return cls(parent, parent.type_, element.tag, point)
 
 @dataclasses.dataclass
 class GeomLineSegment(GeomData):
@@ -646,20 +646,105 @@ class GeomLineSegment(GeomData):
     @classmethod
     def from_element(cls, parent: FreeCADGeometryXML, element: Element
                      ) -> GeomLineSegment:
-        """Returns a GeomLineSegment from a LineSegment xml element"""
-        point_to_input = [("Start", "start"), ("End", "end")]
+        """Returns a GeomLineSegment from a LineSegment xml element."""
+        point_to_input_name = [("Start", "start"), ("End", "end")]
         points = {}
-        for point_name, input_name in point_to_input:
-            location = []
-            for component in ["X", "Y", "Z"]:
-                name = point_name + component
-                location.append(float(xml_utils.read_attr(element, name)))
-            if not isclose(location[-1], 0):
-                msg = f"Unexpected Line {point_name} Value: Z is not 0"
-                raise ValueError(msg, element)
-            del location[-1]
-            points[input_name] = tuple(location)
+        for point, input_name in point_to_input_name:
+            attr_names = tuple(point + c for c in ("X", "Y", "Z"))
+            try:
+                points[input_name] = xml_utils.read_vector(element, attr_names)
+            except ValueError as exc:
+                exc.add_note(f"Exception occurred on LineSegment {point} point")
+                raise
         return cls(parent, parent.type_, element.tag, **points)
+
+@dataclasses.dataclass
+class GeomCircle(GeomData):
+    """Dataclass for tracking FreeCAD Sketch Circle info."""
+    center: tuple[float, float]
+    radius: float
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> GeomCircle:
+        """Returns a GeomCircle from a Circle xml element."""
+        xyz = ("X", "Y", "Z")
+        center = xml_utils.read_vector(element,
+                                       tuple(f"Center{c}" for c in xyz))
+        normal = xml_utils.read_vector(element,
+                                       tuple(f"Normal{c}" for c in xyz), False)
+        if not np.allclose(normal, (0, 0, 1)):
+            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
+            raise ValueError(msg, element)
+        angle = float(xml_utils.read_attr(element, "AngleXU"))
+        if not isclose(angle, 0):
+            msg = f"Unexpected non-zero AngleXU value for Circle: {angle}"
+            raise ValueError(msg, element)
+        radius = float(xml_utils.read_attr(element, "Radius"))
+        return cls(parent, parent.type_, element.tag, center, radius)
+
+@dataclasses.dataclass
+class GeomEllipse(GeomData):
+    """Dataclass for tracking FreeCAD Sketch Ellipse info."""
+    center: tuple[float, float]
+    major_radius: float
+    minor_radius: float
+    major_axis_angle: float
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> GeomEllipse:
+        """Returns a GeomEllipse from a Ellipse xml element."""
+        xyz = ("X", "Y", "Z")
+        center = xml_utils.read_vector(element,
+                                       tuple(f"Center{c}" for c in xyz))
+        normal = xml_utils.read_vector(element,
+                                       tuple(f"Normal{c}" for c in xyz), False)
+        if not np.allclose(normal, (0, 0, 1)):
+            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
+            raise ValueError(msg, element)
+        float_attr_to_input_name = [
+            ("MajorRadius", "major_radius"),
+            ("MinorRadius", "minor_radius"),
+            ("AngleXU", "major_axis_angle"),
+        ]
+        float_attrs = {}
+        for attr, name in float_attr_to_input_name:
+            float_attrs[name] = float(xml_utils.read_attr(element, attr))
+        return cls(parent, parent.type_, element.tag, center, **float_attrs)
+
+@dataclasses.dataclass
+class GeomArcOfCircle(GeomData):
+    """Dataclass for tracking FreeCAD Sketch Ellipse info."""
+    center: tuple[float, float]
+    radius: float
+    start_angle: float
+    end_angle: float
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> GeomArcOfCircle:
+        xyz = ("X", "Y", "Z")
+        center = xml_utils.read_vector(element,
+                                       tuple(f"Center{c}" for c in xyz))
+        normal = xml_utils.read_vector(element,
+                                       tuple(f"Normal{c}" for c in xyz), False)
+        if not np.allclose(normal, (0, 0, 1)):
+            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
+            raise ValueError(msg, element)
+        angle = float(xml_utils.read_attr(element, "AngleXU"))
+        if not isclose(angle, 0):
+            msg = f"Unexpected non-zero AngleXU value for Circle: {angle}"
+            raise ValueError(msg, element)
+        float_attr_to_input_name = [
+            ("Radius", "radius"),
+            ("StartAngle", "start_angle"),
+            ("EndAngle", "end_angle"),
+        ]
+        float_attrs = {}
+        for attr, name in float_attr_to_input_name:
+            float_attrs[name] = float(xml_utils.read_attr(element, attr))
+        return cls(parent, parent.type_, element.tag, center, **float_attrs)
 
 class FreeCADGeometryXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
@@ -715,7 +800,15 @@ class FreeCADGeometryXML:
         tag_to_dataclass = {
             "GeomPoint": GeomPoint,
             "LineSegment": GeomLineSegment,
+            "Circle": GeomCircle,
+            "Ellipse": GeomEllipse,
+            "ArcOfCircle": GeomArcOfCircle,
         }
+        try:
+            geom_class = tag_to_dataclass[tag]
+        except KeyError as exc:
+            msg = f"Reading func for {exc.args[0]} types not yet implemented"
+            raise NotImplementedError(msg) from exc
         return tag_to_dataclass[tag].from_element(self, element)
 
     def _get_sketch_geometry_extension(self) -> SketchGeoExt:
