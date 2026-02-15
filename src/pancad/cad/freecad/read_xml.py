@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import dataclasses
-from functools import singledispatchmethod, partialmethod
+from functools import partialmethod, cache
 from collections import namedtuple
-from functools import cache
 from pathlib import Path
 import logging
 import tomllib
 from typing import TYPE_CHECKING
 import warnings
+from xml.etree import ElementTree as ET
 
 from pancad import resources
 
@@ -20,7 +20,6 @@ from .xml_properties import (
 )
 from . import xml_utils
 from .constants.archive_constants import Attr, Part, Sketcher, Tag
-from xml.etree import ElementTree as ET
 
 if TYPE_CHECKING:
     from typing import Any, NoReturn
@@ -48,13 +47,13 @@ ObjectIdInfo = namedtuple("ObjectIdInfo", ["name", "id_", "type_"])
 
 @dataclasses.dataclass
 class FreeCADLinkSub:
-    """A class for tracking FreeCAD App::PropertyLinkSub data. See 
+    """A class for tracking FreeCAD App::PropertyLinkSub data. See
     https://freecad.github.io/SourceDoc/d3/d76/classApp_1_1PropertyLinkSub.html
 
     :param name: The object the link is to.
-    :param subs: The linked subelement name of the object. Empty strings are 
+    :param subs: The linked subelement name of the object. Empty strings are
         converted to None.
-    :param shadows: Not certain, but appears to be "shadow subname references" 
+    :param shadows: Not certain, but appears to be "shadow subname references"
         in FreeCAD documentation. Likely connected to topological naming.
     """
     name: str
@@ -145,36 +144,8 @@ def get_objectdata(tree: ElementTree, name: str) -> Element:
         raise LookupError(f"No ObjectData named '{name}' was found", name)
     return data
 
-def get_linked_parents(tree: ElementTree, name: str) -> list[str]:
-    """Returns the list of parent object names required to create the object by 
-    its name. Due to the structure of FCStds this is not a complete list.
-    """
-    xpath = r"./Properties/Property[@type='App::PropertyLinkSubList']"
-    # parent_link_sublist_names = [
-        # "AttachmentSupport",
-        # "ExternalGeometry",
-    # ]
-    # xpaths = [template.format(name) for name in parent_link_sublist_names]
-    # link_groups = [data.find(x) for x in xpaths]
-    data = get_objectdata(tree, name)
-    links = []
-    links.extend(data.findall(xpath))
-    if name.startswith("Sketch"):
-        breakpoint()
-    # for group in link_groups:
-        # if group is None:
-            # continue
-        # breakpoint()
-        # links.append(group)
-    return links
-
-def get_linked_children(tree: ElementTree, name: str) -> list[str]:
-    """Returns the list of children object names that require the object by its 
-    name. Due to the structure of FCStds this is not a complete list.
-    """
-
 def object_info(tree: ElementTree) -> list[dict[str, FreecadPropertyValueType]]:
-    """Returns a tuple of field names and a tuple of values for fields common to 
+    """Returns a tuple of field names and a tuple of values for fields common to
     all objects in an FCStd document.xml tree.
     """
     file_uid = tree.find(XPATHS["FILE_UID"]).get(Attr.VALUE)
@@ -201,17 +172,18 @@ class FreeCADDocumentXML:
     """The nominal tag of the element in xml."""
 
     def __init__(self, tree: ElementTree):
-        schema_version = "SchemaVersion"
+        schema_version_name = "SchemaVersion"
         self._tree = tree
         try:
-            self._schema_version = int(tree.attrib[schema_version])
+            self._schema_version = int(tree.attrib[schema_version_name])
         except KeyError as exc:
-            msg = f"Invalid Document.xml, could not find {schema_version}"
+            msg = f"Invalid Document.xml, could not find {schema_version_name}"
             raise ValueError(msg, tree) from exc
         except (ValueError, TypeError) as exc:
-            raw_schema_version = tree.get(schema_version)
-            msg = (f"Document.xml {schema_version} is not int-like. Either"
-                   " invalid Document.xml or FreeCAD changed their format")
+            raw_schema_version = tree.get(schema_version_name)
+            msg = (f"Document.xml {schema_version_name} is not int-like. Either"
+                   " invalid Document.xml or FreeCAD changed their format"
+                   f" SchemaVersion value: {raw_schema_version}")
             raise ValueError(msg, tree) from exc
         if self.schema_version != 4:
             warnings.warn(f"SchemaVersion {self.schema_version} not recognized,"
@@ -221,7 +193,7 @@ class FreeCADDocumentXML:
 
     @classmethod
     def from_string(cls, string: str) -> FreeCADDocumentXML:
-        """Returns a FreeCADDocumentFile from an already read Document.xml 
+        """Returns a FreeCADDocumentFile from an already read Document.xml
         string. Example use: FreeCAD API docs have a string Content property.
         """
         return cls(ET.fromstring(string))
@@ -229,6 +201,7 @@ class FreeCADDocumentXML:
     # Properties
     @property
     def schema_version(self) -> int:
+        """The xml schema version of the FreeCAD xml."""
         return self._schema_version
 
     @property
@@ -249,7 +222,7 @@ class FreeCADDocumentXML:
     def get_object(self, id_: str | int) -> FreeCADObjectXML:
         """Returns the FreeCADObjectXML object with the provided id.
 
-        :param id_: The unique name or integer id of the object. The integer id 
+        :param id_: The unique name or integer id of the object. The integer id
             can be a string.
         :raises LookupError: When the id_ is not in the document.
         """
@@ -266,7 +239,8 @@ class FreeCADDocumentXML:
         try:
             return next(p for p in self.properties if p.name == name)
         except StopIteration as exc:
-            raise LookupError(f"Could not find property '{name}'", name)
+            msg = f"Could not find property '{name}'"
+            raise LookupError(msg, name) from exc
 
     # Private Methods
     def _get_object_id_info(self, id_: str | int=None
@@ -275,7 +249,7 @@ class FreeCADDocumentXML:
 
         :param id_: Either the integer id or the string unique name of an
             object. The integer id can be a string digit.
-        :returns: The ObjectIdInfo of all objects in the document when id_ is 
+        :returns: The ObjectIdInfo of all objects in the document when id_ is
             None, or the one ObjectIdInfo when id_ is not None.
         :raises LookupError: When the id could not be found in the document.
         """
@@ -297,7 +271,7 @@ class FreeCADDocumentXML:
         return ObjectIdInfo(*[obj.attrib[p] for p in props])
 
     def _read_all_objectdata(self) -> FreeCADObjectXML:
-        """Reads all objects from the ObjectData/Object list into 
+        """Reads all objects from the ObjectData/Object list into
         FreeCADObjectXML objects.
         """
         name_map = {info.name: info for info in self._get_object_id_info()}
@@ -308,7 +282,7 @@ class FreeCADDocumentXML:
         return objects
 
     def _read_properties(self) -> list[FreeCADPropertyXML]:
-        """Reads the properties of the document into a list of interfacing 
+        """Reads the properties of the document into a list of interfacing
         objects.
         """
         properties = []
@@ -323,7 +297,7 @@ class FreeCADDocumentXML:
 class FreeCADObjectXML:
     """A class providing an interface to FCStd Document.xml xml object elements.
 
-    :param element: The xml ObjectData Object element for the object from the 
+    :param element: The xml ObjectData Object element for the object from the
         Document.xml tree.
     :param id_: The id from the Document.xml tree Objects list.
     :param type_: The type from the Document.xml tree Objects list.
@@ -368,7 +342,7 @@ class FreeCADObjectXML:
         return self._properties
 
     @property
-    def document(self) -> FreeCADDocumentFile:
+    def document(self) -> FreeCADDocumentXML:
         """The document this object is inside of."""
         return self._document
 
@@ -382,10 +356,11 @@ class FreeCADObjectXML:
         try:
             return next(p for p in self.properties if p.name == name)
         except StopIteration as exc:
-            raise LookupError(f"Could not find property '{name}'", name)
+            msg = f"Could not find property '{name}'"
+            raise LookupError(msg, name) from exc
 
     def _read_properties(self) -> list[FreeCADPropertyXML]:
-        """Reads the properties of the object into a list of interfacing 
+        """Reads the properties of the object into a list of interfacing
         objects.
         """
         properties = []
@@ -398,7 +373,7 @@ class FreeCADObjectXML:
         return properties
 
     def _read_links(self, types: list[str]) -> list[str]:
-        """Reads the unique list object names in the links under properties with 
+        """Reads the unique list object names in the links under properties with
         the provided types.
 
         :param types: The names of the list types without the App:: namespace.
@@ -422,14 +397,14 @@ class FreeCADObjectXML:
 class FreeCADPropertyXML:
     """A class providing interfaces to FCStd Document.xml element properties.
 
-    :param element: The xml Property element inside a FCStd Properties xml 
+    :param element: The xml Property element inside a FCStd Properties xml
         element list.
     :param parent: The object this property is inside of.
     """
     tag = "Property"
-    """The nominal tag of the element in xml. If is_private is True, then it's 
-    actually _Property, but if that matters in a specific application then 
-    properties should be filtered based on that boolean rather than depending on 
+    """The nominal tag of the element in xml. If is_private is True, then it's
+    actually _Property, but if that matters in a specific application then
+    properties should be filtered based on that boolean rather than depending on
     the specific tag format.
     """
 
@@ -474,7 +449,7 @@ class FreeCADPropertyXML:
 
     @property
     def is_private(self) -> bool:
-        """Whether the property tag is marked with a private underscore in the 
+        """Whether the property tag is marked with a private underscore in the
         xml file.
         """
         return self._is_private
@@ -536,6 +511,7 @@ class FreeCADPropertyXML:
     _read_str_list = partialmethod(_read_nested_attr_list, "value")
 
     def _read_link_sub(self) -> list[FreeCADLinkSub]:
+        """Read property type with child-to-parent links to one object."""
         links = []
         element = self._read_first()
         obj_name = self._read_attr(element, "value")
@@ -550,6 +526,7 @@ class FreeCADPropertyXML:
         return links
 
     def _read_link_sub_list(self) -> list[FreeCADLinkSub]:
+        """Read property type with child-to-parent links to multiple objects."""
         links = []
         element = self._read_first()
         for subelement in element:
@@ -614,9 +591,9 @@ def sketch_constraints(tree: ElementTree) -> list[dict[str, str]]:
     return data
 
 def sketch_geometry(tree: ElementTree, type_: Part) -> list[dict[str, str]]:
-    """Returns the fields and dimensions of all sketch geometry elements in an 
+    """Returns the fields and dimensions of all sketch geometry elements in an
     FCStd file.
-    
+
     :param tree: An ElementTree of the document.xml file.
     :param type_: A type attribute value of a parent Geometry tag.
     """
@@ -642,7 +619,7 @@ def sketch_geometry(tree: ElementTree, type_: Part) -> list[dict[str, str]]:
     return data
 
 def sketch_geometry_info(tree: ElementTree) -> list[dict[str, str]]:
-    """Returns a tuple of field names and a tuple of values in common for each 
+    """Returns a tuple of field names and a tuple of values in common for each
     sketch geometry element in the tree.
     """
     file_uid = tree.find(XPATHS["FILE_UID"]).get(Attr.VALUE)
@@ -683,7 +660,7 @@ def sketch_geometry_types(tree: ElementTree) -> list[str]:
 def view_provider_properties(tree: ElementTree, name: str
                              ) -> dict[str, FreecadPropertyValueType]:
     """Reads the view provider properties associated with the object named 'name'
-    
+
     :param tree: The ElementTree of a FCStd GuiDocument.xml
     :param name: The name of an object in the FCStd file
     """
