@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
-from functools import singledispatchmethod
+from functools import singledispatchmethod, partialmethod
 from collections import namedtuple
 from functools import cache
 from pathlib import Path
@@ -18,6 +18,7 @@ from .xml_properties import (
     FreecadPropertyValueType,
     FreecadUnsupportedPropertyError,
 )
+from . import xml_utils
 from .constants.archive_constants import Attr, Part, Sketcher, Tag
 from xml.etree import ElementTree as ET
 
@@ -44,13 +45,6 @@ GEO_LIST_XPATH = XPATHS["PROPERTY_TYPE"].format(Part.GEOMETRY_LIST)
 GEO_EXT_XPATH = XPATHS["GEOMETRY_EXT"].format(Sketcher.GEOMETRY_EXT)
 
 ObjectIdInfo = namedtuple("ObjectIdInfo", ["name", "id_", "type_"])
-LinkSubSub = namedtuple("LinkSubSub", ["name", "shadow"])
-
-@dataclasses.dataclass
-class FreeCADLinkSubSub:
-    """A class for tracking the sub names and shadows of a FreeCAD LinkSub."""
-    name: str
-    shadow: str = None
 
 @dataclasses.dataclass
 class FreeCADLinkSub:
@@ -58,13 +52,22 @@ class FreeCADLinkSub:
     https://freecad.github.io/SourceDoc/d3/d76/classApp_1_1PropertyLinkSub.html
 
     :param name: The object the link is to.
-    :param subs: The linked subelement names of the object.
+    :param subs: The linked subelement name of the object. Empty strings are 
+        converted to None.
     :param shadows: Not certain, but appears to be "shadow subname references" 
-        in FreeCAD documentation.
+        in FreeCAD documentation. Likely connected to topological naming.
     """
     name: str
-    subs: list[LinkSubSub] = dataclasses.field(default_factory=list)
+    sub: str = None
+    shadow: str = None
 
+    def __post_init__(self):
+        if self.sub == "":
+            # Blank sub strings indicate the link is just to the object.
+            self.sub = None
+        if self.sub is None and self.shadow is not None:
+            raise ValueError("Unexpected LinkSub format: sub is None,"
+                             f" but shadow is '{self.shadow}'")
 
 def camera(tree: ElementTree) -> dict[str, str]:
     """Reads the camera settings of an FCStd file from the GuiDocument.xml."""
@@ -415,6 +418,7 @@ class FreeCADObjectXML:
                         names.add(value)
         return list(names)
 
+
 class FreeCADPropertyXML:
     """A class providing interfaces to FCStd Document.xml element properties.
 
@@ -444,16 +448,15 @@ class FreeCADPropertyXML:
         self._element = element
         self._parent = parent
         func_to_types = {
-            self._read_single_str_value: [
+            self._read_single_str: [
                 "App::PropertyUUID",
                 "App::PropertyLink",
+                "App::PropertyString",
             ],
-            self._read_nested_str_value_list: [
-                "App::PropertyLinkList",
-            ],
-            self._read_single_link_sub: [
-                "App::PropertyLinkSub",
-            ],
+            self._read_single_bool: ["App::PropertyBool"],
+            self._read_str_list: ["App::PropertyLinkList"],
+            self._read_link_sub: ["App::PropertyLinkSub"],
+            self._read_link_sub_list: ["App::PropertyLinkSubList"],
         }
         self._type_func_dispatch = {}
         for func, types in func_to_types.items():
@@ -486,73 +489,77 @@ class FreeCADPropertyXML:
         """The value of the property in its xml."""
         return self._type_func_dispatch[self.type_]()
 
-    @singledispatchmethod
-    def _raise_read_error(self, exc: Exception) -> NoReturn:
-        raise
+    def _read_single(self, element: Element) -> Element:
+        """Reads the first element of an element inside the property when the
+        element must have at least one subelement to be possible to read.
 
-    @_raise_read_error.register(KeyError)
-    def _missing_attr(self, exc: KeyError, element: Element) -> NoReturn:
-        msg = (f"Unexpected Property format for {self.type_}:"
-               f" Could not find the '{exc.args[0]}' attribute")
-        raise ValueError(msg, element) from exc
+        :param element: An xml Element.
+        :raises ValueError: When element does not have exactly 1 subelement.
+        """
+        if (no_subelements := len(element)) != 1:
+            msg = (f"Unexpected Property format for {self.type_}:"
+                   f"Expected 1 subelement but found {no_subelements}")
+            raise ValueError(msg, element)
+        return element[0]
 
-    @_raise_read_error.register(IndexError)
-    def _missing_sub(self, exc: IndexError, element: Element) -> NoReturn:
-        msg = (f"Unexpected Property format for {self.type_}:"
-               f" Expected 1 subelement but found {len(element)}")
-        raise ValueError(msg, element) from exc
+    def _read_first(self) -> Element:
+        """Reads the first property subelement."""
+        return self._read_single(self._element)
 
-    @_raise_read_error.register(ValueError)
-    def _custom_msg(self, exc: ValueError, *args) -> NoReturn:
-        msg = f"Unexpected Property format for {self.type_}: " + exc.args[0]
-        raise ValueError(msg, *args) from exc
+    def _read_attr(self, element: Element, attr: str) -> str:
+        """Reads the attribute of the element when the property must have this
+        attribute on the element this to be possible to read.
 
-    def _more_than_one_subelement(self, element: Element) -> None:
-        if (no_subs := len(element)) > 1:
-            raise ValueError(f"Expected 1 subelement but found {no_subs}")
-
-    def _read_single_str_value(self) -> str:
+        :param element: An xml element.
+        :param attr: The name of the attribute.
+        :raises ValueError: When the attribute cannot be found.
+        """
         try:
-            return self._element[0].attrib["value"]
+            return element.attrib[attr]
         except KeyError as exc:
-            self._raise_read_error(exc, self._element[0])
-        except IndexError as exc:
-            self._raise_read_error(exc, self._element)
+            msg = (f"Unexpected Property format for {self.type_}:"
+                   f" Could not find the '{exc.args[0]}' attribute")
+            raise ValueError(msg, element) from exc
 
-    def _read_nested_str_value_list(self) -> list[str]:
-        try:
-            self._more_than_one_subelement(self._element)
-            return [e.attrib["value"] for e in self._element[0]]
-        except (KeyError, ValueError) as exc:
-            self._raise_read_error(exc, self._element)
-        except IndexError as exc:
-            self._raise_read_error(exc, self._element[0])
+    def _read_single_attr(self, name: str):
+        """Read property type that has a single element with a value attr."""
+        return self._read_attr(self._read_first(), name)
 
-    def _read_single_link_sub(self) -> FreeCADLinkSub | None:
-        try:
-            element = self._element[0]
-            obj_name = element.attrib["value"]
-            sub_count = int(element.attrib["count"])
-        except (KeyError, ValueError) as exc:
-            self._raise_read_error(exc, self._element)
-        except IndexError as exc:
-            self._raise_read_error(exc, self._element[0])
-        if obj_name == "":
-            return None
-        if sub_count == 0:
-            return FreeCADLinkSub(obj_name)
-        subs = []
+    _read_single_str = partialmethod(_read_single_attr, "value")
+    _read_single_bool = xml_utils.convert_str(_read_single_str,
+                                              xml_utils.read_bool)
+
+    def _read_nested_attr_list(self, attr: str) -> list[str]:
+        """Read property type that has a list of value attr subelements."""
+        return [self._read_attr(e, attr) for e in self._read_first()]
+
+    _read_str_list = partialmethod(_read_nested_attr_list, "value")
+
+    def _read_link_sub(self) -> list[FreeCADLinkSub]:
+        links = []
+        element = self._read_first()
+        obj_name = self._read_attr(element, "value")
+        if obj_name == "": # Empty element means no links
+            return links
         for subelement in element:
-            try:
-                sub_name = subelement.attrib["value"]
-            except KeyError as exc:
-                self._raise_read_error(exc, sub)
-            if sub_name == "":
-                continue
+            sub_name = self._read_attr(subelement, "value")
             shadow = subelement.get("shadow")
-            subs.append(FreeCADLinkSubSub(sub_name, shadow))
-        return FreeCADLinkSub(obj_name, subs)
+            links.append(FreeCADLinkSub(obj_name, sub_name, shadow))
+        if len(links) == 0: # Name is not empty, so just the link to the object.
+            links.append(FreeCADLinkSub(obj_name))
+        return links
 
+    def _read_link_sub_list(self) -> list[FreeCADLinkSub]:
+        links = []
+        element = self._read_first()
+        for subelement in element:
+            obj_name = self._read_attr(subelement, "obj")
+            if obj_name == "":
+                continue
+            sub_name = self._read_attr(subelement, "sub")
+            shadow = subelement.get("shadow")
+            links.append(FreeCADLinkSub(obj_name, sub_name, shadow))
+        return links
 
 def object_type(tree: ElementTree,
                 type_: App | Sketcher | PartDesign
