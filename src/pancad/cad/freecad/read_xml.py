@@ -6,13 +6,10 @@ from functools import partialmethod, cache
 from collections import namedtuple
 from pathlib import Path
 import logging
-from math import isclose
 import tomllib
 from typing import TYPE_CHECKING
 import warnings
 from xml.etree import ElementTree as ET
-
-import numpy as np
 
 from pancad import resources
 
@@ -647,14 +644,14 @@ class GeomLineSegment(GeomData):
     def from_element(cls, parent: FreeCADGeometryXML, element: Element
                      ) -> GeomLineSegment:
         """Returns a GeomLineSegment from a LineSegment xml element."""
+        xyz = ("X", "Y", "Z")
         point_to_input_name = [("Start", "start"), ("End", "end")]
         points = {}
         for point, input_name in point_to_input_name:
-            attr_names = tuple(point + c for c in ("X", "Y", "Z"))
             try:
-                points[input_name] = xml_utils.read_vector(element, attr_names)
+                points[input_name] = xml_utils.read_vector(element, xyz, point)
             except ValueError as exc:
-                exc.add_note(f"Exception occurred on LineSegment {point} point")
+                exc.add_note(f"Occurred on LineSegment {point} point")
                 raise
         return cls(parent, parent.type_, element.tag, **points)
 
@@ -669,19 +666,19 @@ class GeomCircle(GeomData):
                      ) -> GeomCircle:
         """Returns a GeomCircle from a Circle xml element."""
         xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element,
-                                       tuple(f"Center{c}" for c in xyz))
-        normal = xml_utils.read_vector(element,
-                                       tuple(f"Normal{c}" for c in xyz), False)
-        if not np.allclose(normal, (0, 0, 1)):
-            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
-            raise ValueError(msg, element)
-        angle = float(xml_utils.read_attr(element, "AngleXU"))
-        if not isclose(angle, 0):
-            msg = f"Unexpected non-zero AngleXU value for Circle: {angle}"
-            raise ValueError(msg, element)
-        radius = float(xml_utils.read_attr(element, "Radius"))
-        return cls(parent, parent.type_, element.tag, center, radius)
+        center = xml_utils.read_vector(element, xyz, "Center")
+        normal = xml_utils.read_vector(element, xyz, "Normal", False)
+        attrs = xml_utils.read_float_attrs(
+            element, {"AngleXU": "angle", "Radius": "radius"}
+        )
+        extras = [(normal, (0, 0, 1), "Normal"), (attrs["angle"], 0, "AngleXU")]
+        for value, expected, extra_name in extras:
+            try:
+                xml_utils.check_constant(value, expected)
+            except ValueError as exc:
+                exc.add_note(f"Occurred on Circle {extra_name}")
+                raise
+        return cls(parent, parent.type_, element.tag, center, attrs["radius"])
 
 @dataclasses.dataclass
 class GeomEllipse(GeomData):
@@ -696,22 +693,22 @@ class GeomEllipse(GeomData):
                      ) -> GeomEllipse:
         """Returns a GeomEllipse from a Ellipse xml element."""
         xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element,
-                                       tuple(f"Center{c}" for c in xyz))
-        normal = xml_utils.read_vector(element,
-                                       tuple(f"Normal{c}" for c in xyz), False)
-        if not np.allclose(normal, (0, 0, 1)):
-            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
-            raise ValueError(msg, element)
-        float_attr_to_input_name = [
-            ("MajorRadius", "major_radius"),
-            ("MinorRadius", "minor_radius"),
-            ("AngleXU", "major_axis_angle"),
-        ]
-        float_attrs = {}
-        for attr, name in float_attr_to_input_name:
-            float_attrs[name] = float(xml_utils.read_attr(element, attr))
-        return cls(parent, parent.type_, element.tag, center, **float_attrs)
+        center = xml_utils.read_vector(element, xyz, "Center")
+        normal = xml_utils.read_vector(element, xyz, "Normal", False)
+        try:
+            xml_utils.check_constant(normal, (0, 0, 1))
+        except ValueError as exc:
+            exc.add_note("Occurred on Ellipse Normal")
+            raise
+        attrs = xml_utils.read_float_attrs(
+            element,
+            {
+                "MajorRadius": "major_radius",
+                "MinorRadius": "minor_radius",
+                "AngleXU": "major_axis_angle",
+            }
+        )
+        return cls(parent, parent.type_, element.tag, center, **attrs)
 
 @dataclasses.dataclass
 class GeomArcOfCircle(GeomData):
@@ -724,27 +721,28 @@ class GeomArcOfCircle(GeomData):
     @classmethod
     def from_element(cls, parent: FreeCADGeometryXML, element: Element
                      ) -> GeomArcOfCircle:
+        """Returns a GeomArcOfCircle from a ArcOfCircle xml element."""
         xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element,
-                                       tuple(f"Center{c}" for c in xyz))
-        normal = xml_utils.read_vector(element,
-                                       tuple(f"Normal{c}" for c in xyz), False)
-        if not np.allclose(normal, (0, 0, 1)):
-            msg = f"Unexpected Normal, got {normal} expected (0, 0, 1)"
-            raise ValueError(msg, element)
-        angle = float(xml_utils.read_attr(element, "AngleXU"))
-        if not isclose(angle, 0):
-            msg = f"Unexpected non-zero AngleXU value for Circle: {angle}"
-            raise ValueError(msg, element)
-        float_attr_to_input_name = [
-            ("Radius", "radius"),
-            ("StartAngle", "start_angle"),
-            ("EndAngle", "end_angle"),
-        ]
-        float_attrs = {}
-        for attr, name in float_attr_to_input_name:
-            float_attrs[name] = float(xml_utils.read_attr(element, attr))
-        return cls(parent, parent.type_, element.tag, center, **float_attrs)
+        center = xml_utils.read_vector(element, xyz, "Center")
+        normal = xml_utils.read_vector(element, xyz, "Normal", False)
+        attrs = xml_utils.read_float_attrs(
+            element,
+            {
+                "Radius": "radius",
+                "StartAngle": "start_angle",
+                "EndAngle": "end_angle",
+                "AngleXU": "angle",
+            }
+        )
+        extras = [(normal, (0, 0, 1), "Normal"), (attrs["angle"], 0, "AngleXU")]
+        for value, expected, extra_name in extras:
+            try:
+                xml_utils.check_constant(value, expected)
+            except ValueError as exc:
+                exc.add_note(f"Occurred on ArcOfCircle {extra_name}")
+                raise
+        del attrs["angle"]
+        return cls(parent, parent.type_, element.tag, center, **attrs)
 
 class FreeCADGeometryXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
@@ -809,7 +807,7 @@ class FreeCADGeometryXML:
         except KeyError as exc:
             msg = f"Reading func for {exc.args[0]} types not yet implemented"
             raise NotImplementedError(msg) from exc
-        return tag_to_dataclass[tag].from_element(self, element)
+        return geom_class.from_element(self, element)
 
     def _get_sketch_geometry_extension(self) -> SketchGeoExt:
         """Returns the Sketcher::SketchGeometryExtension that all geometry has
