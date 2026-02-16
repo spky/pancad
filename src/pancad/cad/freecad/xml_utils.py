@@ -1,7 +1,7 @@
 """A module providing convenience functions for reading FreeCAD xml files."""
 from __future__ import annotations
 
-from functools import wraps, partialmethod, singledispatch
+from functools import wraps, partialmethod, singledispatch, partial
 from typing import TYPE_CHECKING
 from math import isclose
 
@@ -56,24 +56,26 @@ def find_single(context: Element | ElementTree, xpath: str) -> Element:
         raise LookupError("No element was found using the xpath", xpath)
     return element
 
-def read_float_attrs(element: Element, name_map: dict[str, str] | list[str]
-                     ) -> dict[str, float]:
-    """Reads multiple float attributes from an xml element into a dict.
+def read_attrs(element: Element,
+               name_map: dict[str, str],
+               converter: Callable[str, Any]) -> dict[str, Any]:
+    """Reads multiple attributes from an xml element into a internal name 
+    mapping dict.
 
-    :param element: An xml element.
+    :param element: An xml element
     :param name_map: A dict of xml attribute names to new internal names.
-    :returns: A dict of new internal names to the float values.
-    :raises ValueError: When one of the attributes cannot be converted to float.
+    :param converter: The function used to convert the attribute strings into 
+        other datatypes.
     """
     out = {}
     for attr, name in name_map.items():
         value = read_attr(element, attr)
         try:
-            out[name] = float(value)
+            out[name] = converter(value)
         except ValueError as exc:
             tag = element.tag
-            msg = (f"Unexpected {tag} format:"
-                   f" Could not convert {attr} value '{value}' to float")
+            msg = (f"Unexpected {tag} format: Could not convert"
+                   f" {attr} value '{value}' using {converter.__name__}")
             raise ValueError(msg, element) from exc
     return out
 
@@ -88,6 +90,10 @@ def read_float_attr_list(element: Element, names: list[str]) -> list[float]:
 def read_bool(string: str) -> bool:
     """Converts a boolean string value read from xml into a bool"""
     return string.lower() in ["true", "1"]
+
+read_float_attrs = partial(read_attrs, converter=float)
+read_int_attrs = partial(read_attrs, converter=int)
+read_bool_attrs = partial(read_attrs, converter=read_bool)
 
 def read_vector(element: Element,
                 names: tuple[str, str, str],

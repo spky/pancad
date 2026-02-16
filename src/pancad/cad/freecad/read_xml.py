@@ -433,6 +433,7 @@ class FreeCADPropertyXML:
             self._read_link_sub: ["App::PropertyLinkSub"],
             self._read_link_sub_list: ["App::PropertyLinkSubList"],
             self._read_geometry: ["Part::PropertyGeometryList"],
+            self._read_constraints: ["Sketcher::PropertyConstraintList"],
         }
         self._type_func_dispatch = {}
         for func, types in func_to_types.items():
@@ -547,6 +548,12 @@ class FreeCADPropertyXML:
             except NotImplementedError as exc:
                 warnings.warn(f"Failed to read geometry element: {exc}")
         return geometry
+
+    def _read_constraints(self) -> list[FreeCADConstraintXML]:
+        constraints = []
+        for element in self._read_first():
+            constraints.append(FreeCADConstraintXML(element, self))
+        return constraints
 
 def object_type(tree: ElementTree,
                 type_: App | Sketcher | PartDesign
@@ -782,6 +789,20 @@ class FreeCADGeometryXML:
         """Whether the geometry is sketch construction geometry."""
         return self._is_construction
 
+    @property
+    def uid(self) -> str:
+        """The has-to-be-unique pancad calculated id for this element."""
+        feature = self.parent.parent
+        document = feature.document
+        parts = [
+            document.get_property('Uid').value,
+            feature.id_,
+            "sketchgeo",
+            int(self.id_ < 0), # 0 for Geometry, 1 for ExternalGeo
+            self.id_,
+        ]
+        return "_".join(map(str, parts))
+
     def _get_geo_extension(self, type_: str) -> Element:
         """Returns the GeoExtension of the provided type.
 
@@ -834,6 +855,149 @@ class FreeCADGeometryXML:
             exc.add_note(msg)
             raise
         return xml_utils.read_bool(value)
+
+@dataclasses.dataclass
+class ConstraintGeoRef:
+    """A dataclass tracking the index and subpart of a FreeCAD constraint's 
+    reference to geometry.
+    """
+    index: int
+    part: int
+
+    @property
+    def list_index(self) -> int:
+        """The index of the geometry inside the list it resides in."""
+        if self.index < 0:
+            return -1 - self.index
+        return self.index
+
+@dataclasses.dataclass
+class InternalAlignment:
+    """Dataclass for tracking how a constraint is used for interally aligning 
+    geometry like Ellipse subgeometry.
+    """
+    type_: int
+    index: int
+
+@dataclasses.dataclass
+class ConstraintState:
+    """Dataclass for tracking the sketch-specific state data of a FreeCAD 
+    constraint.
+    """
+    label_distance: float
+    label_position: float
+    driving: bool
+    virtual_space: bool
+    active: bool
+
+@dataclasses.dataclass
+class ConstraintPairs:
+    """Class tracking the three pairs of ConstraintGeoRef integers in FreeCAD 
+    constraints.
+    """
+    first: ConstraintGeoRef
+    second: ConstraintGeoRef
+    third: ConstraintGeoRef
+
+@dataclasses.dataclass
+class ConstraintData:
+    """A dataclass tracking all xml data stored for a FreeCAD sketch 
+    constraint.
+    """
+    parent: FreeCADConstraintXML = dataclasses.field(repr=False)
+    name: str | None
+    type_: int
+    value: float
+    pairs: tuple[ConstraintGeoRef, ConstraintGeoRef, ConstraintGeoRef]
+    state: ConstraintState
+    internal_alignment: InternalAlignment = None
+
+    @classmethod
+    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+                     ) -> ConstraintData:
+        """Returns a ConstraintData dataclass from a Constrain xml element."""
+        name = xml_utils.read_attr(element, "Name")
+        if name == "":
+            name = None
+        attrs = cls._read_element_data(element)
+        # Consolidate the data into smaller structures
+        state_attrs = ["label_distance", "label_position",
+                       "driving", "virtual_space", "active"]
+        state = ConstraintState(**{a: attrs[a] for a in state_attrs})
+        attrs = {k: v for k, v in attrs.items() if k not in state_attrs}
+        pairs = {}
+        pair_nums =["First", "Second", "Third"]
+        for num, pos in zip(pair_nums, map(lambda x: f"{x}Pos", pair_nums)):
+            pairs[num.lower()] = ConstraintGeoRef(attrs[num], attrs[pos])
+            del attrs[num], attrs[pos]
+        pairs = ConstraintPairs(**pairs)
+        return cls(parent, name, pairs=pairs, state=state, **attrs)
+
+    @staticmethod
+    def _read_element_data(element: Element) -> dict[str, float | int | bool]:
+        # Get always there attributes first
+        floats = {"Value": "value",
+                  "LabelDistance": "label_distance",
+                  "LabelPosition": "label_position"}
+        bools = {"IsDriving": "driving",
+                 "IsInVirtualSpace": "virtual_space",
+                 "IsActive": "active"}
+        ints = {"Type": "type_"}
+        numbers =["First", "Second", "Third"]
+        for num in numbers:
+            ints.update({num: num, f"{num}Pos": f"{num}Pos"})
+        converts =[(floats, float), (bools, xml_utils.read_bool), (ints, int)]
+        attrs = {}
+        for names, converter in converts:
+            try:
+                attrs.update(xml_utils.read_attrs(element, names, converter))
+            except ValueError as exc:
+                exc.add_note("Occurred while reading ConstraintData")
+        # Get the sometimes there attributes
+        internal_names = {"InternalAlignmentType": "type_",
+                          "InternalAlignmentIndex": "index"}
+        if any(name in element.attrib for name in internal_names):
+            align_data = xml_utils.read_int_attrs(element, internal_names)
+            attrs["internal_alignment"] = InternalAlignment(**align_data)
+        return attrs
+
+class FreeCADConstraintXML:
+    """A class providing interfaces to FCStd Document.xml geometry elements.
+
+    :param element: The xml Constrain element inside an FCStd 
+        Sketcher::PropertyConstraintList type xml property list.
+    :param parent: The FreeCADPropertyXML this constraint is inside of.
+    """
+    tag = "Constrain"
+
+    def __init__(self, element: Element, parent: FreeCADPropertyXML):
+        self._parent = parent
+        self._element = element
+        self._data = ConstraintData.from_element(parent, element)
+
+    @property
+    def parent(self) -> FreeCADPropertyXML:
+        """The object this constraint is inside of."""
+        return self._parent
+
+    @property
+    def uid(self) -> str:
+        """The has-to-be-unique pancad calculated id for this element."""
+        feature = self.parent.parent
+        document = feature.document
+        parts = [document.get_property('Uid').value, feature.id_, "sketchcons"]
+        geometry = feature.get_property("Geometry").value
+        ext_geometry = feature.get_property("ExternalGeo").value
+        pairs = self._data.pairs
+        for pair in [pairs.first, pairs.second, pairs.third]:
+            if pair.index == -2000:
+                geo_id = -2000
+            elif pair.index < 0:
+                geo_id = ext_geometry[pair.list_index].id_
+            else:
+                geo_id = geometry[pair.list_index].id_
+            parts.extend([geo_id, pair.part])
+        return "_".join(map(str, parts))
 
 def object_types(tree: ElementTree) -> list[str]:
     """Returns the types of each object type in the file."""

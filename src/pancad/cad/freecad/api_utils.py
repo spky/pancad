@@ -157,8 +157,13 @@ def get_topo_reading_order(document: FreeCADDocument) -> list[int]:
     for prop in properties:
         print(f"{prop}:", obj.get_property(prop).value)
     geometry = obj.get_property("Geometry").value
-    for g in geometry:
-        print(g._geometry)
+    externals = obj.get_property("ExternalGeo").value
+    # for g in geometry + externals:
+        # # print(g._geometry)
+        # print(g.uid)
+    constraints = obj.get_property("Constraints").value
+    for c in constraints:
+        print(c.uid)
     # ts = graphlib.TopologicalSorter(name_graph)
 
 ################################################################################
