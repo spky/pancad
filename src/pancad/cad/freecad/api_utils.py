@@ -151,19 +151,26 @@ def get_topo_reading_order(document: FreeCADDocument) -> list[int]:
     read to avoid missing dependencies.
     """
     xml_doc = read_xml.FreeCADDocumentXML.from_string(document.Content)
-    obj = xml_doc.get_object("Sketch")
-    print()
-    properties = ["Visibility", "AttachmentSupport", "Geometry"]
-    for prop in properties:
-        print(f"{prop}:", obj.get_property(prop).value)
-    geometry = obj.get_property("Geometry").value
-    externals = obj.get_property("ExternalGeo").value
-    # for g in geometry + externals:
-        # # print(g._geometry)
-        # print(g.uid)
-    constraints = obj.get_property("Constraints").value
-    for c in constraints:
-        print(c.uid)
+    order = xml_doc.get_topo_order()
+    print(order)
+    # breakpoint()
+    # print(xml_doc.get_property("Label").value)
+    # for obj in xml_doc.objects:
+        # print(obj.name,
+              # "\nChildren:", obj.get_child_names(),
+              # "\nParents:", obj.get_parent_names())
+    # print()
+    # properties = ["Visibility", "AttachmentSupport", "Geometry"]
+    # for prop in properties:
+        # print(f"{prop}:", obj.get_property(prop).value)
+    # geometry = obj.get_property("Geometry").value
+    # externals = obj.get_property("ExternalGeo").value
+    # # for g in geometry + externals:
+        # # # print(g._geometry)
+        # # print(g.uid)
+    # constraints = obj.get_property("Constraints").value
+    # for c in constraints:
+        # print(c.uid)
     # ts = graphlib.TopologicalSorter(name_graph)
 
 ################################################################################

@@ -10,6 +10,7 @@ import tomllib
 from typing import TYPE_CHECKING
 import warnings
 from xml.etree import ElementTree as ET
+import graphlib
 
 from pancad import resources
 
@@ -46,7 +47,7 @@ GEO_EXT_XPATH = XPATHS["GEOMETRY_EXT"].format(Sketcher.GEOMETRY_EXT)
 ObjectIdInfo = namedtuple("ObjectIdInfo", ["name", "id_", "type_"])
 
 @dataclasses.dataclass
-class FreeCADLinkSub:
+class FreeCADLink:
     """A class for tracking FreeCAD App::PropertyLinkSub data. See
     https://freecad.github.io/SourceDoc/d3/d76/classApp_1_1PropertyLinkSub.html
 
@@ -242,6 +243,30 @@ class FreeCADDocumentXML:
             msg = f"Could not find property '{name}'"
             raise LookupError(msg, name) from exc
 
+    def get_topo_order(self) -> list[str]:
+        """Returns the non-unique (as in, multiple orders theoretically exist) 
+        list of topologically ordered object names in the document. The 
+        non-unique orders will only matter for version control. An example 
+        would be if there are two independent sketches then the order that 
+        they appear in the document is arbitrary.
+        """
+        child_graph = {obj.name: self.get_object_parents(obj.name)
+                       for obj in self.objects}
+        sorter = graphlib.TopologicalSorter(child_graph)
+        return list(sorter.static_order())
+
+    def get_object_parents(self, id_: str | int) -> list[str]:
+        """Returns the direct parents of the object by its name or id. Does not 
+        return all parents recursively up the tree.
+        """
+        obj = self.get_object(id_)
+        parents = obj.get_parent_names()
+        all_parents = {o.name: o.get_child_names() for o in self.objects}
+        for parent, children_by_parent in all_parents.items():
+            if obj.name in children_by_parent:
+                parents.add(parent)
+        return parents
+
     # Private Methods
     def _get_object_id_info(self, id_: str | int=None
                            ) -> ObjectIdInfo | list[ObjectIdInfo]:
@@ -359,6 +384,29 @@ class FreeCADObjectXML:
             msg = f"Could not find property '{name}'"
             raise LookupError(msg, name) from exc
 
+    def get_child_names(self) -> set[str]:
+        """Returns the set of child object names that this object defines
+        in the xml file.
+        """
+        names = set()
+        for prop in self.properties:
+            if prop.type_ == "App::PropertyLink" and prop.value is not None:
+                names.add(prop.value.name)
+            if prop.type_ == "App::PropertyLinkList":
+                names.update(p.name for p in prop.value)
+        return names
+
+    def get_parent_names(self) -> set[str]:
+        """Returns the set of parent object names that this object defines
+        in the xml file.
+        """
+        names = set()
+        link_sub_names = ["App::PropertyLinkSubList", "App::PropertyLinkSub"]
+        for prop in self.properties:
+            if prop.type_ in link_sub_names:
+                names.update(p.name for p in prop.value)
+        return names
+
     def _read_properties(self) -> list[FreeCADPropertyXML]:
         """Reads the properties of the object into a list of interfacing
         objects.
@@ -371,27 +419,6 @@ class FreeCADObjectXML:
         for prop in property_list:
             properties.append(FreeCADPropertyXML(prop, self))
         return properties
-
-    def _read_links(self, types: list[str]) -> list[str]:
-        """Reads the unique list object names in the links under properties with
-        the provided types.
-
-        :param types: The names of the list types without the App:: namespace.
-        :raises ValueError: When a link is found with no value attribute.
-        """
-        names = set()
-        list_xpaths = [f"Properties/Property[@type='App::{t}']" for t in types]
-        for xpath in list_xpaths:
-            for link_list in self._element.findall(xpath):
-                for link_element in link_list.findall(".//Link"):
-                    try:
-                        value = link_element.attrib["value"]
-                    except KeyError as exc:
-                        msg = "Unexpected FCStd link format: no 'value' found"
-                        raise ValueError(msg, link_element) from exc
-                    if value != "": # Skip blank values
-                        names.add(value)
-        return list(names)
 
 
 class FreeCADPropertyXML:
@@ -423,13 +450,10 @@ class FreeCADPropertyXML:
         self._element = element
         self._parent = parent
         func_to_types = {
-            self._read_single_str: [
-                "App::PropertyUUID",
-                "App::PropertyLink",
-                "App::PropertyString",
-            ],
+            self._read_single_str: ["App::PropertyUUID", "App::PropertyString"],
             self._read_single_bool: ["App::PropertyBool"],
-            self._read_str_list: ["App::PropertyLinkList"],
+            self._read_link_list: ["App::PropertyLinkList"],
+            self._read_link: ["App::PropertyLink"],
             self._read_link_sub: ["App::PropertyLinkSub"],
             self._read_link_sub_list: ["App::PropertyLinkSubList"],
             self._read_geometry: ["Part::PropertyGeometryList"],
@@ -500,7 +524,7 @@ class FreeCADPropertyXML:
 
     def _read_single_attr(self, name: str):
         """Read property type that has a single element with a value attr."""
-        return self._read_attr(self._read_first(), name)
+        return xml_utils.read_attr(self._read_first(), name)
 
     _read_single_str = partialmethod(_read_single_attr, "value")
     _read_single_bool = xml_utils.convert_str(_read_single_str,
@@ -508,36 +532,67 @@ class FreeCADPropertyXML:
 
     def _read_nested_attr_list(self, attr: str) -> list[str]:
         """Read property type that has a list of value attr subelements."""
-        return [self._read_attr(e, attr) for e in self._read_first()]
+        try:
+            return [xml_utils.read_attr(e, attr) for e in self._read_first()]
+        except ValueError as exc:
+            exc.add_note(f"On Property {self.name}")
+            raise
 
     _read_str_list = partialmethod(_read_nested_attr_list, "value")
 
-    def _read_link_sub(self) -> list[FreeCADLinkSub]:
+    def _read_link_sub(self) -> list[FreeCADLink]:
         """Read property type with child-to-parent links to one object."""
         links = []
         element = self._read_first()
-        obj_name = self._read_attr(element, "value")
+        obj_name = xml_utils.read_attr(element, "value")
         if obj_name == "": # Empty element means no links
             return links
         for subelement in element:
-            sub_name = self._read_attr(subelement, "value")
+            sub_name = xml_utils.read_attr(subelement, "value")
             shadow = subelement.get("shadow")
-            links.append(FreeCADLinkSub(obj_name, sub_name, shadow))
+            links.append(FreeCADLink(obj_name, sub_name, shadow))
         if len(links) == 0: # Name is not empty, so just the link to the object.
-            links.append(FreeCADLinkSub(obj_name))
+            links.append(FreeCADLink(obj_name))
         return links
 
-    def _read_link_sub_list(self) -> list[FreeCADLinkSub]:
+    def _read_link(self) -> FreeCADLink | None:
+        """Read property type with parent-to-child link to one object."""
+        element = self._read_first()
+        name = xml_utils.read_attr(element, "value")
+        if name == "":
+            return None
+        return FreeCADLink(name)
+
+    def _read_link_list(self) -> list[FreeCADLink]:
+        """Read property type with parent-to-child links to one object."""
+        links = []
+        if self.is_private:
+            return links # Private properties do not have any nested links
+        try:
+            element = self._read_first()
+        except ValueError as exc:
+            exc.add_note(f"On Property {self.name}")
+            raise
+        for subelement in element:
+            try:
+                name = xml_utils.read_attr(subelement, "value")
+            except ValueError as exc:
+                exc.add_note(f"On Property {self.name}")
+                raise
+            links.append(FreeCADLink(name))
+        return links
+
+    def _read_link_sub_list(self) -> list[FreeCADLink]:
         """Read property type with child-to-parent links to multiple objects."""
         links = []
         element = self._read_first()
         for subelement in element:
-            obj_name = self._read_attr(subelement, "obj")
+            obj_name = xml_utils.read_attr(subelement, "obj")
             if obj_name == "":
                 continue
-            sub_name = self._read_attr(subelement, "sub")
+            sub_name = xml_utils.read_attr(subelement, "sub")
             shadow = subelement.get("shadow")
-            links.append(FreeCADLinkSub(obj_name, sub_name, shadow))
+            links.append(FreeCADLink(obj_name, sub_name, shadow))
         return links
 
     def _read_geometry(self) -> list[FreeCADGeometryXML]:
@@ -554,6 +609,10 @@ class FreeCADPropertyXML:
         for element in self._read_first():
             constraints.append(FreeCADConstraintXML(element, self))
         return constraints
+
+    def __repr__(self) -> str:
+        type_wo_ns = self.type_.split("::")[-1]
+        return f"<FreeCADPropertyXML {self.name} {type_wo_ns}>"
 
 def object_type(tree: ElementTree,
                 type_: App | Sketcher | PartDesign
@@ -603,7 +662,7 @@ class SketchGeoExt(GeometryExtension):
     @classmethod
     def from_element(cls, parent: FreeCADGeometryXML, element: Element
                      ) -> SketchGeoExt:
-        """Returns a SketchGeoExt from a GeoExtension xml element typed as a 
+        """Returns a SketchGeoExt from a GeoExtension xml element typed as a
         Sketch Extension.
         """
         type_ = xml_utils.read_attr(element, "type")
@@ -754,7 +813,7 @@ class GeomArcOfCircle(GeomData):
 class FreeCADGeometryXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
 
-    :param element: The xml Geometry element inside an FCStd 
+    :param element: The xml Geometry element inside an FCStd
         Part::PropertyGeometryList type xml property list.
     :param parent: The FreeCADPropertyXML this geometry is inside of.
     """
@@ -858,7 +917,7 @@ class FreeCADGeometryXML:
 
 @dataclasses.dataclass
 class ConstraintGeoRef:
-    """A dataclass tracking the index and subpart of a FreeCAD constraint's 
+    """A dataclass tracking the index and subpart of a FreeCAD constraint's
     reference to geometry.
     """
     index: int
@@ -873,7 +932,7 @@ class ConstraintGeoRef:
 
 @dataclasses.dataclass
 class InternalAlignment:
-    """Dataclass for tracking how a constraint is used for interally aligning 
+    """Dataclass for tracking how a constraint is used for interally aligning
     geometry like Ellipse subgeometry.
     """
     type_: int
@@ -881,7 +940,7 @@ class InternalAlignment:
 
 @dataclasses.dataclass
 class ConstraintState:
-    """Dataclass for tracking the sketch-specific state data of a FreeCAD 
+    """Dataclass for tracking the sketch-specific state data of a FreeCAD
     constraint.
     """
     label_distance: float
@@ -892,7 +951,7 @@ class ConstraintState:
 
 @dataclasses.dataclass
 class ConstraintPairs:
-    """Class tracking the three pairs of ConstraintGeoRef integers in FreeCAD 
+    """Class tracking the three pairs of ConstraintGeoRef integers in FreeCAD
     constraints.
     """
     first: ConstraintGeoRef
@@ -901,14 +960,14 @@ class ConstraintPairs:
 
 @dataclasses.dataclass
 class ConstraintData:
-    """A dataclass tracking all xml data stored for a FreeCAD sketch 
+    """A dataclass tracking all xml data stored for a FreeCAD sketch
     constraint.
     """
     parent: FreeCADConstraintXML = dataclasses.field(repr=False)
     name: str | None
     type_: int
     value: float
-    pairs: tuple[ConstraintGeoRef, ConstraintGeoRef, ConstraintGeoRef]
+    pairs: ConstraintPairs
     state: ConstraintState
     internal_alignment: InternalAlignment = None
 
@@ -964,7 +1023,7 @@ class ConstraintData:
 class FreeCADConstraintXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
 
-    :param element: The xml Constrain element inside an FCStd 
+    :param element: The xml Constrain element inside an FCStd
         Sketcher::PropertyConstraintList type xml property list.
     :param parent: The FreeCADPropertyXML this constraint is inside of.
     """
