@@ -7,6 +7,8 @@ from collections import namedtuple
 from typing import TYPE_CHECKING
 import warnings
 from xml.etree import ElementTree as ET
+from zipfile import ZipFile
+from os import PathLike
 import graphlib
 
 from . import xml_utils
@@ -18,6 +20,21 @@ if TYPE_CHECKING:
     from .constants.archive_constants import App, PartDesign
 
 ObjectIdInfo = namedtuple("ObjectIdInfo", ["name", "id_", "type_"])
+
+class FCStd:
+    """A class providing interfaces to a FreeCAD FCStd file."""
+    def __init__(self, zip_file: ZipFile):
+        self._document = FreeCADDocumentXML.from_fcstd_zip(zip_file)
+
+    @classmethod
+    def from_path(cls, path: PathLike) -> FCStd:
+        """Returns a new FCStd object from the path."""
+        return cls(ZipFile(path))
+
+    @property
+    def document(self) -> FreeCADDocumentXML:
+        """The parsed xml data object with the file's parametric info."""
+        return self._document
 
 @dataclasses.dataclass
 class FreeCADLink:
@@ -77,6 +94,11 @@ class FreeCADDocumentXML:
         string. Example use: FreeCAD API docs have a string Content property.
         """
         return cls(ET.fromstring(string))
+
+    @classmethod
+    def from_fcstd_zip(cls, file: ZipFile) -> FreeCADDocumentXML:
+        with file.open("Document.xml") as document:
+            return cls.from_string(document.read())
 
     # Properties
     @property

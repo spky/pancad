@@ -88,6 +88,7 @@ def new_placement_from_pose(pose: Pose) -> FreeCADPlacement:
 # FreeCAD ---> pancad Features
 ################################################################################
 def new_part_from_document(path: str) -> PartFile:
+    
     document = App.open(path)
     part = PartFile(document.Label)
     uid_map = {}

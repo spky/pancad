@@ -14,6 +14,7 @@ from tests.sample_pancad_objects.sample_part_files import (
 from pancad.cad.freecad._feature_translation import (
     new_document_from_part, new_part_from_document
 )
+from pancad.cad.freecad.read_xml import FCStd
 
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
 DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
@@ -40,4 +41,6 @@ def test_new_document_from_part(part_file_fixture, expected, request):
     # document.save()
 
 def test_new_part_from_document(freecad_doc):
+    fcstd = FCStd.from_path(freecad_doc)
+    breakpoint()
     part_file = new_part_from_document(freecad_doc)
