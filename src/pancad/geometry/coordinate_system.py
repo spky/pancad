@@ -37,7 +37,7 @@ def updates_planes(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         if self.z is not None:
-            for axis, plane in zip(self.reversed(self.get_axes()),
+            for axis, plane in zip(reversed(self.get_axes()),
                                    self.get_planes()):
                 plane.update(Plane(self.origin, axis.direction))
         return result
@@ -65,6 +65,16 @@ class SystemParts:
 
     get_planes = partialmethod(_get_typed, type_="Plane")
 
+    @updates_planes
+    def move_to_point(self, location: Point) -> Self:
+        """Moves the system to a new location with no rotation."""
+        if not isinstance(location, Point):
+            location = Point(location)
+        self.origin.update(location)
+        for axis in self.get_axes():
+            axis.move_to_point(location)
+        return self
+
     @singledispatchmethod
     @updates_planes
     def rotate(self, rotation) -> Self:
@@ -91,6 +101,7 @@ class SystemParts:
                 Line(self.origin, quaternion.rotate_vectors(quat, axis.direction))
             )
         return self
+
 
 class CoordinateSystem(AbstractGeometry, AbstractFeature):
     """A class representing coordinate systems in 2D and 3D space. Initial 
@@ -320,6 +331,11 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self.parts.rotate(rotation)
         return self
 
+    def move_to_point(self, location: Point) -> Self:
+        """Moves the system to a new location with no rotation."""
+        self.parts.move_to_point(location)
+        return self
+
     # Python Dunders
     def __copy__(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem that has the same origin, 
@@ -384,6 +400,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                    indent("\n".join(axis_strs), indentation),]
         return "\n".join(summary)
 
+
 class Pose(AbstractGeometry):
     """The position and orientation of a 3D object."""
     def __init__(self, coordinate_system: CoordinateSystem,
@@ -397,6 +414,9 @@ class Pose(AbstractGeometry):
             {
                 ConstraintReference.CORE: self,
                 ConstraintReference.ORIGIN: self._coordinate_system.origin,
+                ConstraintReference.X: self._coordinate_system.get_axis_line_x(),
+                ConstraintReference.Y: self._coordinate_system.get_axis_line_y(),
+                ConstraintReference.Z: self._coordinate_system.get_axis_line_z(),
                 ConstraintReference.FRONT: self._coordinate_system.get_xy_plane(),
                 ConstraintReference.RIGHT: self._coordinate_system.get_xz_plane(),
                 ConstraintReference.TOP: self._coordinate_system.get_yz_plane(),
@@ -436,6 +456,15 @@ class Pose(AbstractGeometry):
     def top(self) -> Plane:
         """Top plane of the Pose."""
         return self.get_reference(ConstraintReference.TOP)
+
+    def move_to_point(self, location: Point) -> Self:
+        """Moves the pose to a new location with no rotation."""
+        self.coordinate_system.move_to_point(location)
+
+    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+        """Rotates the pose with a rotation matrix or quaternion."""
+        self.coordinate_system.rotate(rotation)
+        return self
 
     def update(self, other: Pose) -> Self:
         """Updates the position and orientation of the Pose to the other Pose."""

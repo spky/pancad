@@ -58,5 +58,5 @@ def test_fcstd_metadata(fcstd):
     assert metadata.label == fcstd.path.stem
 
 
-# def test_new_part_from_document(fcstd):
-    # part_file = new_part_from_document(fcstd)
+def test_new_part_from_document(fcstd):
+    part_file = new_part_from_document(fcstd)

@@ -317,9 +317,7 @@ class FreeCADDocumentXML:
             xpath = xpath + f"[@id='{id_}']"
         else:
             xpath = xpath + f"[@name='{id_}']"
-        obj = self._tree.find(xpath)
-        if obj is None:
-            raise LookupError("Could not find object id in tree", id_)
+        obj = xml_utils.find_single(self._tree, xpath)
         return ObjectIdInfo(*[obj.attrib[p] for p in props])
 
     def _read_all_objectdata(self) -> FreeCADObjectXML:
@@ -418,6 +416,8 @@ class FreeCADObjectXML:
         """
         names = set()
         for prop in self.properties:
+            if prop.is_private:
+                continue
             if prop.type_ == "App::PropertyLink" and prop.value is not None:
                 names.add(prop.value.name)
             if prop.type_ == "App::PropertyLinkList":
@@ -469,7 +469,7 @@ class FreeCADPlacement:
         xyz = ["x", "y", "z"]
         location = xml_utils.read_vector(element, xyz, "P", False)
         o_vector = xml_utils.read_vector(element, xyz, "O", False)
-        quat_vector = xml_utils.read_vector(element, ["A", "Q0", "Q1", "Q2"],
+        quat_vector = xml_utils.read_vector(element, ["Q0", "Q1", "Q2", "Q3"],
                                             is_2d=False)
         return cls(location, np.quaternion(*quat_vector), o_vector)
 

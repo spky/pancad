@@ -100,10 +100,17 @@ def new_part_from_document(file: FCStd) -> PartFile:
                " expected a PartDesign::Body.")
         raise ValueError(msg)
     uid_map = {file.uid: part}
-    breakpoint()
+    map_container_from_freecad(top, part, uid_map)
     while object_uids:
         uid = object_uids.popleft()
+        if uid in uid_map:
+            continue
         obj = file.get_by_uid(uid)
+        if obj.type_ == "PartDesign::Body":
+            msg = ("Incompatible with PartFile: More than one top"
+                   " level PartDesign::Body.")
+            raise ValueError(msg)
+        breakpoint()
         
     # ordered_ids = api_utils.get_topo_reading_order(document)
     return part
@@ -118,19 +125,31 @@ def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
 
 def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
                                uid_map: dict[xml_utils.FreeCADUID, PancadThing]
-                               ) -> FeatureContainer:
+                               ) -> None:
     """Maps the PartFile's top level container to a FreeCAD Body."""
-    new_uids = {feature.uid: part.container}
-    origin_map = {"Origin": CR.CS,
-                  "X_Axis": CR.X, "Y_Axis": CR.Y, "Z_Axis": CR.Z,
-                  "XY_Plane": CR.XY, "XZ_Plane": CR.XZ, "YZ_Plane": CR.YZ}
+    container = part.container
+    new_uids = {feature.uid: container}
+
     origin_name = feature.get_property("Origin").value.name
     origin = feature.document.get_object(origin_name)
-    name_to_feat = {origin_name: origin}
-    for subfeat in origin.get_property("OriginFeatures").value:
-        pass
-    new_uids[origin.uid] = part.container.pose.coordinate_system
-    
+    map_name_to_feat = {xml_utils.get_map_name(origin_name): origin}
+    for sub_name in origin.get_property("OriginFeatures").value:
+        feat = feature.document.get_object(sub_name.name)
+        map_name_to_feat[xml_utils.get_map_name(sub_name.name)] = feat
+
+    origin_map = {"Origin": CR.CS,
+                  "X_Axis": CR.X, "Y_Axis": CR.Y, "Z_Axis": CR.Z,
+                  "XY_Plane": CR.FRONT, "XZ_Plane": CR.RIGHT, "YZ_Plane": CR.TOP}
+    for map_name, reference in origin_map.items():
+        try:
+            feat = map_name_to_feat[map_name]
+        except KeyError as exc:
+            msg = f"No '{map_name}' found in Origin '{origin_name}'"
+            raise ValueError(msg) from exc
+        new_uids[feat.uid] = container.pose.get_reference(reference)
+    placement = feature.get_property("Placement").value
+    container.pose.rotate(placement.quat)
+    container.pose.move_to_point(placement.location)
     uid_map.update(new_uids)
 
 ################################################################################
