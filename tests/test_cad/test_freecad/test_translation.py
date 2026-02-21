@@ -40,7 +40,23 @@ def test_new_document_from_part(part_file_fixture, expected, request):
     # document.FileName = str(DUMP / (part_file_fixture + ".FCStd"))
     # document.save()
 
-def test_new_part_from_document(freecad_doc):
-    fcstd = FCStd.from_path(freecad_doc)
-    breakpoint()
-    part_file = new_part_from_document(freecad_doc)
+@pytest.fixture
+def fcstd(freecad_doc):
+    yield FCStd.from_path(freecad_doc)
+
+@pytest.fixture
+def xml_doc(fcstd):
+    yield fcstd.document
+
+def test_read_label(xml_doc):
+    # Check that at least the label property reading is working.
+    label = xml_doc.get_property("Label").value
+    assert label == xml_doc.file.path.stem
+
+def test_fcstd_metadata(fcstd):
+    metadata = fcstd.metadata
+    assert metadata.label == fcstd.path.stem
+
+
+# def test_new_part_from_document(fcstd):
+    # part_file = new_part_from_document(fcstd)

@@ -5,26 +5,37 @@ import dataclasses
 from functools import partialmethod
 from collections import namedtuple
 from typing import TYPE_CHECKING
+import logging
 import warnings
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
-from os import PathLike
+from pathlib import Path
 import graphlib
 
-from . import xml_utils
+import numpy as np
+
+from pancad.cad.freecad import xml_utils
 
 if TYPE_CHECKING:
     from typing import Any, NoReturn
     from os import PathLike
     from xml.etree.ElementTree import Element, ElementTree
-    from .constants.archive_constants import App, PartDesign
+
+    import quaternion
+
+    from pancad.cad.freecad.xml_utils import FreeCADUID
+    from pancad.cad.freecad.constants.archive_constants import App, PartDesign
+
+logger = logging.getLogger(__name__)
 
 ObjectIdInfo = namedtuple("ObjectIdInfo", ["name", "id_", "type_"])
+
 
 class FCStd:
     """A class providing interfaces to a FreeCAD FCStd file."""
     def __init__(self, zip_file: ZipFile):
-        self._document = FreeCADDocumentXML.from_fcstd_zip(zip_file)
+        self._archive = zip_file
+        self._document = FreeCADDocumentXML.from_fcstd(self)
 
     @classmethod
     def from_path(cls, path: PathLike) -> FCStd:
@@ -32,9 +43,104 @@ class FCStd:
         return cls(ZipFile(path))
 
     @property
+    def path(self) -> Path:
+        """The path to the FCStd zipped file."""
+        return Path(self._archive.filename)
+
+    @property
+    def archive(self) -> ZipFile:
+        """The zipfile containing the data in the FCStd file."""
+        return self._archive
+
+    @property
     def document(self) -> FreeCADDocumentXML:
         """The parsed xml data object with the file's parametric info."""
         return self._document
+
+    @property
+    def metadata(self) -> FCMetadata:
+        """The subset of file metadata that is always available."""
+        doc_props = {
+            "Label": "label",
+            "Uid": "uid",
+            "UnitSystem": "unit_system",
+            "LastModifiedDate": "last_modified_date",
+            "Id": "user_id",
+        }
+        inputs = {i: self.document.get_property(p).value
+                  for p, i in doc_props.items()}
+        return FCMetadata(**inputs)
+
+    @property
+    def uid(self) -> FreeCADUID:
+        """The has-to-be-unique pancad calculated id for the file. This uid
+        is the same as the uid of the file as a whole.
+        """
+        return self._document.uid
+
+    def get_topo_uids(self) -> list[FreeCADUID]:
+        """Returns the topologically ordered (roughly the required creation 
+        order) uids of the objects inside the file.
+        """
+        names = self.document.get_topo_order()
+        return [self.document.get_object(n).uid for n in names]
+
+    def get_by_uid(self, uid: FreeCADUID | str
+                   ) -> (FCStd | FreeCADObjectXML
+                         | FreeCADGeometryXML | FreeCADConstraintXML):
+        """Returns an object in this file corresponding to the uid.
+
+        :param uid: A FreeCADUID compatible string to search for.
+        :raises LookupError: When the uid cannot be found in the file.
+        """
+        if not isinstance(uid, xml_utils.FreeCADUID):
+            uid = xml_utils.FreeCADUID(uid)
+        data = uid.data
+        if self.uid.file_uid != data.file_uid:
+            msg = f"UID not found: Document uid '{self.uid.file_uid}' mismatch"
+            raise LookupError(msg, uid)
+        if data.type_ == "document":
+            return self
+        # All uids that get past this point are inside a feature.
+        try:
+            feature = self.document.get_object(data.feature_id)
+        except LookupError as exc:
+            msg = f"UID not found: No feature id '{data.feature_id}' found"
+            raise LookupError(msg, uid) from exc
+        if data.type_ == "feature":
+            return feature
+        # All uids that get past this point are either geometry or constraints
+        try:
+            object_list = feature.get_property(data.list_name).value
+        except LookupError as exc:
+            msg = (f"UID not found: Feature with id {data.feature_id}"
+                   f" did not have a '{data.list_name}' list")
+            raise LookupError(msg, uid) from exc
+        try:
+            return next(e for e in element_list if e.uid == uid)
+        except StopIteration as exc:
+            msg = (f"UID not found: No {data.type_} with the uid found in"
+                   f" feature '{feature.name}' {data.list_name} list")
+            raise LookupError(msg, uid) from exc
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} '{self.metadata.label}'>"
+
+@dataclasses.dataclass
+class FCMetadata:
+    """Dataclass tracking metadata that is available on all FreeCAD files.
+
+    :param label: The name of the file.
+    :param uid: The internally generated unique id for the file.
+    :param unit_system: The units for the file's dimensions.
+    :param last_modified_date: The date the file was modified last.
+    :param user_id: The id for the file entered by the designer.
+    """
+    label: str
+    uid: str
+    unit_system: str
+    last_modified_date: str
+    user_id: str
 
 @dataclasses.dataclass
 class FreeCADLink:
@@ -63,14 +169,17 @@ class FreeCADDocumentXML:
     """A class providing an interface to FCStd Document.xml files.
 
     :param tree: An xml ElementTree read from a FCStd Document.xml file.
+    :param file: The FCStd file this document is part of. Supports being None so
+        this object can be used in the API.
     :raises ValueError: When the xml tree is an invalid Document.xml format.
     """
     tag = "Document"
     """The nominal tag of the element in xml."""
 
-    def __init__(self, tree: ElementTree):
+    def __init__(self, tree: ElementTree, file: FCStd=None):
         schema_version_name = "SchemaVersion"
         self._tree = tree
+        self._file = file
         try:
             self._schema_version = int(tree.attrib[schema_version_name])
         except KeyError as exc:
@@ -83,8 +192,8 @@ class FreeCADDocumentXML:
                    f" SchemaVersion value: {raw_schema_version}")
             raise ValueError(msg, tree) from exc
         if self.schema_version != 4:
-            warnings.warn(f"SchemaVersion {self.schema_version} not recognized,"
-                          " invalid translation behavior may occur")
+            logger.warning(f"SchemaVersion {self.schema_version} not recognized,"
+                           " invalid translation behavior may occur")
         self._objects = self._read_all_objectdata()
         self._properties = self._read_properties()
 
@@ -96,15 +205,30 @@ class FreeCADDocumentXML:
         return cls(ET.fromstring(string))
 
     @classmethod
-    def from_fcstd_zip(cls, file: ZipFile) -> FreeCADDocumentXML:
+    def from_zip(cls, file: ZipFile) -> FreeCADDocumentXML:
+        """Creates a document from a zipped file structured like an FCStd file.
+        """
         with file.open("Document.xml") as document:
             return cls.from_string(document.read())
+
+    @classmethod
+    def from_fcstd(cls, fcstd: FCStd) -> FreeCADDocumentXML:
+        """Creates a document from the FCStd object and sets it as the document's
+        file.
+        """
+        with fcstd.archive.open("Document.xml") as document:
+            return cls(ET.fromstring(document.read()), fcstd)
 
     # Properties
     @property
     def schema_version(self) -> int:
         """The xml schema version of the FreeCAD xml."""
         return self._schema_version
+
+    @property
+    def file(self) -> FCStd:
+        """The file this document is inside of."""
+        return self._file
 
     @property
     def objects(self) -> list[FreeCADObjectXML]:
@@ -117,9 +241,11 @@ class FreeCADDocumentXML:
         return self._properties
 
     @property
-    def uid(self) -> str:
-        """The has-to-be-unique pancad calculated id for this element."""
-        return f"{self.get_property('Uid').value}_document"
+    def uid(self) -> FreeCADUID:
+        """The has-to-be-unique pancad calculated id for this element. This uid
+        is the same as the uid of the file as a whole.
+        """
+        return xml_utils.FreeCADUID(f"{self.get_property('Uid').value}_document")
 
     def get_object(self, id_: str | int) -> FreeCADObjectXML:
         """Returns the FreeCADObjectXML object with the provided id.
@@ -145,10 +271,10 @@ class FreeCADDocumentXML:
             raise LookupError(msg, name) from exc
 
     def get_topo_order(self) -> list[str]:
-        """Returns the non-unique (as in, multiple orders theoretically exist) 
-        list of topologically ordered object names in the document. The 
-        non-unique orders will only matter for version control. An example 
-        would be if there are two independent sketches then the order that 
+        """Returns the non-unique (as in, multiple orders theoretically exist)
+        list of topologically ordered object names in the document. The
+        non-unique orders will only matter for version control. An example
+        would be if there are two independent sketches then the order that
         they appear in the document is arbitrary.
         """
         child_graph = {obj.name: self.get_object_parents(obj.name)
@@ -157,7 +283,7 @@ class FreeCADDocumentXML:
         return list(sorter.static_order())
 
     def get_object_parents(self, id_: str | int) -> list[str]:
-        """Returns the direct parents of the object by its name or id. Does not 
+        """Returns the direct parents of the object by its name or id. Does not
         return all parents recursively up the tree.
         """
         obj = self.get_object(id_)
@@ -217,7 +343,13 @@ class FreeCADDocumentXML:
             msg = "Unexpected Document format: could not find Properties element"
             raise ValueError(msg, self._tree)
         for prop in property_list:
-            properties.append(FreeCADPropertyXML(prop, self))
+            try:
+                properties.append(FreeCADPropertyXML(prop, self))
+            except (ValueError, NotImplementedError) as exc:
+                filename = self.file.path.name
+                exc.add_note(f"In Document properties of file '{filename}'")
+                logger.warning(f"Document property read failed. Reason:\n%s",
+                               "\n".join([str(exc), *exc.__notes__]))
         return properties
 
 class FreeCADObjectXML:
@@ -273,16 +405,17 @@ class FreeCADObjectXML:
         return self._document
 
     @property
-    def uid(self) -> str:
+    def uid(self) -> FreeCADUID:
         """The has-to-be-unique pancad calculated id for this element."""
-        return f"{self.document.get_property('Uid').value}_feature_{self.id_}"
+        string = f"{self.document.uid.file_uid}_feature_{self.id_}"
+        return xml_utils.FreeCADUID(string)
 
     def get_property(self, name: str) -> FreeCADPropertyXML:
         """Returns the FreeCADPropertyXML object with the provided name."""
         try:
             return next(p for p in self.properties if p.name == name)
         except StopIteration as exc:
-            msg = f"Could not find property '{name}'"
+            msg = f"Could not find property '{name}' on Object '{self.name}'"
             raise LookupError(msg, name) from exc
 
     def get_child_names(self) -> set[str]:
@@ -318,9 +451,39 @@ class FreeCADObjectXML:
             msg = "Unexpected Object format: could not find Properties element"
             raise ValueError(msg, self._element)
         for prop in property_list:
-            properties.append(FreeCADPropertyXML(prop, self))
+            try:
+                properties.append(FreeCADPropertyXML(prop, self))
+            except (ValueError, NotImplementedError) as exc:
+                exc.add_note(f"On Object '{self.name}'")
+                logger.warning(f"Object '%s' property read failed. Reason:\n%s",
+                               self.name, "\n".join([str(exc), *exc.__notes__]))
         return properties
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} '{self.name}'>"
+
+@dataclasses.dataclass
+class FreeCADPlacement:
+    location: tuple[float, float, float]
+    quat: quaternion.quaternion
+    o_vector: tuple[float, float, float]
+
+    @classmethod
+    def from_element(cls, element: Element) -> FreeCADPlacement:
+        xyz = ["x", "y", "z"]
+        location = xml_utils.read_vector(element, xyz, "P", False)
+        o_vector = xml_utils.read_vector(element, xyz, "O", False)
+        quat_vector = xml_utils.read_vector(element, ["A", "Q0", "Q1", "Q2"],
+                                            is_2d=False)
+        return cls(location, np.quaternion(quat_vector), o_vector)
+
+@dataclasses.dataclass
+class FreeCADExpression:
+    """Dataclass for tracking the definition of FreeCAD expressions that define 
+    derived properties in the model.
+    """
+    path: str
+    expression: str
 
 class FreeCADPropertyXML:
     """A class providing interfaces to FCStd Document.xml element properties.
@@ -356,13 +519,30 @@ class FreeCADPropertyXML:
             self._read_link_list: ["App::PropertyLinkList"],
             self._read_link: ["App::PropertyLink"],
             self._read_link_sub: ["App::PropertyLinkSub"],
+            self._read_enum: ["App::PropertyEnumeration"],
             self._read_link_sub_list: ["App::PropertyLinkSubList"],
             self._read_geometry: ["Part::PropertyGeometryList"],
             self._read_constraints: ["Sketcher::PropertyConstraintList"],
+            self._read_expressions: ["App::PropertyExpressionEngine"],
         }
         self._type_func_dispatch = {}
         for func, types in func_to_types.items():
             self._type_func_dispatch.update({t: func for t in types})
+
+        try:
+            value_func = self._type_func_dispatch[self.type_]
+        except KeyError as exc:
+            msg = (f"Property type '{self.type_}' has not been implemented.\n"
+                   f"On Property '{self.name}'")
+            raise NotImplementedError(msg) from exc
+        try:
+            if self.is_private:
+                self._value = None
+            else:
+                self._value = value_func()
+        except (ValueError, NotImplementedError) as exc:
+            exc.add_note(f"While reading values on Property '{self.name}'")
+            raise
 
     @property
     def name(self) -> str:
@@ -389,7 +569,7 @@ class FreeCADPropertyXML:
     @property
     def value(self) -> Any:
         """The value of the property in its xml."""
-        return self._type_func_dispatch[self.type_]()
+        return self._value
 
     def _read_single(self, element: Element) -> Element:
         """Reads the first element of an element inside the property when the
@@ -408,7 +588,7 @@ class FreeCADPropertyXML:
         """Reads the first property subelement."""
         return self._read_single(self._element)
 
-    def _read_single_attr(self, name: str):
+    def _read_single_attr(self, name: str) -> str:
         """Read property type that has a single element with a value attr."""
         return xml_utils.read_attr(self._read_first(), name)
 
@@ -416,13 +596,21 @@ class FreeCADPropertyXML:
     _read_single_bool = xml_utils.convert_str(_read_single_str,
                                               xml_utils.read_bool)
 
+    def _read_enum(self) -> int | str:
+        """Reads enumerations. If there's a custom list it converts the option to
+        its selected string.
+        """
+        select = xml_utils.find_single(self._element, "Integer")
+        selection = xml_utils.read_attr(select, "value", int)
+        is_custom = select.get("CustomEnum")
+        if is_custom is not None and xml_utils.read_bool(is_custom):
+            options = xml_utils.find_single(self._element, "CustomEnumList")
+            return xml_utils.read_attr(options[selection], "value")
+        return selection
+
     def _read_nested_attr_list(self, attr: str) -> list[str]:
         """Read property type that has a list of value attr subelements."""
-        try:
-            return [xml_utils.read_attr(e, attr) for e in self._read_first()]
-        except ValueError as exc:
-            exc.add_note(f"On Property {self.name}")
-            raise
+        return [xml_utils.read_attr(e, attr) for e in self._read_first()]
 
     _read_str_list = partialmethod(_read_nested_attr_list, "value")
 
@@ -454,17 +642,9 @@ class FreeCADPropertyXML:
         links = []
         if self.is_private:
             return links # Private properties do not have any nested links
-        try:
-            element = self._read_first()
-        except ValueError as exc:
-            exc.add_note(f"On Property {self.name}")
-            raise
+        element = self._read_first()
         for subelement in element:
-            try:
-                name = xml_utils.read_attr(subelement, "value")
-            except ValueError as exc:
-                exc.add_note(f"On Property {self.name}")
-                raise
+            name = xml_utils.read_attr(subelement, "value")
             links.append(FreeCADLink(name))
         return links
 
@@ -487,8 +667,21 @@ class FreeCADPropertyXML:
             try:
                 geometry.append(FreeCADGeometryXML(element, self))
             except NotImplementedError as exc:
-                warnings.warn(f"Failed to read geometry element: {exc}")
+                logger.warning(f"Failed to read geometry element: {exc}")
         return geometry
+
+    def _read_expressions(self) -> list[FreeCADExpression]:
+        try:
+            element = self._read_first()
+        except ValueError as exc:
+            exc.add_note(f"On Property {self.name}")
+            raise
+        expressions = []
+        attrs = ["path", "expression"]
+        for exp in element:
+            inputs = {name: xml_utils.read_attr(exp, name) for name in attrs}
+            expressions.append(FreeCADExpression(**inputs))
+        return expressions
 
     def _read_constraints(self) -> list[FreeCADConstraintXML]:
         constraints = []
@@ -665,6 +858,8 @@ class GeomArcOfCircle(GeomData):
         del attrs["angle"]
         return cls(parent, parent.type_, element.tag, center, **attrs)
 
+
+
 class FreeCADGeometryXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
 
@@ -704,7 +899,7 @@ class FreeCADGeometryXML:
         return self._is_construction
 
     @property
-    def uid(self) -> str:
+    def uid(self) -> FreeCADUID:
         """The has-to-be-unique pancad calculated id for this element."""
         feature = self.parent.parent
         document = feature.document
@@ -715,7 +910,11 @@ class FreeCADGeometryXML:
             int(self.id_ < 0), # 0 for Geometry, 1 for ExternalGeo
             self.id_,
         ]
-        return "_".join(map(str, parts))
+        return xml_utils.FreeCADUID("_".join(map(str, parts)))
+
+    @property
+    def geometry(self) -> GeomData:
+        return self._geometry
 
     def _get_geo_extension(self, type_: str) -> Element:
         """Returns the GeoExtension of the provided type.
@@ -769,6 +968,11 @@ class FreeCADGeometryXML:
             exc.add_note(msg)
             raise
         return xml_utils.read_bool(value)
+
+    def __repr__(self) -> str:
+        geo_type = self.geometry.__class__.__name__
+        sketch_name = self.parent.parent.name
+        return f"{self.__class__.__name__} {geo_type} {sketch_name} {self.id_}"
 
 @dataclasses.dataclass
 class ConstraintGeoRef:
@@ -895,7 +1099,7 @@ class FreeCADConstraintXML:
         return self._parent
 
     @property
-    def uid(self) -> str:
+    def uid(self) -> FreeCADUID:
         """The has-to-be-unique pancad calculated id for this element."""
         feature = self.parent.parent
         document = feature.document
@@ -911,4 +1115,4 @@ class FreeCADConstraintXML:
             else:
                 geo_id = geometry[pair.list_index].id_
             parts.extend([geo_id, pair.part])
-        return "_".join(map(str, parts))
+        return xml_utils.FreeCADUID("_".join(map(str, parts)))

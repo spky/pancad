@@ -3,6 +3,7 @@ FreeCAD.
 """
 from __future__ import annotations
 
+from collections import deque
 from functools import singledispatchmethod, singledispatch
 from typing import TYPE_CHECKING
 from math import pi
@@ -44,6 +45,7 @@ from pancad.filetypes.part_file import PartFile
 
 from pancad.cad.freecad import api_utils
 from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
+from pancad.cad.freecad import xml_utils
 from pancad.cad.freecad.constants import (
     ListName, ObjectType, PadType, ConstraintType as CT, EdgeSubPart as ESP
 )
@@ -63,12 +65,13 @@ from pancad.cad.freecad._application_types import (
 from ._map_typing import SketchElementID
 
 if TYPE_CHECKING:
-    from pancad.abstract import AbstractConstraint
+    from pancad.abstract import AbstractConstraint, PancadThing
     from pancad.geometry.coordinate_system import Pose
 
     from pancad.cad.freecad._application_types import (
         FreeCADDocument, FreeCADPlacement, FreeCADConstraint,
     )
+    from pancad.cad.freecad.read_xml import FCStd, FreeCADObjectXML
 
 logger = logging.getLogger(__name__)
 
@@ -87,13 +90,48 @@ def new_placement_from_pose(pose: Pose) -> FreeCADPlacement:
 ################################################################################
 # FreeCAD ---> pancad Features
 ################################################################################
-def new_part_from_document(path: str) -> PartFile:
-    
-    document = App.open(path)
-    part = PartFile(document.Label)
-    uid_map = {}
-    ordered_ids = api_utils.get_topo_reading_order(document)
+def new_part_from_document(file: FCStd) -> PartFile:
+    """Returns a new PartFile from a FreeCAD FCStd file"""
+    part = PartFile(file.metadata.label)
+    object_uids = deque(file.get_topo_uids())
+    top = file.get_by_uid(object_uids.popleft())
+    if top.type_ != "PartDesign::Body":
+        msg = (f"Incompatible with PartFile: FCStd starts with {top._type},"
+               " expected a PartDesign::Body.")
+        raise ValueError(msg)
+    uid_map = {file.uid: part}
+    breakpoint()
+    while object_uids:
+        uid = object_uids.popleft()
+        obj = file.get_by_uid(uid)
+        
+    # ordered_ids = api_utils.get_topo_reading_order(document)
     return part
+
+def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
+                             uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                             ) -> AbstractFeature:
+    """Creates a new pancad feature from a FreeCAD one and adds it to the 
+    PartFile.
+    """
+    
+
+def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
+                               uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                               ) -> FeatureContainer:
+    """Maps the PartFile's top level container to a FreeCAD Body."""
+    new_uids = {feature.uid: part.container}
+    origin_map = {"Origin": CR.CS,
+                  "X_Axis": CR.X, "Y_Axis": CR.Y, "Z_Axis": CR.Z,
+                  "XY_Plane": CR.XY, "XZ_Plane": CR.XZ, "YZ_Plane": CR.YZ}
+    origin_name = feature.get_property("Origin").value.name
+    origin = feature.document.get_object(origin_name)
+    name_to_feat = {origin_name: origin}
+    for subfeat in origin.get_property("OriginFeatures").value:
+        pass
+    new_uids[origin.uid] = part.container.pose.coordinate_system
+    
+    uid_map.update(new_uids)
 
 ################################################################################
 # pancad ---> FreeCAD Features
@@ -148,7 +186,7 @@ def _new_body_from_container(feature: FeatureContainer,
     origin = body.Origin
     origin_map = {"Coordinate_System": origin}
     origin_map.update(
-        {api_utils.get_map_name(f.Name): f for f in origin.OriginFeatures}
+        {xml_utils.get_map_name(f.Name): f for f in origin.OriginFeatures}
     )
     reference_to_name = {
         (CR.CS, "Coordinate_System"),

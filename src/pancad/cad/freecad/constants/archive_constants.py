@@ -1,6 +1,38 @@
 """A module for constant values used inside of FreeCAD Document archives."""
 
-from enum import StrEnum
+from enum import StrEnum, IntEnum
+
+class UnitSystem(IntEnum):
+    """An enumeration matching the UnitSystem options inside FreeCAD files."""
+    STANDARD = 0
+    MKS = 1
+    US_CUSTOMARY = 2
+    IMPERIAL_DECIMAL = 3
+    BUILDING_EURO = 4
+    BUILDING_US = 5
+    METRIC_SMALL_PARTS = 6
+    IMPERIAL_CIVIL = 7
+    FEM = 8
+    METER_DECIMAL = 9
+
+    _ignore_ = ["_length_unit_map"]
+    _length_unit_map = {
+        STANDARD: "mm",
+        MKS: "mm",
+        US_CUSTOMARY: "in",
+        IMPERIAL_DECIMAL: "in",
+        BUILDING_EURO: "cm",
+        BUILDING_US: "in", # Fractional Inches
+        METRIC_SMALL_PARTS: "mm",
+        IMPERIAL_CIVIL: "ft",
+        FEM: "mm",
+        METER_DECIMAL: "m",
+    }
+
+    @property
+    def length(self) -> str:
+        """The unit abbreviation for the default length unit in the system."""
+        return self._length_unit_map[self.value]
 
 class SubFile(StrEnum):
     """An enumeration of file names inside of FreeCAD document."""

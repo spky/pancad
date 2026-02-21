@@ -8,7 +8,6 @@ from itertools import islice
 from typing import TYPE_CHECKING, Literal
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element
-import re
 import logging
 import graphlib
 
@@ -83,17 +82,6 @@ def relabel_object(object_: FreeCADFeature | FreeCADDocument,
 ################################################################################
 # Querying API Properties
 ################################################################################
-
-def get_map_name(raw_name: str) -> str:
-    """Returns the unique part of the name that sometimes identifies what the
-    feature is used for. That name can then be used to map the object. For
-    example: 'X_Axis001' will return 'X_Axis'
-    """
-    regex = re.compile(r".*[^0-9](?=[0-9]|$)")
-    match = regex.match(raw_name)
-    if match is None:
-        raise ValueError(f"No mapping name found in '{raw_name}", raw_name)
-    return match.group(0)
 
 def get_by_uid(uid: str | FreeCADUID,
                document: FreeCADDocument) -> FreeCADAPIObject:
@@ -349,6 +337,8 @@ class FreeCADUID(str):
     """Mapping from type names to their namedtuple types."""
 
     def __new__(cls, string: str) -> FreeCADUID:
+        # TODO: Remove this copy of the UID class, use the read_xml one, and then 
+        # add separate methods to generate UIDs from API objects.
         new = super().__new__(cls, string)
         parts = string.split(cls.delim)
         try:
