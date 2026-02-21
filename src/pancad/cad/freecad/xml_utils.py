@@ -139,7 +139,9 @@ def read_vector(element: Element,
                 names: tuple[str, str, str] | tuple[str, str, str, str],
                 prefix: str=None,
                 is_2d: bool=True,
-                ) -> tuple[float, float] | tuple[float, float, float]:
+                ) -> (tuple[float, float]
+                      | tuple[float, float, float]
+                      | tuple[float, float, float, float]):
     """Reads a geometry vector tuple of floats from the xml element.
 
     :param element: An xml element with point data.

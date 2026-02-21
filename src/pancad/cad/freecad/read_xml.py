@@ -347,9 +347,9 @@ class FreeCADDocumentXML:
                 properties.append(FreeCADPropertyXML(prop, self))
             except (ValueError, NotImplementedError) as exc:
                 filename = self.file.path.name
-                exc.add_note(f"In Document properties of file '{filename}'")
+                exc.add_note(f"In file '{filename}'")
                 logger.warning(f"Document property read failed. Reason:\n%s",
-                               "\n".join([str(exc), *exc.__notes__]))
+                               "\n".join([str(exc), "; ".join(exc.__notes__)]))
         return properties
 
 class FreeCADObjectXML:
@@ -366,18 +366,12 @@ class FreeCADObjectXML:
 
     def __init__(self, element: Element, id_: int, type_: str,
                  document: FreeCADDocumentXML):
-        try:
-            self._name = element.attrib["name"]
-        except KeyError as exc:
-            msg = "Invalid ObjectData element, could not find name attribute"
-            raise ValueError(msg, element) from exc
+        self._document = document
+        self._name = xml_utils.read_attr(element, "name")
         self._id = id_
         self._type = type_
         self._element = element
         self._properties = self._read_properties()
-        self._document = document
-        # child_link_types = ["PropertyLinkList", "PropertyLink"]
-        # parent_link_types = ["PropertyLinkSubList", "PropertyLinkSub"]
 
     @property
     def id_(self) -> int:
@@ -454,9 +448,11 @@ class FreeCADObjectXML:
             try:
                 properties.append(FreeCADPropertyXML(prop, self))
             except (ValueError, NotImplementedError) as exc:
-                exc.add_note(f"On Object '{self.name}'")
+                filename = self.document.file.path.name
+                exc.add_note(f"On Object '{self.name}' in file '{filename}'")
+                reason = "\n".join([str(exc), "; ".join(exc.__notes__)])
                 logger.warning(f"Object '%s' property read failed. Reason:\n%s",
-                               self.name, "\n".join([str(exc), *exc.__notes__]))
+                               self.name, reason)
         return properties
 
     def __repr__(self) -> str:
@@ -475,7 +471,7 @@ class FreeCADPlacement:
         o_vector = xml_utils.read_vector(element, xyz, "O", False)
         quat_vector = xml_utils.read_vector(element, ["A", "Q0", "Q1", "Q2"],
                                             is_2d=False)
-        return cls(location, np.quaternion(quat_vector), o_vector)
+        return cls(location, np.quaternion(*quat_vector), o_vector)
 
 @dataclasses.dataclass
 class FreeCADExpression:
@@ -484,6 +480,40 @@ class FreeCADExpression:
     """
     path: str
     expression: str
+
+@dataclasses.dataclass
+class PropertyPartShape:
+    """Dataclass for tracking the definition of FreeCAD PropertyPartShape 
+    elements
+    """
+    element_map: str
+    brp: str
+    txt: str = None
+    hash_index: int = None
+    elements: list[tuple[str, str]] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_element(cls, element: Element) -> PropertyPartShape:
+        inputs = {}
+        part = xml_utils.find_single(element, "Part")
+        inputs["element_map"] = xml_utils.read_attr(part, "ElementMap")
+        inputs["brp"] = xml_utils.read_attr(part, "file")
+        if part.get("HasherIndex") is not None:
+            inputs["hash_index"] = xml_utils.read_attr(part, "HasherIndex", int)
+        for element in xml_utils.find_single(element, "ElementMap"):
+            values = []
+            for name in ("key", "value"):
+                value = xml_utils.read_attr(element, name)
+                if value != "Dummy": # Have not found any non-Dummy cases so far
+                    msg = ("Expected 'Dummy' for ElementMap element"
+                           f" value {name}, got {value}")
+                    raise ValueError(msg)
+                values.append(value)
+            inputs.setdefault("elements", []).append(tuple(values))
+        ele_map_2 = element.find("ElementMap2")
+        if ele_map_2 is not None:
+            inputs["txt"] = xml_utils.read_attr(ele_map_2, "file")
+        return cls(**inputs)
 
 class FreeCADPropertyXML:
     """A class providing interfaces to FCStd Document.xml element properties.
@@ -515,15 +545,29 @@ class FreeCADPropertyXML:
         self._parent = parent
         func_to_types = {
             self._read_single_str: ["App::PropertyUUID", "App::PropertyString"],
+            self._read_single_uuid: ["Materials::PropertyMaterial"],
             self._read_single_bool: ["App::PropertyBool"],
-            self._read_link_list: ["App::PropertyLinkList"],
-            self._read_link: ["App::PropertyLink"],
+            self._read_single_float: [
+                "App::PropertyPrecision",
+                "App::PropertyAngle",
+                "App::PropertyLength",
+                "App::PropertyFloat",
+            ],
+            self._read_property_part_shape: ["Part::PropertyPartShape"],
+            self._read_value_vector: ["App::PropertyVector"],
+            self._read_link_list: [
+                "App::PropertyLinkList",
+                "App::PropertyLinkListHidden",
+            ],
+            self._read_link: ["App::PropertyLink", "App::PropertyLinkHidden"],
             self._read_link_sub: ["App::PropertyLinkSub"],
             self._read_enum: ["App::PropertyEnumeration"],
             self._read_link_sub_list: ["App::PropertyLinkSubList"],
             self._read_geometry: ["Part::PropertyGeometryList"],
             self._read_constraints: ["Sketcher::PropertyConstraintList"],
             self._read_expressions: ["App::PropertyExpressionEngine"],
+            self._read_placement: ["App::PropertyPlacement"],
+            self._read_property_map: ["App::PropertyMap"],
         }
         self._type_func_dispatch = {}
         for func, types in func_to_types.items():
@@ -532,11 +576,13 @@ class FreeCADPropertyXML:
         try:
             value_func = self._type_func_dispatch[self.type_]
         except KeyError as exc:
-            msg = (f"Property type '{self.type_}' has not been implemented.\n"
-                   f"On Property '{self.name}'")
-            raise NotImplementedError(msg) from exc
+            msg = f"Property type '{self.type_}' has not been implemented."
+            not_imp_exc = NotImplementedError(msg)
+            not_imp_exc.add_note(f"On Property '{self.name}'")
+            raise not_imp_exc from exc
         try:
             if self.is_private:
+                # Private properties appear to be derived from elsewhere.
                 self._value = None
             else:
                 self._value = value_func()
@@ -588,13 +634,26 @@ class FreeCADPropertyXML:
         """Reads the first property subelement."""
         return self._read_single(self._element)
 
-    def _read_single_attr(self, name: str) -> str:
+    def _read_single_attr(self, name: str,
+                          converter: Callable[str, Any]=str) -> Any:
         """Read property type that has a single element with a value attr."""
-        return xml_utils.read_attr(self._read_first(), name)
+        return xml_utils.read_attr(self._read_first(), name, converter)
 
     _read_single_str = partialmethod(_read_single_attr, "value")
-    _read_single_bool = xml_utils.convert_str(_read_single_str,
-                                              xml_utils.read_bool)
+    _read_single_uuid = partialmethod(_read_single_attr, "uuid")
+    _read_single_bool = partialmethod(_read_single_attr, "value",
+                                      xml_utils.read_bool)
+    _read_single_float = partialmethod(_read_single_attr, "value", float)
+
+    def _read_single_vector(self, names: tuple[str, str, str],
+                            prefix: str=None, is_2d: bool=False
+                            ) -> tuple[float, float, float]:
+        """Reads the vector inside the first subelement."""
+        element = self._read_first()
+        return xml_utils.read_vector(element, names, prefix, is_2d)
+
+    _read_value_vector = partialmethod(_read_single_vector,
+                                       ("X", "Y", "Z"), "value")
 
     def _read_enum(self) -> int | str:
         """Reads enumerations. If there's a custom list it converts the option to
@@ -613,6 +672,9 @@ class FreeCADPropertyXML:
         return [xml_utils.read_attr(e, attr) for e in self._read_first()]
 
     _read_str_list = partialmethod(_read_nested_attr_list, "value")
+
+    def _read_property_part_shape(self) -> PropertyPartShape:
+        return PropertyPartShape.from_element(self._element)
 
     def _read_link_sub(self) -> list[FreeCADLink]:
         """Read property type with child-to-parent links to one object."""
@@ -640,13 +702,27 @@ class FreeCADPropertyXML:
     def _read_link_list(self) -> list[FreeCADLink]:
         """Read property type with parent-to-child links to one object."""
         links = []
-        if self.is_private:
-            return links # Private properties do not have any nested links
         element = self._read_first()
         for subelement in element:
             name = xml_utils.read_attr(subelement, "value")
             links.append(FreeCADLink(name))
         return links
+
+    def _read_placement(self) -> FreeCADPlacement:
+        element = self._read_first()
+        return FreeCADPlacement.from_element(element)
+
+    def _read_property_map(self) -> list:
+        """If any property maps add elements, this will raise a better 
+        NotImplementedError to make it clear that it's something to 
+        implement.
+        """
+        if len(self._read_first()) > 0:
+            num = len(self._read_first())
+            msg = (f"Expected PropertyMap to have 0 elements, found {num}. any"
+                  " Nested Map elements have not been implemented.")
+            raise NotImplementedError(msg)
+        element = self._read_first()
 
     def _read_link_sub_list(self) -> list[FreeCADLink]:
         """Read property type with child-to-parent links to multiple objects."""
@@ -671,11 +747,7 @@ class FreeCADPropertyXML:
         return geometry
 
     def _read_expressions(self) -> list[FreeCADExpression]:
-        try:
-            element = self._read_first()
-        except ValueError as exc:
-            exc.add_note(f"On Property {self.name}")
-            raise
+        element = self._read_first()
         expressions = []
         attrs = ["path", "expression"]
         for exp in element:
