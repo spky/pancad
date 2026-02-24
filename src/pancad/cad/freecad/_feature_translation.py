@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections import deque
 from functools import singledispatchmethod, singledispatch
 from typing import TYPE_CHECKING
-from math import pi
+from math import pi, cos, sin
 import numpy as np
 import warnings
 import logging
@@ -31,6 +31,7 @@ from pancad.constants import (
     SketchConstraint as SC,
     FeatureType as FT,
 )
+from pancad.constraints._generator import make_constraint
 from pancad.geometry.circle import Circle
 from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
@@ -49,6 +50,9 @@ from pancad.cad.freecad import xml_utils
 from pancad.cad.freecad.constants import (
     ListName, ObjectType, PadType, ConstraintType as CT, EdgeSubPart as ESP
 )
+from pancad.cad.freecad.constants.archive_constants import (
+    ConstraintTypeNum as CTN, ConstraintSubPart as CSP
+)
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
     FreeCADCircle,
@@ -65,13 +69,21 @@ from pancad.cad.freecad._application_types import (
 from ._map_typing import SketchElementID
 
 if TYPE_CHECKING:
+    from collections.abc import Container, Collection
+
     from pancad.abstract import AbstractConstraint, PancadThing
     from pancad.geometry.coordinate_system import Pose
-
     from pancad.cad.freecad._application_types import (
         FreeCADDocument, FreeCADPlacement, FreeCADConstraint,
     )
-    from pancad.cad.freecad.read_xml import FCStd, FreeCADObjectXML
+    from pancad.cad.freecad.read_xml import (
+        FCStd,
+        FreeCADConstraintXML,
+        FreeCADDocumentXML,
+        FreeCADGeometryXML,
+        FreeCADLink,
+        FreeCADObjectXML,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +118,13 @@ def new_part_from_document(file: FCStd) -> PartFile:
         if uid in uid_map:
             continue
         obj = file.get_by_uid(uid)
-        if obj.type_ == "PartDesign::Body":
-            msg = ("Incompatible with PartFile: More than one top"
-                   " level PartDesign::Body.")
-            raise ValueError(msg)
-        breakpoint()
-        
+        try:
+            new_feature_from_freecad(obj, part, uid_map)
+        except (ValueError, NotImplementedError) as exc:
+            msg = (f"On FreeCAD Object type {obj.type_} named '{obj.name}',"
+                   f" labeled '{obj.label}'")
+            exc.add_note(msg)
+            raise
     # ordered_ids = api_utils.get_topo_reading_order(document)
     return part
 
@@ -121,7 +134,93 @@ def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
     """Creates a new pancad feature from a FreeCAD one and adds it to the 
     PartFile.
     """
-    
+    type_to_func = {
+        "Sketcher::SketchObject": _sketch_from_freecad,
+    }
+    try:
+        func = type_to_func[feature.type_]
+    except KeyError as exc:
+        msg = f"Object translation for {feature.type_} has not been implemented."
+        raise NotImplementedError(msg) from exc
+    return func(feature, file, uid_map)
+
+def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
+                         uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                         ) -> Sketch:
+    sketch = Sketch(name=feature.get_property("Label").value)
+    new_uids = {feature.uid: sketch}
+    support = feature.get_property("AttachmentSupport").value
+    if len(support) != 1:
+        msg = "Sketches with more than one support link are not implemented"
+        raise NotImplementedError(msg)
+    support = support.pop()
+    fc_plane = feature.document.get_object(support.name)
+    for obj in typed_objects("App::Origin", feature.document, uid_map):
+        if in_links(fc_plane, obj.get_property("OriginFeatures").value):
+            origin = obj
+            break
+    for obj in typed_objects("PartDesign::Body", feature.document, uid_map):
+        try:
+            if obj.get_property("Origin").value.name == origin.name:
+                body = obj
+                break
+        except UnboundLocalError as exc:
+            msg = f"No Origin found with sketch support plane '{fc_plane.name}'"
+            raise ValueError(msg) from exc
+    container = uid_map[body.uid]
+    plane = uid_map[fc_plane.uid]
+    container.feature_system.features.append(sketch)
+    if plane.self_reference != CR.XY:
+        msg = ("Sketches not set on the Coordinate system's XY plane are"
+              f" not yet supported for translation. On {plane.self_reference}")
+        raise NotImplementedError(msg)
+    constraints = [
+        make_constraint(SC.ALIGN_AXES,
+                        container.feature_system.coordinate_system,
+                        sketch.pose.coordinate_system),
+    ]
+    container.feature_system.constraints.extend(constraints)
+
+    fc_ext_geo = feature.get_property("ExternalGeo").value
+    if len(fc_ext_geo) > 2:
+        msg = "Sketches with external references are not yet supported"
+        raise NotImplementedError(msg)
+    for i in range(0, 2): # Map 2D Coordinate System
+        uid_map[fc_ext_geo[i].uid] = sketch.geometry_system.coordinate_system
+    for fc_geo in feature.get_property("Geometry").value:
+        pc_geo = geometry_from_freecad(fc_geo)
+        new_uids[fc_geo.uid] = pc_geo
+        sketch.geometry_system.geometry.append(pc_geo)
+    for fc_con in feature.get_property("Constraints").value:
+        pc_con = constraint_from_freecad(fc_con)
+    breakpoint()
+    return sketch
+
+def in_links(feature: FreeCADObjectXML, links: Collection[FreeCADLink]) -> bool:
+    """Returns whether a FreeCAD Object is in a Collection fo FreeCADLinks"""
+    return any(feature.name == link.name for link in links)
+
+def typed_objects(types: str | Container[str],
+                  doc: FreeCADDocumentXML,
+                  uids: Container[xml_utils.FreeCADUID],
+                  empty_allowed: bool=False
+                  ) -> list[FreeCADObjectXML]:
+    """Returns a list of objects with a type from the document and that are also 
+    in a Container of uids.
+
+    :param type_: A string or a Container of FreeCAD object TypeIds.
+    :param doc: A FreeCAD document.
+    :param uids: A Container of FreeCADUIDs.
+    :param empty_allowed: Whether the list can be empty and valid.
+    :raises ValueError: When not_empty is False and there are no objects of the 
+        type in the document while also having a uid in the uids Container.
+    """
+    if isinstance(types, str):
+        types = {types}
+    objects = [o for o in doc.objects if o.type_ in types and o.uid in uids]
+    if objects or empty_allowed:
+        return objects
+    raise ValueError(f"No '{type_}' objects found with a uid in available uids")
 
 def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
                                uid_map: dict[xml_utils.FreeCADUID, PancadThing]
@@ -139,14 +238,14 @@ def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
 
     origin_map = {"Origin": CR.CS,
                   "X_Axis": CR.X, "Y_Axis": CR.Y, "Z_Axis": CR.Z,
-                  "XY_Plane": CR.FRONT, "XZ_Plane": CR.RIGHT, "YZ_Plane": CR.TOP}
+                  "XY_Plane": CR.XY, "XZ_Plane": CR.XZ, "YZ_Plane": CR.YZ}
     for map_name, reference in origin_map.items():
         try:
             feat = map_name_to_feat[map_name]
         except KeyError as exc:
             msg = f"No '{map_name}' found in Origin '{origin_name}'"
             raise ValueError(msg) from exc
-        new_uids[feat.uid] = container.pose.get_reference(reference)
+        new_uids[feat.uid] = container.feature_system.get_reference(reference)
     placement = feature.get_property("Placement").value
     container.pose.rotate(placement.quat)
     container.pose.move_to_point(placement.location)
@@ -809,6 +908,75 @@ def _ftpf_sketch(self, freecad_sketch: FreeCADSketch) -> Sketch:
 ################################################################################
 # FreeCAD ---> pancad Geometry
 ################################################################################
+
+def geometry_from_freecad(data: FreeCADGeometryXML) -> AbstractGeometry:
+    """Creates a pancad geometry object from a FreeCAD object."""
+    tag_funcs = {
+        "Part::GeomPoint": _from_freecad_point,
+        "Part::GeomLineSegment": _from_freecad_line_segment,
+        "Part::GeomArcOfCircle": _from_freecad_circular_arc,
+        "Part::GeomCircle": _from_freecad_circle,
+        "Part::GeomEllipse": _from_freecad_ellipse,
+    }
+    try:
+        func = tag_funcs[data.type_]
+    except KeyError as exc:
+        msg = f"Sketch geometry type {data.type_} is not supported yet"
+        raise NotImplementedError(msg) from exc
+    return func(data)
+
+def _from_freecad_point(data: FreeCADGeometryXML) -> Point:
+    return Point(data.geometry.location)
+
+def _from_freecad_line_segment(data: FreeCADGeometryXML) -> LineSegment:
+    return LineSegment(data.geometry.start, data.geometry.end)
+
+def _from_freecad_circle(data: FreeCADGeometryXML) -> Circle:
+    return Circle(data.geometry.center, data.geometry.radius)
+
+def _from_freecad_circular_arc(data: FreeCADGeometryXML) -> CircularArc:
+    geo = data.geometry
+    start_vector = (cos(geo.start_angle), sin(geo.start_angle))
+    end_vector = (cos(geo.end_angle), sin(geo.end_angle))
+    return CircularArc(geo.center, geo.radius, start_vector, end_vector, False)
+
+def _from_freecad_ellipse(data: FreeCADGeometryXML) -> Ellipse:
+    geo = data.geometry
+    return Ellipse.from_angle(geo.center, geo.major_radius, geo.minor_radius,
+                              geo.major_axis_angle)
+
+################################################################################
+# FreeCAD ---> pancad Constraints
+################################################################################
+
+def constraint_from_freecad(constraint: FreeCADConstraintXML
+                            ) -> AbstractConstraint:
+    # Coin
+    print(constraint)
+    breakpoint()
+
+def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
+    type_map = {
+        CTN.ANGLE: SC.ANGLE,
+        CTN.DISTANCE: SC.DISTANCE,
+        CTN.DISTANCE_X: SC.DISTANCE_HORIZONTAL,
+        CTN.DISTANCE_Y: SC.DISTANCE_VERTICAL,
+        CTN.DIAMETER: SC.DISTANCE_DIAMETER,
+        CTN.RADIUS: SC.DISTANCE_RADIUS,
+        CTN.EQUAL: SC.EQUAL,
+        CTN.HORIZONTAL: SC.HORIZONTAL,
+        CTN.PERPENDICULAR: SC.PERPENDICULAR,
+        CTN.PARALLEL: SC.PARALLEL,
+        CTN.VERTICAL: SC.VERTICAL,
+        CTN.COINCIDENT: SC.COINCIDENT,
+    }
+    if constraint.type_ in type_map:
+        return type_map[constraint.type_]
+    if constraint.type_ == CTN.COINCIDENT
+    if constraint.type_ == CTN.TANGENT:
+        msg = "Constraint type {constraint.type_.name} is not supported yet"
+        raise NotImplementedError(msg)
+    
 
 @singledispatchmethod
 @staticmethod

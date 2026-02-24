@@ -11,7 +11,7 @@ from pancad.constraints.distance import (
 )
 from pancad.constraints.snapto import Horizontal, Vertical
 from pancad.constraints.state_constraint import (
-    Coincident, Equal, Parallel, Perpendicular
+    Coincident, Equal, Parallel, Perpendicular, AlignAxes
 )
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from pancad.geometry.constants import ConstraintReference
 
 SKETCH_CONSTRAINT_TO_CLASS = {
+    SketchConstraint.ALIGN_AXES: AlignAxes,
     SketchConstraint.ANGLE: Angle,
     SketchConstraint.COINCIDENT: Coincident,
     SketchConstraint.HORIZONTAL: Horizontal,

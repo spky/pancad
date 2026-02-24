@@ -34,6 +34,85 @@ class UnitSystem(IntEnum):
         """The unit abbreviation for the default length unit in the system."""
         return self._length_unit_map[self.value]
 
+class ConstraintSubPart(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD constraint sub part 
+    references.
+    """
+    EDGE = 0
+    """Constraint affects the entire edge."""
+    START = 1
+    """Constraint affects the start point of an edge."""
+    END = 2
+    """Constraint affects the end point of an edge."""
+    CENTER = 3
+    """Constraint affects the center point of an edge."""
+
+    @property
+    def name(self) -> str:
+        """The name of the constraint subpart refeerence represented by the 
+        integer.
+        """
+        names = {
+            self.EDGE: "Edge",
+            self.START: "Start",
+            self.END: "End",
+            self.CENTER: "Center",
+        }
+        return names[self.value]
+
+    @property
+    def is_point(self) -> bool
+        """Whether the subpart is referencing a point."""
+        return self.value > 0
+
+class ConstraintTypeNum(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD constraint types."""
+    COINCIDENT = 1
+    HORIZONTAL = 2
+    VERTICAL = 3
+    PARALLEL = 4
+    TANGENT = 5
+    DISTANCE = 6
+    DISTANCE_X = 7
+    DISTANCE_Y = 8
+    ANGLE = 9
+    PERPENDICULAR = 10
+    RADIUS = 11
+    EQUAL = 12
+    POINT_ON_OBJECT = 13
+    SYMMETRIC = 14
+    INTERNAL_ALIGNMENT = 15
+    SNELLS_LAW = 16
+    BLOCK = 17
+    DIAMETER = 18
+    WEIGHT = 19
+
+    @property
+    def name(self) -> str:
+        """The name of the constraint type represented by the integer."""
+        names = {
+            self.COINCIDENT: "Coincident",
+            self.HORIZONTAL: "Horizontal",
+            self.VERTICAL: "Vertical",
+            self.PARALLEL: "Parallel",
+            self.TANGENT: "Tangent",
+            self.DISTANCE: "Distance",
+            self.DISTANCE_X: "DistanceX",
+            self.DISTANCE_Y: "DistanceY",
+            self.ANGLE: "Angle",
+            self.PERPENDICULAR: "Perpendicular",
+            self.RADIUS: "Radius",
+            self.EQUAL: "Equal",
+            self.POINT_ON_OBJECT: "PointOnObject",
+            self.SYMMETRIC: "Symmetric",
+            self.INTERNAL_ALIGNMENT: "InternalAlignment",
+            self.SNELLS_LAW: "SnellsLaw",
+            self.BLOCK: "Block",
+            self.DIAMETER: "Diameter",
+            self.WEIGHT: "Weight",
+        }
+        return names[self.value]
+
 class SubFile(StrEnum):
     """An enumeration of file names inside of FreeCAD document."""
     DOCUMENT_XML = "Document.xml"

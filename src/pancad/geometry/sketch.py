@@ -1,7 +1,7 @@
-"""A module providing a class to represent sketches in 3D space. pancad defines a 
-sketch as a set of 2D geometry on a coordinate system's plane oriented in 3D 
-space. pancad's sketch definition aims to be as general as possible, so the 
-base implementation of this class does not include appearance information since 
+"""A module providing a class to represent sketches in 3D space. pancad defines a
+sketch as a set of 2D geometry on a coordinate system's plane oriented in 3D
+space. pancad's sketch definition aims to be as general as possible, so the
+base implementation of this class does not include appearance information since
 that is application specific.
 """
 from __future__ import annotations
@@ -36,14 +36,14 @@ DEFAULT_NAME = get_pancad_config()["features"]["default_names"]["sketch"]
 
 
 class Sketch(AbstractFeature):
-    """A class representing a sketch feature that places a 2D system of 
+    """A class representing a sketch feature that places a 2D system of
     geometry/constraints onto a plane in 3D space.
-    
-    :param geometry_system: The TwoDSketchSystem containing the geometry and 
+
+    :param geometry_system: The TwoDSketchSystem containing the geometry and
         constraints inside the Sketch.
     :param pose: The location and orientation of the Sketch.
     :param system: The feature system that the Sketch's pose is defined in.
-    :param name: The name of the Sketch that will be used wherever a CAD 
+    :param name: The name of the Sketch that will be used wherever a CAD
         application requires a human-readable name for the sketch element.
     :param uid: The unique id of the Sketch. Defaults to None.
     """
@@ -75,7 +75,7 @@ class Sketch(AbstractFeature):
 
     @property
     def feature_geometry(self) -> FeatureGeometryList:
-        """The geometry directly owned by this Sketch. Usually its Pose and 
+        """The geometry directly owned by this Sketch. Usually its Pose and
         GeometrySystem.
         """
         return self._feature_geometry
@@ -96,12 +96,12 @@ class Sketch(AbstractFeature):
 
     def get_support(self) -> AbstractFeature:
         """Returns the features supporting the sketch in space.
-        
+
         :raises ValueError: When the sketch is not supported or not in a system.
         """
         sys = self.system
         index = sys.get_topo_index(self)
-        # Constraints placing the feature should have the same topological index 
+        # Constraints placing the feature should have the same topological index
         # as the feature.
         constraints = [c for c in self.system.get_constraints_on(self)
                        if sys.get_topo_index(c) == index]

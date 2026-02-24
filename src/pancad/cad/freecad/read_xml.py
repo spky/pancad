@@ -15,6 +15,9 @@ import graphlib
 import numpy as np
 
 from pancad.cad.freecad import xml_utils
+from pancad.cad.freecad.constants.archive_constants import (
+    ConstraintTypeNum, ConstraintSubPart,
+)
 
 if TYPE_CHECKING:
     from typing import Any, NoReturn
@@ -142,7 +145,7 @@ class FCMetadata:
     last_modified_date: str
     user_id: str
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class FreeCADLink:
     """A class for tracking FreeCAD App::PropertyLinkSub data. See
     https://freecad.github.io/SourceDoc/d3/d76/classApp_1_1PropertyLinkSub.html
@@ -152,6 +155,8 @@ class FreeCADLink:
         converted to None.
     :param shadows: Not certain, but appears to be "shadow subname references"
         in FreeCAD documentation. Likely connected to topological naming.
+    :raises ValueError: Raised if sub is an empty string or when sub is None but 
+        shadow is not None.
     """
     name: str
     sub: str = None
@@ -160,7 +165,9 @@ class FreeCADLink:
     def __post_init__(self):
         if self.sub == "":
             # Blank sub strings indicate the link is just to the object.
-            self.sub = None
+            # Blank subs cannot be converted to None here without unfreezing the 
+            # dataclass, so it just raises an error.
+            raise ValueError("sub cannot be an empty string")
         if self.sub is None and self.shadow is not None:
             raise ValueError("Unexpected LinkSub format: sub is None,"
                              f" but shadow is '{self.shadow}'")
@@ -362,11 +369,11 @@ class FreeCADObjectXML:
     tag = "Object"
     """The nominal tag of the element in xml."""
 
-    def __init__(self, element: Element, id_: int, type_: str,
+    def __init__(self, element: Element, id_: int | str, type_: str,
                  document: FreeCADDocumentXML):
         self._document = document
         self._name = xml_utils.read_attr(element, "name")
-        self._id = id_
+        self._id = int(id_)
         self._type = type_
         self._element = element
         self._properties = self._read_properties()
@@ -375,6 +382,16 @@ class FreeCADObjectXML:
     def id_(self) -> int:
         """The file-unique FreeCAD integer id of the object."""
         return self._id
+
+    @property
+    def label(self) -> str:
+        """The human-visible name of the Object in the FreeCAD GUI."""
+        try:
+            return self.get_property("Label").value
+        except LookupError as exc:
+            logger.warning(f"Object %s of type %s does not have a Label.",
+                           self.name, self.type_)
+            return f"NO LABEL, NAME: {self.name}"
 
     @property
     def name(self) -> str:
@@ -401,6 +418,10 @@ class FreeCADObjectXML:
         """The has-to-be-unique pancad calculated id for this element."""
         string = f"{self.document.uid.file_uid}_feature_{self.id_}"
         return xml_utils.FreeCADUID(string)
+
+    def has_property(self, name: str) -> bool:
+        """Returns whether the object has a property with the given name."""
+        return name in {p.name for p in self.properties}
 
     def get_property(self, name: str) -> FreeCADPropertyXML:
         """Returns the FreeCADPropertyXML object with the provided name."""
@@ -686,6 +707,8 @@ class FreeCADPropertyXML:
         for subelement in element:
             sub_name = xml_utils.read_attr(subelement, "value")
             shadow = subelement.get("shadow")
+            if sub_name == "":
+                sub_name = None
             links.append(FreeCADLink(obj_name, sub_name, shadow))
         if len(links) == 0: # Name is not empty, so just the link to the object.
             links.append(FreeCADLink(obj_name))
@@ -734,6 +757,8 @@ class FreeCADPropertyXML:
                 continue
             sub_name = xml_utils.read_attr(subelement, "sub")
             shadow = subelement.get("shadow")
+            if sub_name == "":
+                sub_name = None
             links.append(FreeCADLink(obj_name, sub_name, shadow))
         return links
 
@@ -977,8 +1002,8 @@ class FreeCADGeometryXML:
         document = feature.document
         parts = [
             document.get_property('Uid').value,
-            feature.id_,
             "sketchgeo",
+            feature.id_,
             int(self.id_ < 0), # 0 for Geometry, 1 for ExternalGeo
             self.id_,
         ]
@@ -1044,7 +1069,7 @@ class FreeCADGeometryXML:
     def __repr__(self) -> str:
         geo_type = self.geometry.__class__.__name__
         sketch_name = self.parent.parent.name
-        return f"{self.__class__.__name__} {geo_type} {sketch_name} {self.id_}"
+        return f"<{self.__class__.__name__} {geo_type} {sketch_name} {self.id_}>"
 
 @dataclasses.dataclass
 class ConstraintGeoRef:
@@ -1052,14 +1077,34 @@ class ConstraintGeoRef:
     reference to geometry.
     """
     index: int
-    part: int
+    part: ConstraintSubPart
+    constraint: FreeCADConstraintXML
 
     @property
-    def list_index(self) -> int:
+    def list_index(self) -> int | None:
         """The index of the geometry inside the list it resides in."""
+        if self.index == -2000:
+            return None
         if self.index < 0:
             return -1 - self.index
         return self.index
+
+    @property
+    def list_name(self) -> str | None:
+        if self.list_index is None:
+            return None
+        if self.index < 0:
+            return "ExternalGeo"
+        else:
+            return "Geometry"
+
+    def get_geometry(self) -> tuple[FreeCADGeometryXML, ConstraintSubPart] | None:
+        if self.list_index is None:
+            return None
+        sketch = self.constraint.parent.parent
+        return (sketch.get_property(self.list_name).value[self.list_index],
+                self.part)
+        
 
 @dataclasses.dataclass
 class InternalAlignment:
@@ -1089,6 +1134,13 @@ class ConstraintPairs:
     second: ConstraintGeoRef
     third: ConstraintGeoRef
 
+    def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
+        references = []
+        for pair in [self.first, self.second, self.third]:
+            if pair.list_index is not None:
+                references.append(pair.get_geometry())
+        return references
+
 @dataclasses.dataclass
 class ConstraintData:
     """A dataclass tracking all xml data stored for a FreeCAD sketch
@@ -1096,14 +1148,14 @@ class ConstraintData:
     """
     parent: FreeCADConstraintXML = dataclasses.field(repr=False)
     name: str | None
-    type_: int
+    type_: ConstraintTypeNum
     value: float
     pairs: ConstraintPairs
     state: ConstraintState
     internal_alignment: InternalAlignment = None
 
     @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
+    def from_element(cls, parent: FreeCADConstraintXML, element: Element
                      ) -> ConstraintData:
         """Returns a ConstraintData dataclass from a Constrain xml element."""
         name = xml_utils.read_attr(element, "Name")
@@ -1118,7 +1170,9 @@ class ConstraintData:
         pairs = {}
         pair_nums =["First", "Second", "Third"]
         for num, pos in zip(pair_nums, map(lambda x: f"{x}Pos", pair_nums)):
-            pairs[num.lower()] = ConstraintGeoRef(attrs[num], attrs[pos])
+            pairs[num.lower()] = ConstraintGeoRef(attrs[num],
+                                                  ConstraintSubPart(attrs[pos]),
+                                                  parent)
             del attrs[num], attrs[pos]
         pairs = ConstraintPairs(**pairs)
         return cls(parent, name, pairs=pairs, state=state, **attrs)
@@ -1132,7 +1186,7 @@ class ConstraintData:
         bools = {"IsDriving": "driving",
                  "IsInVirtualSpace": "virtual_space",
                  "IsActive": "active"}
-        ints = {"Type": "type_"}
+        ints = {"Type": "type_"} # Actually an int enumeration for the type
         numbers =["First", "Second", "Third"]
         for num in numbers:
             ints.update({num: num, f"{num}Pos": f"{num}Pos"})
@@ -1143,13 +1197,21 @@ class ConstraintData:
                 attrs.update(xml_utils.read_attrs(element, names, converter))
             except ValueError as exc:
                 exc.add_note("Occurred while reading ConstraintData")
+                raise
         # Get the sometimes there attributes
         internal_names = {"InternalAlignmentType": "type_",
                           "InternalAlignmentIndex": "index"}
         if any(name in element.attrib for name in internal_names):
             align_data = xml_utils.read_int_attrs(element, internal_names)
             attrs["internal_alignment"] = InternalAlignment(**align_data)
+        try:
+            attrs["type_"] = ConstraintTypeNum(attrs["type_"])
+        except ValueError as exc:
+            exc.add_note(f"Unrecognized type number {attrs['type_']}")
+            raise
         return attrs
+
+
 
 class FreeCADConstraintXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
@@ -1163,12 +1225,16 @@ class FreeCADConstraintXML:
     def __init__(self, element: Element, parent: FreeCADPropertyXML):
         self._parent = parent
         self._element = element
-        self._data = ConstraintData.from_element(parent, element)
+        self._data = ConstraintData.from_element(self, element)
 
     @property
     def parent(self) -> FreeCADPropertyXML:
         """The object this constraint is inside of."""
         return self._parent
+
+    @property
+    def data(self) -> ConstraintData:
+        return self._data
 
     @property
     def uid(self) -> FreeCADUID:
@@ -1188,3 +1254,9 @@ class FreeCADConstraintXML:
                 geo_id = geometry[pair.list_index].id_
             parts.extend([geo_id, pair.part])
         return xml_utils.FreeCADUID("_".join(map(str, parts)))
+
+    def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
+        return self.data.pairs.get_geometry()
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} {self.data.type_.name}>"

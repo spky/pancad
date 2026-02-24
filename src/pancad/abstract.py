@@ -121,10 +121,9 @@ class AbstractGeometry(PancadThing):
     @feature.setter
     def feature(self, value: AbstractFeature) -> None:
         self._feature = value
-        for child in self.children:
-            if child is self:
-                continue
-            child.feature = value
+        for _, child in self.children.items():
+            if child.uid != self.uid:
+                child.feature = value
 
     @property
     def system(self) -> PancadThing | None:
@@ -132,10 +131,9 @@ class AbstractGeometry(PancadThing):
     @system.setter
     def system(self, value: PancadThing | None) -> None:
         self._system = value
-        for child in self.children:
-            if child is self:
-                continue
-            child.system = value
+        for _, child in self.children.items():
+            if child.uid != self.uid:
+                child.system = value
 
     @property
     def parent(self) -> AbstractGeometry | None:
