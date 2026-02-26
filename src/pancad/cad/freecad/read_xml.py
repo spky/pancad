@@ -16,7 +16,7 @@ import numpy as np
 
 from pancad.cad.freecad import xml_utils
 from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintTypeNum, ConstraintSubPart,
+    ConstraintTypeNum, ConstraintSubPart, InternalGeometryType,
 )
 
 if TYPE_CHECKING:
@@ -376,7 +376,9 @@ class FreeCADObjectXML:
         self._id = int(id_)
         self._type = type_
         self._element = element
-        self._properties = self._read_properties()
+        # Some properties depend on others (Constraints), so initialize the list
+        self._properties = []
+        self._read_properties()
 
     @property
     def id_(self) -> int:
@@ -460,21 +462,39 @@ class FreeCADObjectXML:
         """Reads the properties of the object into a list of interfacing
         objects.
         """
-        properties = []
-        property_list = self._element.find("Properties")
-        if property_list is None:
+        self._properties = [] # Clear the property list
+        try:
+            property_list = list(self._element.find("Properties"))
+        except TypeError as exc:
             msg = "Unexpected Object format: could not find Properties element"
             raise ValueError(msg, self._element)
+        property_list.sort(key=self._property_read_sort_key)
         for prop in property_list:
             try:
-                properties.append(FreeCADPropertyXML(prop, self))
+                self._properties.append(FreeCADPropertyXML(prop, self))
             except (ValueError, NotImplementedError) as exc:
                 filename = self.document.file.path.name
                 exc.add_note(f"On Object '{self.name}' in file '{filename}'")
                 reason = "\n".join([str(exc), "; ".join(exc.__notes__)])
                 logger.warning(f"Object '%s' property read failed. Reason:\n%s",
                                self.name, reason)
-        return properties
+        return self._properties
+
+    @staticmethod
+    def _property_read_sort_key(element: Element) -> int:
+        """A sorting key function to ensure properties are in a valid order. 
+        Example: The geometry needs to be read before the constraints in a 
+        sketch.
+        """
+        try:
+            type_ = element.attrib["type"]
+        except KeyError as exc:
+            msg = "Invalid Property element, could not find 'type' attribute"
+            raise ValueError(msg, element) from exc
+        must_read_last = {"Sketcher::PropertyConstraintList",}
+        if type_ in must_read_last:
+            return 1
+        return 0
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} '{self.name}'>"
@@ -824,6 +844,12 @@ class SketchGeoExt(GeometryExtension):
             except ValueError as exc:
                 exc.add_note(f"Exception occurred on GeoExtension type {type_}")
                 raise
+        try:
+            intern_type = attrs["internal_geometry_type"]
+            attrs["internal_geometry_type"] = InternalGeometryType(intern_type)
+        except ValueError as exc:
+            msg = f"Unsupported internalGeometryType value: {intern_type}"
+            raise NotImplementedError(msg)
         return cls(parent, type_, **attrs)
 
 @dataclasses.dataclass
@@ -981,6 +1007,11 @@ class FreeCADGeometryXML:
         return self._type
 
     @property
+    def internal_type(self) -> InternalGeometryType:
+        """The internal alignment type of the geometry specified in the xml."""
+        return self._sketch_ext.internal_geometry_type
+
+    @property
     def id_(self) -> int:
         """The sketch-unique FreeCAD integer id of the geometry."""
         return self._id
@@ -1012,6 +1043,25 @@ class FreeCADGeometryXML:
     @property
     def geometry(self) -> GeomData:
         return self._geometry
+
+    def get_defining_geometry(self) -> FreeCADGeometryXML:
+        """Returns the geometry defining this geometry. If non-internal 
+        geometry, this echos the geometry. If this is internal geometry 
+        (e.g. an Ellipse major axis), this returns the Ellipse.
+        """
+        if self.internal_type == InternalGeometryType.NOT_INTERNAL:
+            return self
+        sketch = self.parent.parent
+        constraints = self.sketch.get_property("Constraints").value
+        id_type = (self.id_, self.internal_type)
+        for constraint in constraints:
+            cons_id_type = (constraint.data.pairs.first.id_, self.internal_type)
+            if id_type == cons_id_type:
+                geo, _ = constraint.data.pairs.second.get_geometry()
+                return geo
+        msg = (f"Could not find the internal aligning constraint for"
+               f" id, type: {id_type} in {sketch.name}")
+        raise ValueError(msg)
 
     def _get_geo_extension(self, type_: str) -> Element:
         """Returns the GeoExtension of the provided type.
@@ -1075,43 +1125,90 @@ class FreeCADGeometryXML:
 class ConstraintGeoRef:
     """A dataclass tracking the index and subpart of a FreeCAD constraint's
     reference to geometry.
+
+    :param index: The index of the geometry as entered in the constraint xml. 
+        Negative numbers are in the ExternalGeo list.
+    :param part: The sub part integer for the part of the geometry being 
+        constrained.
+    :param id_: The integer id of the geometry.
+    :param constraint: 
     """
     index: int
     part: ConstraintSubPart
     constraint: FreeCADConstraintXML
+    id_: int | None = dataclasses.field(init=False)
+    list_name: str | None = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        if self.index == -2000:
+            self.list_name = None
+        elif self.index < 0:
+            self.list_name = "ExternalGeo"
+        else:
+            self.list_name = "Geometry"
+        geo = self._get_geometry_by_index()
+        if geo is None:
+            self.id_ = None
+        else:
+            self.id_ = geo.id_
 
     @property
     def list_index(self) -> int | None:
-        """The index of the geometry inside the list it resides in."""
+        """The index of the geometry inside the list it resides in. Updates 
+        dynamically if the list changes. This is None when the reference is 
+        empty and just to fill out the 3 required for FreeCAD constraints.
+
+        :raises LookupError: When the geometry id cannot be found in the sketch 
+            list. This would mean there's unexpected FreeCAD behavior or that 
+            the geometry has been deleted.
+        """
+        if self.id_ is None:
+            return None
+        sketch = self.constraint.parent.parent
+        list_geo = sketch.get_property(self.list_name).value
+        try:
+            return next(i for i, g in enumerate(list_geo) if g.id_ == self.id_)
+        except StopIteration as exc:
+            msg = (f"Geometry id {self.id_} not found in sketch '{sketch.name}'"
+                   f" {self.list_name} list")
+            raise LookupError(msg) from exc
+
+    def get_geometry(self) -> tuple[FreeCADGeometryXML, ConstraintSubPart] | None:
+        """Returns the geometry from the sketch based on the ids of the
+        constrained geometry.
+        """
+        if self.id_ is None:
+            return None
+        sketch = self.constraint.parent.parent
+        list_geo = sketch.get_property(self.list_name).value
+        try:
+            return (next(g for g in list_geo if g.id_ == self.id_), self.part)
+        except StopIteration as exc:
+            msg = (f"Geometry id {self.id_} not found in sketch '{sketch.name}'"
+                   f" {self.list_name} list")
+            raise LookupError(msg) from exc
+
+    def _get_list_index_from_index(self) -> int | None:
+        """Returns the list index from the index stored in the xml."""
         if self.index == -2000:
             return None
         if self.index < 0:
             return -1 - self.index
         return self.index
 
-    @property
-    def list_name(self) -> str | None:
-        if self.list_index is None:
-            return None
-        if self.index < 0:
-            return "ExternalGeo"
-        else:
-            return "Geometry"
-
-    def get_geometry(self) -> tuple[FreeCADGeometryXML, ConstraintSubPart] | None:
-        if self.list_index is None:
+    def _get_geometry_by_index(self) -> FreeCADGeometryXML | None:
+        list_index = self._get_list_index_from_index()
+        if list_index is None:
             return None
         sketch = self.constraint.parent.parent
-        return (sketch.get_property(self.list_name).value[self.list_index],
-                self.part)
-        
+        return sketch.get_property(self.list_name).value[list_index]
 
 @dataclasses.dataclass
 class InternalAlignment:
     """Dataclass for tracking how a constraint is used for interally aligning
     geometry like Ellipse subgeometry.
     """
-    type_: int
+    type_: InternalGeometryType
     index: int
 
 @dataclasses.dataclass
@@ -1135,6 +1232,9 @@ class ConstraintPairs:
     third: ConstraintGeoRef
 
     def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
+        """Returns a list of the filled geometry references, tuples of 
+        (geometry, subpart).
+        """
         references = []
         for pair in [self.first, self.second, self.third]:
             if pair.list_index is not None:
@@ -1203,6 +1303,12 @@ class ConstraintData:
                           "InternalAlignmentIndex": "index"}
         if any(name in element.attrib for name in internal_names):
             align_data = xml_utils.read_int_attrs(element, internal_names)
+            try:
+                align_data["type_"] = InternalGeometryType(attrs["type_"])
+            except ValueError as exc:
+                exc.add_note("Unrecognized internal alignment type number"
+                             f" {attrs['type_']}")
+                raise
             attrs["internal_alignment"] = InternalAlignment(**align_data)
         try:
             attrs["type_"] = ConstraintTypeNum(attrs["type_"])
@@ -1210,7 +1316,6 @@ class ConstraintData:
             exc.add_note(f"Unrecognized type number {attrs['type_']}")
             raise
         return attrs
-
 
 
 class FreeCADConstraintXML:
@@ -1234,7 +1339,21 @@ class FreeCADConstraintXML:
 
     @property
     def data(self) -> ConstraintData:
+        """The detailed constraint data structure."""
         return self._data
+
+    @property
+    def type_(self) -> ConstraintTypeNum:
+        """The constraint type number."""
+        return self.data.type_
+
+    @property
+    def internal_type(self) -> InternalGeometryType:
+        """The internal alignment type of the constraint."""
+        if self.data.internal_alignment is None:
+            return InternalGeometryType.NOT_INTERNAL
+        else:
+            return self.data.internal_alignment.type_
 
     @property
     def uid(self) -> FreeCADUID:
@@ -1256,6 +1375,9 @@ class FreeCADConstraintXML:
         return xml_utils.FreeCADUID("_".join(map(str, parts)))
 
     def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
+        """Returns the geometry and subpart references constrained by this 
+        constraint.
+        """
         return self.data.pairs.get_geometry()
 
     def __repr__(self) -> str:

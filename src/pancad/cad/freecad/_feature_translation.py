@@ -147,8 +147,11 @@ def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
 def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
                          uid_map: dict[xml_utils.FreeCADUID, PancadThing]
                          ) -> Sketch:
+    new_uids = uid_map.copy() # Copy so it's still possible to error out.
     sketch = Sketch(name=feature.get_property("Label").value)
-    new_uids = {feature.uid: sketch}
+    new_uids[feature.uid] = sketch
+
+    # Find the pancad equivalent support from FreeCAD objects
     support = feature.get_property("AttachmentSupport").value
     if len(support) != 1:
         msg = "Sketches with more than one support link are not implemented"
@@ -169,18 +172,21 @@ def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
             raise ValueError(msg) from exc
     container = uid_map[body.uid]
     plane = uid_map[fc_plane.uid]
+
+    # Add sketch to FeatureContainer
     container.feature_system.features.append(sketch)
     if plane.self_reference != CR.XY:
         msg = ("Sketches not set on the Coordinate system's XY plane are"
-              f" not yet supported for translation. On {plane.self_reference}")
+               f" not yet supported for translation. On {plane.self_reference}")
         raise NotImplementedError(msg)
-    constraints = [
+    feature_constraints = [
         make_constraint(SC.ALIGN_AXES,
                         container.feature_system.coordinate_system,
                         sketch.pose.coordinate_system),
     ]
-    container.feature_system.constraints.extend(constraints)
+    container.feature_system.constraints.extend(feature_constraints)
 
+    # Add and map sketch geometry
     fc_ext_geo = feature.get_property("ExternalGeo").value
     if len(fc_ext_geo) > 2:
         msg = "Sketches with external references are not yet supported"
@@ -191,8 +197,10 @@ def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
         pc_geo = geometry_from_freecad(fc_geo)
         new_uids[fc_geo.uid] = pc_geo
         sketch.geometry_system.geometry.append(pc_geo)
+
+    # Add and map sketch constraints
     for fc_con in feature.get_property("Constraints").value:
-        pc_con = constraint_from_freecad(fc_con)
+        pc_con = constraint_from_freecad(fc_con, uid_map)
     breakpoint()
     return sketch
 
@@ -519,7 +527,6 @@ def _sketch(self, pancad_sketch: Sketch) -> FreeCADSketch:
     feat_sys = pancad_sketch.system
     support = pancad_sketch.get_support()
     sketch_plane = self[support]
-    breakpoint()
     parent = self[feat_sys.feature]
     parent.addObject(sketch)
     sketch.AttachmentSupport = (sketch_plane, [""])
@@ -949,11 +956,17 @@ def _from_freecad_ellipse(data: FreeCADGeometryXML) -> Ellipse:
 # FreeCAD ---> pancad Constraints
 ################################################################################
 
-def constraint_from_freecad(constraint: FreeCADConstraintXML
+def constraint_from_freecad(constraint: FreeCADConstraintXML,
+                            uid_map: dict[xml_utils.FreeCADUID, PancadThing]
                             ) -> AbstractConstraint:
-    # Coin
+    """Returns a pancad constraint from a FreeCAD constraint."""
+    pc_type = sketch_constraint_from_freecad(constraint)
+    pc_geometry = []
+    for geo, subpart in constraint.get_geometry():
+        fc_geo = geo.get_defining_geometry()
+        breakpoint()
+    # return make_constraint
     print(constraint)
-    breakpoint()
 
 def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
     type_map = {
@@ -969,14 +982,20 @@ def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
         CTN.PARALLEL: SC.PARALLEL,
         CTN.VERTICAL: SC.VERTICAL,
         CTN.COINCIDENT: SC.COINCIDENT,
+        CTN.POINT_ON_OBJECT: SC.COINCIDENT,
     }
     if constraint.type_ in type_map:
         return type_map[constraint.type_]
-    if constraint.type_ == CTN.COINCIDENT
     if constraint.type_ == CTN.TANGENT:
-        msg = "Constraint type {constraint.type_.name} is not supported yet"
+        geometry = constraint.get_geometry()
+        if all(g.type_ == "Part::LineSegment" and not p.is_point()
+               for g, p in geometry):
+            return SC.COINCIDENT
+        combo = "; ".join([f"{g.type_} {p.name}" for g, p in geometry])
+        msg = f"Tangent with geometry combo '{combo}' is not supported yet"
         raise NotImplementedError(msg)
-    
+    msg = f"Constraint type '{constraint.type_.name}' is not supported yet"
+    raise NotImplementedError(msg)
 
 @singledispatchmethod
 @staticmethod

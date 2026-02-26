@@ -49,7 +49,7 @@ class ConstraintSubPart(IntEnum):
 
     @property
     def name(self) -> str:
-        """The name of the constraint subpart refeerence represented by the 
+        """The name of the constraint subpart reference represented by the 
         integer.
         """
         names = {
@@ -61,30 +61,67 @@ class ConstraintSubPart(IntEnum):
         return names[self.value]
 
     @property
-    def is_point(self) -> bool
+    def is_point(self) -> bool:
         """Whether the subpart is referencing a point."""
         return self.value > 0
 
+class InternalGeometryType(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD 
+    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 
+    source code here (as of 2026-02-25): https://github.com/FreeCAD/FreeCAD/blob/34ae16cd01b179eb9e1801591276dbc5a38669b5/src/Mod/Sketcher/App/SketchGeometryExtension.h#L139
+    """
+    NOT_INTERNAL = 0
+    ELLIPSE_MAJOR_DIAMETER = 1
+    ELLIPSE_MINOR_DIAMETER = 2
+    ELLIPSE_FOCUS_1 = 3
+    ELLIPSE_FOCUS_2 = 4
+    HYPERBOLA_MAJOR = 5
+    HYPERBOLA_MINOR = 6
+    HYPERBOLA_FOCUS = 7
+    PARABOLA_FOCUS = 8
+    B_SPLINE_CONTROL_POINT = 9
+    B_SPLINE_KNOT_POINT = 10
+    PARABOLA_FOCAL_AXIS = 11
+
+    @property
+    def name(self) -> str:
+        """The name of the internal geometry type represented by the integer."""
+        names = {
+            self.NOT_INTERNAL: "Not Internal Geometry",
+            self.ELLIPSE_MAJOR_DIAMETER: "Ellipse Major Axis",
+            self.ELLIPSE_MINOR_DIAMETER: "Ellipse Minor Axis",
+            self.ELLIPSE_FOCUS_1: "Ellipse Positive Focal Point",
+            self.ELLIPSE_FOCUS_2: "Ellipse Negative Focal Point",
+            self.HYPERBOLA_MAJOR: "Hyperbola Major Axis",
+            self.HYPERBOLA_MINOR: "Hyperbola Minor Axis",
+            self.HYPERBOLA_FOCUS: "Hyperbola Focus",
+            self.PARABOLA_FOCUS: "Parabola Focus",
+            self.B_SPLINE_CONTROL_POINT: "B-Spline Control Point",
+            self.B_SPLINE_KNOT_POINT: "B-Spline Knot Point",
+            self.PARABOLA_FOCAL_AXIS: "Parabola Focal Axis",
+        }
+        return names[self.value]
+
 class ConstraintTypeNum(IntEnum):
     """An enumeration of integers corresponding to FreeCAD constraint types."""
-    COINCIDENT = 1
-    HORIZONTAL = 2
-    VERTICAL = 3
-    PARALLEL = 4
+    COINCIDENT = 1 #
+    HORIZONTAL = 2 #
+    VERTICAL = 3 #
+    PARALLEL = 4 #
     TANGENT = 5
-    DISTANCE = 6
-    DISTANCE_X = 7
-    DISTANCE_Y = 8
-    ANGLE = 9
-    PERPENDICULAR = 10
-    RADIUS = 11
-    EQUAL = 12
-    POINT_ON_OBJECT = 13
+    DISTANCE = 6 #
+    DISTANCE_X = 7 #
+    DISTANCE_Y = 8 #
+    ANGLE = 9 #
+    PERPENDICULAR = 10 #
+    RADIUS = 11 #
+    EQUAL = 12 #
+    POINT_ON_OBJECT = 13 #
     SYMMETRIC = 14
     INTERNAL_ALIGNMENT = 15
     SNELLS_LAW = 16
     BLOCK = 17
-    DIAMETER = 18
+    DIAMETER = 18 #
     WEIGHT = 19
 
     @property
