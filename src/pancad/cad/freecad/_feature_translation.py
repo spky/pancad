@@ -51,7 +51,9 @@ from pancad.cad.freecad.constants import (
     ListName, ObjectType, PadType, ConstraintType as CT, EdgeSubPart as ESP
 )
 from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintTypeNum as CTN, ConstraintSubPart as CSP
+    ConstraintTypeNum as CTN,
+    ConstraintSubPart as CSP,
+    InternalGeometryType as IGT
 )
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
@@ -83,6 +85,7 @@ if TYPE_CHECKING:
         FreeCADGeometryXML,
         FreeCADLink,
         FreeCADObjectXML,
+        ConstraintGeoRef,
     )
 
 logger = logging.getLogger(__name__)
@@ -192,7 +195,7 @@ def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
         msg = "Sketches with external references are not yet supported"
         raise NotImplementedError(msg)
     for i in range(0, 2): # Map 2D Coordinate System
-        uid_map[fc_ext_geo[i].uid] = sketch.geometry_system.coordinate_system
+        new_uids[fc_ext_geo[i].uid] = sketch.geometry_system.coordinate_system
     for fc_geo in feature.get_property("Geometry").value:
         pc_geo = geometry_from_freecad(fc_geo)
         new_uids[fc_geo.uid] = pc_geo
@@ -200,8 +203,12 @@ def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
 
     # Add and map sketch constraints
     for fc_con in feature.get_property("Constraints").value:
-        pc_con = constraint_from_freecad(fc_con, uid_map)
-    breakpoint()
+        if fc_con.internal_type != IGT.NOT_INTERNAL:
+            # Internal Alignment constraints are not required by pancad.
+            continue
+        pc_con = constraint_from_freecad(fc_con, new_uids)
+        new_uids[fc_con.uid] = pc_con
+    uid_map.update(new_uids)
     return sketch
 
 def in_links(feature: FreeCADObjectXML, links: Collection[FreeCADLink]) -> bool:
@@ -962,11 +969,63 @@ def constraint_from_freecad(constraint: FreeCADConstraintXML,
     """Returns a pancad constraint from a FreeCAD constraint."""
     pc_type = sketch_constraint_from_freecad(constraint)
     pc_geometry = []
-    for geo, subpart in constraint.get_geometry():
-        fc_geo = geo.get_defining_geometry()
-        breakpoint()
-    # return make_constraint
-    print(constraint)
+    for geo_ref in constraint.get_references():
+        pc_ref = reference_from_freecad(geo_ref)
+        fc_geo, _ = geo_ref.get_geometry()
+        if fc_geo.internal_type != IGT.NOT_INTERNAL:
+            fc_geo = fc_geo.get_defining_geometry()
+        pc_parent_geo = uid_map[fc_geo.uid]
+        pc_geometry.append(pc_parent_geo.get_reference(pc_ref))
+    kwargs = {}
+    if constraint.type_.requires_value:
+        # Only some constraints like distance require a value.
+        kwargs["value"] = constraint.value
+        if constraint.type_ != CTN.ANGLE:
+            # All FreeCAD value constraints are in mm except Angles. pancad 
+            # doesn't take a unit parameter for angles, so it shouldn't be 
+            # included here.
+            kwargs["unit"] = "mm"
+    return make_constraint(pc_type, *pc_geometry, **kwargs)
+
+def reference_from_freecad(geo_ref: ConstraintGeoRef) -> CR:
+    """Returns a pancad ConstraintReference from a FreeCAD constraint geometry 
+    reference.
+    """
+    geo, part = geo_ref.get_geometry()
+    ref_key = [part, geo.internal_type]
+    if geo.internal_type == IGT.NOT_INTERNAL and geo.type_ == "Part::GeomPoint":
+        # FreeCAD points are always referred to as Start.
+        ref_key.append(geo.type_)
+    # Account for FreeCAD x and y axes being in the ExternalGeo list.
+    index_map = {-1: "x_axis", -2: "y_axis"}
+    if geo_ref.index in index_map:
+        ref_key.append(index_map[geo_ref.index])
+    ref_map = {
+        (CSP.EDGE, IGT.NOT_INTERNAL): CR.CORE,
+        (CSP.EDGE, IGT.NOT_INTERNAL, "Part::GeomPoint"): CR.CORE,
+        (CSP.START, IGT.NOT_INTERNAL): CR.START,
+        (CSP.END, IGT.NOT_INTERNAL): CR.END,
+        (CSP.CENTER, IGT.NOT_INTERNAL): CR.CENTER,
+        (CSP.EDGE, IGT.NOT_INTERNAL, "x_axis"): CR.X,
+        (CSP.START, IGT.NOT_INTERNAL, "x_axis"): CR.ORIGIN,
+        (CSP.EDGE, IGT.NOT_INTERNAL, "y_axis"): CR.Y,
+        (CSP.EDGE, IGT.ELLIPSE_MAJOR_DIAMETER): CR.MAJOR_AXIS,
+        (CSP.START, IGT.ELLIPSE_MAJOR_DIAMETER): CR.X_MIN,
+        (CSP.END, IGT.ELLIPSE_MAJOR_DIAMETER): CR.X_MAX,
+        (CSP.START, IGT.ELLIPSE_MINOR_DIAMETER): CR.Y_MIN,
+        (CSP.END, IGT.ELLIPSE_MINOR_DIAMETER): CR.Y_MAX,
+        (CSP.START, IGT.ELLIPSE_FOCUS_1): CR.FOCAL_PLUS,
+        (CSP.START, IGT.ELLIPSE_FOCUS_2): CR.FOCAL_MINUS,
+    }
+    try:
+        return ref_map[tuple(ref_key)]
+    except KeyError as exc:
+        msg = (f"Unrecognized reference combo: Geo Type: '{geo.type_}',"
+               f" SubPart: '{part.name}',"
+               f" Internal Type: '{geo.internal_type.name}',"
+               f" List/Index: {geo_ref.list_name}[{geo_ref.index}]"
+               f" Failed Ref Key: {ref_key}")
+        raise ValueError(msg) from exc
 
 def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
     type_map = {

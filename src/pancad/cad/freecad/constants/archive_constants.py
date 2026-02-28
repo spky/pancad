@@ -150,6 +150,14 @@ class ConstraintTypeNum(IntEnum):
         }
         return names[self.value]
 
+    @property
+    def requires_value(self) -> bool:
+        """Returns whether the constraint requires a value."""
+        valued = {self.DISTANCE, self.DISTANCE_X, self.DISTANCE_Y,
+                  self.ANGLE, self.RADIUS, self.DIAMETER}
+        return self in valued
+
+
 class SubFile(StrEnum):
     """An enumeration of file names inside of FreeCAD document."""
     DOCUMENT_XML = "Document.xml"

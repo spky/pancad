@@ -68,7 +68,7 @@ def make_constraint(type_, *geometry, **kwargs) -> AbstractConstraint:
     :param is_radians: Whether the value provided for an angle constraint is 
         provided in radians. Defaults to False.
     :returns: The new pancad constraint.
-    :raises ValueError: Raised if the SketchConstraint is not recognized.
+    :raises KeyError: Raised if the SketchConstraint is not recognized.
     :raises NotImplementedError: Raised if a SketchConstraint for a constraint 
         that is not yet implemented is provided.
     """

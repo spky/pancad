@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import dataclasses
+from collections import namedtuple
+from itertools import islice
 from functools import wraps, partialmethod, singledispatch, partial
 from typing import TYPE_CHECKING, ClassVar
 from math import isclose
@@ -231,6 +233,9 @@ class SketchGeometryUidInfo:
         """The uid of the FreeCAD sketch the geometry is in"""
         sketch_parts = [self.file_uid, "feature", str(self.feature_id)]
         return FreeCADUID(FreeCADUID.delim.join(sketch_parts))
+
+SketchGeometryReference = namedtuple("SketchGeometryReference",
+                                     ["list_int", "id_", "part"])
 
 @dataclasses.dataclass(frozen=True)
 class SketchConstraintUidInfo:
