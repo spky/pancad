@@ -980,7 +980,22 @@ def constraint_from_freecad(constraint: FreeCADConstraintXML,
     if constraint.type_.requires_value:
         # Only some constraints like distance require a value.
         kwargs["value"] = constraint.value
-        if constraint.type_ != CTN.ANGLE:
+        if constraint.type_ == CTN.ANGLE:
+            points_pos = []
+            for geo_ref in constraint.get_references():
+                fc_geo, part = geo_ref.get_geometry()
+                if fc_geo.type_ != "Part::GeomLineSegment":
+                    msg = f"FreeCAD angles on {fc_geo.type_} not yet supported"
+                    raise NotImplementedError(msg)
+                points_pos.append(
+                    ((fc_geo.geometry.start, fc_geo.geometry.end), part)
+                )
+            if len(points_pos) != 2:
+                msg = (f"FreeCAD angles constraining {len(points_and_pos)}"
+                       " elements not yet supported")
+                raise NotImplementedError(msg)
+            kwargs["quadrant"] = xml_utils.read_angle_quadrant(tuple(points_pos))
+        else:
             # All FreeCAD value constraints are in mm except Angles. pancad 
             # doesn't take a unit parameter for angles, so it shouldn't be 
             # included here.
@@ -1002,7 +1017,7 @@ def reference_from_freecad(geo_ref: ConstraintGeoRef) -> CR:
         ref_key.append(index_map[geo_ref.index])
     ref_map = {
         (CSP.EDGE, IGT.NOT_INTERNAL): CR.CORE,
-        (CSP.EDGE, IGT.NOT_INTERNAL, "Part::GeomPoint"): CR.CORE,
+        (CSP.START, IGT.NOT_INTERNAL, "Part::GeomPoint"): CR.CORE,
         (CSP.START, IGT.NOT_INTERNAL): CR.START,
         (CSP.END, IGT.NOT_INTERNAL): CR.END,
         (CSP.CENTER, IGT.NOT_INTERNAL): CR.CENTER,

@@ -5,11 +5,16 @@ import dataclasses
 from collections import namedtuple
 from itertools import islice
 from functools import wraps, partialmethod, singledispatch, partial
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 from math import isclose
 import re
 
 import numpy as np
+
+from pancad.cad.freecad.constants.archive_constants import (
+    ConstraintSubPart as CSP,
+)
+from pancad.utils.trigonometry import is_clockwise
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -182,6 +187,39 @@ def convert_str(func: Callable[..., str], converter: Callable[str, Any]):
             return converter(func._make_unbound_method()(*args, **kwargs))
         return converter(func(*args, **kwargs))
     return wrapper
+
+VectorPair = tuple[tuple[float, float], tuple[float, float]]
+def read_angle_quadrant(refs: tuple[tuple[VectorPair, CSP],
+                                    tuple[VectorPair, CSP]]
+                        ) -> Literal[1, 2, 3, 4]:
+    """Returns an angle constraint's quadrant number. pancad quadrant numbers 
+    are relative to the first line and independent of the second line's 
+    direction.
+    """
+    (segment_1, pos_1), (segment_2, pos_2) = refs
+    vectors = [np.array(s[1]) - np.array(s[0]) for s in (segment_2, segment_1)]
+    key = (pos_1, pos_2, is_clockwise(*vectors))
+    quadrant_map = {
+        # Second Line's direction is counter-clockwise from the First's
+        (CSP.START, CSP.START, False): 1,
+        (CSP.START, CSP.END, False): 2,
+        (CSP.END, CSP.START, False): 3,
+        (CSP.END, CSP.END, False): 4,
+        # Second Line's direction is clockwise from the First's
+        (CSP.START, CSP.END, True): 1,
+        (CSP.END, CSP.END, True): 2,
+        (CSP.END, CSP.START, True): 3,
+        (CSP.START, CSP.START, True): 4,
+    }
+    try:
+        return quadrant_map[key]
+    except KeyError as exc:
+        msg = f"Unexpected subparts in angle constraint combo: {key}"
+        raise ValueError(msg) from exc
+
+################################################################################
+# FreeCAD pancad Assigned UID Definition
+################################################################################
 
 @dataclasses.dataclass(frozen=True)
 class DocumentUidInfo:
