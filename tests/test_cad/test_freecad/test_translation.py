@@ -60,3 +60,4 @@ def test_fcstd_metadata(fcstd):
 
 def test_new_part_from_document(fcstd):
     part_file = new_part_from_document(fcstd)
+    breakpoint()

@@ -65,6 +65,28 @@ class ConstraintSubPart(IntEnum):
         """Whether the subpart is referencing a point."""
         return self.value > 0
 
+class PadTypeNum(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD Pad type options."""
+    LENGTH = 0
+    UP_TO_LAST = 1
+    UP_TO_FIRST = 2
+    UP_TO_FACE = 3
+    TWO_LENGTHS = 4
+    UP_TO_SHAPE = 5
+
+    @property
+    def name(self) -> str:
+        """The name of the pad type represent by the integer."""
+        names = {
+            self.LENGTH: "Length",
+            self.UP_TO_LAST: "UpToLast",
+            self.UP_TO_FIRST: "UpToFirst",
+            self.UP_TO_FACE: "UpToFace",
+            self.TWO_LENGTHS: "TwoLengths",
+            self.UP_TO_SHAPE: "UpToShape",
+        }
+        return names[self.value]
+
 class InternalGeometryType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD 
     InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 

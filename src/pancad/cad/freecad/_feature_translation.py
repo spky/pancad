@@ -53,7 +53,8 @@ from pancad.cad.freecad.constants import (
 from pancad.cad.freecad.constants.archive_constants import (
     ConstraintTypeNum as CTN,
     ConstraintSubPart as CSP,
-    InternalGeometryType as IGT
+    InternalGeometryType as IGT,
+    PadTypeNum as PTN,
 )
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
@@ -128,7 +129,6 @@ def new_part_from_document(file: FCStd) -> PartFile:
                    f" labeled '{obj.label}'")
             exc.add_note(msg)
             raise
-    # ordered_ids = api_utils.get_topo_reading_order(document)
     return part
 
 def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
@@ -139,6 +139,7 @@ def new_feature_from_freecad(feature: FreeCADObjectXML, file: PartFile,
     """
     type_to_func = {
         "Sketcher::SketchObject": _sketch_from_freecad,
+        "PartDesign::Pad": _extrude_from_freecad,
     }
     try:
         func = type_to_func[feature.type_]
@@ -208,8 +209,56 @@ def _sketch_from_freecad(feature: FreeCADObjectXML, file: PartFile,
             continue
         pc_con = constraint_from_freecad(fc_con, new_uids)
         new_uids[fc_con.uid] = pc_con
+        sketch.geometry_system.constraints.append(pc_con)
     uid_map.update(new_uids)
     return sketch
+
+def _extrude_from_freecad(feature: FreeCADObjectXML, file: PartFile,
+                          uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                          ) -> Extrude:
+    new_uids = uid_map.copy()
+    # Determine the equivalent FeatureType.
+    is_reversed = feature.get_property("Reversed").value
+    is_midplane = feature.get_property("Midplane").value
+    fc_type = PTN(feature.get_property("Type").value)
+    key = [fc_type]
+    if fc_type in {PTN.LENGTH, PTN.TWO_LENGTHS}:
+        key.append(is_reversed)
+    if fc_type == PTN.LENGTH:
+        key.append(is_midplane)
+    type_map = {
+        # PadTypeNum, is_reversed, is_midplane
+        (PTN.LENGTH, False, False): FT.DIMENSION,
+        (PTN.LENGTH, True, False): FT.ANTI_DIMENSION,
+        (PTN.LENGTH, True, True): FT.SYMMETRIC,
+        (PTN.LENGTH, False, True): FT.SYMMETRIC,
+        # PadTypeNum, is_reversed
+        (PTN.TWO_LENGTHS, False): FT.TWO_DIMENSIONS,
+        (PTN.TWO_LENGTHS, True): FT.ANTI_TWO_DIMENSIONS,
+    }
+    pc_type = type_map[tuple(key)]
+    settings_params = {"type_": pc_type, "unit": "mm"} # FreeCAD always uses mm
+    prop_map = {
+        "length": "Length", "opposite_length": "Length2",
+        "taper_angle": "TaperAngle", "opposite_taper_angle": "TaperAngle2"
+    }
+    for pc_prop, fc_prop in prop_map.items():
+        settings_params[pc_prop] = feature.get_property(fc_prop).value
+    settings = ExtrudeSettings(**settings_params)
+    profile_link = feature.get_property("Profile").value
+    if len(profile_link) != 1:
+        msg = ("Pads without exactly 1 profile link are not yet supported."
+               f" Found {len(profile_link)} links in Pad '{feature.label}'")
+        raise NotImplementedError(msg)
+    profile_link = profile_link.pop()
+    if profile_link.sub is not None:
+        msg = (f"Unsupported non-None sub link in Pad profile: {profile_link}")
+        raise NotImplementedError(msg)
+    fc_profile = feature.document.get_object(profile_link.name)
+    pc_profile = uid_map[fc_profile.uid]
+    extrude = Extrude(pc_profile, settings, name=feature.label)
+    pc_profile.system.features.append(extrude)
+    return extrude
 
 def in_links(feature: FreeCADObjectXML, links: Collection[FreeCADLink]) -> bool:
     """Returns whether a FreeCAD Object is in a Collection fo FreeCADLinks"""
