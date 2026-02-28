@@ -1393,7 +1393,7 @@ class FreeCADConstraintXML:
             parts.extend([list_int, id_, pair.part])
         return xml_utils.FreeCADUID("_".join(map(str, parts)))
 
-    def get_references(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
+    def get_references(self) -> list[ConstraintGeoRef]:
         """Returns the geometry and subpart references constrained by this 
         constraint.
         """

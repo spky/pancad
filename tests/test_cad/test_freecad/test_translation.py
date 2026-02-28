@@ -19,7 +19,12 @@ from pancad.cad.freecad.read_xml import FCStd
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
 DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
 
-@pytest.fixture(params=["cube_1x1x1.FCStd", "one_of_each_sketch_geometry.FCStd"])
+@pytest.fixture(params=[
+    "cube_1x1x1.FCStd",
+    "one_of_each_sketch_geometry.FCStd",
+    "cube_1x1x1_PointOnObject.FCStd",
+    ]
+)
 def freecad_doc(request):
     """Generic 1x1x1 cube file for easy testing."""
     yield str(SAMPLE_FREECAD / request.param)
@@ -60,4 +65,3 @@ def test_fcstd_metadata(fcstd):
 
 def test_new_part_from_document(fcstd):
     part_file = new_part_from_document(fcstd)
-    breakpoint()

@@ -1110,11 +1110,11 @@ def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
     if constraint.type_ in type_map:
         return type_map[constraint.type_]
     if constraint.type_ == CTN.TANGENT:
-        geometry = constraint.get_geometry()
-        if all(g.type_ == "Part::LineSegment" and not p.is_point()
-               for g, p in geometry):
+        geo_pairs = [r.get_geometry() for r in constraint.get_references()]
+        if all(g.type_ == "Part::GeomLineSegment" and not p.is_point
+               for g, p in geo_pairs):
             return SC.COINCIDENT
-        combo = "; ".join([f"{g.type_} {p.name}" for g, p in geometry])
+        combo = "; ".join([f"{g.type_} {p.name}" for g, p in geo_pairs])
         msg = f"Tangent with geometry combo '{combo}' is not supported yet"
         raise NotImplementedError(msg)
     msg = f"Constraint type '{constraint.type_.name}' is not supported yet"
