@@ -5,19 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.sample_pancad_objects.sample_part_files import (
-    empty_part_file,
-    square_sketch_part_file,
-    cube_part_file,
-)
-
 from pancad.cad.freecad._feature_translation import (
     new_document_from_part, new_part_from_document
 )
 from pancad.cad.freecad.read_xml import FCStd
 
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
-DUMP = Path(find_spec("tests.test_cad.test_freecad.dump").origin).parent
 
 @pytest.fixture(params=[
     "cube_1x1x1.FCStd",
@@ -35,15 +28,16 @@ def freecad_doc(request):
         ("empty_part_file", 8),
         ("square_sketch_part_file", 9),
         ("cube_part_file", 10),
+        ("cylinder_part_file", 10),
+        ("rounded_edge_cube_part_file", 10),
+        pytest.param("ellipse_part_file", 10,
+                     marks=pytest.mark.xfail(reason="Ellipse write api side not implemented")),
     ]
 )
 def test_new_document_from_part(part_file_fixture, expected, request):
     part_file = request.getfixturevalue(part_file_fixture)
     document = new_document_from_part(part_file)
     assert len(document.Objects) == expected
-    # document.recompute()
-    # document.FileName = str(DUMP / (part_file_fixture + ".FCStd"))
-    # document.save()
 
 @pytest.fixture
 def fcstd(freecad_doc):
@@ -62,6 +56,8 @@ def test_fcstd_metadata(fcstd):
     metadata = fcstd.metadata
     assert metadata.label == fcstd.path.stem
 
-
 def test_new_part_from_document(fcstd):
     part_file = new_part_from_document(fcstd)
+
+def test_square_sketch_variations(square_variations_part_file):
+    document = new_document_from_part(square_variations_part_file)
