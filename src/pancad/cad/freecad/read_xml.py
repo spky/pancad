@@ -6,7 +6,6 @@ from functools import partialmethod
 from collections import namedtuple
 from typing import TYPE_CHECKING
 import logging
-import warnings
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 from pathlib import Path
@@ -20,6 +19,7 @@ from pancad.cad.freecad.constants.archive_constants import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any, NoReturn
     from os import PathLike
     from xml.etree.ElementTree import Element, ElementTree
@@ -82,7 +82,7 @@ class FCStd:
         return self._document.uid
 
     def get_topo_uids(self) -> list[FreeCADUID]:
-        """Returns the topologically ordered (roughly the required creation 
+        """Returns the topologically ordered (roughly the required creation
         order) uids of the objects inside the file.
         """
         names = self.document.get_topo_order()
@@ -114,7 +114,7 @@ class FCStd:
             return feature
         # All uids that get past this point are either geometry or constraints
         try:
-            object_list = feature.get_property(data.list_name).value
+            element_list = feature.get_property(data.list_name).value
         except LookupError as exc:
             msg = (f"UID not found: Feature with id {data.feature_id}"
                    f" did not have a '{data.list_name}' list")
@@ -155,7 +155,7 @@ class FreeCADLink:
         converted to None.
     :param shadows: Not certain, but appears to be "shadow subname references"
         in FreeCAD documentation. Likely connected to topological naming.
-    :raises ValueError: Raised if sub is an empty string or when sub is None but 
+    :raises ValueError: Raised if sub is an empty string or when sub is None but
         shadow is not None.
     """
     name: str
@@ -165,7 +165,7 @@ class FreeCADLink:
     def __post_init__(self):
         if self.sub == "":
             # Blank sub strings indicate the link is just to the object.
-            # Blank subs cannot be converted to None here without unfreezing the 
+            # Blank subs cannot be converted to None here without unfreezing the
             # dataclass, so it just raises an error.
             raise ValueError("sub cannot be an empty string")
         if self.sub is None and self.shadow is not None:
@@ -199,8 +199,9 @@ class FreeCADDocumentXML:
                    f" SchemaVersion value: {raw_schema_version}")
             raise ValueError(msg, tree) from exc
         if self.schema_version != 4:
-            logger.warning(f"SchemaVersion {self.schema_version} not recognized,"
-                           " invalid translation behavior may occur")
+            logger.warning("SchemaVersion %s not recognized,"
+                           " invalid translation behavior may occur",
+                           self.schema_version)
         self._objects = self._read_all_objectdata()
         self._properties = self._read_properties()
 
@@ -353,8 +354,8 @@ class FreeCADDocumentXML:
             except (ValueError, NotImplementedError) as exc:
                 filename = self.file.path.name
                 exc.add_note(f"In file '{filename}'")
-                logger.warning(f"Document property read failed. Reason:\n%s",
-                               "\n".join([str(exc), "; ".join(exc.__notes__)]))
+                logger.warning("Document property read failed. Reason:\n%s",
+                               str(exc.__reduce__()))
         return properties
 
 class FreeCADObjectXML:
@@ -390,8 +391,8 @@ class FreeCADObjectXML:
         """The human-visible name of the Object in the FreeCAD GUI."""
         try:
             return self.get_property("Label").value
-        except LookupError as exc:
-            logger.warning(f"Object %s of type %s does not have a Label.",
+        except LookupError:
+            logger.warning("Object %s of type %s does not have a Label.",
                            self.name, self.type_)
             return f"NO LABEL, NAME: {self.name}"
 
@@ -467,7 +468,7 @@ class FreeCADObjectXML:
             property_list = list(self._element.find("Properties"))
         except TypeError as exc:
             msg = "Unexpected Object format: could not find Properties element"
-            raise ValueError(msg, self._element)
+            raise ValueError(msg, self._element) from exc
         property_list.sort(key=self._property_read_sort_key)
         for prop in property_list:
             try:
@@ -475,15 +476,14 @@ class FreeCADObjectXML:
             except (ValueError, NotImplementedError) as exc:
                 filename = self.document.file.path.name
                 exc.add_note(f"On Object '{self.name}' in file '{filename}'")
-                reason = "\n".join([str(exc), "; ".join(exc.__notes__)])
-                logger.warning(f"Object '%s' property read failed. Reason:\n%s",
-                               self.name, reason)
+                logger.warning("Object '%s' property read failed. Reason:\n%s",
+                               self.name, str(exc.__reduce__()))
         return self._properties
 
     @staticmethod
     def _property_read_sort_key(element: Element) -> int:
-        """A sorting key function to ensure properties are in a valid order. 
-        Example: The geometry needs to be read before the constraints in a 
+        """A sorting key function to ensure properties are in a valid order.
+        Example: The geometry needs to be read before the constraints in a
         sketch.
         """
         try:
@@ -501,12 +501,15 @@ class FreeCADObjectXML:
 
 @dataclasses.dataclass
 class FreeCADPlacement:
+    """Dataclass tracking a FreeCAD Placement object's properties from FCStd xml
+    """
     location: tuple[float, float, float]
     quat: quaternion.quaternion
     o_vector: tuple[float, float, float]
 
     @classmethod
     def from_element(cls, element: Element) -> FreeCADPlacement:
+        """Creates Placement directly from an xml element"""
         xyz = ["x", "y", "z"]
         location = xml_utils.read_vector(element, xyz, "P", False)
         o_vector = xml_utils.read_vector(element, xyz, "O", False)
@@ -516,7 +519,7 @@ class FreeCADPlacement:
 
 @dataclasses.dataclass
 class FreeCADExpression:
-    """Dataclass for tracking the definition of FreeCAD expressions that define 
+    """Dataclass for tracking the definition of FreeCAD expressions that define
     derived properties in the model.
     """
     path: str
@@ -524,7 +527,7 @@ class FreeCADExpression:
 
 @dataclasses.dataclass
 class PropertyPartShape:
-    """Dataclass for tracking the definition of FreeCAD PropertyPartShape 
+    """Dataclass for tracking the definition of FreeCAD PropertyPartShape
     elements
     """
     element_map: str
@@ -535,16 +538,17 @@ class PropertyPartShape:
 
     @classmethod
     def from_element(cls, element: Element) -> PropertyPartShape:
+        """Creates PropertyPartShape directly from an xml element"""
         inputs = {}
         part = xml_utils.find_single(element, "Part")
         inputs["element_map"] = xml_utils.read_attr(part, "ElementMap")
         inputs["brp"] = xml_utils.read_attr(part, "file")
         if part.get("HasherIndex") is not None:
             inputs["hash_index"] = xml_utils.read_attr(part, "HasherIndex", int)
-        for element in xml_utils.find_single(element, "ElementMap"):
+        for sub in xml_utils.find_single(element, "ElementMap"):
             values = []
             for name in ("key", "value"):
-                value = xml_utils.read_attr(element, name)
+                value = xml_utils.read_attr(sub, name)
                 if value != "Dummy": # Have not found any non-Dummy cases so far
                     msg = ("Expected 'Dummy' for ElementMap element"
                            f" value {name}, got {value}")
@@ -756,8 +760,8 @@ class FreeCADPropertyXML:
         return FreeCADPlacement.from_element(element)
 
     def _read_property_map(self) -> list:
-        """If any property maps add elements, this will raise a better 
-        NotImplementedError to make it clear that it's something to 
+        """If any property maps add elements, this will raise a better
+        NotImplementedError to make it clear that it's something to
         implement.
         """
         if len(self._read_first()) > 0:
@@ -765,7 +769,7 @@ class FreeCADPropertyXML:
             msg = (f"Expected PropertyMap to have 0 elements, found {num}. any"
                   " Nested Map elements have not been implemented.")
             raise NotImplementedError(msg)
-        element = self._read_first()
+        return [] # element = self._read_first() # Not used since always empty
 
     def _read_link_sub_list(self) -> list[FreeCADLink]:
         """Read property type with child-to-parent links to multiple objects."""
@@ -788,7 +792,7 @@ class FreeCADPropertyXML:
             try:
                 geometry.append(FreeCADGeometryXML(element, self))
             except NotImplementedError as exc:
-                logger.warning(f"Failed to read geometry element: {exc}")
+                logger.warning("Failed to read geometry element: %s", exc)
         return geometry
 
     def _read_expressions(self) -> list[FreeCADExpression]:
@@ -849,7 +853,7 @@ class SketchGeoExt(GeometryExtension):
             attrs["internal_geometry_type"] = InternalGeometryType(intern_type)
         except ValueError as exc:
             msg = f"Unsupported internalGeometryType value: {intern_type}"
-            raise NotImplementedError(msg)
+            raise NotImplementedError(msg) from exc
         return cls(parent, type_, **attrs)
 
 @dataclasses.dataclass
@@ -984,7 +988,7 @@ class GeomArcOfCircle(GeomData):
 
 
 class FreeCADGeometryXML:
-    """A class providing interfaces to FCStd Document.xml sketch geometry 
+    """A class providing interfaces to FCStd Document.xml sketch geometry
     elements.
 
     :param element: The xml Geometry element inside an FCStd
@@ -1043,11 +1047,12 @@ class FreeCADGeometryXML:
 
     @property
     def geometry(self) -> GeomData:
+        """The geometric data of the geometry represented by this xml element."""
         return self._geometry
 
     def get_defining_geometry(self) -> FreeCADGeometryXML:
-        """Returns the geometry defining this geometry. If non-internal 
-        geometry, this echos the geometry. If this is internal geometry 
+        """Returns the geometry defining this geometry. If non-internal
+        geometry, this echos the geometry. If this is internal geometry
         (e.g. an Ellipse major axis), this returns the Ellipse.
         """
         if self.internal_type == InternalGeometryType.NOT_INTERNAL:
@@ -1127,12 +1132,12 @@ class ConstraintGeoRef:
     """A dataclass tracking the index and subpart of a FreeCAD constraint's
     reference to geometry.
 
-    :param index: The index of the geometry as entered in the constraint xml. 
+    :param index: The index of the geometry as entered in the constraint xml.
         Negative numbers are in the ExternalGeo list.
-    :param part: The sub part integer for the part of the geometry being 
+    :param part: The sub part integer for the part of the geometry being
         constrained.
     :param id_: The integer id of the geometry.
-    :param constraint: 
+    :param constraint:
     """
     index: int
     part: ConstraintSubPart
@@ -1155,12 +1160,12 @@ class ConstraintGeoRef:
 
     @property
     def list_index(self) -> int | None:
-        """The index of the geometry inside the list it resides in. Updates 
-        dynamically if the list changes. This is None when the reference is 
+        """The index of the geometry inside the list it resides in. Updates
+        dynamically if the list changes. This is None when the reference is
         empty and just to fill out the 3 required for FreeCAD constraints.
 
-        :raises LookupError: When the geometry id cannot be found in the sketch 
-            list. This would mean there's unexpected FreeCAD behavior or that 
+        :raises LookupError: When the geometry id cannot be found in the sketch
+            list. This would mean there's unexpected FreeCAD behavior or that
             the geometry has been deleted.
         """
         if self.id_ is None:
@@ -1233,7 +1238,7 @@ class ConstraintPairs:
     third: ConstraintGeoRef
 
     def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
-        """Returns a list of the filled geometry references, tuples of 
+        """Returns a list of the filled geometry references, tuples of
         (geometry, subpart).
         """
         references = []
@@ -1355,8 +1360,8 @@ class FreeCADConstraintXML:
 
     @property
     def value(self) -> float:
-        """The value of the constraint stored in xml. All FreeCAD constraints 
-        have a value, but it's normally 0 unless the constraint actually 
+        """The value of the constraint stored in xml. All FreeCAD constraints
+        have a value, but it's normally 0 unless the constraint actually
         uses it (distance, diameter, etc).
         """
         return self.data.value
@@ -1366,8 +1371,7 @@ class FreeCADConstraintXML:
         """The internal alignment type of the constraint."""
         if self.data.internal_alignment is None:
             return InternalGeometryType.NOT_INTERNAL
-        else:
-            return self.data.internal_alignment.type_
+        return self.data.internal_alignment.type_
 
     @property
     def uid(self) -> FreeCADUID:
@@ -1376,8 +1380,6 @@ class FreeCADConstraintXML:
         document = feature.document
         parts = [document.get_property('Uid').value, "sketchcons",
                  feature.id_, self.type_]
-        geometry = feature.get_property("Geometry").value
-        ext_geometry = feature.get_property("ExternalGeo").value
         pairs = self._data.pairs
         for pair in [pairs.first, pairs.second, pairs.third]:
             if pair.id_ is None:
@@ -1394,7 +1396,7 @@ class FreeCADConstraintXML:
         return xml_utils.FreeCADUID("_".join(map(str, parts)))
 
     def get_references(self) -> list[ConstraintGeoRef]:
-        """Returns the geometry and subpart references constrained by this 
+        """Returns the geometry and subpart references constrained by this
         constraint.
         """
         return self.data.pairs.as_list()
