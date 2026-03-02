@@ -7,6 +7,7 @@ from tests.sample_pancad_objects.sample_sketches import (
     joined_square_sketch,
     square_sketch_bottom_length,
     square_sketch_variations,
+    line_angled_to_x_axis_sketches,
 )
 
 from tests.sample_pancad_objects.sample_part_files import (
@@ -17,4 +18,5 @@ from tests.sample_pancad_objects.sample_part_files import (
     rounded_edge_cube_part_file,
     ellipse_part_file,
     square_variations_part_file,
+    angle_dimension_sweep_part_file,
 )

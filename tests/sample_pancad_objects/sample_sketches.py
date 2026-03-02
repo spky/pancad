@@ -1,6 +1,6 @@
 """A module providing sample sketch features to test pancad with."""
 
-from math import radians
+from math import radians, sqrt
 from numbers import Real
 
 import pytest
@@ -10,6 +10,7 @@ from pancad.geometry.circular_arc import CircularArc
 from pancad.geometry.coordinate_system import CoordinateSystem
 from pancad.geometry.ellipse import Ellipse
 from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.point import Point
 from pancad.geometry.system import TwoDSketchSystem
 from pancad.geometry.sketch import Pose, Sketch
 
@@ -46,7 +47,7 @@ def square(pose: Pose=None,
            side: Real=1,
            unit: str="mm",
            include_constraints: bool=True) -> Sketch:
-    """Returns a square oriented parallel/perpendicular to the sketch 
+    """Returns a square oriented parallel/perpendicular to the sketch
     coordinate system axes.
     """
     bottom_left = (0, 0)
@@ -85,7 +86,7 @@ def rounded_square(pose: Pose=None,
                    radius: Real=1,
                    unit: str="mm",
                    include_constraints: bool=True) -> Sketch:
-    # All lines and arcs start from the top left of the bottom left arc and 
+    # All lines and arcs start from the top left of the bottom left arc and
     # travel counter clockwise in a full loop.
 
     # Define straight line length
@@ -235,8 +236,8 @@ TOP = 2
 LEFT = 3
 
 CONSTRAINT_PARAMS = [
-    ( 
-        # Bottom/Right Equal, Bottom/Top Horiz, Left/Right Vert, Bottom Start 
+    (
+        # Bottom/Right Equal, Bottom/Top Horiz, Left/Right Vert, Bottom Start
         # *point* coincident to origin.
         (SC.HORIZONTAL, ((BOTTOM, CR.CORE),)),
         (SC.VERTICAL, ((RIGHT, CR.CORE),)),
@@ -245,8 +246,8 @@ CONSTRAINT_PARAMS = [
         (SC.EQUAL, ((BOTTOM, CR.CORE), (RIGHT, CR.CORE))),
         (SC.COINCIDENT, ((BOTTOM, CR.START), (CSYS, CR.ORIGIN))),
     ),
-    ( 
-        # All Equal, Bottom Horizontal, Bottom/Left Perpendicular, Bottom Start 
+    (
+        # All Equal, Bottom Horizontal, Bottom/Left Perpendicular, Bottom Start
         # *point* coincident to origin.
         (SC.HORIZONTAL, ((BOTTOM, CR.CORE),)),
         (SC.EQUAL, ((BOTTOM, CR.CORE), (RIGHT, CR.CORE))),
@@ -255,8 +256,8 @@ CONSTRAINT_PARAMS = [
         (SC.PERPENDICULAR, ((BOTTOM, CR.CORE), (LEFT, CR.CORE))),
         (SC.COINCIDENT, ((BOTTOM, CR.START), (CSYS, CR.ORIGIN))),
     ),
-    ( 
-        # Bottom Horizontal, Bottom/Left Perpendicular, R/L parallel, B/T 
+    (
+        # Bottom Horizontal, Bottom/Left Perpendicular, R/L parallel, B/T
         # parallel, Bottom Start *point* coincident to origin.
         (SC.HORIZONTAL, ((BOTTOM, CR.CORE),)),
         (SC.EQUAL, ((BOTTOM, CR.CORE), (RIGHT, CR.CORE))),
@@ -265,8 +266,8 @@ CONSTRAINT_PARAMS = [
         (SC.PARALLEL, ((BOTTOM, CR.CORE), (TOP, CR.CORE))),
         (SC.COINCIDENT, ((BOTTOM, CR.START), (CSYS, CR.ORIGIN))),
     ),
-    ( 
-        # Bottom/Right Equal, Bottom/Top Horiz, Left/Right Vert, Bottom Left 
+    (
+        # Bottom/Right Equal, Bottom/Top Horiz, Left/Right Vert, Bottom Left
         # *lines* coincident to origin.
         (SC.HORIZONTAL, ((BOTTOM, CR.CORE),)),
         (SC.VERTICAL, ((RIGHT, CR.CORE),)),
@@ -276,8 +277,8 @@ CONSTRAINT_PARAMS = [
         (SC.COINCIDENT, ((BOTTOM, CR.CORE), (CSYS, CR.ORIGIN))),
         (SC.COINCIDENT, ((LEFT, CR.CORE), (CSYS, CR.ORIGIN))),
     ),
-    ( 
-        # All Sides equal, bottom horizontal, left vertical, bottom left 
+    (
+        # All Sides equal, bottom horizontal, left vertical, bottom left
         # coincident to origin
         (SC.HORIZONTAL, ((BOTTOM, CR.CORE),)),
         (SC.VERTICAL, ((LEFT, CR.CORE),)),
@@ -286,11 +287,11 @@ CONSTRAINT_PARAMS = [
         (SC.EQUAL, ((BOTTOM, CR.CORE), (LEFT, CR.CORE))),
         (SC.COINCIDENT, ((BOTTOM, CR.START), (CSYS, CR.ORIGIN))),
     ),
-    
+
 ]
 @pytest.fixture(params=CONSTRAINT_PARAMS)
 def square_sketch_variations(request, square_sketch_bottom_length):
-    """Variations on a fully constrained square sketch. Same geometry, varied 
+    """Variations on a fully constrained square sketch. Same geometry, varied
     constraints.
     """
     sketch = square_sketch_bottom_length
@@ -304,3 +305,72 @@ def square_sketch_variations(request, square_sketch_bottom_length):
     sketch.geometry_system.constraints.extend(constraints)
     yield sketch
 
+def line_angled_to_x_axis(quadrant: int,
+                          angle: Real,
+                          start_radially_out: bool) -> LineSegment:
+    """Creates a unit long line segment at an angle to the x-axis.
+
+    :param quadrant: The quadrant the angle dimension will appear in.
+    :param angle: The angle dimension in degrees.
+    :param start_radially_out: Whether the start is at the origin. The end is at
+        the origin when False.
+    """
+    at_origin = Point(0, 0)
+    length = sqrt(2)
+    quadrant_polar_angle_map = {1: radians(angle),
+                                2: radians(180 - angle),
+                                3: radians(180 + angle),
+                                4: radians(-angle)}
+    radially_out = Point.from_polar(length, quadrant_polar_angle_map[quadrant])
+    name = f"test_sketch_quadrant{quadrant}_{angle}_degrees"
+    segment_points = [at_origin, radially_out]
+    if start_radially_out:
+        segment_points.reverse()
+    return LineSegment(*segment_points)
+
+def sketch_with_line_angled_to_x_axis(quadrant: int, angle: float,
+                                      start_radially_out: bool) -> Sketch:
+    """Creates a sketch with a single line angled relative to the x-axis."""
+    line = line_angled_to_x_axis(quadrant, angle, start_radially_out)
+    system = TwoDSketchSystem([line])
+    line_origin = line.end if start_radially_out else line.start
+    system.constraints.extend(
+        [
+            make_constraint(SC.COINCIDENT, line_origin, system.origin),
+            make_constraint(SC.DISTANCE, line.start, line.end,
+                            value=line.length, unit="mm"),
+            make_constraint(SC.ANGLE, system.x_axis, line,
+                            value=angle, quadrant=quadrant),
+        ]
+    )
+    pose = Pose.from_yaw_pitch_roll((0, 0, 0), 0, 0, 0)
+    return Sketch(system, pose)
+
+@pytest.fixture
+def line_angled_to_x_axis_sketches(request) -> list[Sketch]:
+    """A list of angle-sweeping sketches placing a single line segment in
+    different quadrants relative to the sketch's x-axis. Useful for checking the
+    implementation of angle constraints inside a single CAD file.
+    """
+    angle_sweep_params = [
+        # Quadrant, Angle (Degrees), start_to_end
+        (1, 45, False),
+        (2, 45, False),
+        (3, 45, False),
+        (4, 45, False),
+        (1, 45, True),
+        (2, 45, True),
+        (3, 45, True),
+        (4, 45, True),
+    ]
+    sketches = []
+    for quadrant, angle, start_radially_out in angle_sweep_params:
+        sketch = sketch_with_line_angled_to_x_axis(quadrant, angle,
+                                                   start_radially_out)
+        sketch.name = f"Quadrant_{quadrant}_Angle_{angle}"
+        if start_radially_out:
+            sketch.name = sketch.name + "_EndOnOrigin"
+        else:
+            sketch.name = sketch.name + "_StartOnOrigin"
+        sketches.append(sketch)
+    return sketches

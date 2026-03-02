@@ -90,7 +90,7 @@ def ellipse_part_file() -> PartFile:
     return part
 
 @pytest.fixture
-def square_variations_part_file(request, square_sketch_variations) -> PartFile:
+def square_variations_part_file(square_sketch_variations) -> PartFile:
     sketch = square_sketch_variations
     part = PartFile("square_sketch_variations")
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
@@ -102,4 +102,15 @@ def square_variations_part_file(request, square_sketch_variations) -> PartFile:
     part.container.feature_system.features.append(sketch)
     part.container.feature_system.constraints.extend(constraints)
     part.container.feature_system.features.append(extrude)
+    return part
+
+@pytest.fixture
+def angle_dimension_sweep_part_file(line_angled_to_x_axis_sketches) -> PartFile:
+    part = PartFile("angle_dimension_sweep")
+    for sketch in line_angled_to_x_axis_sketches:
+        part.container.feature_system.features.append(sketch)
+        part.container.feature_system.constraints.append(
+            AlignAxes(part.container.feature_system.coordinate_system,
+                      sketch.pose.coordinate_system)
+        )
     return part

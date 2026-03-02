@@ -34,9 +34,11 @@ def freecad_doc(request):
                      marks=pytest.mark.xfail(reason="Ellipse write api side not implemented")),
     ]
 )
-def test_new_document_from_part(part_file_fixture, expected, request):
+def test_new_document_from_part(part_file_fixture, expected, tmp_path, request):
     part_file = request.getfixturevalue(part_file_fixture)
     document = new_document_from_part(part_file)
+    document.recompute()
+    document.saveAs(str(tmp_path / "test_new_document_from_part.FCStd"))
     assert len(document.Objects) == expected
 
 @pytest.fixture
@@ -59,5 +61,12 @@ def test_fcstd_metadata(fcstd):
 def test_new_part_from_document(fcstd):
     part_file = new_part_from_document(fcstd)
 
-def test_square_sketch_variations(square_variations_part_file):
+def test_square_sketch_variations(square_variations_part_file, tmp_path):
     document = new_document_from_part(square_variations_part_file)
+    document.recompute()
+    document.saveAs(str(tmp_path / "sketch_variation.FCStd"))
+
+def test_angle_sweep_sketches(angle_dimension_sweep_part_file, tmp_path):
+    document = new_document_from_part(angle_dimension_sweep_part_file)
+    document.recompute()
+    document.saveAs(str(tmp_path / "angle_sweep.FCStd"))
