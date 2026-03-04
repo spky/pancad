@@ -67,6 +67,7 @@ for _ in range(0, 2):
     break
 
 if TYPE_CHECKING:
+    from typing import Literal
     from collections.abc import Container, Collection
 
     from pancad.abstract import AbstractConstraint, PancadThing
@@ -699,32 +700,9 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     refs = [get_constraint_pair_from_pancad(g, document, uid_map)
             for g in constraint.get_geometry()]
 
-    indicies = []
-    match input_type:
-        case "indexes_only":
-            indicies.extend(r.index for r in refs)
-        case "original_order":
-            indicies.extend(i for r in refs for i in r.pair)
-        case "points_first":
-            sorted_refs = sorted(refs, key=lambda r: int(r.is_point),
-                                 reverse=True)
-            first, second = sorted_refs
-            indicies.extend([first.index, first.part, second.index])
-        case "bugged_distance":
-            first, second = refs
-            indicies.extend([first.index, ESP.START, second.index])
-        case "quadrant_order":
-            first, second = refs
-            quadrant_map = {
-                1: (first.index, ESP.START, second.index, ESP.START),
-                2: (second.index, ESP.START, first.index, ESP.END),
-                3: (first.index, ESP.END, second.index, ESP.START),
-                4: (second.index, ESP.START, first.index, ESP.START),
-            }
-            indicies.extend(quadrant_map[constraint.quadrant])
-        case _:
-            raise ValueError(f"Unexpected input type '{input_type}'")
-
+    indicies = _get_freecad_constraint_indices(
+        input_type, refs, getattr(constraint, "quadrant", None)
+    )
     pc_value = getattr(constraint, "value", None)
     if pc_value is None:
         return Sketcher.Constraint(type_, *indicies)
@@ -733,6 +711,41 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     unit = unit_map.setdefault(constraint.unit, constraint.unit)
     return Sketcher.Constraint(type_, *indicies,
                                App.Units.Quantity(f"{pc_value} {unit}"))
+
+def _get_freecad_constraint_indices(
+            input_type: Literal["quadrant_order", "original_order",
+                                "indexes_only", "points_first",
+                                "bugged_distance"],
+            refs: list[FreeCADConstraintGeoRef],
+            quadrant: Literal[1, 2, 3, 4]=None
+        ) -> list[int]:
+    match input_type:
+        case "indexes_only":
+            return [r.index for r in refs]
+        case "original_order":
+            return [i for r in refs for i in r.pair]
+        case "points_first":
+            sorted_refs = sorted(refs, key=lambda r: int(r.is_point),
+                                 reverse=True)
+            first, second = sorted_refs
+            return [first.index, first.part, second.index]
+        case "bugged_distance":
+            first, second = refs
+            return [first.index, ESP.START, second.index]
+        case "quadrant_order":
+            first, second = refs
+            quadrant_map = {
+                1: (first.index, ESP.START, second.index, ESP.START),
+                2: (second.index, ESP.START, first.index, ESP.END),
+                3: (first.index, ESP.END, second.index, ESP.START),
+                4: (second.index, ESP.START, first.index, ESP.START),
+            }
+            try:
+                return quadrant_map[quadrant]
+            except KeyError as exc:
+                msg = f"Unexpected value for angle quadrant: {quadrant}"
+                raise ValueError(msg) from exc
+    raise ValueError(f"Unexpected input type '{input_type}'")
 
 def _get_constraint_write_key(constraint: AbstractConstraint,
                               document: FreeCADDocument,
