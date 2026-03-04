@@ -413,39 +413,32 @@ def _new_body_from_container(feature: FeatureContainer,
     body.Placement = new_placement_from_pose(feature.pose)
 
     # Map Origin and OriginFeatures to names that can map to container children
-    origin = body.Origin
-    origin_map = {"Coordinate_System": origin}
+    origin_map = {"Coordinate_System": body.Origin}
     origin_map.update(
-        {xml_utils.get_map_name(f.Name): f for f in origin.OriginFeatures}
+        {xml_utils.get_map_name(f.Name): f for f in body.Origin.OriginFeatures}
     )
-    reference_to_name = {
-        (CR.CS, "Coordinate_System"),
-        (CR.ORIGIN, "Coordinate_System"),
+    ref_name_map = {
+        CR.CS: "Coordinate_System", CR.ORIGIN: "Coordinate_System",
         # There is no center point on the Origin object, so the origin point is
         # mapped to the Origin where other systems can derive the location.
-        (CR.X, "X_Axis"),
-        (CR.Y, "Y_Axis"),
-        (CR.Z, "Z_Axis"),
-        (CR.XY, "XY_Plane"),
-        (CR.XZ, "XZ_Plane"),
-        (CR.YZ, "YZ_Plane"),
+        CR.X: "X_Axis", CR.Y: "Y_Axis", CR.Z: "Z_Axis",
+        CR.XY: "XY_Plane", CR.XZ: "XZ_Plane", CR.YZ: "YZ_Plane",
     }
 
-    new_uid_map_items = {}
+    new_uids = {}
     system = feature.feature_system
-    for reference, map_name in reference_to_name:
+    for reference, map_name in ref_name_map.items():
         pancad_uid = system.children[reference].uid
         if pancad_uid in uid_map:
-            element = system.children[reference]
             msg = "pancad uid of element already in uid map"
-            raise ValueError(msg, element)
-        freecad_uid = FreeCADUID.from_feature(origin_map[map_name],
-                                                        document)
-        new_uid_map_items[pancad_uid] = freecad_uid
+            raise ValueError(msg, system.children[reference])
+        new_uids[pancad_uid] = FreeCADUID.from_feature(origin_map[map_name],
+                                                       document)
 
-    body_uid = FreeCADUID.from_feature(body, document)
-    new_uid_map_items[feature.uid] = body_uid
-    uid_map.update(new_uid_map_items)
+    new_uids[feature.uid] = FreeCADUID.from_feature(body, document)
+    uid_map.update(new_uids)
+
+    # Moving deeper down into to the subfeatures
     for sub_feature in system.features:
         new_feature_from_pancad(sub_feature, document, uid_map)
     return body
@@ -719,6 +712,14 @@ def _get_freecad_constraint_indices(
             refs: list[FreeCADConstraintGeoRef],
             quadrant: Literal[1, 2, 3, 4]=None
         ) -> list[int]:
+    """Returns the list of indicies FreeCAD requires for constraint definition.
+
+    :param input_type: A string for the reading type required for the references
+    :param refs: The geometry reference pairs read from pancad objects.
+    :param quadrant: The quadrant of an angle constraint. Should be None if not 
+        an angle.
+    :raises ValueError: When input_type or quadrant is an unexpected value.
+    """
     match input_type:
         case "indexes_only":
             return [r.index for r in refs]
