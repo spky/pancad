@@ -4,7 +4,7 @@ from __future__ import annotations
 import dataclasses
 from collections import namedtuple
 from itertools import islice
-from functools import wraps, partialmethod, singledispatch, partial
+from functools import singledispatch, partial
 from typing import TYPE_CHECKING, ClassVar, Literal
 from math import isclose
 import re

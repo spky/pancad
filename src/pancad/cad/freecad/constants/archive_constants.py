@@ -15,24 +15,22 @@ class UnitSystem(IntEnum):
     FEM = 8
     METER_DECIMAL = 9
 
-    _ignore_ = ["_length_unit_map"]
-    _length_unit_map = {
-        STANDARD: "mm",
-        MKS: "mm",
-        US_CUSTOMARY: "in",
-        IMPERIAL_DECIMAL: "in",
-        BUILDING_EURO: "cm",
-        BUILDING_US: "in", # Fractional Inches
-        METRIC_SMALL_PARTS: "mm",
-        IMPERIAL_CIVIL: "ft",
-        FEM: "mm",
-        METER_DECIMAL: "m",
-    }
-
     @property
     def length(self) -> str:
         """The unit abbreviation for the default length unit in the system."""
-        return self._length_unit_map[self.value]
+        unit_map = {
+            self.STANDARD: "mm",
+            self.MKS: "mm",
+            self.US_CUSTOMARY: "in",
+            self.IMPERIAL_DECIMAL: "in",
+            self.BUILDING_EURO: "cm",
+            self.BUILDING_US: "in", # Fractional Inches
+            self.METRIC_SMALL_PARTS: "mm",
+            self.IMPERIAL_CIVIL: "ft",
+            self.FEM: "mm",
+            self.METER_DECIMAL: "m",
+        }
+        return unit_map[self.value]
 
 class ConstraintSubPart(IntEnum):
     """An enumeration of integers corresponding to FreeCAD constraint sub part 
@@ -48,7 +46,7 @@ class ConstraintSubPart(IntEnum):
     """Constraint affects the center point of an edge."""
 
     @property
-    def name(self) -> str:
+    def human_name(self) -> str:
         """The name of the constraint subpart reference represented by the 
         integer.
         """
@@ -75,7 +73,7 @@ class PadTypeNum(IntEnum):
     UP_TO_SHAPE = 5
 
     @property
-    def name(self) -> str:
+    def human_name(self) -> str:
         """The name of the pad type represent by the integer."""
         names = {
             self.LENGTH: "Length",
@@ -90,7 +88,8 @@ class PadTypeNum(IntEnum):
 class InternalGeometryType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD 
     InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 
-    source code here (as of 2026-02-25): https://github.com/FreeCAD/FreeCAD/blob/34ae16cd01b179eb9e1801591276dbc5a38669b5/src/Mod/Sketcher/App/SketchGeometryExtension.h#L139
+    source code here (as of 2026-02-25):
+    FreeCAD/src/Mod/Sketcher/App/SketchGeometryExtension.h:139
     """
     NOT_INTERNAL = 0
     ELLIPSE_MAJOR_DIAMETER = 1
@@ -106,7 +105,7 @@ class InternalGeometryType(IntEnum):
     PARABOLA_FOCAL_AXIS = 11
 
     @property
-    def name(self) -> str:
+    def human_name(self) -> str:
         """The name of the internal geometry type represented by the integer."""
         names = {
             self.NOT_INTERNAL: "Not Internal Geometry",
@@ -147,7 +146,7 @@ class ConstraintTypeNum(IntEnum):
     WEIGHT = 19
 
     @property
-    def name(self) -> str:
+    def human_name(self) -> str:
         """The name of the constraint type represented by the integer."""
         names = {
             self.COINCIDENT: "Coincident",

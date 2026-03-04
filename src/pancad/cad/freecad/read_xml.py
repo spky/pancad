@@ -1402,4 +1402,4 @@ class FreeCADConstraintXML:
         return self.data.pairs.as_list()
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.data.type_.name}>"
+        return f"<{self.__class__.__name__} {self.data.type_.human_name}>"
