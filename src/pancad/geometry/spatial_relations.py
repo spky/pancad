@@ -1,6 +1,6 @@
-"""A module providing functions to check for spatial relations between objects. 
-pancad defines a spatial relation to be a relation that defines how an object 
-is located in space relative to another object. Many of these also exist as 
+"""A module providing functions to check for spatial relations between objects.
+pancad defines a spatial relation to be a relation that defines how an object
+is located in space relative to another object. Many of these also exist as
 constraints in CAD programs.
 
 Example Relations: Coincident, Parallel, Perpendicular, Skew
@@ -30,7 +30,7 @@ isclose0 = partial(comparison.isclose, value_b=0, nan_equal=True)
 @singledispatch
 def coincident(geometry_a, geometry_b) -> bool:
     """Returns whether geometry a is coincident to geometry b.
-    
+
     :param geometry_a: A Point, Line, LineSegment, or Plane
     :param geometry_b: One or more Points, Lines, LineSegments or Planes.
     :returns: Whether the geometries are coincident to geometry a
@@ -40,9 +40,9 @@ def coincident(geometry_a, geometry_b) -> bool:
 @singledispatch
 def collinear(geometry_a, geometry_b) -> bool:
     """Returns whether the geometry a and b can lie on the same line.
-    
+
     :param geometry_a: A Point, Line, or LineSegment
-    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be 
+    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be
         the same type.
     :returns: Whether the geometries can all lie on the same line
     """
@@ -50,11 +50,11 @@ def collinear(geometry_a, geometry_b) -> bool:
 
 @singledispatch
 def coplanar(geometry_a, geometry_b) -> bool:
-    """Returns whether the geometry a and b can lie on the same plane. If you 
+    """Returns whether the geometry a and b can lie on the same plane. If you
     want to check whether a geometry is on an existing plane, use coincident.
-    
+
     :param geometry_a: A Point, Line, or LineSegment
-    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be 
+    :param geometry_b: One or more Points, Lines, or LineSegments. All have to be
         the same type.
     :returns: Whether the geometries can all lie on the same plane
     """
@@ -66,7 +66,7 @@ def crosses():
 @singledispatch
 def equal(geometry_a, geometry_b):
     """Returns whether geometry a and geometry b are equal lengths
-    
+
     :param geometry_a: A LineSegment
     :param geometry_b: One or more other LineSegments
     :returns: Whether geometry a and b are equal length
@@ -76,7 +76,7 @@ def equal(geometry_a, geometry_b):
 @singledispatch
 def parallel(geometry_a, geometry_b) -> bool:
     """Returns whether the geometry a and b are parallel.
-    
+
     :param geometry_a: A Line, LineSegment, or Plane
     :param geometry_b: Another Line, LineSegment or Plane
     :returns: Whether the geometries are parallel
@@ -85,9 +85,9 @@ def parallel(geometry_a, geometry_b) -> bool:
 
 @singledispatch
 def perpendicular(geometry_a, geometry_b) -> bool:
-    """Returns whether the geometry a and b intersects and are oriented 90 degrees 
+    """Returns whether the geometry a and b intersects and are oriented 90 degrees
     to each other.
-    
+
     :param geometry_a: A Line, LineSegment, or Plane
     :param geometry_b: Another Line, LineSegment, or Plane
     :returns: Whether the geometries are perpendicular to each other
@@ -97,10 +97,10 @@ def perpendicular(geometry_a, geometry_b) -> bool:
 @singledispatch
 def project(non_plane, plane):
     """Returns the projection of the non_plane geometry onto the plane.
-    
+
     :param non_plane: A Point, Line, or LineSegment
     :param plane: A Plane
-    :returns: The geometry representing the projection of the non plane geometry 
+    :returns: The geometry representing the projection of the non plane geometry
         onto the plane
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
@@ -119,11 +119,11 @@ def get_distance_between():
 
 @singledispatch
 def get_intersect(geometry_a, geometry_b) -> Point | Line | LineSegment:
-    """Returns the intersection of geometry a and b as a Point, Line, LineSegment 
-    or None depending on the input types. Note: LineSegments are treated as 
-    infinitely long to find the intersection, if you want to know whether the 
+    """Returns the intersection of geometry a and b as a Point, Line, LineSegment
+    or None depending on the input types. Note: LineSegments are treated as
+    infinitely long to find the intersection, if you want to know whether the
     finite line actually crosses the other geometry use crosses() instead.
-    
+
     :param geometry_a: A Line, LineSegment, or Plane
     :param geometry_b: Another Line, LineSegment, or Plane
     :returns: The intersection if it exists, otherwise None
@@ -132,24 +132,24 @@ def get_intersect(geometry_a, geometry_b) -> Point | Line | LineSegment:
 
 @singledispatch
 def get_angle_between(geometry_a, geometry_b) -> float | None:
-    """Returns the value of the angle between geometry a and b. This function 
-    dispatches to a more specific function based on the type of the first 
+    """Returns the value of the angle between geometry a and b. This function
+    dispatches to a more specific function based on the type of the first
     argument.
-    
+
     :param geometry_a: A Line, LineSegment, or Plane
     :param geometry_b: Another Line, LineSegment, or Plane
-    :param opposite: If False, the angle's magnitude is the angle 
-        clockwise of this element and counterclockwise of the other element 
-        (which is equal to the angle counterclockwise of this element and 
-        clockwise of the other element). If True, the angle's magnitude will 
-        be the supplement/explement of the False angle which is the angle of 
-        the other two/four quadrants. Note: If the elements are parallel, this 
+    :param opposite: If False, the angle's magnitude is the angle
+        clockwise of this element and counterclockwise of the other element
+        (which is equal to the angle counterclockwise of this element and
+        clockwise of the other element). If True, the angle's magnitude will
+        be the supplement/explement of the False angle which is the angle of
+        the other two/four quadrants. Note: If the elements are parallel, this
         will cause the function to return pi/tau
-    :param convention: The angle convention selection from the 
-        pancad.constants.angle_convention.AngleConvention enumeration. Used to 
-        select how the returned angle should be represented (0 to 2pi, -pi to pi, 
+    :param convention: The angle convention selection from the
+        pancad.constants.angle_convention.AngleConvention enumeration. Used to
+        select how the returned angle should be represented (0 to 2pi, -pi to pi,
         etc).
-    :returns: The value of the angle between the geometries in radians. If the 
+    :returns: The value of the angle between the geometries in radians. If the
         elements (usually lines) are skew, returns None.
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
@@ -157,7 +157,7 @@ def get_angle_between(geometry_a, geometry_b) -> float | None:
 @singledispatch
 def skew(geometry_a, geometry_b) -> bool:
     """Returns whether geometry a and b are skew.
-    
+
     :param geometry_a: A Line or LineSegment
     :param geometry_b: Another Line or LineSegment
     :returns: Whether the geometries are skew to one another
@@ -175,18 +175,18 @@ def coincident_point(point: Point,
         return point == other
     elif isinstance(other, Line):
         if other.reference_point == point:
-            # Cover the edge cases where point is the zero vector or if the 
+            # Cover the edge cases where point is the zero vector or if the
             # point is the reference_point
             return True
-        
+
         point_vector = np.array(point)
         reference_vector = np.array(other.reference_point)
         direction_vector = np.array(other.direction)
-        
+
         ref_pt_to_pt = (np.dot(point_vector, direction_vector)
                         * direction_vector)
         check_point_tuple = trig.to_1d_tuple(ref_pt_to_pt + reference_vector)
-        
+
         return True if isclose(check_point_tuple, tuple(point)) else False
     elif isinstance(other, LineSegment):
         return coincident(point, other.get_line())
@@ -410,13 +410,13 @@ def perpendicular_line_segment(line_segment: LineSegment,
 def perpendicular_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool:
     if isinstance(other, Line):
         vector_1, vector_2 = conversion.get_2_vectors_on_plane(plane)
-        
+
         plane_x = trig.rotation_x(math.pi/2) @ plane.normal
         plane_y = trig.rotation_y(math.pi/2) @ plane.normal
-        
+
         dot_x = np.dot(vector_1, other.direction)
         dot_y = np.dot(vector_2, other.direction)
-        
+
         return isclose0(dot_x) and isclose0(dot_y)
     elif isinstance(other, LineSegment):
         return perpendicular(plane, other.get_line())
@@ -457,11 +457,11 @@ def skew_line(line: Line, other: Line | LineSegment) -> bool:
             raise ValueError("Both lines must have the same number of dimensions")
         elif len(line) == 2:
             return False
-        
+
         pt1_to_pt2 = (np.array(line.reference_point)
                       - np.array(other.reference_point))
         cross_product = np.cross(line.direction, other.direction)
-        
+
         if isclose(np.dot(pt1_to_pt2, cross_product), 0):
             return False
         else:
@@ -592,17 +592,17 @@ def get_intersect_line(line: Line,
     if isinstance(other, Line):
         if parallel(line, other) or skew(line, other):
             return None
-        
-        pt1_to_pt2 = (line.reference_point.vector() 
+
+        pt1_to_pt2 = (line.reference_point.vector()
                       - other.reference_point.vector())
         matrix_a = np.column_stack(
             (np.array(other.direction), -np.array(line.direction))
         )
-        
+
         non_zero_rows = []
         for c1, c2 in zip(line.direction, other.direction):
             non_zero_rows.append(not (isclose(c1, 0) and isclose(c2, 0)))
-        
+
         if len(line) == 2:
             pass # 2D will always intersect since they are not parallel
         elif non_zero_rows[0] and non_zero_rows[1] and not non_zero_rows[2]:
@@ -619,7 +619,7 @@ def get_intersect_line(line: Line,
         else:
             matrix_a = np.delete(matrix_a, (0), axis=0)
             pt1_to_pt2 = np.delete(pt1_to_pt2, (0), axis=0)
-        
+
         if isclose(np.linalg.det(matrix_a), 0):
             return None
         else:
@@ -670,12 +670,12 @@ def get_intersect_plane(plane: Plane,
             zeros = [list(map(isclose0, c)) for c in n_matrix]
             zero_cols = np.all(zeros, axis=0).tolist()
             zero_index = zero_cols.index(True) if np.any(zero_cols) else 2
-            
+
             n_matrix = np.delete(n_matrix, zero_index, axis=1)
             coordinates = np.linalg.inv(n_matrix) @ nr_vector
             coordinates = np.insert(coordinates, zero_index, 0)
             return Line(Point(coordinates),
                         np.cross(plane.normal, other.normal))
-        
+
     else:
         raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
