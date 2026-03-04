@@ -74,20 +74,6 @@ class PartFile(PancadThing):
         self.container = container
         super().__init__()
 
-    # Class Methods
-    @classmethod
-    def from_freecad(cls, filepath: str) -> Self:
-        """Reads a FreeCAD file and returns it as a pancad PartFile.
-
-        :param filepath: The filepath to a FreeCAD file structured like a 
-            part file.
-        :returns: The pancad equivalent of the FreeCAD part file.
-        """
-        # Local import here to avoid circular imports
-        from pancad.cad.freecad.filetypes import FreeCADFile
-        file = FreeCADFile.from_fcstd(filepath)
-        return file.to_pancad()
-
     # Properties
     @property
     def container(self) -> FeatureContainer:
@@ -124,15 +110,6 @@ class PartFile(PancadThing):
         always an empty list.
         """
         return self._container.get_dependencies()
-
-    def to_freecad(self, filepath: str) -> None:
-        """Writes the PartFile to a FreeCAD file.
-
-        :param filepath: The filepath to save the new FreeCAD file into.
-        """
-        # Local import here to avoid circular imports
-        from pancad.cad.freecad.filetypes import FreeCADFile
-        FreeCADFile.from_partfile(self, filepath)
 
     # Dunders
     def __contains__(self, item: AbstractFeature | AbstractGeometry) -> bool:

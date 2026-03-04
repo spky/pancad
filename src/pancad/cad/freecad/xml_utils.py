@@ -17,6 +17,7 @@ from pancad.cad.freecad.constants.archive_constants import (
 from pancad.utils.trigonometry import is_clockwise
 
 if TYPE_CHECKING:
+    from typing import NamedTuple
     from collections.abc import Callable
     from typing import Any, NoReturn
     from xml.etree.ElementTree import Element, ElementTree
@@ -170,23 +171,6 @@ def read_vector(element: Element,
         del components[-1]
     return tuple(components)
 
-def convert_str(func: Callable[..., str], converter: Callable[str, Any]):
-    """A wrapper function to convert property string outputs to another type
-    using the converter function.
-
-    :param func: The function to wrapper
-    :param converter: A function that takes a string and outputs some other
-        data type.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if isinstance(func, partialmethod):
-            # Handle cases with partialmethods - without using
-            # make_unbound_method the partialmethod raises a TypeError saying
-            # it's not callable
-            return converter(func._make_unbound_method()(*args, **kwargs))
-        return converter(func(*args, **kwargs))
-    return wrapper
 
 VectorPair = tuple[tuple[float, float], tuple[float, float]]
 def read_angle_quadrant(refs: tuple[tuple[VectorPair, CSP],

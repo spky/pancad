@@ -1,7 +1,7 @@
-"""A module providing functions for reading and writing FreeCAD appearance 
+"""A module providing functions for reading and writing FreeCAD appearance
 files.
 """
-# This file is stored for later when appearance files need to be read and 
+# This file is stored for later when appearance files need to be read and
 # written. Currently for future planned functionality
 
 # from __future__ import annotations
@@ -28,21 +28,21 @@ files.
                           # filename: str | ZipInfo
                           # ) -> dict[str, float | tuple[int]]:
     # """Reads shape appearance file data.
-    
+
     # :param archive: A ZipFile of a FreeCAD file.
     # :param filename: The name of the ShapeAppearance file to read.
-    # :returns: A dictionary of labels to either their float values or their RGBA 
+    # :returns: A dictionary of labels to either their float values or their RGBA
         # color integer tuples.
     # """
     # with archive.open(filename) as file:
         # data = bytes(file.read())
-    
+
     # parsed = {}
-    
+
     # if len(data) > 40:
         # parsed["uid"] = data[40:].decode()
         # data = data[:40]
-    
+
     # LABELS = [
         # "header",
         # "ambient",
@@ -74,14 +74,14 @@ files.
 
 # def read_color_array(archive: ZipFile, filename: str | ZipInfo) -> tuple[int]:
     # """Reads color array file data.
-    
+
     # :param archive: A ZipFile of a FreeCAD file.
     # :param filename: The name of the Point or Line ColorArray file to read.
     # :returns: A tuple of ARGB integer values.
     # """
     # with archive.open(filename) as file:
         # data = bytes(file.read())
-    
+
     # header, color = list(batched(data, 4))
     # assert header == (1, 0, 0, 0)
     # return color
