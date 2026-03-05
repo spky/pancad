@@ -8,13 +8,9 @@ between applications.
 """
 from __future__ import annotations
 
-from collections.abc import MutableSequence
-from textwrap import indent
 from typing import TYPE_CHECKING
 
-from pancad.exceptions import DupeUidError, HasDependentsError
 from pancad.abstract import AbstractFeature
-from pancad.geometry.sketch import Sketch
 from pancad.geometry.system import FeatureSystem
 from pancad.geometry.coordinate_system import Pose
 from pancad.geometry.unique_lists import FeatureGeometryList
@@ -39,7 +35,7 @@ class FeatureContainer(AbstractFeature):
     """
     def __init__(self, pose: Pose=None, feature_system=None, *,
                  name: str=DEFAULT_NAME,
-                 system: AbstractFeatureSystem=None,
+                 system: FeatureSystem=None,
                  uid: str=None) -> None:
         super().__init__(system, name)
         self.uid = uid
