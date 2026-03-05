@@ -142,10 +142,10 @@ class SystemFeatureList(UniqueCADList):
         super().__init__(parent, values)
 
     # Public Methods
-    def index(self, value: AbstractFeature) -> int:
+    def index(self, value: AbstractFeature, start: int=0, stop: int=None) -> int:
         if value is self._parent.feature:
             return -1
-        return super().index(value)
+        return super().index(value, start, stop)
 
     def insert(self, index: int, value: AbstractFeature) -> None:
         """Inserts the object into the list and assigns its system to the 
@@ -217,7 +217,6 @@ class FeatureConstraintList(UniqueCADList):
     def __init__(self,
                  parent: FeatureSystem,
                  values: Sequence[AbstractConstraint]) -> None:
-        # TODO: Check for constraint dependencies
         for value in values:
             self._raise_if_missing_dependencies(value)
         super().__init__(parent, values)

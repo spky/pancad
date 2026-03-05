@@ -4,12 +4,10 @@ starting from a sketch profile.
 from __future__ import annotations
 
 import dataclasses
-from textwrap import indent
 from typing import TYPE_CHECKING
 
 from pancad.abstract import AbstractFeature
 from pancad.constants import FeatureType
-from pancad.utils.text_formatting import get_table_string
 from pancad.utils.initialize import get_pancad_config
 
 if TYPE_CHECKING:

@@ -8,15 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pancad.abstract import AbstractFeature, AbstractGeometry
-from pancad.constants import ConstraintReference, SketchConstraint
-from pancad.exceptions import SketchGeometryHasConstraintsError
+from pancad.abstract import AbstractFeature
+from pancad.constants import SketchConstraint
 from pancad.geometry.coordinate_system import Pose
 from pancad.geometry.unique_lists import FeatureGeometryList
 from pancad.geometry.system import TwoDSketchSystem
 from pancad.utils.initialize import get_pancad_config
-from pancad.utils.geometry import two_dimensions_required
-from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -122,9 +119,8 @@ class Sketch(AbstractFeature):
             feat = next(f for f in constraint.get_dependencies()
                         if f is not self)
             return feat.feature_system.coordinate_system.get_xy_plane()
-        else:
-            raise ValueError("Unsupported constraint type for placing sketches:"
-                             f" {constraint}")
+        raise ValueError("Unsupported constraint type for placing sketches:"
+                         f" {constraint}")
 
     # Python Dunders #
     def __repr__(self) -> str:

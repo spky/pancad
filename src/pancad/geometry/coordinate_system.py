@@ -28,8 +28,6 @@ if TYPE_CHECKING:
 isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
-# TODO: Add expected conditions to the test_system_parts_rotation_3d test
-
 SystemAxes3D = namedtuple("SystemAxes3D", ["x", "y", "z"])
 
 def updates_planes(func):
@@ -268,12 +266,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         system_vectors = [self.x_vector, self.y_vector, self.z_vector]
         canon = SystemAxes3D(*[np.array(axis) for axis in canon_vectors])
         sys = SystemAxes3D(*[np.array(axis) for axis in system_vectors])
-        canon_z_axis = np.array((0, 0, 1))
-        z_axis = np.array(self.z_vector)
-
-        x_axis = np.array(self.x_vector)
-        canon_x_axis = np.array((1, 0, 0))
-
         if all(np.isclose(np.dot(c, s), 1) for c, s in zip(canon, sys)):
             # Check if the axes are all close to the canon axis directions and
             # return a quaternion with no rotation if so.
