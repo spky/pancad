@@ -1,11 +1,11 @@
-"""A module for reading and writing pancad objects from/to a sqlite database. 
+"""A module for reading and writing pancad objects from/to a sqlite database.
 Importing this module registers the converters to sqlite3.
 """
 import sqlite3
 import tomllib
 from pathlib import Path
 
-from pancad import resources, geometry
+from pancad import resources
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
@@ -19,24 +19,21 @@ def _point(value: bytes) -> Point:
     return Point(*map(float, value.split(b";")))
 
 def _circle(value: bytes) -> Circle:
-    PARAM_COUNT_2D = 3
-    if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
-        *center, radius = dimensions
-        x_vector = None
-        y_vector = None
-    else:
+    param_count_2d = 3
+    if len(dimensions := value.split(b";")) != param_count_2d:
         raise NotImplementedError("3D Circles not implemented yet")
+    *center, radius = dimensions
     center = tuple(map(float, center))
     radius = float(radius)
     return Circle(center, radius)
 
 def _line(value: bytes) -> Line:
-    PARAM_COUNT_2D = 4
-    PARAM_COUNT_3D = 6
-    if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
+    param_count_2d = 4
+    param_count_3d = 6
+    if len(dimensions := value.split(b";")) == param_count_2d:
         closest_x, closest_y, *direction = dimensions
         closest = [closest_x, closest_y]
-    elif len(dimensions) == PARAM_COUNT_3D:
+    elif len(dimensions) == param_count_3d:
         closest_x, closest_y, closest_z, *direction = dimensions
         closest = [closest_x, closest_y, closest_z]
     else:
@@ -47,12 +44,12 @@ def _line(value: bytes) -> Line:
     return Line(Point(closest), direction)
 
 def _line_segment(value: bytes) -> LineSegment:
-    PARAM_COUNT_2D = 4
-    PARAM_COUNT_3D = 6
-    if len(dimensions := value.split(b";")) == PARAM_COUNT_2D:
+    param_count_2d = 4
+    param_count_3d = 6
+    if len(dimensions := value.split(b";")) == param_count_2d:
         a_x, a_y, *b = dimensions
         a = [a_x, a_y]
-    elif len(dimensions) == PARAM_COUNT_3D:
+    elif len(dimensions) == param_count_3d:
         a_x, a_y, a_z, *b = dimensions
         a = [a_x, a_y, a_z]
     else:
@@ -63,16 +60,19 @@ def _line_segment(value: bytes) -> LineSegment:
     return LineSegment(a, b)
 
 def _circular_arc(value: bytes) -> CircularArc:
-    PARAM_COUNT_2D = 5
-    PARAM_COUNT_3D = 6
-    if len(dimensions := value.split(b"|")) == PARAM_COUNT_2D:
+    param_count_2d = 5
+    param_count_3d = 6
+    if len(dimensions := value.split(b"|")) == param_count_2d:
         *vectors, is_clockwise, radius = dimensions
-        float_vectors = []
-        for vector in vectors:
-            float_vectors.append(list(map(float, vector.split(b";"))))
-        center, start, end = float_vectors
+        float_vectors = [list(map(float, v.split(b";"))) for v in vectors]
+        try:
+            center, start, end = float_vectors
+        except ValueError as exc:
+            exc.add_note("Unexpected number of vectors in circular arc"
+                         f" sql value: {value}")
+            raise
         normal = None
-    elif len(dimensions) == PARAM_COUNT_3D:
+    elif len(dimensions) == param_count_3d:
         raise NotImplementedError("3D CircularArcs not implemented yet")
     else:
         class_ = CircularArc.__name__
