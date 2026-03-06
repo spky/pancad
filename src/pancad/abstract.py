@@ -227,9 +227,9 @@ class AbstractConstraint(PancadThing):
     """
     def __init__(self,
                  system: AbstractGeometrySystem=None) -> None:
-        self.system = system
-        if system:
-            self.feature = system.feature
+        super().__init__(system)
+        if self.system:
+            self.feature = self.system.feature
         else:
             self.feature = None
 
