@@ -23,12 +23,12 @@ class PathCommandCharacter(StrEnum):
     V = "V"
     z = "z"
     Z = "Z"
-    
+
     REL_MOVETO = m
     ABS_MOVETO = M
-    
+
     REL_LINETO = l
     ABS_LINETO = L
-    
+
     def __repr__(self):
         return self.value
