@@ -7,79 +7,67 @@ top_left = (0, side_length)
 # [corner-definition-end]
 
 # [line-definition-start]
-from pancad.geometry import LineSegment
+from pancad.api import LineSegment
 bottom = LineSegment(bottom_left, bottom_right)
 right = LineSegment(bottom_right, top_right)
 top = LineSegment(top_right, top_left)
 left = LineSegment(top_left, bottom_left)
+geometry = [bottom, right, top, left]
 # [line-definition-end]
 
 # [sketch-definition-start]
-from pancad.geometry import Sketch
-sketch = Sketch(geometry=[bottom, right, top, left], name="square_sketch")
+from pancad.api import Sketch
+sketch = Sketch(name="square_sketch")
+sketch.geometry_system.geometry.extend(geometry)
 # [sketch-definition-end]
 
 # [constraint-definition-start]
-from pancad.geometry.constants import ConstraintReference, SketchConstraint
-from pancad.geometry.constraints import make_constraint
-
-sketch.constraints = [
+from pancad.api import make_constraint, SketchConstraint as SC
+constraints = [
     # Corner Coincidence
-    make_constraint(SketchConstraint.COINCIDENT,
-                    bottom, ConstraintReference.START,
-                    left, ConstraintReference.END),
-    make_constraint(SketchConstraint.COINCIDENT,
-                    bottom, ConstraintReference.END,
-                    right, ConstraintReference.START),
-    make_constraint(SketchConstraint.COINCIDENT,
-                    right, ConstraintReference.END,
-                    top, ConstraintReference.START),
-    make_constraint(SketchConstraint.COINCIDENT,
-                    left, ConstraintReference.START,
-                    top, ConstraintReference.END),
-    
+    make_constraint(SC.COINCIDENT, bottom.start, left.end),
+    make_constraint(SC.COINCIDENT, bottom.end, right.start),
+    make_constraint(SC.COINCIDENT, right.end, top.start),
+    make_constraint(SC.COINCIDENT, left.start, top.end),
+
     # Line Segment Orientations
-    make_constraint(SketchConstraint.HORIZONTAL,
-                    bottom, ConstraintReference.CORE),
-    make_constraint(SketchConstraint.HORIZONTAL,
-                    top,  ConstraintReference.CORE),
-    make_constraint(SketchConstraint.VERTICAL,
-                    right, ConstraintReference.CORE),
-    make_constraint(SketchConstraint.VERTICAL,
-                    left, ConstraintReference.CORE),
-    
-    # Top/Bottom and Left/Right Distances
-    make_constraint(SketchConstraint.DISTANCE,
-                    bottom, ConstraintReference.CORE,
-                    top, ConstraintReference.CORE,
-                    value=side_length, unit="mm"),
-    make_constraint(SketchConstraint.DISTANCE,
-                    left, ConstraintReference.CORE,
-                    right, ConstraintReference.CORE,
-                    value=side_length, unit="mm"),
-    
+    make_constraint(SC.HORIZONTAL, bottom),
+    make_constraint(SC.HORIZONTAL, top),
+    make_constraint(SC.VERTICAL, right),
+    make_constraint(SC.VERTICAL, left),
+
+    # Top/Bottom and Left/Right Distance
+    make_constraint(SC.DISTANCE, bottom, top, value=side_length, unit="mm"),
+    make_constraint(SC.DISTANCE, left, right, value=side_length, unit="mm"),
+
     # Constrain one corner to the origin
-    make_constraint(SketchConstraint.COINCIDENT,
-                    bottom, ConstraintReference.START,
-                    sketch, ConstraintReference.ORIGIN),
+    make_constraint(SC.COINCIDENT, bottom.start, sketch.geometry_system.origin),
 ]
+sketch.geometry_system.constraints.extend(constraints)
 # [constraint-definition-end]
 
 # [extrude-definition-start]
-from pancad.geometry import Extrude
-extrude = Extrude.from_length(sketch, side_length, name="cube_extrude")
+from pancad.api import Extrude
+extrude = Extrude.from_length(sketch, side_length,
+                              name="cube_extrude", unit="mm")
 # [extrude-definition-end]
 
 # [file-definition-start]
-from pancad import PartFile
+from pancad.api import PartFile
 file = PartFile("tutorial_cube")
-file.features = [sketch, extrude]
+feature_system = file.container.feature_system
+feature_system.features.append(sketch)
+sketch_alignment = make_constraint(SC.ALIGN_AXES,
+                                   feature_system.coordinate_system,
+                                   sketch.pose.coordinate_system)
+feature_system.constraints.append(sketch_alignment)
+feature_system.features.append(extrude)
 file.to_freecad("tutorial_cube.FCStd")
 # [file-definition-end]
 
 # Clean up after tutorial
 import os
-os.remove(file.filename + ".FCStd")
+os.remove("tutorial_cube.FCStd")
 for filename in os.listdir():
     if filename.endswith(".FCBak"):
         os.remove(filename)
