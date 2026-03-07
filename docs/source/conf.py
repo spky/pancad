@@ -12,8 +12,8 @@ author = 'spky'
 
 import pancad.constants
 import pancad.geometry
-import pancad.geometry.constants
-import pancad.geometry.constraints
+import pancad.constants
+import pancad.constraints
 import pancad.filetypes
 import pancad.utils
 

@@ -1,4 +1,4 @@
-"""A module providing a class to represent points in all CAD programs,  
+"""A module providing a class to represent points in all CAD programs,
 graphics, and other geometry use cases.
 """
 from __future__ import annotations
@@ -24,14 +24,14 @@ isclose = partial(comparison.isclose, nan_equal=False)
 isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point(AbstractGeometry):
-    """A class representing points in 2D and 3D space. Point can return its 
-    position in cartesian, spherical, or polar coordinates. Point's __init__ 
-    function can only take cartesian coordinates, so either use one of its class 
-    functions or initialize it with no arguments and modify one of its 
-    coordinate system specific properties if another coordinate system is 
-    desired. 
-    
-    :param components: Either the (x, y) or (x, y, z) as individual Real number 
+    """A class representing points in 2D and 3D space. Point can return its
+    position in cartesian, spherical, or polar coordinates. Point's __init__
+    function can only take cartesian coordinates, so either use one of its class
+    functions or initialize it with no arguments and modify one of its
+    coordinate system specific properties if another coordinate system is
+    desired.
+
+    :param components: Either the (x, y) or (x, y, z) as individual Real number
         arguments or as a single vector.
     :param uid: The unique ID of the point for interoperable CAD identification.
     :param unit: The unit of the point's length values.
@@ -49,10 +49,10 @@ class Point(AbstractGeometry):
     def from_polar(cls, *components: Real | Sequence[Real] | np.ndarray,
                    uid: str | UUID=None, unit: str=None):
         """Initializes a point from polar coordinates.
-        
-        :param components: The (Radius (r), Azimuth (phi)) individual Real 
+
+        :param components: The (Radius (r), Azimuth (phi)) individual Real
             number arguments or as a single vector. Azimuth must be in radians.
-        :param uid: The unique ID of the point for interoperable CAD 
+        :param uid: The unique ID of the point for interoperable CAD
             identification.
         :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 2 long.
@@ -65,13 +65,14 @@ class Point(AbstractGeometry):
     @classmethod
     def from_spherical(cls, *components: Real | Sequence[Real] | np.ndarray,
                        uid: str | UUID=None, unit: str=None):
-        """Initializes a point from spherical coordinates (Radius (r), Azimuth 
-        (phi), Elevation (theta)). Azimuth and Elevation angles must be in 
+        """Initializes a point from spherical coordinates (Radius (r), Azimuth
+        (phi), Elevation (theta)). Azimuth and Elevation angles must be in
         radians.
-        :param components: The (Radius (r), Azimuth (phi), Elevation (theta)) 
-            individual Real number arguments or as a single vector. Azimuth and 
+
+        :param components: The (Radius (r), Azimuth (phi), Elevation (theta))
+            individual Real number arguments or as a single vector. Azimuth and
             Elevation must be in radians.
-        :param uid: The unique ID of the point for interoperable CAD 
+        :param uid: The unique ID of the point for interoperable CAD
             identification.
         :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 3 long.
@@ -85,7 +86,7 @@ class Point(AbstractGeometry):
     @property
     def cartesian(self) -> tuple[Real, Real] | tuple[Real, Real, Real]:
         """The cartesian coordinates (x, y) or(x, y, z) of the point.
-        
+
         :raises ValueError: When provided a tuple not 2 or 3 long.
         """
         return self._cartesian
@@ -120,7 +121,7 @@ class Point(AbstractGeometry):
     @property
     def z(self) -> Real:
         """The point's cartesian z-coordinate. Turns a 2D point 3D if set.
-        
+
         :raises IndexError: When the getter is called on a 2D point.
         """
         return self.cartesian[2]
@@ -131,9 +132,9 @@ class Point(AbstractGeometry):
     # Polar/Spherical Coordinates
     @property
     def polar(self) -> tuple[Real]:
-        """The polar coordinates of the point (r, phi). Azimuth angle is and 
+        """The polar coordinates of the point (r, phi). Azimuth angle is and
         must be in radians.
-        
+
         :raises ValueError: When called if the point is 3D.
         """
         return trig.cartesian_to_polar(self.cartesian)
@@ -143,9 +144,9 @@ class Point(AbstractGeometry):
 
     @property
     def spherical(self) -> tuple[Real]:
-        """The spherical coordinates (r, phi, theta) of the point. Azimuth 
+        """The spherical coordinates (r, phi, theta) of the point. Azimuth
         and inclination angles are and must be in radians.
-        
+
         :raises ValueError: When called if the point is 2D.
         """
         return trig.cartesian_to_spherical(self.cartesian)
@@ -156,8 +157,8 @@ class Point(AbstractGeometry):
     @property
     def r(self) -> Real:
         """The polar/spherical radial distance coordinate of the point.
-        
-        :raises ValueError: If r < 0, r is NaN, r == 0 and phi is NaN, or r != 0 
+
+        :raises ValueError: If r < 0, r is NaN, r == 0 and phi is NaN, or r != 0
             and phi and theta are NaNs.
         """
         return trig.r_of_cartesian(self.cartesian)
@@ -185,8 +186,8 @@ class Point(AbstractGeometry):
     @property
     def phi(self) -> Real:
         """The polar/spherical azimuth angle of the point in radians.
-        
-        :raises ValueError: If phi is NaN and r != 0, r == 0 and phi is not NaN, 
+
+        :raises ValueError: If phi is NaN and r != 0, r == 0 and phi is not NaN,
             or if phi is NaN and theta is not NaN.
         """
         return trig.phi_of_cartesian(self.cartesian)
@@ -207,7 +208,7 @@ class Point(AbstractGeometry):
     @property
     def theta(self) -> Real:
         """The spherical inclination angle of the point in radians.
-        
+
         :raises ValueError: If phi is NaN and theta is not 0, pi or NaN.
         :raises IndexError: When the getter is called on a 2D point.
         """
@@ -232,14 +233,14 @@ class Point(AbstractGeometry):
         return math.degrees(self.theta)
 
     def set_phi_degrees(self, value: Real) -> Self:
-        """Sets the polar/spherical azimuth coordinate of the point using a 
+        """Sets the polar/spherical azimuth coordinate of the point using a
         value in degrees. Returns the updated point.
         """
         self.phi = math.radians(value)
         return self
 
     def set_theta_degrees(self, value: Real) -> Self:
-        """Sets the spherical inclination coordinate of the point using a 
+        """Sets the spherical inclination coordinate of the point using a
         value in degrees. Returns the updated point.
         """
         self.theta = math.radians(value)
@@ -252,7 +253,7 @@ class Point(AbstractGeometry):
 
     def vector(self, vertical: bool=True) -> np.ndarray:
         """Returns a numpy vector of the point's cartesian.
-        
+
         :param vertical: Sets whether to return a vertical vector. Defaults True.
         :returns: The cartesian position vector of the point.
         """
@@ -293,21 +294,21 @@ class Point(AbstractGeometry):
         return NotImplemented
 
     def __copy__(self) -> Point:
-        """Returns a copy of the point that has the same coordinates, but no 
+        """Returns a copy of the point that has the same coordinates, but no
         assigned uid. Can be used with the python copy module.
         """
         return self.copy()
 
     def __getitem__(self, item: int) -> Real:
-        """Returns the cartesian coordinates when subscripted. 0 returns x, 1 
+        """Returns the cartesian coordinates when subscripted. 0 returns x, 1
         returns y, 2 returns z.
         """
         return self.cartesian[item]
 
     def __eq__(self, other: Point) -> bool:
-        """Rich comparison for point equality that allows for points to be 
+        """Rich comparison for point equality that allows for points to be
         directly compared with ==.
-        
+
         :param other: The point to compare self to.
         :returns: Whether the cartesian tuples of the points are equal.
         :raises ValueError: When comparing Points of differing dimensions.
@@ -323,14 +324,14 @@ class Point(AbstractGeometry):
         return len(self.cartesian)
 
     def __iter__(self):
-        """Iterator function to allow the point's cartesian position to be 
+        """Iterator function to allow the point's cartesian position to be
         output when the point is fed to a list or tuple like function.
         """
         self._iter_index = 0
         return self
 
     def __next__(self) -> float:
-        """Next function to allow the point's cartesian position to be 
+        """Next function to allow the point's cartesian position to be
         output when the point is fed to a list or tuple like function.
         """
         if self._iter_index < len(self.cartesian):
@@ -351,10 +352,10 @@ class Point(AbstractGeometry):
 
     # NumPy Dunders #
     def __array__(self, dtype=None, copy=None) -> np.ndarray:
-        """Array function to allow the point to be fed into a numpy array 
+        """Array function to allow the point to be fed into a numpy array
         function and return a horizontal numpy array.
-        
-        :raises ValueError: When copy is set to False. copy argument only 
+
+        :raises ValueError: When copy is set to False. copy argument only
             included for numpy compatibility.
         """
         array = np.array(list(self))

@@ -64,6 +64,7 @@ class Extrude(AbstractFeature):
     :param profile: The sketch defining the extrusion 2D shape.
     :param settings: The constant settings of the Extrude, stored inside a 
         ExtrudeSettings dataclass.
+    :param name: The human-visible name of the extrusion.
     :param uid: The unique id of the Extrude. When set to None the uid is 
         automatically generated.
     :param context: The feature that acts as the context for this feature, 
@@ -90,12 +91,13 @@ class Extrude(AbstractFeature):
         :param profile: The Sketch feature defining the extrusion's 2D shape.
         :param length: The length of the extrusion the direction specified by 
             the extrusion type relative to the profile sketch.
+        :param name: The human-visible name of the extrusion.
         :param uid: The unique id of the Extrude. Defaults to None.
         :param context: The feature that acts as the context for this feature, 
             usually a :class:`~pancad.geometry.FeatureContainer`
         :param settings: See :class:`~pancad.geometry.extrude.ExtrudeSettings` 
-            for additional keyword arguments. If the 'type_' setting is not 
-            provided, it's assumed to be FeatureType.DIMENSION.
+            for additional keyword arguments. If the type setting is not 
+            provided, it's set to FeatureType.DIMENSION.
         """
         type_ = settings.setdefault("type_", FeatureType.DIMENSION)
         if type_ not in FeatureType.SINGLE_DIMENSION:
