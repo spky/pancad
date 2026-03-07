@@ -16,12 +16,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from textwrap import indent
 
 from pancad.abstract import PancadThing
 from pancad.geometry.feature_container import FeatureContainer
 
 if TYPE_CHECKING:
+    from os import PathLike
     from uuid import UUID
     from typing import Self
 
@@ -111,43 +111,20 @@ class PartFile(PancadThing):
         """
         return self._container.get_dependencies()
 
+    def to_freecad(self, path: PathLike) -> None:
+        """Writes this PartFile to a FreeCAD FCStd file.
+
+        :param path: The path to write the FCStd file to.
+        """
+        # pylint: disable=import-outside-toplevel
+        from pancad.io.freecad import write_part_to_freecad
+        write_part_to_freecad(self, path)
+
     # Dunders
     def __contains__(self, item: AbstractFeature | AbstractGeometry) -> bool:
         return item in self.container
 
     def __repr__(self) -> str:
-        return super().__repr__().format(details=f"'{self.name}'")
-
-    def __str__(self) -> str:
-        """Prints a summary of the part file's contents."""
-        prefix = "    "
-        summary = [f"PartFile '{self.name}'"]
-        # Summarize Features
-        for feature in self.container.features:
-            dependency_lines = []
-            for dependency in feature.get_dependencies():
-                dependency_lines.append(
-                    f"{dependency.__class__.__name__} '{dependency.name}'"
-                )
-            preface = "Dependencies: "
-            if len(dependency_lines) > 0:
-                dependency_iter = iter(dependency_lines)
-                dependency_summary = [preface + next(dependency_iter)]
-                dep_indent = " "*len(preface)
-                dependency_summary.extend(
-                    [indent(line, dep_indent) for line in dependency_iter]
-                )
-            else:
-                dependency_summary = [preface + "None"]
-            feature_str = "\n".join(str(feature).split("\n")[1:])
-            feature_summary = "\n".join(
-                [
-                    f"{feature.__class__.__name__} '{feature.name}'",
-                    indent("\n".join(dependency_summary), prefix),
-                    indent(feature_str, prefix),
-                ]
-            )
-            summary.append(
-                indent(feature_summary, prefix)
-            )
-        return "\n".join(summary)
+        no_feats = len(self.container.feature_system.features)
+        details = f"'{self.name}' {no_feats} feats"
+        return super().__repr__().format(details=details)

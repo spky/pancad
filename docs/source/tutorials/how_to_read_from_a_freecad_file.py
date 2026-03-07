@@ -1,4 +1,4 @@
 import pancad
 filename = "cube.FCStd"
-part = pancad.PartFile.from_freecad(filename)
+part = pancad.read_freecad(filename)
 print(part)

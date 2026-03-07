@@ -10,7 +10,7 @@ import pytest
 
 try:
     import Part
-    import FreeCAD as App
+    import FreeCAD as freecad
 except ImportError:
     import sys
     from pancad.cad.freecad._bootstrap import get_app_dir
