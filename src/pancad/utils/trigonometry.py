@@ -16,7 +16,7 @@ from pancad.utils.comparison import isclose
 from pancad.utils.pancad_types import VectorLike
 
 def angle_mod(angle: Real) -> float:
-    """Returns the angle bounded from -2π to +2π since python's modulo 
+    """Returns the angle bounded from -2pi to +2pi since python's modulo 
     operator by default always returns the divisor's sign, which is 
     different than other programming languages like C and C++.
     
@@ -215,7 +215,7 @@ finally the x axis. Requires 3 input angles.
 
 def positive_angle(angle: Real) -> float:
     """Returns the positive representation of an angle in radians, bounded from 
-    0 to 2π.
+    0 to 2pi.
     """
     if angle >= 0:
         return angle_mod(angle)
@@ -255,7 +255,7 @@ def r_of_cartesian(cartesian: VectorLike) -> float:
 
 def phi_of_cartesian(cartesian: VectorLike) -> float:
     """Returns the polar/spherical azimuth component of the equivalent 
-    polar/spherical vector in radians. Bounded from -π to π.
+    polar/spherical vector in radians. Bounded from -pi to pi.
     
     :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
     :returns: The azimuth component of the equivalent polar/spherical vector.
@@ -373,7 +373,7 @@ def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
                                       vector2: VectorLike,
                                       explementary: bool=False) -> float:
     """Returns the counter-clockwise angle between vector1 and vector2 in radians 
-    bounded between 0 and 2π. Returns the clockwise angle if explementary is 
+    bounded between 0 and 2pi. Returns the clockwise angle if explementary is 
     set to True.
     
     :param vector1: A 2D vector with cartesian components.
@@ -397,7 +397,7 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
                                      vector2: VectorLike,
                                      supplementary: bool=False,
                                      signed: bool=False) -> float:
-    """Returns the angle between vector1 and vector2 in radians between 0 and π.
+    """Returns the angle between vector1 and vector2 in radians between 0 and pi.
     
     :param vector1: A 2D vector with cartesian components.
     :param vector2: Another 2D vector with cartesian components.
@@ -421,7 +421,7 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
 def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
                                      vector2: VectorLike,
                                      supplementary: bool=False) -> float:
-    """Returns the angle between vector1 and vector2 in radians between 0 and π.
+    """Returns the angle between vector1 and vector2 in radians between 0 and pi.
     
     :param vector1: A 3D vector with cartesian components.
     :param vector2: Another 3D vector with cartesian components.

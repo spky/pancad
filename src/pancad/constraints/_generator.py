@@ -20,7 +20,8 @@ if TYPE_CHECKING:
 
     from pancad.abstract import AbstractGeometry, AbstractConstraint
     from pancad.constraints.distance import AbstractDistance
-    from pancad.constraints.distance import AbstractStateConstraint
+    from pancad.constraints.state_constraint import AbstractStateConstraint
+    from pancad.constraints.snapto import AbstractSnapTo
     from pancad.geometry.constants import ConstraintReference
 
 SKETCH_CONSTRAINT_TO_CLASS = {
@@ -41,7 +42,8 @@ SKETCH_CONSTRAINT_TO_CLASS = {
 
 @overload
 def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,
-                    uid: UUID | str=None) -> AbstractStateConstraint: ...
+                    uid: UUID | str=None
+                    ) -> AbstractStateConstraint | AbstractSnapTo: ...
 
 @overload
 def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,

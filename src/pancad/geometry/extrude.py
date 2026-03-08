@@ -67,8 +67,6 @@ class Extrude(AbstractFeature):
     :param name: The human-visible name of the extrusion.
     :param uid: The unique id of the Extrude. When set to None the uid is 
         automatically generated.
-    :param context: The feature that acts as the context for this feature, 
-        usually a :class:`~pancad.geometry.FeatureContainer`
     """
     VALUE_STR_FORMAT = "{value}{unit}"
     # Feature Type Checking Class Constants #
@@ -93,11 +91,9 @@ class Extrude(AbstractFeature):
             the extrusion type relative to the profile sketch.
         :param name: The human-visible name of the extrusion.
         :param uid: The unique id of the Extrude. Defaults to None.
-        :param context: The feature that acts as the context for this feature, 
-            usually a :class:`~pancad.geometry.FeatureContainer`
         :param settings: See :class:`~pancad.geometry.extrude.ExtrudeSettings` 
             for additional keyword arguments. If the type setting is not 
-            provided, it's set to FeatureType.DIMENSION.
+            provided, it's set to `~pancad.api.FeatureType.DIMENSION`.
         """
         type_ = settings.setdefault("type_", FeatureType.DIMENSION)
         if type_ not in FeatureType.SINGLE_DIMENSION:

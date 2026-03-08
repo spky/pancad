@@ -101,7 +101,7 @@ class SystemParts:
         return self
 
 
-class CoordinateSystem(AbstractGeometry, AbstractFeature):
+class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space. Initial
     rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
 

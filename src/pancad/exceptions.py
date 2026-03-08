@@ -7,7 +7,8 @@ class DupeUidError(ValueError):
 
 class DupeNameError(ValueError):
     """Raised when attempting to rename a CAD element but an element already has
-    that name in that context.
+    that name in that context and is a situation where that causes uncontrolled
+    behavior.
     """
 
 class HasDependentsError(ValueError):

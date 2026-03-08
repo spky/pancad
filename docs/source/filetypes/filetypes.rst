@@ -1,5 +1,8 @@
 File Types
 ==========
 
-.. autoclass:: pancad.filetypes.part_file.PartFile
+.. autoclass:: pancad.api.PartFile
     :members:
+    :exclude-members: pancad_metadata
+
+.. autofunction:: pancad.read_freecad

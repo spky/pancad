@@ -47,8 +47,7 @@ class PancadThing(ABC):
     def system(self) -> PancadThing | None:
         """The system that defines the object's location and dependencies. Some
         objects like files representing parts or assemblies can exist by
-        themselves, which should be represented by settings those objects'
-        system to None.
+        themselves, which is indicated by those objects' system being None.
         """
         return self._system
     @system.setter

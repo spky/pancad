@@ -29,8 +29,8 @@ if TYPE_CHECKING:
 
 class PartFile(PancadThing):
     """A class representing a part file in CAD applications. pancad defines a 
-    part file that contains geometry definition for one object and different 
-    geometry configurations of that object.
+    part file as a file that contains geometry definition for one object and 
+    potentially different geometry configurations of that object.
 
     :param name: The name of the file.
     :param container: The primary FeatureContainer for the PartFile. Contains all 
@@ -40,7 +40,7 @@ class PartFile(PancadThing):
     :param uid: The unique id for the pancad object.
     """
 
-    PANCAD_METADATA = [
+    pancad_metadata = [
         "dcterms:identifier",
         "dcterms:title",
         "dcterms:license",
@@ -57,11 +57,6 @@ class PartFile(PancadThing):
     <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>`_ 
     for definitions of the 'dcterms' fields. The dcterms namespace uri is 
     'http://purl.org/dc/terms/'
-    """
-
-    DEFAULT_COORDINATE_SYSTEM_NAME = "Coordinate System"
-    """The name that auto-added coordinate systems are given if not externally 
-    provided when features are added.
     """
 
     def __init__(self,

@@ -5,6 +5,10 @@ Geometry
     :show-inheritance:
     :members:
 
+.. autoclass:: pancad.abstract.AbstractGeometrySystem
+    :show-inheritance:
+    :members:
+
 .. autoclass:: pancad.api.Circle
     :show-inheritance:
     :members:
@@ -30,6 +34,22 @@ Geometry
     :members:
 
 .. autoclass:: pancad.api.Point
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.FeatureSystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.SketchGeometrySystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.TwoDSketchSystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.ThreeDSketchSystem
     :show-inheritance:
     :members:
 

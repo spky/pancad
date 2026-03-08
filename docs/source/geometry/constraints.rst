@@ -1,7 +1,47 @@
 Constraints
 ===========
 
-.. autofunction:: pancad.constraints._generator.make_constraint
+.. autofunction:: pancad.api.make_constraint
+
+Abstract Constraint Interfaces
+------------------------------
+
+.. autoclass:: pancad.constraints.distance.AbstractDistance
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.constraints.snapto.AbstractSnapTo
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+.. autoclass:: pancad.constraints.state_constraint.AbstractStateConstraint
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+.. autoclass:: pancad.constraints.distance.AbstractValue
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+.. autoclass:: pancad.constraints.distance.Abstract1GeometryDistance
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+.. autoclass:: pancad.constraints.distance.Abstract2GeometryDistance
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+.. autoclass:: pancad.constraints.distance.AbstractDistance2D
+    :show-inheritance:
+    :members:
+    :exclude-members: get_constrained, get_geometry, get_references
+
+Specific Constraints
+--------------------
 
 .. autoclass:: pancad.abstract.AbstractConstraint
     :show-inheritance:
@@ -56,40 +96,5 @@ Constraints
     :show-inheritance:
     :members:
 
-Lower Abstract Constraints
---------------------------
 
-.. autoclass:: pancad.constraints.distance.AbstractDistance
-    :show-inheritance:
-    :members:
-
-.. autoclass:: pancad.constraints.snapto.AbstractSnapTo
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
-
-.. autoclass:: pancad.constraints.state_constraint.AbstractStateConstraint
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
-
-.. autoclass:: pancad.constraints.distance.AbstractValue
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
-
-.. autoclass:: pancad.constraints.distance.Abstract1GeometryDistance
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
-
-.. autoclass:: pancad.constraints.distance.Abstract2GeometryDistance
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
-
-.. autoclass:: pancad.constraints.distance.AbstractDistance2D
-    :show-inheritance:
-    :members:
-    :exclude-members: get_constrained, get_geometry, get_references
 

@@ -504,7 +504,13 @@ class SketchGeometrySystem(AbstractGeometrySystem):
         )
 
 class TwoDSketchSystem(SketchGeometrySystem):
-    """A 2-dimensional geometry system."""
+    """A 2-dimensional geometry system.
+
+    :param geometry: The geometry to be placed into the sketch.
+    :param constraints: The constraints applied to the geometry in the sketch.
+    :param feature: The feature the system is inside of.
+    :param coordinate_system: Will be initialized at (0, 0) when None.
+    """
     def __init__(self,
                  geometry: Sequence[AbstractGeometry
                                     | Sequence[AbstractGeometry, bool]]=None,
@@ -519,7 +525,13 @@ class TwoDSketchSystem(SketchGeometrySystem):
                          feature=feature, uid=uid)
 
 class ThreeDSketchSystem(SketchGeometrySystem):
-    """A 3-dimensional geometry system."""
+    """A 3-dimensional geometry system.
+
+    :param geometry: The geometry to be placed into the sketch.
+    :param constraints: The constraints applied to the geometry in the sketch.
+    :param feature: The feature the system is inside of.
+    :param coordinate_system: Will be initialized at (0, 0, 0) when None.
+    """
     def __init__(self,
                  geometry: Sequence[AbstractGeometry
                                     | Sequence[AbstractGeometry, bool]]=None,
