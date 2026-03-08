@@ -1,16 +1,8 @@
 File Types
 ==========
 
-.. autoclass:: pancad.filetypes.PartFile
+.. autoclass:: pancad.api.PartFile
     :members:
+    :exclude-members: pancad_metadata
 
-Enumerations
-------------
-
-.. autoclass:: pancad.constants.SoftwareName
-    :show-inheritance:
-    :members:
-
-.. autoclass:: pancad.constants.ConfigCategory
-    :show-inheritance:
-    :members:
+.. autofunction:: pancad.read_freecad

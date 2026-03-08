@@ -5,14 +5,15 @@ import numpy as np
 
 from pancad.utils import trigonometry as trig
 from pancad.utils import verification, comparison
-from pancad.geometry import Point, Line, LineSegment, Plane, conversion
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.plane import Plane
+from pancad.geometry import conversion
 
 ROUNDING_PLACES = 10
 
 class TestPlaneInit(unittest.TestCase):
-    
-    def test_plane_init_no_arg(self):
-        pln = Plane()
     
     def test_plane_init_origin(self):
         pt = Point(0, 0, 0)

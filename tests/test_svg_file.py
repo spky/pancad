@@ -86,7 +86,6 @@ class TestSVGFileWriting(unittest.TestCase):
         
         self.svg.sub("g1").append(se.path("path1", "M 0 0 1 1"))
         
-        self.svg.auto_size()
         file.svg = self.svg
         file.write(indent="  ")
     
@@ -98,7 +97,6 @@ class TestSVGFileWriting(unittest.TestCase):
         
         self.svg.sub("g1").append(se.circle("c1", 0.5, 0.5, 0.5))
         
-        self.svg.auto_size()
         file.svg = self.svg
         file.write(indent="  ")
 

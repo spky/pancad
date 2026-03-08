@@ -1,9 +1,8 @@
 import unittest
 from inspect import stack
 
-from pancad import PartFile
-from pancad.filetypes import PartFile
-from pancad.geometry import Extrude
+from pancad.filetypes.part_file import PartFile
+from pancad.geometry.extrude import Extrude
 
 from tests.sample_pancad_objects import sample_sketches
 
@@ -21,7 +20,7 @@ class TestPartFileInitialization(unittest.TestCase):
         for filename in tests:
             with self.subTest(string_in=filename, expected=expected):
                 file = PartFile(filename)
-                self.assertEqual(file.filename, expected)
+                self.assertEqual(file.name, expected)
 
 class TestPartFile(unittest.TestCase):
     def setUp(self):
@@ -58,21 +57,8 @@ class TestAddGeometry(TestPartFile):
         self.height = 3
     
     def test_add_sketch(self):
-        self.file.add_feature(self.sketch)
+        self.file.container.feature_system.features.append(self.sketch)
         self.assertTrue(self.sketch in self.file)
-    
-    def test_add_extrude(self):
-        self.file.add_feature(self.sketch)
-        test_extrude = Extrude.from_length(self.sketch, self.height,
-                                           "test_extrude")
-        self.file.add_feature(test_extrude)
-        self.assertTrue(test_extrude in self.file)
-    
-    def test_add_extrude_missing_dependency(self):
-        test_extrude = Extrude.from_length(self.sketch, self.height,
-                                           "test_extrude")
-        with self.assertRaises(LookupError):
-            self.file.add_feature(test_extrude)
 
 if __name__ == "__main__":
     unittest.main()

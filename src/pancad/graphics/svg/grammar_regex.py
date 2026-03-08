@@ -8,33 +8,33 @@ FRAC = Fractional
 # Regular Expression Constants:
 
 ## High Level Path Data Parsing
-command: Splits path data into a list of its sub-commands. If path data 
-    does not match this regular expression, it likely does not meet the svg 1.1 
+command: Splits path data into a list of its sub-commands. If path data
+    does not match this regular expression, it likely does not meet the svg 1.1
     specification. Ex: "M1,2 L3 4" will be split into ["M1,2 ", "L3 4"].
 
 ## Individual Path Data Commands
-closepath: Finds closepath (Z or z) commands in path data. Closepath takes no 
+closepath: Finds closepath (Z or z) commands in path data. Closepath takes no
     parameters.
-curveto: Finds curveto (C or c) commands in path data. Curveto parameters are a 
+curveto: Finds curveto (C or c) commands in path data. Curveto parameters are a
     series of (x1 y1 x2 y2 x y) coordinate sets
-elliptical_arc: Finds elliptical arc (A or a) commands in path data. Elliptical 
-    arc parameters are a series of (rx ry x-axis-rotation large-arc-flag 
+elliptical_arc: Finds elliptical arc (A or a) commands in path data. Elliptical
+    arc parameters are a series of (rx ry x-axis-rotation large-arc-flag
     sweep-flag x y) number sets.
-horizontal_lineto: Finds horizontal lineto (H or h) commands in path data. 
+horizontal_lineto: Finds horizontal lineto (H or h) commands in path data.
     Horizontal lineto parameters are a series of x coordinates.
-lineto: Finds lineto (L or l) commands in path data. Lineto parameters are a 
+lineto: Finds lineto (L or l) commands in path data. Lineto parameters are a
     series of (x, y) coordinate pairs.
-moveto: Finds moveto (M or m) commands in path data. Moveto parameters are a 
+moveto: Finds moveto (M or m) commands in path data. Moveto parameters are a
     series of (x, y) coordinate pairs.
-quad_bezier_curveto: Finds quadratic bezier curveto (Q or q) commands in path 
-    data. Quadratic bezier curveto parameters are a series of (x1 y1 x y) 
+quad_bezier_curveto: Finds quadratic bezier curveto (Q or q) commands in path
+    data. Quadratic bezier curveto parameters are a series of (x1 y1 x y)
     coordinate sets.
-smooth_curveto: Finds shorthand/smooth curveto (S or s) commands in path data. 
+smooth_curveto: Finds shorthand/smooth curveto (S or s) commands in path data.
     Smooth curveto parameters are a series of (x2 y2 x y) coordinate sets
 smooth_quad_bezier_curveto: Finds shorthand/smooth quadratic bezier curveto
-    (T or t) commands in path data. Smooth quadratic bezier curveto parameters 
+    (T or t) commands in path data. Smooth quadratic bezier curveto parameters
     are a series of (x, y) coordinate pairs.
-vertical_lineto: Finds vertical lineto (V or v) commands in path data. Vertical 
+vertical_lineto: Finds vertical lineto (V or v) commands in path data. Vertical
     lineto parameters are a series of y coordinates.
 
 # Type dictionaries
@@ -43,7 +43,7 @@ SVG_CMD_TYPES: A dictionary containing the lists of what commands fall into the
 
 ## Grammar Component NamedTuples
 **NOTE**: Reference pancad.utils.regex for tuple names
-WSP: Finds path data whitespace, defined as a space, tab, newline, or carriage 
+WSP: Finds path data whitespace, defined as a space, tab, newline, or carriage
     return.
 SIGN: Finds signs: + or -.
 DIGIT_SEQUENCE: Finds series of integers.
@@ -82,7 +82,7 @@ SVG_CMD_TYPES = {
     ],
 }
 WSP = capture_re("\u0020|\u0009|\u000D|\u000A", "whitespace")
-SIGN = capture_re("\+|-", "sign")
+SIGN = capture_re(r"\+|-", "sign")
 _PIPE = "|"
 DIGIT_SEQUENCE = capture_re("[0-9]+", "digit_sequence")
 INT_CONST = capture_re("[0-9]+", "integer_constant")
@@ -95,7 +95,7 @@ comma_wsp = capture_re(f"{WSP.dc}+,?{WSP.dc}*|,{WSP.dc}*", "comma_whitespace")
 exponent = capture_re(f"(?:e|E){SIGN.dc}?{DIGIT_SEQUENCE.dc}", "exponent")
 
 fractional_const = capture_re(
-    f"{DIGIT_SEQUENCE.dc}?\.{DIGIT_SEQUENCE.dc}|{DIGIT_SEQUENCE.dc}\.",
+    rf"{DIGIT_SEQUENCE.dc}?\.{DIGIT_SEQUENCE.dc}|{DIGIT_SEQUENCE.dc}\.",
     "fractional_constant"
 )
 float_const = capture_re(
@@ -125,11 +125,11 @@ coordinate_sequence = capture_re(
 )
 
 # Commands
-## Expressions assume the correct number of arguments have been provided for 
+## Expressions assume the correct number of arguments have been provided for
 ## each command
 def _arc_command(character_re: str) -> str:
-    """Produces an SVG elliptical arc command regular expression. SVG arcs 
-    are a special case of commands that have their arguments in the 
+    """Produces an SVG elliptical arc command regular expression. SVG arcs
+    are a special case of commands that have their arguments in the
     following order: rx, ry, x-axis-rotation, large-arc-flag, sweep-flag, x, y
     """
     _elliptical_args = [
@@ -145,17 +145,17 @@ def _arc_command(character_re: str) -> str:
     return f"{character_re}{WSP.dc}*{elliptical_arc_arg_sequence.dc}"
 
 def _pair_command(character_re: str) -> str:
-    """Returns an svg command regex for a command that takes a sequence of 
+    """Returns an svg command regex for a command that takes a sequence of
     coordinate pairs as its arguments"""
     return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
 
 def _singles_command(character_re: str) -> str:
-    """Returns an svg command regex for a command that takes a sequence of 
+    """Returns an svg command regex for a command that takes a sequence of
     standalone coordinates as its arguments"""
     return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
 
 def _upper_lower_case_command(character: str, group: str="command") -> str:
-    """Initializes a command character that consists of the upper and lower case 
+    """Initializes a command character that consists of the upper and lower case
     characters to initialize svg command regular expressions.
     """
     if len(character) == 1:
@@ -165,7 +165,7 @@ def _upper_lower_case_command(character: str, group: str="command") -> str:
         raise ValueError(f"character must be 1 character, given: {character}")
 
 def _cmd_re(character: str):
-    """Returns an svg command regex for a command based on its character and 
+    """Returns an svg command regex for a command based on its character and
     command type"""
     cmd_character_re = _upper_lower_case_command(character).dc
     for cmd_type, command_letters in SVG_CMD_TYPES.items():

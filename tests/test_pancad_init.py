@@ -1,47 +1,69 @@
-import sys
 import os
 from pathlib import Path
-import unittest
+from unittest import TestCase
+from importlib.util import find_spec
+import tomllib
 import shutil
 
-sys.path.append('src')
+from pancad.utils import initialize
 
-from pancad.utils import initialize as init
+RESOURCES_PATH = Path(find_spec("pancad.resources").origin).parent
+with open(RESOURCES_PATH / "pancad.toml", "rb") as file:
+    CONFIG = tomllib.load(file)
+FILENAMES = CONFIG["filenames"]
+USER_DIR = Path(os.path.expandvars(CONFIG["paths"]["user_dir"]))
+DEFAULT_USER_CONFIG_PATH = RESOURCES_PATH / FILENAMES["default_user_config"]
 
-class TestPancadInit(unittest.TestCase):
+class DeletedUserDir(TestCase):
+    """Tests for how pancad handles a non-existent user directory."""
     def setUp(self):
-        self.pancad_appdata = init.APPDATA
-        self.user_settings_file = init.USER_SETTINGS
+        try:
+            shutil.rmtree(USER_DIR)
+        except FileNotFoundError:
+            pass # Only handling FileNotFoundError, all other errors stop test
     
-    @unittest.skip
-    def test_appdata_folder_reload(self):
-        if os.path.exists(self.pancad_appdata):
-            shutil.rmtree(self.pancad_appdata)
-        init.appdata_folder()
-        self.assertTrue(os.path.exists(self.pancad_appdata))
+    def test_get_user_config(self):
+        test = initialize.get_user_config()
+        with open(DEFAULT_USER_CONFIG_PATH, "rb") as file:
+            expected = tomllib.load(file)
+        self.assertDictEqual(test, expected)
     
-    @unittest.skip
-    def test_appdata_folder_found(self):
-        init.appdata_folder()
+    def test_get_cache(self):
+        test = initialize.get_cache()
+        self.assertDictEqual(test, {})
     
-    @unittest.skip
-    def test_settings_reload(self):
-        if os.path.exists(self.user_settings_file):
-            os.remove(self.user_settings_file)
-        init.settings()
-        self.assertTrue(os.path.isfile(self.user_settings_file))
-    
-    @unittest.skip
-    def test_settings_found(self):
-        init.settings()
-    
-    @unittest.skip
-    def test_delete_pancad_settings(self):
-        init.delete_pancad_settings()
-        self.assertFalse(os.path.exists(self.pancad_appdata))
-        init.settings()
+    def test_write_cache(self):
+        test_cache_dict = {"test": {"settings": "here"}}
+        initialize.write_cache(test_cache_dict)
+        test = initialize.get_cache()
+        self.assertDictEqual(test, test_cache_dict)
+        (USER_DIR / FILENAMES["cache"]).unlink()
 
-if __name__ == "__main__":
-    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
-        f.write("finished")
-    unittest.main()
+class DeletedUserConfig(TestCase):
+    """Tests for how pancad handles a deleted user config file"""
+    def setUp(self):
+        self.user_config_path = USER_DIR / FILENAMES["user_config"]
+        self.user_config_path.unlink(missing_ok=True)
+    
+    def test_get_user_config(self):
+        test = initialize.get_user_config()
+        with open(DEFAULT_USER_CONFIG_PATH, "rb") as file:
+            expected = tomllib.load(file)
+        self.assertDictEqual(test, expected)
+
+class DeletedCache(TestCase):
+    """Tests for how pancad handles a deleted cache file"""
+    def setUp(self):
+        self.user_cache_path = USER_DIR / FILENAMES["cache"]
+        self.user_cache_path.unlink(missing_ok=True)
+    
+    def test_get_cache(self):
+        test = initialize.get_cache()
+        self.assertDictEqual(test, {})
+    
+    def test_write_cache(self):
+        test_cache_dict = {"test": {"settings": "here"}}
+        initialize.write_cache(test_cache_dict)
+        test = initialize.get_cache()
+        self.assertDictEqual(test, test_cache_dict)
+        self.user_cache_path.unlink()

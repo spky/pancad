@@ -4,27 +4,35 @@ from contextlib import closing
 import tomllib
 from unittest import TestCase
 from pathlib import Path
+from importlib.util import find_spec
 from sqlite3 import connect, PARSE_DECLTYPES
 
-from pancad import geometry, config
+from pancad.geometry.point import Point
+from pancad.geometry.circle import Circle
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.circular_arc import CircularArc
+from pancad import geometry
 from pancad.utils import sql_convert
+
+RESOURCES = Path(find_spec("pancad.resources").origin).parent
 
 class MemoryDatabase(TestCase):
     """Writing into a temporary database memory."""
     
     def setUp(self):
-        with open(Path(config.__file__).parent / "sqlite.toml", "rb") as file:
+        with open(RESOURCES / "sqlite.toml", "rb") as file:
             self.types = tomllib.load(file)["conform_type"]
         
         geometry_and_values = [
-            (geometry.Point(0, 0), "0;0"),
-            (geometry.Point(0, 0, 0), "0;0;0"),
-            (geometry.Circle((0, 0), 1), "0;0;1"),
-            (geometry.Line.from_two_points((0, 0), (1, 0)), "0.0;0.0;1.0;0.0"),
-            (geometry.Line.from_two_points((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
-            (geometry.LineSegment((0, 0), (1, 0)), "0;0;1;0"),
-            (geometry.LineSegment((0, 0, 0), (1, 0, 0)), "0;0;0;1;0;0"),
-            (geometry.CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0;0|1.0;0.0|0.0;1.0|0|1")
+            (Point(0, 0), "0;0"),
+            (Point(0, 0, 0), "0;0;0"),
+            (Circle((0, 0), 1), "0;0;1"),
+            (Line.from_two_points((0, 0), (1, 0)), "0.0;0.0;1.0;0.0"),
+            (Line.from_two_points((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
+            (LineSegment((0, 0), (1, 0)), "0;0;1;0"),
+            (LineSegment((0, 0, 0), (1, 0, 0)), "0;0;0;1;0;0"),
+            (CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0;0|1.0;0.0|0.0;1.0|0|1.0")
         ]
         self.tests = []
         for geo, value in geometry_and_values:

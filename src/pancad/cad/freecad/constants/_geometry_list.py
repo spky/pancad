@@ -7,7 +7,6 @@ class ListName(StrEnum):
     list sketches. Used to define a unique id to map FreeCAD features to pancad 
     features.
     """
-    
     CONSTRAINTS = "Constraints"
     """The Constraints list inside of a sketch object."""
     EXTERNALS = "ExternalGeo"

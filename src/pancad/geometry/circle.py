@@ -7,12 +7,10 @@ from functools import partial
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
-import numpy as np
-
-from pancad.geometry import AbstractGeometry, Point
-from pancad.geometry.constants import ConstraintReference
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintReference
+from pancad.geometry.point import Point
 from pancad.utils import comparison
-from pancad.utils.trigonometry import get_unit_vector
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
@@ -33,26 +31,27 @@ class Circle(AbstractGeometry):
         to None, but is required for a 3D circle.
     :param uid: The unique ID of the circle.
     """
-    REFERENCES = (ConstraintReference.CORE, ConstraintReference.CENTER)
-    """All relevant ConstraintReferences for Circles."""
-    
     def __init__(self,
                  center: Point | VectorLike,
                  radius: Real,
-                 x_vector: tuple[Real]=None,
-                 y_vector: tuple[Real]=None,
+                 *,
                  uid: str=None) -> None:
         if isinstance(center, VectorLike):
             center = Point(center)
-        
+        if len(center) == 3:
+            raise NotImplementedError("3D Circles not implemented yet.")
         self._center = center
         self._radius = radius
-        self._x_vector = x_vector
-        self._y_vector = y_vector
         self._validate_circle_parameters()
         self.uid = uid
-    
-    # Getters #
+        super().__init__(
+            {
+                ConstraintReference.CORE: self,
+                ConstraintReference.CENTER: self.center,
+            }
+         )
+
+    # Properties
     @property
     def center(self) -> Point:
         """Center point of the circle.
@@ -61,7 +60,14 @@ class Circle(AbstractGeometry):
         :setter: Updates the internal center point with values from a new point.
         """
         return self._center
-    
+    @center.setter
+    def center(self, point: Point) -> None:
+        if len(point) == len(self):
+            self._center.update(point)
+        else:
+            raise ValueError(f"Dimension mismatch: Provided center point is"
+                             f" {len(point)}D, Circle is {len(self)}D")
+
     @property
     def radius(self) -> Real:
         """Radius of the circle.
@@ -71,73 +77,14 @@ class Circle(AbstractGeometry):
             or equal to 0. Raises a ValueError if the radius is less than 0.
         """
         return self._radius
-    
-    # Setters #
-    @center.setter
-    def center(self, point: Point) -> None:
-        if len(point) == len(self):
-            self._center.update(point)
-        else:
-            raise ValueError(f"Dimension mismatch: Provided center point is"
-                             f" {len(point)}D, Circle is {len(self)}D")
-    
     @radius.setter
     def radius(self, value: Real) -> None:
         if value >= 0:
             self._radius = value
         else:
             raise ValueError(f"Radius cannot be < 0. Given: {value}")
-    
-    # Public Methods #
-    def get_reference(self, reference: ConstraintReference) -> Point | Self:
-        """Returns reference geometry for use in external modules like 
-        constraints.
-        
-        :param reference: A ConstraintReference enumeration value applicable to 
-            Circles. See :attr:`Circle.REFERENCES`.
-        :returns: The geometry corresponding to the reference.
-        """
-        match reference:
-            case ConstraintReference.CORE:
-                return self
-            case ConstraintReference.CENTER:
-                return self.center
-            case _:
-                raise ValueError(f"Circles do not have {reference.name}"
-                                 " reference geometry")
-    
-    def get_all_references(self) -> tuple[ConstraintReference]:
-        """Returns all ConstraintReferences applicable to Circles. See 
-        :attr:`Circle.REFERENCES`.
-        """
-        return self.REFERENCES
-    
-    def get_orientation_vectors(self) -> tuple[tuple[Real], tuple[Real]]:
-        """Returns the orientation vectors for a 3D circle.
-        
-        :returns: A tuple of the x and y orientation vectors of the circle.
-        """
-        return self._x_vector, self._y_vector
-    
-    def set_orientation_vectors(self,
-                                x_vector: tuple[Real],
-                                y_vector: tuple[Real]) -> Self:
-        """Sets the orientation vectors for a 3D circle.
-        
-        :param x_vector: The direction vector of the x-axis of the circle.
-        :param y_vector: The direction vector of the y-axis of the circle.
-        :returns: The updated Circle.
-        """
-        if len(x_vector) == len(y_vector) == len(self) == 3:
-            self._x_vector = get_unit_vector(x_vector)
-            self._y_vector = get_unit_vector(y_vector)
-            return self
-        elif len(self) != 3:
-            raise ValueError("Orientation vectors cannot be set on 2D circles")
-        else:
-            raise ValueError("Orientation vectors must be 3D, given:"
-                             f" {x_vector} and {y_vector}")
-    
+
+    # Public Methods
     def update(self, other: Circle) -> Self:
         """Updates the center point, radius, and orientation vectors to match 
         the other circle.
@@ -148,28 +95,17 @@ class Circle(AbstractGeometry):
         if len(self) == len(other):
             self.center.update(other.center)
             self.radius = other.radius
-            if len(self) == 3:
-                self.set_orientation_vectors(other._x_vector, other._y_vector)
             return self
-        else:
-            raise ValueError("Cannot update a 2D circle to 3D")
-    
-    # Private Methods #
+        raise ValueError("Cannot update circle to a different dimension")
+
+    # Private Methods
     def _validate_circle_parameters(self) -> None:
         """Validates all the circle's parameters to check they make geometric 
         sense.
         """
         if self.radius < 0:
             raise ValueError(f"Radius cannot be < 0. Given: {self.radius}")
-        
-        vectors = self.get_orientation_vectors()
-        if len(self) == 2 and any([d is not None for d in vectors]):
-            raise ValueError("2D circles cannot have 3D vectors defined."
-                             f" Given vectors {vectors}")
-        elif len(self) == 3 and any([d is None for d in vectors]):
-            raise ValueError("3D circles must have 2 orthogonal 3D vectors"
-                             f" defined. Given vectors {vectors}")
-    
+
     # Python Dunders #
     def __conform__(self, protocol: PrepareProtocol):
         """Conforms the circle's values for storage in sqlite. 2D circles are 
@@ -182,13 +118,14 @@ class Circle(AbstractGeometry):
                 raise NotImplementedError("3D circles not implemented yet")
             dimensions = [*self.center, self.radius]
             return ";".join(map(str, dimensions))
-    
+        raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
+
     def __copy__(self) -> Circle:
         """Returns a copy of the circle with the same radius, center point, and 
         orientation vectors, but with no assigned uid.
         """
-        return Circle(self.center, self.radius, *self.get_orientation_vectors())
-    
+        return Circle(self.center, self.radius)
+
     def __eq__(self, other: Circle) -> bool:
         """Rich comparison for circle equality that allows for circles to be 
         directly compared with ==.
@@ -202,39 +139,12 @@ class Circle(AbstractGeometry):
                 isclose(self.center.cartesian, other.center.cartesian)
                 and isclose(self.radius, other.radius)
             )
-        elif isinstance(other, Circle) and len(self) == len(other) == 3:
-            x_vector, y_vector = self.get_orientation_vectors()
-            other_x, other_y = self.get_orientation_vectors()
-            return (
-                isclose(self.center.cartesian, other.center.cartesian)
-                and isclose(self.radius, other.radius)
-                and isclose(x_vector, other_x)
-                and isclose(y_vector, other_y)
-            )
-        elif isinstance(other, Circle) and len(self) != len(other):
-            return False
-        else:
-            return NotImplemented
-    
+        return NotImplemented
+
     def __len__(self) -> int:
         """Returns whether the circle is 2D or 3D."""
         return len(self.center)
-    
+
     def __repr__(self) -> str:
-        center_str = str(self.center.cartesian).replace(" ","")
-        string = f"<pancadCircle'{self.uid}'{center_str}r{self.radius}"
-        if len(self) == 3:
-            x_vector, y_vector = self.get_orientation_vectors()
-            x_vector_str = str(x_vector).replace(" ","")
-            y_vector_str = str(y_vector).replace(" ","")
-            string += f"x{x_vector_str}y{y_vector_str}"
-        return string + ">"
-    
-    def __str__(self) -> str:
-        string = (f"pancad Circle '{self.uid}' with center"
-                  f" {self.center.cartesian} and radius {self.radius}")
-        if len(self) == 3:
-            x_vector, y_vector = self.get_orientation_vectors()
-            string += (f", oriented with the x direction {x_vector} and"
-                       f" y direction {y_vector}")
-        return string
+        center_str = str(self.center.cartesian).replace(" ", "")
+        return super().__repr__().format(details=f"{center_str}r{self.radius}")

@@ -1,8 +1,9 @@
 import unittest
 
-from pancad.geometry import Point, Line, LineSegment
-from pancad.geometry.constraints import Vertical
-from pancad.geometry.constants import ConstraintReference as CR
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
+from pancad.constraints.snapto import Vertical
 
 class TestInit(unittest.TestCase):
     
@@ -13,11 +14,11 @@ class TestInit(unittest.TestCase):
         # Checking whether init errors out nominally
         a = Point(0, 0)
         b = Point(0, 0)
-        v = Vertical(a, CR.CORE, b, CR.CORE, self.uid)
+        v = Vertical(a, b, uid=self.uid)
     
     def test_line_init(self):
         a = LineSegment((0, 0), (1, 1))
-        v = Vertical(a, CR.CORE, None, None, uid=self.uid)
+        v = Vertical(a, uid=self.uid)
 
 class TestDunder(unittest.TestCase):
     def setUp(self):
@@ -25,8 +26,8 @@ class TestDunder(unittest.TestCase):
         a = Point(0, 0)
         b = Point(0, 0)
         c = LineSegment((0, 0), (1, 1))
-        self.vertical_pt_pt = Vertical(a, CR.CORE, b, CR.CORE, uid)
-        self.vertical_line_segment = Vertical(c, CR.CORE, uid=uid)
+        self.vertical_pt_pt = Vertical(a, b, uid=uid)
+        self.vertical_line_segment = Vertical(c, uid=uid)
     
     def test_repr_pt_pt(self):
         # Checks whether repr errors out

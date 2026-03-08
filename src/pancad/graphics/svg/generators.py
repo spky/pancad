@@ -1,4 +1,4 @@
-"""A module to provide functions for creating svg path strings and a class 
+"""A module to provide functions for creating svg path strings and a class
 for svg styles.
 """
 
@@ -6,7 +6,7 @@ from pancad.graphics.svg import validators as sv
 
 def make_path_data(commands: list, delimiter: str = "\n") -> str:
     """Returns a string of svg commands joined together with a delimiter.
-    
+
     :param commands: A list of strings where each string is an svg command
     :param delimiter: A string to put between each command, defaults to newline
     :returns: The path data string command
@@ -14,9 +14,9 @@ def make_path_data(commands: list, delimiter: str = "\n") -> str:
     return delimiter.join(commands)
 
 def make_moveto(coordinates: list, relative: bool = False) -> str:
-    """Returns a string moveto command using a coordinate list and a 
+    """Returns a string moveto command using a coordinate list and a
     boolean stating whether the command is relative
-    
+
     :param coordinates: A list of 2 element [x, y] coordinate lists
     :param relative: Whether the command will be relative, defaults to False
     :returns: The svg moveto command string
@@ -29,18 +29,18 @@ def make_moveto(coordinates: list, relative: bool = False) -> str:
 def make_arc(rx: float, ry: float, x_axis_rotation: float,
              large_arc_flag: int, sweep_flag: int,
              x: float, y: float, relative: bool = False) -> str:
-    """Returns a string arc command using the list of arc parameters and a 
+    """Returns a string arc command using the list of arc parameters and a
     boolean stating whether the command is relative
-    
+
     :param rx: arc x-axis radius
     :param ry: arc y-axis radius
-    :param x_axis_rotation: angle that the ellipse's x-axis is rotated 
-                            relative to the current coordinate system 
+    :param x_axis_rotation: angle that the ellipse's x-axis is rotated
+                            relative to the current coordinate system
                             in degrees
-    :param large_arc_flag: if 1, the >180 degree arc will be chosen, if 
+    :param large_arc_flag: if 1, the >180 degree arc will be chosen, if
                            0, the < 180 degree arc will be chosen
-    :param sweep_flag: if 1, the arc is drawn in the positive angle 
-                       direction, if 0 it will be drawn in the negative 
+    :param sweep_flag: if 1, the arc is drawn in the positive angle
+                       direction, if 0 it will be drawn in the negative
                        angle direction
     :param x: end x location
     :param y: end y location
@@ -56,9 +56,9 @@ def make_arc(rx: float, ry: float, x_axis_rotation: float,
     return cmd
 
 def make_lineto(coordinates: list, relative: bool = False) -> str:
-    """Returns a string lineto command using a coordinate list and a 
+    """Returns a string lineto command using a coordinate list and a
     boolean stating whether the command is relative
-    
+
     :param coordinates: A list of 2 element [x, y] coordinate lists
     :param relative: Whether the command will be relative, defaults to False
     :returns: The svg lineto command string
@@ -69,9 +69,9 @@ def make_lineto(coordinates: list, relative: bool = False) -> str:
     return cmd
 
 def make_horizontal(lengths: list, relative: bool = False) -> str:
-    """Returns a string horizontal command using a length list and a 
+    """Returns a string horizontal command using a length list and a
     boolean stating whether the command is relative
-    
+
     :param coordinates: A list of x direction lengths
     :param relative: Whether the command will be relative, defaults to False
     :returns: The svg horizontal command string
@@ -82,9 +82,9 @@ def make_horizontal(lengths: list, relative: bool = False) -> str:
     return cmd
 
 def make_vertical(lengths: list, relative: bool = False) -> str:
-    """Returns a string vertical command using a length list and a 
+    """Returns a string vertical command using a length list and a
     boolean stating whether the command is relative
-    
+
     :param coordinates: A list of y direction lengths
     :param relative: Whether the command will be relative, defaults to False
     :returns: The svg vertical command string
@@ -96,7 +96,7 @@ def make_vertical(lengths: list, relative: bool = False) -> str:
 
 class SVGStyle:
     """A class to store, generate, and validate SVG styles"""
-    
+
     def __init__(self) -> None:
         """Constructor method"""
         self._properties = {
@@ -123,12 +123,12 @@ class SVGStyle:
             "stroke-width": None,
             "text-rendering": None,
         }
-    
+
     @property
     def string(self) -> str:
         """The string representation of the style. Read-only.
-        
-        :getter: Concatenates the populated style attributes together and 
+
+        :getter: Concatenates the populated style attributes together and
                  returns it as a string
         """
         settings = []
@@ -136,24 +136,24 @@ class SVGStyle:
             if self._properties[prop] is not None:
                 settings.append(prop + ":" + self._properties[prop])
         return ";".join(settings)
-    
+
     def set_from_dict(self, property_dictionary: dict) -> None:
-        """Sets the style properties based on a dictionary instead of one at 
+        """Sets the style properties based on a dictionary instead of one at
         a time.
-        
+
         :property_dictionary: A dictionary with pairs like 'setting_name:value'
         """
         for setting in property_dictionary:
             self.set_property(setting, property_dictionary[setting])
-    
+
     def set_property(self, name: str, value: str | int | float) -> None:
-        """Sets a valid svg style attribute based on its name and value. Will 
-        raise a ValueError if trying to set a property that is not 
-        supported. Will check individual property types for validity 
-        based on the value. See the SVG 1.1 styling properties at this link 
-        here: 
+        """Sets a valid svg style attribute based on its name and value. Will
+        raise a ValueError if trying to set a property that is not
+        supported. Will check individual property types for validity
+        based on the value. See the SVG 1.1 styling properties at this link
+        here:
         https://www.w3.org/TR/2011/REC-SVG11-20110816/styling.html#SVGStylingProperties
-        
+
         :param name: The styling property's name
         :param value: The styling property's value
         """

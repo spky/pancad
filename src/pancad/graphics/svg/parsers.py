@@ -1,4 +1,4 @@
-"""A module to provide functions for parsing svg tag information out into 
+"""A module to provide functions for parsing svg tag information out into
 other formats
 """
 
@@ -8,18 +8,18 @@ from pancad.utils.regex import capture_re
 from pancad.graphics.svg.grammar_regex import DIGIT_SEQUENCE, SIGN
 
 def parse_coordinate_string(coordinate: str) -> list:
-    """Uses re to figure out what string of coordinates are in path 
+    """Uses re to figure out what string of coordinates are in path
     data's coordinate string and returns a list of coordinate pairs
-    
+
     :param coordinate: coordinate string from an svg tag
     :returns: list of coordinate pairs in the coordinate string
     """
     coordinate = coordinate.strip()
-    
-    xy_pattern = "([-+]?[0-9]*\.?[0-9]+)[ |,]*([-+]?[0-9]*\.?[0-9]+)"
+
+    xy_pattern = r"([-+]?[0-9]*\.?[0-9]+)[ |,]*([-+]?[0-9]*\.?[0-9]+)"
     coordinate_re = re.compile(xy_pattern)
     coordinate_list = re.findall(coordinate_re, coordinate)
-    
+
     out = []
     for c in coordinate_list:
         pair = [float(c[0]), float(c[1])]
@@ -27,9 +27,9 @@ def parse_coordinate_string(coordinate: str) -> list:
     return out
 
 def split_path_data(path_data: str) -> list:
-    """Returns a list of the commands in the svg path's data in the order 
+    """Returns a list of the commands in the svg path's data in the order
     that they appear
-    
+
     :param path_data: path data of an svg path object
     :returns: list all commands in the path tag's data
     """
@@ -37,22 +37,22 @@ def split_path_data(path_data: str) -> list:
     command_pattern = "(?=[A-Za-z])"
     command_re = re.compile(command_pattern)
     command_list = re.split(command_re, path_data)
-    
+
     # Remove empty strings from the list ("")
     command_list = list(filter(None, command_list))
-    
+
     # Ensure the commands do not have empty spaces at beginning/end
     out = []
     for cmd in command_list:
         out.append(cmd.strip())
-    
+
     return out
 
 def path_data_to_dicts(path_data: str, path_id: str = "") -> list[dict]:
-    """Returns a list of dictionaries for each command in the svg path's 
-    data in the order that they appear. Each dictionary has the geometry 
+    """Returns a list of dictionaries for each command in the svg path's
+    data in the order that they appear. Each dictionary has the geometry
     the command describes in strictly absolute coordinates.
-    
+
     :param path_data: The path data of an svg path object
     :param path_id: The id of the path data's path element, defaults to ""
     :returns: The list of geometry dictionaries
@@ -110,7 +110,7 @@ def path_data_to_dicts(path_data: str, path_id: str = "") -> list[dict]:
 
 def path_cmd_type(path_data_cmd: str) -> str:
     """Returns the type of the first command in a path data string.
-    
+
     :param path_data_cmd: one command of an svg path object's path data
     :returns: the type of the first command
     """
@@ -141,10 +141,10 @@ def path_cmd_type(path_data_cmd: str) -> str:
             raise ValueError(f"'{path_data_cmd[0]}' not a supported cmd type")
 
 def clean_command(command: str) -> str:
-    """Returns a string with just the numerical data part of a path data 
-    command separated by commas. Assumes the first character is the command's 
+    """Returns a string with just the numerical data part of a path data
+    command separated by commas. Assumes the first character is the command's
     letter.
-    
+
     :param command: an svg command
     :returns: the data part of the command separated just by commas
     """
@@ -155,19 +155,19 @@ def clean_command(command: str) -> str:
     return command
 
 def csv_to_float(csv: str) -> list:
-    """Returns a list of floats from a string full of comma separated 
+    """Returns a list of floats from a string full of comma separated
     numbers.
-    
+
     :param csv: a string of comma separated numbers
     :returns: a list of the numbers in the string
     """
     return [float(num) for num in csv.split(",")]
 
 def create_sublists(list_: list, no_parameters: int) -> list:
-    """Returns a list of lists that have been split based upon the number 
-    of parameters specified in the sublists. Example: inputs [1, 2, 3, 4], 2 
+    """Returns a list of lists that have been split based upon the number
+    of parameters specified in the sublists. Example: inputs [1, 2, 3, 4], 2
     would return [[1, 2], [3, 4]].
-    
+
     :param list_: a list that will be split into sublists
     :param no_parameters: number of parameters per sublist
     :returns: The list of the sublists
@@ -185,15 +185,15 @@ def create_sublists(list_: list, no_parameters: int) -> list:
     return sublists
 
 def parse_moveto(command:str) -> list:
-    """Returns a list of the coordinates given in an absolute or relative 
+    """Returns a list of the coordinates given in an absolute or relative
     moveto command.
-    
+
     :param command: a moveto command with a series of [x,y] coordinates
     :returns: a list of lists of the coordinates in the command
     """
     if not command.startswith(("m", "M")):
         raise ValueError(f"'{command}' must start with either m or M")
-    
+
     command = clean_command(command)
     numbers = csv_to_float(command)
     coordinates = create_sublists(numbers, 2)
@@ -201,13 +201,13 @@ def parse_moveto(command:str) -> list:
 
 def absolute_moveto_to_dict(command: str, path_id: str,
                             shape_count: int) -> tuple:
-    """Returns a tuple of geometry info represented by an svg absolute 
+    """Returns a tuple of geometry info represented by an svg absolute
     moveto command. Intended for use in the path_data_to_dicts function
-    
+
     :param command: An absolute moveto command
     :param path_id: The id of the moveto command's path element
     :param shape_count: How many shapes have already been read in the path
-    :returns: tuple of (current point, a list of line dictionaries, sub-path initial 
+    :returns: tuple of (current point, a list of line dictionaries, sub-path initial
               point, and incremented shape count).
     """
     coordinates = parse_moveto(command)
@@ -230,15 +230,15 @@ def absolute_moveto_to_dict(command: str, path_id: str,
 def relative_moveto_to_dict(command: str, current_point: list,
                             command_no: int, path_id: str,
                             shape_count: int) -> tuple:
-    """Returns a tuple of the geometry info represented by an svg relative 
+    """Returns a tuple of the geometry info represented by an svg relative
     moveto command. Intended for use in the path_data_to_dicts function.
-    
+
     :param command: An relative moveto command
     :param current_point: The current svg point
     :param command_no: How many commands have been read in the path
     :param path_id: The id of the moveto command's path element
     :param shape_count: How many shapes have already been read in the path
-    :returns: Tuple of (current point, lines dictionary, sub-path initial 
+    :returns: Tuple of (current point, lines dictionary, sub-path initial
               point, and incremented shape count)
     """
     coordinates = parse_moveto(command)
@@ -267,10 +267,10 @@ def relative_moveto_to_dict(command: str, current_point: list,
     return current_point, lines, subpath_initial_point, shape_count
 
 def parse_arc(command:str) -> list:
-    """Returns a list of lists of the parameters given in an absolute or 
+    """Returns a list of lists of the parameters given in an absolute or
     relative elliptical arc command.
-    
-    :param command: An svg arc command formatted as '([Aa] rx ry 
+
+    :param command: An svg arc command formatted as '([Aa] rx ry
                     x-axis-rotation large-arc-flag sweep-flag x y)+' coordinates
     :returns: The list of arc command numerical data lists in the command
     """
@@ -283,10 +283,10 @@ def parse_arc(command:str) -> list:
 
 def arc_to_dict(command: str, current_point: list, path_id: str,
                 shape_count: int, relative: bool) -> tuple:
-    """Returns a tuple of geometry info represented by an svg elliptical 
-    arc command. Intended for use in the path_data_to_dicts function. Will 
+    """Returns a tuple of geometry info represented by an svg elliptical
+    arc command. Intended for use in the path_data_to_dicts function. Will
     identify the arc as circular if rx = ry.
-    
+
     :param command: An elliptical arc command
     :param current_point: The current svg point, where the arc will start
     :param path_id: the id of the arc command's path element
@@ -323,9 +323,9 @@ def arc_to_dict(command: str, current_point: list, path_id: str,
     return current_point, arcs, subpath_initial_point, shape_count
 
 def parse_lineto(command: str) -> list:
-    """Returns a list of lists of the coordinates given in an absolute or 
+    """Returns a list of lists of the coordinates given in an absolute or
     relative lineto command.
-    
+
     :param command: a lineto command with a series of [x,y] coordinates
     :returns: a list of lists of the coordinates in the command
     """
@@ -338,10 +338,10 @@ def parse_lineto(command: str) -> list:
 
 def lineto_to_dict(command: str, current_point: list, path_id: str,
                    shape_count: int) -> tuple:
-    """Returns a tuple of geometry info represented by svg lineto, 
-    horizontal and vertical commands. Intended for use in the 
+    """Returns a tuple of geometry info represented by svg lineto,
+    horizontal and vertical commands. Intended for use in the
     path_data_to_dicts function.
-    
+
     :param command: A lineto, horizontal, or vertical command
     :param current_point: The current svg point
     :param path_id: the id of the command's path element
@@ -394,9 +394,9 @@ def lineto_to_dict(command: str, current_point: list, path_id: str,
     return current_point, lines, subpath_initial_point, shape_count
 
 def parse_horizontal(command: str) -> list:
-    """Returns a list of the lengths given in an absolute or relative 
+    """Returns a list of the lengths given in an absolute or relative
     horizontal command.
-    
+
     :param command: a horizontal command with a series of x coordinates
     :returns: a list of the coordinates in the command
     """
@@ -406,9 +406,9 @@ def parse_horizontal(command: str) -> list:
     return csv_to_float(command)
 
 def parse_vertical(command: str) -> list:
-    """Returns a list of the lengths given in an absolute or relative 
+    """Returns a list of the lengths given in an absolute or relative
     vertical command.
-    
+
     :param command: a vertical command with a series of y coordinates
     :returns: a list of the coordinates in the command
     """
@@ -420,7 +420,7 @@ def parse_vertical(command: str) -> list:
 def line(path_id: str, shape_count: int,
          start: list[float, float], end: list[float, float]) -> dict:
     """Returns a dictionary defining the geometry of a svg line.
-    
+
     :param path_id: id of the svg path the line is in
     :param shape_count: the shape number of the line in the svg path
     :param start: the start point of the line, [x, y]
@@ -439,7 +439,7 @@ def circular_arc(
         radius: float, large_arc_flag: bool, sweep_flag: bool
     ) -> dict:
     """Returns a dictionary of defining the geometry of a svg circular arc.
-    
+
     :param path_id: id of the svg path the arc is in
     :param shape_count: the shape number of the line in the svg path
     :param start: the start point of the arc, [x, y]
@@ -465,7 +465,7 @@ def elliptical_arc(
         x_axis_rotation: float, large_arc_flag: bool, sweep_flag: bool
     ) -> dict:
     """Returns a dictionary of defining the geometry of a svg elliptical arc.
-    
+
     :param path_id: id of the svg path the arc is in
     :param shape_count: the shape number of the line in the svg path
     :param start: the start point of the arc, [x, y]
@@ -475,8 +475,8 @@ def elliptical_arc(
     :param x_axis_rotation: the major axis angle of the associated ellipse
     :param large_arc_flag: svg large arc flag
     :param sweep_flag: svg sweep flag
-    :returns: A dictionary with keys for id, start, end, x_radius, 
-              y_radius, x_axis_rotation, large_arc_flag, sweep_flag, and 
+    :returns: A dictionary with keys for id, start, end, x_radius,
+              y_radius, x_axis_rotation, large_arc_flag, sweep_flag, and
               geometry_type. geometry_type is set to 'elliptical_arc'.
     """
     return {
@@ -490,11 +490,11 @@ def elliptical_arc(
 
 def circle(id_: str, radius: float, center: list[float, float]):
     """Returns a dictionary defining the geometry of a svg circle.
-    
+
     :param id_: id of the svg circle
     :param radius: radius of the circle
     :param center: center point of the circle, [x, y]
-    :returns: A dictionary with keys for id, radius, center, and 
+    :returns: A dictionary with keys for id, radius, center, and
               geometry_type. geometry_type is set to 'circle'.
     """
     return {
@@ -503,9 +503,9 @@ def circle(id_: str, radius: float, center: list[float, float]):
     }
 
 def to_number(string: str) -> int | float:
-    """Returns the value of a number in a string. Supports floats, integers 
+    """Returns the value of a number in a string. Supports floats, integers
     and scientific notation.
-    
+
     :param string: A string that contains a number
     :returns: The value of the number in the string
     """
@@ -514,11 +514,11 @@ def to_number(string: str) -> int | float:
     exponent = capture_re(f"(?:E|e){exp_sign.na}?{exp_num.na}", "exponent")
     whole_num = capture_re(DIGIT_SEQUENCE.pa, "whole")
     dec_num = capture_re(DIGIT_SEQUENCE.pa, "decimal")
-    
-    decimal = f"{SIGN.na}?{whole_num.na}?\.{dec_num.na}{exponent.dc}?"
-    int_decimal = f"{SIGN.na}?{whole_num.na}\.{exponent.dc}?"
+
+    decimal = rf"{SIGN.na}?{whole_num.na}?\.{dec_num.na}{exponent.dc}?"
+    int_decimal = rf"{SIGN.na}?{whole_num.na}\.{exponent.dc}?"
     integer_exp = f"{SIGN.na}?{whole_num.na}{exponent.dc}?"
-    
+
     if re.search(decimal, string):
         match = re.search(decimal, string)
         (number_sign, whole, decimal,
@@ -543,10 +543,10 @@ def to_number(string: str) -> int | float:
             number = int(whole)
     else:
         raise ValueError(f"Could not find a number in string: {string}")
-    
+
     if exponent_number is not None and exponent_sign == "-":
-            number = number * 10**(-int(exponent_number))
+        number = number * 10**(-int(exponent_number))
     elif exponent_number is not None:
         number = number * 10**(int(exponent_number))
-    
+
     return number

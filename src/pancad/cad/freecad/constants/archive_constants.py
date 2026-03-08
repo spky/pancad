@@ -1,10 +1,186 @@
 """A module for constant values used inside of FreeCAD Document archives."""
 
-from enum import StrEnum
+from enum import StrEnum, IntEnum
+
+class UnitSystem(IntEnum):
+    """An enumeration matching the UnitSystem options inside FreeCAD files."""
+    STANDARD = 0
+    MKS = 1
+    US_CUSTOMARY = 2
+    IMPERIAL_DECIMAL = 3
+    BUILDING_EURO = 4
+    BUILDING_US = 5
+    METRIC_SMALL_PARTS = 6
+    IMPERIAL_CIVIL = 7
+    FEM = 8
+    METER_DECIMAL = 9
+
+    @property
+    def length(self) -> str:
+        """The unit abbreviation for the default length unit in the system."""
+        unit_map = {
+            self.STANDARD: "mm",
+            self.MKS: "mm",
+            self.US_CUSTOMARY: "in",
+            self.IMPERIAL_DECIMAL: "in",
+            self.BUILDING_EURO: "cm",
+            self.BUILDING_US: "in", # Fractional Inches
+            self.METRIC_SMALL_PARTS: "mm",
+            self.IMPERIAL_CIVIL: "ft",
+            self.FEM: "mm",
+            self.METER_DECIMAL: "m",
+        }
+        return unit_map[self.value]
+
+class ConstraintSubPart(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD constraint sub part 
+    references.
+    """
+    EDGE = 0
+    """Constraint affects the entire edge."""
+    START = 1
+    """Constraint affects the start point of an edge."""
+    END = 2
+    """Constraint affects the end point of an edge."""
+    CENTER = 3
+    """Constraint affects the center point of an edge."""
+
+    @property
+    def human_name(self) -> str:
+        """The name of the constraint subpart reference represented by the 
+        integer.
+        """
+        names = {
+            self.EDGE: "Edge",
+            self.START: "Start",
+            self.END: "End",
+            self.CENTER: "Center",
+        }
+        return names[self.value]
+
+    @property
+    def is_point(self) -> bool:
+        """Whether the subpart is referencing a point."""
+        return self.value > 0
+
+class PadTypeNum(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD Pad type options."""
+    LENGTH = 0
+    UP_TO_LAST = 1
+    UP_TO_FIRST = 2
+    UP_TO_FACE = 3
+    TWO_LENGTHS = 4
+    UP_TO_SHAPE = 5
+
+    @property
+    def human_name(self) -> str:
+        """The name of the pad type represent by the integer."""
+        names = {
+            self.LENGTH: "Length",
+            self.UP_TO_LAST: "UpToLast",
+            self.UP_TO_FIRST: "UpToFirst",
+            self.UP_TO_FACE: "UpToFace",
+            self.TWO_LENGTHS: "TwoLengths",
+            self.UP_TO_SHAPE: "UpToShape",
+        }
+        return names[self.value]
+
+class InternalGeometryType(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD 
+    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 
+    source code here (as of 2026-02-25):
+    FreeCAD/src/Mod/Sketcher/App/SketchGeometryExtension.h:139
+    """
+    NOT_INTERNAL = 0
+    ELLIPSE_MAJOR_DIAMETER = 1
+    ELLIPSE_MINOR_DIAMETER = 2
+    ELLIPSE_FOCUS_1 = 3
+    ELLIPSE_FOCUS_2 = 4
+    HYPERBOLA_MAJOR = 5
+    HYPERBOLA_MINOR = 6
+    HYPERBOLA_FOCUS = 7
+    PARABOLA_FOCUS = 8
+    B_SPLINE_CONTROL_POINT = 9
+    B_SPLINE_KNOT_POINT = 10
+    PARABOLA_FOCAL_AXIS = 11
+
+    @property
+    def human_name(self) -> str:
+        """The name of the internal geometry type represented by the integer."""
+        names = {
+            self.NOT_INTERNAL: "Not Internal Geometry",
+            self.ELLIPSE_MAJOR_DIAMETER: "Ellipse Major Axis",
+            self.ELLIPSE_MINOR_DIAMETER: "Ellipse Minor Axis",
+            self.ELLIPSE_FOCUS_1: "Ellipse Positive Focal Point",
+            self.ELLIPSE_FOCUS_2: "Ellipse Negative Focal Point",
+            self.HYPERBOLA_MAJOR: "Hyperbola Major Axis",
+            self.HYPERBOLA_MINOR: "Hyperbola Minor Axis",
+            self.HYPERBOLA_FOCUS: "Hyperbola Focus",
+            self.PARABOLA_FOCUS: "Parabola Focus",
+            self.B_SPLINE_CONTROL_POINT: "B-Spline Control Point",
+            self.B_SPLINE_KNOT_POINT: "B-Spline Knot Point",
+            self.PARABOLA_FOCAL_AXIS: "Parabola Focal Axis",
+        }
+        return names[self.value]
+
+class ConstraintTypeNum(IntEnum):
+    """An enumeration of integers corresponding to FreeCAD constraint types."""
+    COINCIDENT = 1 #
+    HORIZONTAL = 2 #
+    VERTICAL = 3 #
+    PARALLEL = 4 #
+    TANGENT = 5
+    DISTANCE = 6 #
+    DISTANCE_X = 7 #
+    DISTANCE_Y = 8 #
+    ANGLE = 9 #
+    PERPENDICULAR = 10 #
+    RADIUS = 11 #
+    EQUAL = 12 #
+    POINT_ON_OBJECT = 13 #
+    SYMMETRIC = 14
+    INTERNAL_ALIGNMENT = 15
+    SNELLS_LAW = 16
+    BLOCK = 17
+    DIAMETER = 18 #
+    WEIGHT = 19
+
+    @property
+    def human_name(self) -> str:
+        """The name of the constraint type represented by the integer."""
+        names = {
+            self.COINCIDENT: "Coincident",
+            self.HORIZONTAL: "Horizontal",
+            self.VERTICAL: "Vertical",
+            self.PARALLEL: "Parallel",
+            self.TANGENT: "Tangent",
+            self.DISTANCE: "Distance",
+            self.DISTANCE_X: "DistanceX",
+            self.DISTANCE_Y: "DistanceY",
+            self.ANGLE: "Angle",
+            self.PERPENDICULAR: "Perpendicular",
+            self.RADIUS: "Radius",
+            self.EQUAL: "Equal",
+            self.POINT_ON_OBJECT: "PointOnObject",
+            self.SYMMETRIC: "Symmetric",
+            self.INTERNAL_ALIGNMENT: "InternalAlignment",
+            self.SNELLS_LAW: "SnellsLaw",
+            self.BLOCK: "Block",
+            self.DIAMETER: "Diameter",
+            self.WEIGHT: "Weight",
+        }
+        return names[self.value]
+
+    @property
+    def requires_value(self) -> bool:
+        """Returns whether the constraint requires a value."""
+        valued = {self.DISTANCE, self.DISTANCE_X, self.DISTANCE_Y,
+                  self.ANGLE, self.RADIUS, self.DIAMETER}
+        return self in valued
+
 
 class SubFile(StrEnum):
     """An enumeration of file names inside of FreeCAD document."""
-    
     DOCUMENT_XML = "Document.xml"
     """XML file containing geometric information."""
     GUI_DOCUMENT_XML = "GuiDocument.xml"
@@ -111,19 +287,8 @@ class Tag(StrEnum):
     VISUAL_LAYER = "VisualLayer"
     VISUAL_LAYER_LIST = "VisualLayerList"
     UUID = "Uuid"
-    
     def __repr__(self):
         return f"'{self.value}'"
-
-class XMLObjectType(StrEnum):
-    PART_DESIGN_BODY = "PartDesign::Body"
-    PART_DESIGN_PAD = "PartDesign::Pad"
-    APP_ORIGIN = "App::Origin"
-    APP_LINE = "App::Line"
-    APP_PLANE = "App::Plane"
-    
-    def __repr__(self):
-        return self.name
 
 class Sketcher(StrEnum):
     """Enumeration of 'Sketcher::' options in FCStd xml files."""
@@ -197,7 +362,6 @@ class Materials(StrEnum):
 class PropertyType(StrEnum):
     """Enumeration of types that do not have a '::' namespace."""
     BAD_TYPE = "BadType"
-    
     def __repr__(self):
         return self.name
 
@@ -208,16 +372,6 @@ class XMLGeometryType(StrEnum):
     ELLIPSE = "Part::GeomEllipse"
     LINE_SEGMENT = "Part::GeomLineSegment"
     POINT = "Part::GeomPoint"
-
-class XMLGeometryAttr(StrEnum):
-    END_X = "EndX"
-    END_Y = "EndY"
-    END_Z = "EndZ"
-    START_X = "StartX"
-    START_Y = "StartY"
-    START_Z = "StartZ"
-
-
 
 class Attr(StrEnum):
     """Enumeration of element attribute names in FCStd xml files."""
@@ -259,6 +413,5 @@ class Attr(StrEnum):
     VALUE = "value"
     VALUE_CAPITALIZED = "Value"
     VISIBLE = "visible"
-    
     def __repr__(self):
         return f"'{self.value}'"

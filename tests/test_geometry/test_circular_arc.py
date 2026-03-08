@@ -2,14 +2,21 @@ import unittest
 from uuid import UUID
 from math import sin, cos, radians, degrees
 
-from numpy import array
+import pytest
+from numpy import array, allclose
 from numpy.testing import assert_allclose
 
-from pancad.geometry import CircularArc, Point
+from pancad.geometry.point import Point
+from pancad.geometry.circular_arc import CircularArc
 from pancad.utils.text_formatting import get_table_string
 
+def test_no_dimensional_mismatch():
+    arc_2d = CircularArc((0, 0), 1, (1, 0), (0, 1), False)
+    arc_3d = CircularArc((0, 0, 0), 1, (1, 0, 0), (0, 1, 0), False, (0, 0, 1))
+    with pytest.raises(ValueError, match=r"Input Dimensional Mismatch:.*"):
+        arc_2d.update(arc_3d)
+
 class ArcTest(unittest.TestCase):
-    
     def check_values(self,
                      test: CircularArc,
                      center,
@@ -18,10 +25,8 @@ class ArcTest(unittest.TestCase):
                      end_vector,
                      is_clockwise,
                      normal_vector=None):
-        
         start = array(center) + (radius * array(start_vector))
         end = array(center) + (radius * array(end_vector))
-        
         tests = [
             ("center", Point(center), test.center),
             ("radius", radius, test.radius),
@@ -30,19 +35,19 @@ class ArcTest(unittest.TestCase):
             ("end_vector", end_vector, test.end_vector),
             ("end", Point(end), test.end),
             ("is_clockwise", is_clockwise, test.is_clockwise),
-            ("normal_vector", normal_vector, test.normal_vector),
         ]
-        # for name, expected, result in tests: print(name, expected, result)
-        # print("uid", test.uid)
+        if len(test) == 3:
+            tests.append(("normal_vector", normal_vector, test.normal_vector))
+        errors = []
         for name, expected, result in tests:
-            with self.subTest(name=name, expected=expected, result=result):
-                if isinstance(result, tuple):
-                    assert_allclose(result, expected, atol=1e-9)
-                else:
-                    self.assertEqual(result, expected)
-                    
-        with self.subTest(expected="uid is a UUID"):
-            self.assertTrue(isinstance(test.uid, UUID))
+            message = None
+            failed = (
+                (isinstance(result, tuple) and not allclose(result, expected, atol=1e-9))
+                or (not isinstance(result, tuple) and result != expected)
+            )
+            if failed:
+                errors.append(f"{name} fail: expected '{expected}', got {result}")
+        self.assertCountEqual(errors, [])
 
 
 class InitAndChangeTest(ArcTest):

@@ -1,5 +1,3 @@
-from pancad.utils.initialize import PANCAD_CONFIG_DIR, check_config
+"""A CAD (Computer-Aided Design) File Translator"""
 
-check_config()
-
-from pancad.filetypes import PartFile
+from pancad.io.api import read_freecad

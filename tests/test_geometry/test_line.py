@@ -6,7 +6,9 @@ import unittest
 import numpy as np
 
 from pancad.utils import trigonometry as trig
-from pancad.geometry import Point, Line, spatial_relations
+from pancad.geometry import spatial_relations
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
 from pancad.utils import verification
 
 ROUNDING_PLACES = 10
@@ -34,9 +36,7 @@ class TestLineInit(unittest.TestCase):
     
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
-        expected = ("pancad Line with a point closest to the origin at"
-                    + " (1, 0, 0) and in the direction (0, 1, 0)")
-        self.assertEqual(str(test), expected)
+        self.assertEqual(str(test), "<Line(1,0,0)(0,1,0)>")
 
 class TestLineVectorMethods(unittest.TestCase):
     
@@ -120,9 +120,9 @@ class TestLineTwoPointDefinition(unittest.TestCase):
         ]
         for i, (pt_a, pt_b, e_pt, vector) in enumerate(self.tests):
             # Convert expected direction to unit vector
-            np_vector = trig.to_1D_np(vector)
+            np_vector = trig.to_1d_np(vector)
             unit_vector = trig.get_unit_vector(np_vector)
-            self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1D_tuple(unit_vector))
+            self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1d_tuple(unit_vector))
     
     def test_from_two_points_point_closest_to_origin(self):
         for point_a, point_b, expected_point, _ in self.tests:

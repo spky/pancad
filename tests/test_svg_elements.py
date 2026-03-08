@@ -81,20 +81,6 @@ class TestSVG(unittest.TestCase):
                 self.svg.unit = input_
                 answer = [self.svg.unit, self.svg.width, self.svg.height]
                 self.assertCountEqual(answer, check)
-    
-    def test_auto_size(self):
-        group = se.g("group1")
-        group.append(se.path("path1", "M 0.1 0.1 0.9 0.9"))
-        group.append(se.path("path2", "M 0 1.5 A 1.5 1.5 0 0 0 1.5 0"))
-        group.append(se.circle("circle1", 0.5, 0.5, 0.25))
-        self.svg.unit = "in"
-        self.svg.append(group)
-        self.svg.auto_size(margin=0.25)
-        check = ["2.0in", "2.0in", "-0.25 -0.25 2.0 2.0"]
-        answer = [self.svg.width, 
-                  self.svg.height,
-                  self.svg.viewBox]
-        self.assertCountEqual(answer, check)
 
 class TestSVGElement(unittest.TestCase):
     

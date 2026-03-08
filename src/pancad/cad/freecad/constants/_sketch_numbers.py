@@ -4,7 +4,6 @@ from enum import IntEnum
 
 class SketchNumber(IntEnum):
     """An enumeration of magic numbers used in FreeCAD sketches."""
-    
     UNUSED_CONSTRAINT_POSITION = -2000
     """Indicates that a constraint position field is not used. Example: the 2nd 
     and 3rd positions of a Horizontal constraint placed onto a line segment 

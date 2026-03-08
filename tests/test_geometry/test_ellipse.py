@@ -4,7 +4,9 @@ import unittest
 
 import numpy as np
 
-from pancad.geometry import Ellipse, Line, Point
+from pancad.geometry.ellipse import Ellipse
+from pancad.geometry.line import Line
+from pancad.geometry.point import Point
 from pancad.utils.verification import assertPancadAlmostEqual
 
 ROUNDING_PLACES = 10

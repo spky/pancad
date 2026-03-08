@@ -7,7 +7,6 @@ class SoftwareName(StrEnum):
     """An enumeration used to refer to software applications by standardizing 
     the spacing, capitalization, and spelling used by pancad.
     """
-    
     FREECAD = auto()
     """References the FreeCAD CAD application. Download it from the 
     `FreeCAD website <https://www.freecad.org/downloads.php>`_.

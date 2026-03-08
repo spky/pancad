@@ -6,170 +6,159 @@ from logging import getLogger
 from pathlib import Path
 from platform import system
 from shutil import which
+from importlib.util import find_spec
 from tkinter import messagebox, filedialog
 import tomllib
 
-from pancad import resources
-from pancad.constants import ConfigCategory, SoftwareName
-from pancad.utils.initialize import (
-    get_application_paths, get_cache, write_cache
-)
+from pancad.utils.initialize import get_user_config, get_cache, write_cache
+
+FREECAD_TOML = Path(find_spec("pancad.resources").origin).parent / "freecad.toml"
+FREECAD = "freecad"
+APPLICATION_PATHS = "application_paths"
+DEFAULT_INSTALL = "default_install"
+FOLDERS = "folders"
+INSTALL_DIR = "install_dir"
+FREECAD_PYD = "FreeCAD.pyd"
 
 logger = getLogger(__name__)
 
-def find_app_dir() -> Path:
-    """Returns the path of the FreeCAD application directory. Prioritizes found 
-    paths in this order: previous successful run cache, config file, environment, 
-    defaults, user input. If the path was not already in the cache, it writes 
-    the value to the cache for future runs.
+def _check_freecad_config() -> str:
+    """Returns the settings inside the pancad freecad config file.
+    
+    :raises NotImplementedError: If the current OS is not in the config file.
+    :raises FileNotFoundError: If none of the defaults are directories or if the 
+        freecad config file is missing.
     """
-    path = None
-    app_paths = get_application_paths()
+    with open(FREECAD_TOML, "rb") as file:
+        system_defaults = tomllib.load(file)[DEFAULT_INSTALL]
+    try:
+        defaults = system_defaults[system()]
+    except KeyError as err:
+        raise NotImplementedError("Current OS defaults not supported") from err
+    for default in defaults:
+        if (path := Path(default)).is_dir():
+            return path
+    raise FileNotFoundError("No FreeCAD default directories in file system")
+
+def get_app_dir(search_environment: bool=False) -> Path:
+    """Returns the freecad application directory. Checks whether the directory 
+    is valid. Updates the cache if the directory doesn't match the one in the 
+    cache.
     
-    # Set a flag to make sure it's added to the cache if necessary
-    in_cache = False
-    if _check_cache() is not None:
-        # Get Previous Runs if possible
-        path = _check_cache()
-        logger.info(f"Found FreeCAD bin using cache file here: '{path}'")
-        in_cache = True
-    elif _check_config() is not None:
-        path = _check_config()
-        logger.info(f"Found FreeCAD bin using config file here: '{path}'")
-    elif _check_environment() is not None:
-        path = _check_environment()
-        logger.info(f"Found FreeCAD bin using environment: '{path}'")
-    elif _check_defaults() is not None:
-        path = _check_defaults()
-        logger.info(f"Found FreeCAD bin using default: '{default_path}'")
-    else:
-        logger.warning("Could not find any candidate FreeCADs, asking user.")
-        messagebox.showerror(
-            title="FreeCAD Not Found",
-            message=("pancad couldn't find your FreeCAD installation."
-                     "\n\nPress OK to browse for a FreeCAD 'bin' folder or"
-                     " press cancel and install FreeCAD")
-        )
-        path = _ask_for_freecad()
-    
-    path, in_cache = _confirm_app_path(path, in_cache)
-    logger.info(f"Validated FreeCAD bin: '{path}'")
-    
-    if not in_cache:
-        _write_to_cache(path)
+    :param search_environment: Sets whether to look in the user's PATH.
+    """
+    path = find_app_dir(search_environment)
+    path = _validate_app_path(path)
+    cache = get_cache()
+    stored = cache.setdefault(APPLICATION_PATHS, {}).setdefault(FREECAD, "")
+    if str(path) != stored:
+        # Update cache with new path
+        cache.setdefault(APPLICATION_PATHS, {})[FREECAD] = str(path)
+        write_cache(cache)
     return path
 
+def find_app_dir(search_environment: bool=False) -> Path:
+    """Returns the path of the FreeCAD application directory. Prioritizes found 
+    paths in this order: previous successful run cache, user config file, 
+    environment, pancad defaults, user input.
+    
+    :param search_environment: Sets whether to look in the user's PATH.
+    
+    .. warning::
+    
+        Does not check whether the path actually has FreeCAD. Primary use of 
+        this function is as an intermediary and to test whether pancad can find 
+        each option.
+    """
+    try:
+        # Check user cache
+        path = get_cache()[APPLICATION_PATHS][FREECAD]
+        logger.info("Found FreeCAD bin using cache file here: '%s'", path)
+        return Path(path)
+    except KeyError as not_in_cache_err:
+        try:
+            # Check user config
+            path = get_user_config()[APPLICATION_PATHS][FREECAD]
+            if path == "":
+                logger.info("FreeCAD path option in user config file blank")
+                raise KeyError from not_in_cache_err
+            logger.info("Found FreeCAD bin using user config: '%s'", path)
+            return Path(path)
+        except KeyError as not_in_user_config_err:
+            try:
+                # Check user path
+                if (path := which("FreeCAD")) is None or not search_environment:
+                    raise KeyError from not_in_user_config_err
+                logger.info("Found FreeCAD bin using environment: '%s'", path)
+                return Path(path).parent
+            except KeyError:
+                try:
+                    # Check default config
+                    path = _check_freecad_config()
+                    logger.info("Found FreeCAD bin using defaults: '%s'", path)
+                    return path
+                except FileNotFoundError:
+                    # Ask user
+                    logger.warning("Could not find candidates, asking user.")
+                    messagebox.showerror(
+                        title="FreeCAD Not Found",
+                        message=(
+                            "pancad couldn't find your FreeCAD installation."
+                            "\n\nPress OK to browse for a FreeCAD 'bin' folder"
+                            "or press cancel and install FreeCAD"
+                        )
+                    )
+                    return _ask_for_freecad()
+
 def _ask_for_freecad() -> Path:
-    """Asks the user for the bin path. Exits pancad if they cancel."""
-    path_string = filedialog.askdirectory(mustexist=True,
-                                          title="Select FreeCAD bin folder")
-    if path_string == "":
+    """Asks the user for the bin path. Exits pancad if they cancel.
+    
+    :raises SystemError: If the User canceled the FreeCAD bin selection.
+    """
+    path = filedialog.askdirectory(mustexist=True,
+                                   title="Select FreeCAD bin folder")
+    if path == "":
         logger.critical("FreeCAD bin selection canceled by user")
         raise SystemError("FreeCAD bin selection canceled by user")
-    return Path(path_string)
+    return Path(path)
 
-def _check_cache() -> Path | None:
-    """Checks the pancad cache file to see if an application path was saved 
-    there.
-    """
-    cache = get_cache()
-    try:
-        return Path(
-            cache[ConfigCategory.APPLICATION_PATHS][SoftwareName.FREECAD]
-        )
-    except KeyError:
-        return None
-
-def _check_config() -> Path | None:
-    """Checks the pancad config file to see if an application path is there."""
-    app_paths = get_application_paths()
-    if SoftwareName.FREECAD in app_paths:
-        # Check if the path is in the config file and if it has been defined
-        config_app_path = app_paths[SoftwareName.FREECAD]
-        if config_app_path == "":
-            logger.info(f"FreeCAD path option in config file but not defined")
-            return None
-        else:
-            return Path(config_app_path)
-    else:
-        return None
-
-def _check_defaults() -> Path | None:
-    """Checks the defaults file to see if any of the default locations have a 
-    FreeCAD install in them.
-    """
-    config_data = _read_data()
-    for default_path in config_data[ConfigCategory.DEFAULT_INSTALL][system()]:
-        if Path(default_path).is_dir():
-            return Path(default_path)
-    return None
-
-def _check_environment() -> Path | None:
-    """Checks the environment to see if the user has added FreeCAD to their PATH.
-    """
-    if which("FreeCAD") is not None:
-        path = Path(which("FreeCAD")).parent
-        return path
-
-def _confirm_app_path(path: Path, in_cache: bool) -> Path:
+def _validate_app_path(path: Path) -> Path:
     """Checks the path is valid and asks the user to correct it if not."""
     while True:
         try:
             path = _correct_install_dir(path)
             if not path.is_dir():
-                raise NotADirectoryError(f"'{path}' is not a valid directory")
-            elif not list(path.glob("FreeCAD.pyd")):
-                raise FileNotFoundError(f"FreeCAD.pyd not found in '{path}'")
-            else:
-                break
+                raise NotADirectoryError
+            if not list(path.glob(FREECAD_PYD)):
+                raise FileNotFoundError(f"{FREECAD_PYD} not found in '{path}'")
+            return path
         except NotADirectoryError:
-            logger.warning("Could not find FreeCAD."
-                           f" Invalid directory path: '{path}', asking user.")
+            logger.warning("Invalid directory path: '%s', asking user.", path)
             messagebox.showerror(
                 title="Invalid FreeCAD Path",
-                message=(
-                    "The path for FreeCAD found below is not a valid"
-                    f" directory path.\n\n{path}"
-                    "\n\nPress OK to browse for a FreeCAD 'bin' folder"
-                )
+                message=("The path for FreeCAD found below is not a valid"
+                         f" directory path.\n\n{path}"
+                         "\n\nClick OK to browse for a FreeCAD 'bin' folder")
             )
-            in_cache = False
             path = _ask_for_freecad()
         except FileNotFoundError:
-            logger.warning("Could not find FreeCAD."
-                           f" Missing FreeCAD.pyd here: '{path}', asking user.")
+            logger.warning("Missing %s here: '%s', asking user.",
+                           FREECAD_PYD, path)
             messagebox.showerror(
-                title="Missing FreeCAD.pyd",
-                message=(
-                    "The path for FreeCAD found below did not have FreeCAD.pyd:"
-                    f"\n\n{path}"
-                    "\n\nPress OK to browse for a FreeCAD 'bin' folder"
-                )
+                title=f"Missing {FREECAD_PYD}",
+                message=("The path for FreeCAD found below did not have"
+                         f" {FREECAD_PYD}:\n\n{path}"
+                         "\n\nClick OK to browse for a FreeCAD 'bin' folder")
             )
-            in_cache = False
             path = _ask_for_freecad()
-    return path, in_cache
 
 def _correct_install_dir(path: Path) -> Path:
     """Checks to see if the users accidentally picked the installation directory 
     rather than the bin directory and modifies the path to the bin directory 
     if necessary.
     """
-    install_dir = _read_data()[ConfigCategory.FOLDERS]["install_dir"]
+    with open(FREECAD_TOML, "rb") as file:
+        install_dir = tomllib.load(file)[FOLDERS][INSTALL_DIR]
     if path.name in install_dir:
         path = path / "bin"
     return path
-
-def _read_data() -> dict:
-    """Reads the freecad data toml."""
-    filepath = Path(resources.__file__).parent / "freecad.toml"
-    with open(filepath, "rb") as file:
-        config_data = tomllib.load(file)
-    return config_data
-
-def _write_to_cache(path: Path) -> None:
-    cache = get_cache()
-    if ConfigCategory.APPLICATION_PATHS not in cache:
-        cache[ConfigCategory.APPLICATION_PATHS] = dict()
-    cache[ConfigCategory.APPLICATION_PATHS][SoftwareName.FREECAD] = str(path)
-    write_cache(cache)

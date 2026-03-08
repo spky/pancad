@@ -1,41 +1,61 @@
 Geometry
 ========
 
-.. autoclass:: pancad.geometry.AbstractGeometry
+.. autoclass:: pancad.abstract.AbstractGeometry
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.Circle
+.. autoclass:: pancad.abstract.AbstractGeometrySystem
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.CircularArc
+.. autoclass:: pancad.api.Circle
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.CoordinateSystem
+.. autoclass:: pancad.api.CircularArc
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.Ellipse
+.. autoclass:: pancad.api.CoordinateSystem
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.Line
+.. autoclass:: pancad.api.Ellipse
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.LineSegment
+.. autoclass:: pancad.api.Line
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.Point
+.. autoclass:: pancad.api.LineSegment
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.Point
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.FeatureSystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.SketchGeometrySystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.TwoDSketchSystem
+    :show-inheritance:
+    :members:
+
+.. autoclass:: pancad.api.ThreeDSketchSystem
     :show-inheritance:
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: pancad.geometry.constants.ConstraintReference
+.. autoclass:: pancad.api.ConstraintReference
     :show-inheritance:
     :members:

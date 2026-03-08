@@ -3,7 +3,9 @@ import math
 import unittest
 
 import numpy as np
-from pancad.geometry import Point, Line, LineSegment
+from pancad.geometry.point import Point
+from pancad.geometry.line import Line
+from pancad.geometry.line_segment import LineSegment
 from pancad.utils import trigonometry as trig
 # from pancad.utils import verification
 from pancad.utils.verification import assertPancadAlmostEqual
@@ -18,7 +20,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
     
     def test_init_two_points(self):
         line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b), uid="test")
-        test_features = (line_seg.point_a, line_seg.point_b,
+        test_features = (line_seg.start, line_seg.end,
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
@@ -26,7 +28,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
     
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
-        test_features = (line_seg.point_a, line_seg.point_b,
+        test_features = (line_seg.start, line_seg.end,
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
@@ -40,7 +42,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
     
     def test_init_two_points(self):
         line_seg = LineSegment(Point(self.pt_a), Point(self.pt_b))
-        test_features = (line_seg.point_a, line_seg.point_b,
+        test_features = (line_seg.start, line_seg.end,
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
@@ -48,7 +50,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
     
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
-        test_features = (line_seg.point_a, line_seg.point_b,
+        test_features = (line_seg.start, line_seg.end,
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
@@ -93,23 +95,23 @@ class TestLineSegmentFromPointLengthAngleExceptions(unittest.TestCase):
         self.length, self.phi, self.theta = self.spherical
     
     def test_polar_vector_phi(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             LineSegment.from_point_length_angle(self.pt2d, self.polar, 3)
     
     def test_polar_vector_phi_theta(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             LineSegment.from_point_length_angle(self.pt2d, self.polar, 3, 3)
     
     def test_spherical_vector_phi(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3)
     
     def test_spherical_vector_phi_theta(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             LineSegment.from_point_length_angle(self.pt3d, self.spherical, 3, 3)
     
     def test_length_no_phi(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             LineSegment.from_point_length_angle(self.pt2d, self.length)
     
     def test_dimension_mismatch_3to2(self):
@@ -135,7 +137,7 @@ class TestLineSegmentGetters(unittest.TestCase):
             (1, 1, 1),
         ]
         directions = [
-            trig.to_1D_tuple(trig.get_unit_vector(d)) for d in directions
+            trig.to_1d_tuple(trig.get_unit_vector(d)) for d in directions
         ]
         lengths = [
             math.hypot(1, 1),
