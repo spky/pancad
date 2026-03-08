@@ -32,7 +32,8 @@ class PancadThing(ABC):
     def uid(self) -> str | UUID:
         """The unique id of the element, used for CAD interoperability. Can be
         manually set, but is usually randomly generated or read from an existing
-        file.
+        file. The unique ids assigned to pancad elements enables all lower level
+        mapping between CAD applications.
         """
         return self._uid
     @uid.setter
@@ -101,7 +102,7 @@ class AbstractFeature(PancadThing):
 
 
 class AbstractGeometry(PancadThing):
-    """A class defining the interfaces provided by pancad Geometry Elements."""
+    """A class defining interfaces common to all pancad Geometry Elements."""
     def __init__(self, references: dict[ConstraintReference, AbstractGeometry],
                  *,
                  system: AbstractGeometrySystem=None,

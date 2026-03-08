@@ -57,8 +57,8 @@ class CircularArc(AbstractGeometry):
     
     :param center: The center point of the arc.
     :param radius: The radius dimension of the arc.
-    :param start_vector: A vector pointing to the start of the arc.
-    :param end_vector: A vector pointing to the end of the arc.
+    :param start: A vector pointing to the start of the arc.
+    :param end: A vector pointing to the end of the arc.
     :param is_clockwise: Sets whether the arc travels clockwise from the start 
         point to the end point.
     :param normal: The vector normal to the start and end vectors that defines 

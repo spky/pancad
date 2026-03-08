@@ -27,17 +27,13 @@ A FreeCAD file can be read into a :class:`~pancad.filetypes.PartFile` like this:
     :linenos:
     :lines: 1,2,3
 
-The contents of the file can be summarized by using print on the PartFile:
+The number of features in the file can be summarized by using print on the 
+PartFile:
 
 .. literalinclude:: tutorials/how_to_read_from_a_freecad_file.py
     :linenos:
     :lines: 4
     :lineno-match:
-
-The PartFile will have a tabular summary output to the command line:
-
-.. program-output:: cd tutorials && python how_to_read_from_a_freecad_file.py
-    :shell:
 
 How do I make a FreeCAD file?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

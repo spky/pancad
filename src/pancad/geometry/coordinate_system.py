@@ -1,4 +1,4 @@
-"""A module providing a class to represent coordinate systems in CAD programs, 
+"""A module providing a class to represent coordinate systems in CAD programs,
 graphics, and other geometry use cases.
 """
 from __future__ import annotations
@@ -102,27 +102,24 @@ class SystemParts:
 
 
 class CoordinateSystem(AbstractGeometry, AbstractFeature):
-    """A class representing coordinate systems in 2D and 3D space. Initial 
+    """A class representing coordinate systems in 2D and 3D space. Initial
     rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
-    
-    :param origin: A 2D or 3D center Point of the coordinate system. Defaults to 
+
+    :param origin: A 2D or 3D center Point of the coordinate system. Defaults to
         (0, 0, 0).
     :param alpha: Angle to rotate about the z-axis in radians, defaults to 0.
-    :param beta: Angle to rotate about the y-axis in radians after alpha 
+    :param beta: Angle to rotate about the y-axis in radians after alpha
         rotation, defaults to 0. Cannot be set for a 2D coordinate system.
-    :param gamma: Angle to rotate about the x-axis after beta rotation, defaults 
+    :param gamma: Angle to rotate about the x-axis after beta rotation, defaults
         to 0. Cannot be set for a 2D coordinate system.
     :param uid: The unique ID of the coordinate system.
     :param name: The name of the feature displayed to the users in CAD.
-    :param context: The feature that acts as the context for this feature, 
-        usually a :class:`~pancad.geometry.FeatureContainer`
     """
     def __init__(self,
                  origin: Point | VectorLike,
                  alpha: Real=0, beta: Real=0, gamma: Real=0,
                  *,
                  uid: str=None,
-                 context: AbstractFeature=None,
                  name: str=None) -> None:
         if isinstance(origin, VectorLike):
             origin = Point(origin)
@@ -142,7 +139,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         self._parts = SystemParts(origin, *axes, *planes)
         self.rotate(rotation_matrix)
         self.name = name
-        self.context = context
         self.uid = uid
         references = {
             ConstraintReference.CORE: self,
@@ -168,14 +164,13 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
                         quat: np.quaternion,
                         *,
                         uid: str=None,
-                        name: str=None,
-                        context: AbstractFeature=None) -> CoordinateSystem:
+                        name: str=None) -> CoordinateSystem:
         """Returns a 3D coordinate system defined with a quaternion.
-        
-        :param origin: A 3D center Point of the coordinate system. Defaults to 
+
+        :param origin: A 3D center Point of the coordinate system. Defaults to
             (0, 0, 0).
-        :param quat: A numpy quaternion used to rotate the coordinate system 
-            from the canonical cartesian coordinate orientation to its desired 
+        :param quat: A numpy quaternion used to rotate the coordinate system
+            from the canonical cartesian coordinate orientation to its desired
             location.
         :param uid: The unique ID of the coordinate system.
         :returns: A 3D CoordinateSystem rotated according to the quaternion.
@@ -187,7 +182,6 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         coordinate_system = cls(origin,
                                 0, 0, 0,
                                 uid=uid,
-                                context=context,
                                 name=name)
         return coordinate_system.rotate(quat)
 
@@ -200,9 +194,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     @property
     def origin(self) -> Point:
         """The origin point of the coordinate system.
-        
+
         :getter: Returns the origin point of the coordinate system.
-        :setter: Updates the origin point's location from another Point or 
+        :setter: Updates the origin point's location from another Point or
             position vector.
         """
         return self._parts.origin
@@ -230,16 +224,10 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
     # Public Methods
     def copy(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem.
-        
-        :returns: the same origin, axes, planes and context, but not the same 
-            uid.
+
+        :returns: the same origin, axes, and planes, but not the same uid.
         """
         return CoordinateSystem(self.origin).update(self)
-
-    def get_dependencies(self) -> tuple[AbstractFeature | AbstractGeometry]:
-        if self.context is None:
-            return tuple()
-        return (self.context,)
 
     def get_axis_line_x(self) -> Line:
         """Returns the infinite line coincident with the x-axis."""
@@ -258,7 +246,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return tuple(axis.direction for axis in self._parts.get_axes())
 
     def get_quaternion(self) -> np.quaternion:
-        """Returns a quaternion that can be used to rotate other vectors from 
+        """Returns a quaternion that can be used to rotate other vectors from
         the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
         (0, 0, 1) to this coordinate system.
         """
@@ -306,9 +294,9 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return self._parts.yz
 
     def update(self, other: CoordinateSystem) -> Self:
-        """Updates the origin, axes, and planes of the CoordinateSystem to match 
+        """Updates the origin, axes, and planes of the CoordinateSystem to match
         another CoordinateSystem.
-        
+
         :param other: The CoordinateSystem to update to.
         :returns: The updated CoordinateSystem.
         """
@@ -330,8 +318,8 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
 
     # Python Dunders
     def __copy__(self) -> CoordinateSystem:
-        """Returns a copy of the CoordinateSystem that has the same origin, 
-        axes, planes and context, but not the same uid. Can be used with the 
+        """Returns a copy of the CoordinateSystem that has the same origin,
+        axes, planes and context, but not the same uid. Can be used with the
         python copy module.
         """
         return self.copy()
@@ -360,7 +348,7 @@ class CoordinateSystem(AbstractGeometry, AbstractFeature):
         return f"<pancadCoordSys'{self.name}'({point_str}){axis_str}>"
 
     def __len__(self) -> int:
-        """Returns the number of dimensions of the coordinate system by 
+        """Returns the number of dimensions of the coordinate system by
         returning the number of dimensions of the origin point.
         """
         return len(self.origin)

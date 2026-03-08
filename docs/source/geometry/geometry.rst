@@ -5,37 +5,37 @@ Geometry
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.circle.Circle
+.. autoclass:: pancad.api.Circle
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.circular_arc.CircularArc
+.. autoclass:: pancad.api.CircularArc
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.coordinate_system.CoordinateSystem
+.. autoclass:: pancad.api.CoordinateSystem
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.ellipse.Ellipse
+.. autoclass:: pancad.api.Ellipse
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.line.Line
+.. autoclass:: pancad.api.Line
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.line_segment.LineSegment
+.. autoclass:: pancad.api.LineSegment
     :show-inheritance:
     :members:
 
-.. autoclass:: pancad.geometry.point.Point
+.. autoclass:: pancad.api.Point
     :show-inheritance:
     :members:
 
 Enumerations
 ------------
 
-.. autoclass:: pancad.constants.ConstraintReference
+.. autoclass:: pancad.api.ConstraintReference
     :show-inheritance:
     :members:

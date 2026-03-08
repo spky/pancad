@@ -6,13 +6,14 @@ from pancad.geometry.ellipse import Ellipse
 from pancad.geometry.extrude import Extrude
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
+from pancad.geometry.feature_container import FeatureContainer
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.geometry.sketch import Sketch
 
 from pancad.constraints._generator import make_constraint
 
-from pancad.constants import SketchConstraint
+from pancad.constants import SketchConstraint, ConstraintReference, FeatureType
 
 from pancad.filetypes.part_file import PartFile
 
@@ -22,9 +23,15 @@ __all__ = [
     "CoordinateSystem",
     "Ellipse",
     "Extrude",
+    "FeatureContainer",
     "Line",
     "LineSegment",
     "Plane",
     "Point",
     "Sketch",
+    "make_constraint",
+    "SketchConstraint",
+    "ConstraintReference",
+    "FeatureType",
+    "PartFile",
 ]
