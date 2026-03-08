@@ -25,16 +25,3 @@ def read_freecad(path: PathLike) -> PartFile:
     from pancad.cad.freecad._feature_translation import new_part_from_document
     fcstd = FCStd.from_path(path)
     return new_part_from_document(fcstd)
-
-def write_part_to_freecad(part: PartFile, path: PathLike) -> None:
-    """Writes a pancad PartFile to a FreeCAD fcstd file.
-
-    :param part: A pancad PartFile.
-    :param path: A filepath to write the new FCStd file to.
-    """
-    # Prevent FreeCAD from being imported until the last moment, otherwise
-    # importing pancad will depend on the ability to import FreeCAD.
-    # pylint: disable=import-outside-toplevel
-    from pancad.cad.freecad._feature_translation import new_document_from_part
-    freecad_api_doc = new_document_from_part(part)
-    freecad_api_doc.saveAs(str(path))

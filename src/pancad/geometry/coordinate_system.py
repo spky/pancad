@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Self
 import numpy as np
 import quaternion
 
-from pancad.abstract import AbstractFeature, AbstractGeometry
+from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
