@@ -1,4 +1,5 @@
 """A module for constant values used inside of FreeCAD Document archives."""
+from __future__ import annotations
 
 from enum import StrEnum, IntEnum
 
@@ -33,7 +34,7 @@ class UnitSystem(IntEnum):
         return unit_map[self.value]
 
 class ConstraintSubPart(IntEnum):
-    """An enumeration of integers corresponding to FreeCAD constraint sub part 
+    """An enumeration of integers corresponding to FreeCAD constraint sub part
     references.
     """
     EDGE = 0
@@ -47,7 +48,7 @@ class ConstraintSubPart(IntEnum):
 
     @property
     def human_name(self) -> str:
-        """The name of the constraint subpart reference represented by the 
+        """The name of the constraint subpart reference represented by the
         integer.
         """
         names = {
@@ -86,8 +87,8 @@ class PadTypeNum(IntEnum):
         return names[self.value]
 
 class InternalGeometryType(IntEnum):
-    """An enumeration of integers corresponding to FreeCAD 
-    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 
+    """An enumeration of integers corresponding to FreeCAD
+    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD
     source code here (as of 2026-02-25):
     FreeCAD/src/Mod/Sketcher/App/SketchGeometryExtension.h:139
     """
@@ -145,10 +146,37 @@ class ConstraintTypeNum(IntEnum):
     DIAMETER = 18 #
     WEIGHT = 19
 
+    @classmethod
+    def from_human_name(self, name: str) -> ConstraintTypeNum:
+        """Returns the equivalent ConstraintTypeNum from the human name
+        associated with it. Useful for interacting with the FreeCAD API.
+
+        :raises ValueError: When the name does not match any ConstraintTypeNums
+        """
+        reversed_names = {v: k for k, v in self._get_human_name_map().items()}
+        try:
+            return reversed_names[name]
+        except KeyError as exc:
+            msg = f"No Constraint Type Number equivalent for '{name}'"
+            raise ValueError(msg) from exc
+
     @property
     def human_name(self) -> str:
         """The name of the constraint type represented by the integer."""
-        names = {
+        return self._get_human_name_map()[self.value]
+
+    @property
+    def requires_value(self) -> bool:
+        """Returns whether the constraint requires a value."""
+        valued = {self.DISTANCE, self.DISTANCE_X, self.DISTANCE_Y,
+                  self.ANGLE, self.RADIUS, self.DIAMETER}
+        return self in valued
+
+    def _get_human_name_map(self) -> dict[ConstraintTypeNum, str]:
+        """The mapping between the enumeration values and the human name
+        assigned by FreeCAD's API.
+        """
+        return {
             self.COINCIDENT: "Coincident",
             self.HORIZONTAL: "Horizontal",
             self.VERTICAL: "Vertical",
@@ -169,14 +197,6 @@ class ConstraintTypeNum(IntEnum):
             self.DIAMETER: "Diameter",
             self.WEIGHT: "Weight",
         }
-        return names[self.value]
-
-    @property
-    def requires_value(self) -> bool:
-        """Returns whether the constraint requires a value."""
-        valued = {self.DISTANCE, self.DISTANCE_X, self.DISTANCE_Y,
-                  self.ANGLE, self.RADIUS, self.DIAMETER}
-        return self in valued
 
 
 class SubFile(StrEnum):
@@ -187,17 +207,17 @@ class SubFile(StrEnum):
     """XML file containing GUI specific information"""
     LINE_COLOR_ARRAY = "LineColorArray"
     POINT_COLOR_ARRAY = "PointColorArray"
-    """File with unknown purpose. Can have multiple with an incrementing suffix 
+    """File with unknown purpose. Can have multiple with an incrementing suffix
     integer
     """
     SHAPE_APPEARANCE = "ShapeAppearance"
-    """File with unknown purpose. Can have multiple with an incrementing suffix 
+    """File with unknown purpose. Can have multiple with an incrementing suffix
     integer
     """
     SHAPE_BRP = ".Shape.brp"
     """Suffix of file with unknown purpose."""
     SHAPE_MAP_TXT = ".Shape.Map.txt"
-    """Suffix of file with unknown purpose. There is one of these per document 
+    """Suffix of file with unknown purpose. There is one of these per document
     object.
     """
     STRING_HASHER_TABLE_TXT = "StringHasher.Table.txt"
@@ -214,7 +234,7 @@ class SubFile(StrEnum):
 class Tag(StrEnum):
     """Enumeration of the tags used in FCStd xml files."""
     ARC_OF_CIRCLE = "ArcOfCircle"
-    """Element defining the center, orientation, radius, and sweep angles of a 
+    """Element defining the center, orientation, radius, and sweep angles of a
     sketch circular arc.
     """
     BOOL = "Bool"
@@ -297,7 +317,7 @@ class Sketcher(StrEnum):
     CONSTRAINT_LIST = "Sketcher::PropertyConstraintList"
     """type attribute of constraint list Property elements."""
     GEOMETRY_EXT = "Sketcher::SketchGeometryExtension"
-    """type attribute of sketch GeoExtension elements with sketch specific info 
+    """type attribute of sketch GeoExtension elements with sketch specific info
     stored on them.
     """
     EXTERNAL_EXT = "Sketcher::ExternalGeometryExtension"
