@@ -1,7 +1,6 @@
 """The freecad.constants module imports the constants for easier access here."""
 from ._object_type import ObjectType
 from ._edge_sub_parts import EdgeSubPart
-from ._internal_alignment_type import InternalAlignmentType
 from ._pad_type import PadType
 from ._geometry_list import ListName
 from ._sketch_numbers import SketchNumber
