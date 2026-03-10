@@ -124,7 +124,7 @@ class InternalGeometryType(IntEnum):
         }
         return names[self.value]
 
-class ConstraintTypeNum(IntEnum):
+class ConstraintType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD constraint types."""
     COINCIDENT = 1 #
     HORIZONTAL = 2 #

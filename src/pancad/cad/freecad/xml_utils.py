@@ -11,9 +11,7 @@ import re
 
 import numpy as np
 
-from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintSubPart as CSP,
-)
+from pancad.cad.freecad.constants import ConstraintSubPart as CSP
 from pancad.utils.trigonometry import is_clockwise
 
 if TYPE_CHECKING:

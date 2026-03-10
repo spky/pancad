@@ -14,9 +14,9 @@ import graphlib
 import numpy as np
 
 from pancad.cad.freecad import xml_utils
-from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintTypeNum, ConstraintSubPart, InternalGeometryType,
-)
+from pancad.cad.freecad.constants import (ConstraintType,
+                                          ConstraintSubPart,
+                                          InternalGeometryType)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     import quaternion
 
     from pancad.cad.freecad.xml_utils import FreeCADUID
-    from pancad.cad.freecad.constants.archive_constants import App, PartDesign
 
 logger = logging.getLogger(__name__)
 
@@ -1259,7 +1258,7 @@ class ConstraintData:
     """
     parent: FreeCADConstraintXML = dataclasses.field(repr=False)
     name: str | None
-    type_: ConstraintTypeNum
+    type_: ConstraintType
     value: float
     pairs: ConstraintPairs
     state: ConstraintState
@@ -1322,7 +1321,7 @@ class ConstraintData:
                 raise
             attrs["internal_alignment"] = InternalAlignment(**align_data)
         try:
-            attrs["type_"] = ConstraintTypeNum(attrs["type_"])
+            attrs["type_"] = ConstraintType(attrs["type_"])
         except ValueError as exc:
             exc.add_note(f"Unrecognized type number {attrs['type_']}")
             raise
@@ -1354,7 +1353,7 @@ class FreeCADConstraintXML:
         return self._data
 
     @property
-    def type_(self) -> ConstraintTypeNum:
+    def type_(self) -> ConstraintType:
         """The constraint type number."""
         return self.data.type_
 

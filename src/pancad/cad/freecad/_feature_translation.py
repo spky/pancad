@@ -33,8 +33,8 @@ from pancad.cad.freecad import api_utils
 from pancad.cad.freecad._bootstrap import get_app_dir
 from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
 from pancad.cad.freecad import xml_utils
-from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintTypeNum as CTN,
+from pancad.cad.freecad.constants import (
+    ConstraintType as CT,
     ConstraintSubPart as CSP,
     InternalGeometryType as IGT,
     PadTypeNum as PTN,
@@ -616,20 +616,20 @@ def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
 # pancad ---> FreeCAD Constraints
 ################################################################################
 
-def get_constraint_type_from_pancad(constraint: AbstractConstraint) -> CTN:
+def get_constraint_type_from_pancad(constraint: AbstractConstraint) -> CT:
     """Returns the equivalent FreeCAD constraint type from pancad constraints"""
     type_map = {
-        SC.ANGLE: CTN.ANGLE,
-        SC.DISTANCE: CTN.DISTANCE,
-        SC.DISTANCE_HORIZONTAL: CTN.DISTANCE_X,
-        SC.DISTANCE_VERTICAL: CTN.DISTANCE_Y,
-        SC.DISTANCE_DIAMETER: CTN.DIAMETER,
-        SC.DISTANCE_RADIUS: CTN.RADIUS,
-        SC.EQUAL: CTN.EQUAL,
-        SC.HORIZONTAL: CTN.HORIZONTAL,
-        SC.PARALLEL: CTN.PARALLEL,
-        SC.PERPENDICULAR: CTN.PERPENDICULAR,
-        SC.VERTICAL: CTN.VERTICAL,
+        SC.ANGLE: CT.ANGLE,
+        SC.DISTANCE: CT.DISTANCE,
+        SC.DISTANCE_HORIZONTAL: CT.DISTANCE_X,
+        SC.DISTANCE_VERTICAL: CT.DISTANCE_Y,
+        SC.DISTANCE_DIAMETER: CT.DIAMETER,
+        SC.DISTANCE_RADIUS: CT.RADIUS,
+        SC.EQUAL: CT.EQUAL,
+        SC.HORIZONTAL: CT.HORIZONTAL,
+        SC.PARALLEL: CT.PARALLEL,
+        SC.PERPENDICULAR: CT.PERPENDICULAR,
+        SC.VERTICAL: CT.VERTICAL,
     }
     if constraint.type_name in type_map: # One-to-one checks
         return type_map[constraint.type_name]
@@ -640,10 +640,10 @@ def get_constraint_type_from_pancad(constraint: AbstractConstraint) -> CTN:
     geometries = constraint.get_geometry()
     if constraint.type_name == SC.COINCIDENT:
         if all(isinstance(g, Point) for g in geometries):
-            return CTN.COINCIDENT
+            return CT.COINCIDENT
         if any(isinstance(g, Point) for g in geometries):
-            return CTN.POINT_ON_OBJECT
-        return CTN.TANGENT
+            return CT.POINT_ON_OBJECT
+        return CT.TANGENT
     msg = f"Unrecognized constraint type '{constraint.__class__}'"
     raise TypeError(msg, constraint)
 
@@ -656,28 +656,28 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     # TODO: Add a check for whether there are point-to-point tangents
     input_map = {
         # If present, the integer is the number of points in the references.
-        CTN.ANGLE: "quadrant_order",
-        CTN.COINCIDENT: "original_order",
-        CTN.DIAMETER: "indexes_only",
-        CTN.RADIUS: "indexes_only",
-        CTN.EQUAL: "indexes_only",
-        CTN.HORIZONTAL: "indexes_only",
-        CTN.VERTICAL: "indexes_only",
-        CTN.PARALLEL: "indexes_only",
-        CTN.PERPENDICULAR: "indexes_only",
-        CTN.POINT_ON_OBJECT: "points_first",
-        (CTN.TANGENT, 0): "indexes_only",
-        (CTN.TANGENT, 1): "points_first",
-        (CTN.TANGENT, 2): "original_order",
-        (CTN.DISTANCE, 0): "bugged_distance",
-        (CTN.DISTANCE_X, 0): "bugged_distance",
-        (CTN.DISTANCE_Y, 0): "bugged_distance",
-        (CTN.DISTANCE, 1): "points_first",
-        (CTN.DISTANCE_X, 1): "points_first",
-        (CTN.DISTANCE_Y, 1): "points_first",
-        (CTN.DISTANCE, 2): "original_order",
-        (CTN.DISTANCE_X, 2): "original_order",
-        (CTN.DISTANCE_Y, 2): "original_order",
+        CT.ANGLE: "quadrant_order",
+        CT.COINCIDENT: "original_order",
+        CT.DIAMETER: "indexes_only",
+        CT.RADIUS: "indexes_only",
+        CT.EQUAL: "indexes_only",
+        CT.HORIZONTAL: "indexes_only",
+        CT.VERTICAL: "indexes_only",
+        CT.PARALLEL: "indexes_only",
+        CT.PERPENDICULAR: "indexes_only",
+        CT.POINT_ON_OBJECT: "points_first",
+        (CT.TANGENT, 0): "indexes_only",
+        (CT.TANGENT, 1): "points_first",
+        (CT.TANGENT, 2): "original_order",
+        (CT.DISTANCE, 0): "bugged_distance",
+        (CT.DISTANCE_X, 0): "bugged_distance",
+        (CT.DISTANCE_Y, 0): "bugged_distance",
+        (CT.DISTANCE, 1): "points_first",
+        (CT.DISTANCE_X, 1): "points_first",
+        (CT.DISTANCE_Y, 1): "points_first",
+        (CT.DISTANCE, 2): "original_order",
+        (CT.DISTANCE_X, 2): "original_order",
+        (CT.DISTANCE_Y, 2): "original_order",
     }
     type_ = get_constraint_type_from_pancad(constraint)
     key = _get_constraint_write_key(constraint, document, uid_map)
@@ -748,10 +748,10 @@ def _get_freecad_constraint_indices(
 def _get_constraint_write_key(constraint: AbstractConstraint,
                               document: FreeCADDocument,
                               uid_map: dict[str, FreeCADUID]
-                              ) -> CT | tuple[CTN, int]:
+                              ) -> CT | tuple[CT, int]:
     """Returns a key to dispatch how to write the constraint to FreeCAD."""
     # Some constraint types in FreeCAD depend on the # of points in the refs
-    point_dependent = {CTN.TANGENT, CTN.DISTANCE, CTN.DISTANCE_X, CTN.DISTANCE_Y}
+    point_dependent = {CT.TANGENT, CT.DISTANCE, CT.DISTANCE_X, CT.DISTANCE_Y}
     type_ = get_constraint_type_from_pancad(constraint)
     if type_ in point_dependent:
         refs = []
@@ -870,7 +870,7 @@ def constraint_from_freecad(constraint: FreeCADConstraintXML,
     if constraint.type_.requires_value:
         # Only some constraints like distance require a value.
         kwargs["value"] = constraint.value
-        if constraint.type_ == CTN.ANGLE:
+        if constraint.type_ == CT.ANGLE:
             points_pos = []
             for geo_ref in constraint.get_references():
                 fc_geo, part = geo_ref.get_geometry()
@@ -937,23 +937,23 @@ def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
     constraint.
     """
     type_map = {
-        CTN.ANGLE: SC.ANGLE,
-        CTN.DISTANCE: SC.DISTANCE,
-        CTN.DISTANCE_X: SC.DISTANCE_HORIZONTAL,
-        CTN.DISTANCE_Y: SC.DISTANCE_VERTICAL,
-        CTN.DIAMETER: SC.DISTANCE_DIAMETER,
-        CTN.RADIUS: SC.DISTANCE_RADIUS,
-        CTN.EQUAL: SC.EQUAL,
-        CTN.HORIZONTAL: SC.HORIZONTAL,
-        CTN.PERPENDICULAR: SC.PERPENDICULAR,
-        CTN.PARALLEL: SC.PARALLEL,
-        CTN.VERTICAL: SC.VERTICAL,
-        CTN.COINCIDENT: SC.COINCIDENT,
-        CTN.POINT_ON_OBJECT: SC.COINCIDENT,
+        CT.ANGLE: SC.ANGLE,
+        CT.DISTANCE: SC.DISTANCE,
+        CT.DISTANCE_X: SC.DISTANCE_HORIZONTAL,
+        CT.DISTANCE_Y: SC.DISTANCE_VERTICAL,
+        CT.DIAMETER: SC.DISTANCE_DIAMETER,
+        CT.RADIUS: SC.DISTANCE_RADIUS,
+        CT.EQUAL: SC.EQUAL,
+        CT.HORIZONTAL: SC.HORIZONTAL,
+        CT.PERPENDICULAR: SC.PERPENDICULAR,
+        CT.PARALLEL: SC.PARALLEL,
+        CT.VERTICAL: SC.VERTICAL,
+        CT.COINCIDENT: SC.COINCIDENT,
+        CT.POINT_ON_OBJECT: SC.COINCIDENT,
     }
     if constraint.type_ in type_map:
         return type_map[constraint.type_]
-    if constraint.type_ == CTN.TANGENT:
+    if constraint.type_ == CT.TANGENT:
         geo_pairs = [r.get_geometry() for r in constraint.get_references()]
         if all(g.type_ == "Part::GeomLineSegment" and not p.is_point
                for g, p in geo_pairs):
