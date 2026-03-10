@@ -12,7 +12,7 @@
 
 # from pancad.constants.config_paths import DATABASE
 # from pancad.cad.freecad import sql_interface
-# from pancad.cad.freecad.constants.archive_constants import Part, SubFile, Tag
+# from pancad.cad.freecad.constants import Part, SubFile, Tag
 
 
 

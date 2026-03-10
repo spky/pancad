@@ -1,4 +1,5 @@
 """A module for constant values used inside of FreeCAD Document archives."""
+from __future__ import annotations
 
 from enum import StrEnum, IntEnum
 
@@ -33,7 +34,7 @@ class UnitSystem(IntEnum):
         return unit_map[self.value]
 
 class ConstraintSubPart(IntEnum):
-    """An enumeration of integers corresponding to FreeCAD constraint sub part 
+    """An enumeration of integers corresponding to FreeCAD constraint sub part
     references.
     """
     EDGE = 0
@@ -47,7 +48,7 @@ class ConstraintSubPart(IntEnum):
 
     @property
     def human_name(self) -> str:
-        """The name of the constraint subpart reference represented by the 
+        """The name of the constraint subpart reference represented by the
         integer.
         """
         names = {
@@ -63,7 +64,7 @@ class ConstraintSubPart(IntEnum):
         """Whether the subpart is referencing a point."""
         return self.value > 0
 
-class PadTypeNum(IntEnum):
+class PadType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD Pad type options."""
     LENGTH = 0
     UP_TO_LAST = 1
@@ -86,8 +87,8 @@ class PadTypeNum(IntEnum):
         return names[self.value]
 
 class InternalGeometryType(IntEnum):
-    """An enumeration of integers corresponding to FreeCAD 
-    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD 
+    """An enumeration of integers corresponding to FreeCAD
+    InternalAlignmentTypes inside geometry SketchGeometryExtensions. See FreeCAD
     source code here (as of 2026-02-25):
     FreeCAD/src/Mod/Sketcher/App/SketchGeometryExtension.h:139
     """
@@ -123,53 +124,46 @@ class InternalGeometryType(IntEnum):
         }
         return names[self.value]
 
-class ConstraintTypeNum(IntEnum):
+class ConstraintType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD constraint types."""
-    COINCIDENT = 1 #
-    HORIZONTAL = 2 #
-    VERTICAL = 3 #
-    PARALLEL = 4 #
+    COINCIDENT = 1
+    HORIZONTAL = 2
+    VERTICAL = 3
+    PARALLEL = 4
     TANGENT = 5
-    DISTANCE = 6 #
-    DISTANCE_X = 7 #
-    DISTANCE_Y = 8 #
-    ANGLE = 9 #
-    PERPENDICULAR = 10 #
-    RADIUS = 11 #
-    EQUAL = 12 #
-    POINT_ON_OBJECT = 13 #
+    DISTANCE = 6
+    DISTANCE_X = 7
+    DISTANCE_Y = 8
+    ANGLE = 9
+    PERPENDICULAR = 10
+    RADIUS = 11
+    EQUAL = 12
+    POINT_ON_OBJECT = 13
     SYMMETRIC = 14
     INTERNAL_ALIGNMENT = 15
     SNELLS_LAW = 16
     BLOCK = 17
-    DIAMETER = 18 #
+    DIAMETER = 18
     WEIGHT = 19
+
+    @classmethod
+    def from_human_name(cls, name: str) -> ConstraintType:
+        """Returns the equivalent ConstraintType from the human name
+        associated with it. Useful for interacting with the FreeCAD API.
+
+        :raises ValueError: When the name does not match any ConstraintType
+        """
+        reversed_names = {v: k for k, v in cls._get_human_name_map().items()}
+        try:
+            return cls(reversed_names[name])
+        except KeyError as exc:
+            msg = f"No Constraint Type matches '{name}'"
+            raise ValueError(msg) from exc
 
     @property
     def human_name(self) -> str:
         """The name of the constraint type represented by the integer."""
-        names = {
-            self.COINCIDENT: "Coincident",
-            self.HORIZONTAL: "Horizontal",
-            self.VERTICAL: "Vertical",
-            self.PARALLEL: "Parallel",
-            self.TANGENT: "Tangent",
-            self.DISTANCE: "Distance",
-            self.DISTANCE_X: "DistanceX",
-            self.DISTANCE_Y: "DistanceY",
-            self.ANGLE: "Angle",
-            self.PERPENDICULAR: "Perpendicular",
-            self.RADIUS: "Radius",
-            self.EQUAL: "Equal",
-            self.POINT_ON_OBJECT: "PointOnObject",
-            self.SYMMETRIC: "Symmetric",
-            self.INTERNAL_ALIGNMENT: "InternalAlignment",
-            self.SNELLS_LAW: "SnellsLaw",
-            self.BLOCK: "Block",
-            self.DIAMETER: "Diameter",
-            self.WEIGHT: "Weight",
-        }
-        return names[self.value]
+        return self._get_human_name_map()[self.value]
 
     @property
     def requires_value(self) -> bool:
@@ -177,6 +171,33 @@ class ConstraintTypeNum(IntEnum):
         valued = {self.DISTANCE, self.DISTANCE_X, self.DISTANCE_Y,
                   self.ANGLE, self.RADIUS, self.DIAMETER}
         return self in valued
+
+    @classmethod
+    def _get_human_name_map(cls) -> dict[ConstraintType, str]:
+        """The mapping between the enumeration values and the human name
+        assigned by FreeCAD's API.
+        """
+        return {
+            cls.COINCIDENT: "Coincident",
+            cls.HORIZONTAL: "Horizontal",
+            cls.VERTICAL: "Vertical",
+            cls.PARALLEL: "Parallel",
+            cls.TANGENT: "Tangent",
+            cls.DISTANCE: "Distance",
+            cls.DISTANCE_X: "DistanceX",
+            cls.DISTANCE_Y: "DistanceY",
+            cls.ANGLE: "Angle",
+            cls.PERPENDICULAR: "Perpendicular",
+            cls.RADIUS: "Radius",
+            cls.EQUAL: "Equal",
+            cls.POINT_ON_OBJECT: "PointOnObject",
+            cls.SYMMETRIC: "Symmetric",
+            cls.INTERNAL_ALIGNMENT: "InternalAlignment",
+            cls.SNELLS_LAW: "SnellsLaw",
+            cls.BLOCK: "Block",
+            cls.DIAMETER: "Diameter",
+            cls.WEIGHT: "Weight",
+        }
 
 
 class SubFile(StrEnum):
@@ -187,17 +208,17 @@ class SubFile(StrEnum):
     """XML file containing GUI specific information"""
     LINE_COLOR_ARRAY = "LineColorArray"
     POINT_COLOR_ARRAY = "PointColorArray"
-    """File with unknown purpose. Can have multiple with an incrementing suffix 
+    """File with unknown purpose. Can have multiple with an incrementing suffix
     integer
     """
     SHAPE_APPEARANCE = "ShapeAppearance"
-    """File with unknown purpose. Can have multiple with an incrementing suffix 
+    """File with unknown purpose. Can have multiple with an incrementing suffix
     integer
     """
     SHAPE_BRP = ".Shape.brp"
     """Suffix of file with unknown purpose."""
     SHAPE_MAP_TXT = ".Shape.Map.txt"
-    """Suffix of file with unknown purpose. There is one of these per document 
+    """Suffix of file with unknown purpose. There is one of these per document
     object.
     """
     STRING_HASHER_TABLE_TXT = "StringHasher.Table.txt"
@@ -214,7 +235,7 @@ class SubFile(StrEnum):
 class Tag(StrEnum):
     """Enumeration of the tags used in FCStd xml files."""
     ARC_OF_CIRCLE = "ArcOfCircle"
-    """Element defining the center, orientation, radius, and sweep angles of a 
+    """Element defining the center, orientation, radius, and sweep angles of a
     sketch circular arc.
     """
     BOOL = "Bool"
@@ -297,7 +318,7 @@ class Sketcher(StrEnum):
     CONSTRAINT_LIST = "Sketcher::PropertyConstraintList"
     """type attribute of constraint list Property elements."""
     GEOMETRY_EXT = "Sketcher::SketchGeometryExtension"
-    """type attribute of sketch GeoExtension elements with sketch specific info 
+    """type attribute of sketch GeoExtension elements with sketch specific info
     stored on them.
     """
     EXTERNAL_EXT = "Sketcher::ExternalGeometryExtension"

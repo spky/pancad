@@ -34,13 +34,10 @@ from pancad.cad.freecad._bootstrap import get_app_dir
 from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
 from pancad.cad.freecad import xml_utils
 from pancad.cad.freecad.constants import (
-    ObjectType, ConstraintType as CT, EdgeSubPart as ESP
-)
-from pancad.cad.freecad.constants.archive_constants import (
-    ConstraintTypeNum as CTN,
+    ConstraintType as CT,
     ConstraintSubPart as CSP,
     InternalGeometryType as IGT,
-    PadTypeNum as PTN,
+    PadType as PT,
 )
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
@@ -265,23 +262,23 @@ def _extrude_from_freecad(feature: FreeCADObjectXML,
 
 def _get_extrude_type_from_freecad(extrude: FreeCADObjectXML) -> FT:
     """Returns the equivalent pancad extrude type from a freecad pad type."""
-    reversible = {PTN.LENGTH, PTN.TWO_LENGTHS}
-    midplanable = {PTN.LENGTH}
-    fc_type = PTN(extrude.get_property("Type").value)
+    reversible = {PT.LENGTH, PT.TWO_LENGTHS}
+    midplanable = {PT.LENGTH}
+    fc_type = PT(extrude.get_property("Type").value)
     key = [fc_type]
     if fc_type in reversible:
         key.append(extrude.get_property("Reversed").value)
     if fc_type in midplanable:
         key.append(extrude.get_property("Midplane").value)
     type_map = {
-        # PadTypeNum, is_reversed, is_midplane
-        (PTN.LENGTH, False, False): FT.DIMENSION,
-        (PTN.LENGTH, True, False): FT.ANTI_DIMENSION,
-        (PTN.LENGTH, True, True): FT.SYMMETRIC,
-        (PTN.LENGTH, False, True): FT.SYMMETRIC,
-        # PadTypeNum, is_reversed
-        (PTN.TWO_LENGTHS, False): FT.TWO_DIMENSIONS,
-        (PTN.TWO_LENGTHS, True): FT.ANTI_TWO_DIMENSIONS,
+        # PadType, is_reversed, is_midplane
+        (PT.LENGTH, False, False): FT.DIMENSION,
+        (PT.LENGTH, True, False): FT.ANTI_DIMENSION,
+        (PT.LENGTH, True, True): FT.SYMMETRIC,
+        (PT.LENGTH, False, True): FT.SYMMETRIC,
+        # PadType, is_reversed
+        (PT.TWO_LENGTHS, False): FT.TWO_DIMENSIONS,
+        (PT.TWO_LENGTHS, True): FT.ANTI_TWO_DIMENSIONS,
     }
     try:
         return type_map[tuple(key)]
@@ -407,7 +404,7 @@ def _new_body_from_container(feature: FeatureContainer,
     if feature.uid in uid_map:
         msg = "pancad uid of container already in uid map"
         raise ValueError(msg, feature)
-    body = document.addObject(ObjectType.BODY)
+    body = document.addObject("PartDesign::Body")
     api_utils.relabel_object(body, feature.name)
 
     body.Placement = new_placement_from_pose(feature.pose)
@@ -452,7 +449,7 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     fc_plane_uid = uid_map[feature.get_support().uid]
 
     # Add equivalent objects to freecad
-    fc_sketch = document.addObject(ObjectType.SKETCH)
+    fc_sketch = document.addObject("Sketcher::SketchObject")
     api_utils.relabel_object(fc_sketch, feature.name)
     api_utils.get_by_uid(fc_parent_uid, document).addObject(fc_sketch)
     fc_sketch.AttachmentSupport = api_utils.get_by_uid(fc_plane_uid, document)
@@ -485,7 +482,7 @@ def _new_pad_from_pancad_extrude(feature: Extrude,
     fc_profile_uid = uid_map[feature.profile.uid]
     fc_profile = api_utils.get_by_uid(fc_profile_uid, document)
 
-    pad = document.addObject(ObjectType.PAD)
+    pad = document.addObject("PartDesign::Pad")
     api_utils.relabel_object(pad, feature.name)
     api_utils.get_by_uid(fc_parent_uid, document).addObject(pad)
     pad.Profile = fc_profile
@@ -637,8 +634,8 @@ def get_constraint_type_from_pancad(constraint: AbstractConstraint) -> CT:
     if constraint.type_name in type_map: # One-to-one checks
         return type_map[constraint.type_name]
     if constraint.type_name == SC.TANGENT:
-        raise NotImplementedError("Tangent constraints aren't available yet.",
-                                  constraint)
+        msg = "Tangent constraints aren't available for translation yet."
+        raise NotImplementedError(msg, constraint)
 
     geometries = constraint.get_geometry()
     if constraint.type_name == SC.COINCIDENT:
@@ -698,11 +695,11 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     )
     pc_value = getattr(constraint, "value", None)
     if pc_value is None:
-        return Sketcher.Constraint(type_, *indicies)
+        return Sketcher.Constraint(type_.human_name, *indicies)
     # Add value if available from pancad constraint for distance, etc.
     unit_map = {"degrees": "deg"}
     unit = unit_map.setdefault(constraint.unit, constraint.unit)
-    return Sketcher.Constraint(type_, *indicies,
+    return Sketcher.Constraint(type_.human_name, *indicies,
                                App.Units.Quantity(f"{pc_value} {unit}"))
 
 def _get_freecad_constraint_indices(
@@ -732,14 +729,14 @@ def _get_freecad_constraint_indices(
             return [first.index, first.part, second.index]
         case "bugged_distance":
             first, second = refs
-            return [first.index, ESP.START, second.index]
+            return [first.index, CSP.START, second.index]
         case "quadrant_order":
             first, second = refs
             quadrant_map = {
-                1: (first.index, ESP.START, second.index, ESP.START),
-                2: (second.index, ESP.START, first.index, ESP.END),
-                3: (first.index, ESP.END, second.index, ESP.START),
-                4: (second.index, ESP.START, first.index, ESP.START),
+                1: (first.index, CSP.START, second.index, CSP.START),
+                2: (second.index, CSP.START, first.index, CSP.END),
+                3: (first.index, CSP.END, second.index, CSP.START),
+                4: (second.index, CSP.START, first.index, CSP.START),
             }
             try:
                 return quadrant_map[quadrant]
@@ -791,22 +788,22 @@ def get_constraint_pair_from_pancad(geometry: AbstractGeometry,
     else:
         sub_part_key = geometry.self_reference
     sub_part_map = {
-        CR.CORE: ESP.EDGE,
-        CR.ORIGIN: ESP.START, # Sketch Origin is at start of x-axis.
-        CR.X_MIN: ESP.START,
-        CR.Y_MIN: ESP.START,
-        CR.X_MAX: ESP.END,
-        CR.Y_MAX: ESP.END,
-        CR.X: ESP.EDGE, # Either sketch or ellipse x-axis.
-        CR.Y: ESP.EDGE, # Either sketch or ellipse y-axis.
-        CR.CENTER: ESP.CENTER,
-        CR.START: ESP.START,
-        CR.END: ESP.END,
+        CR.CORE: CSP.EDGE,
+        CR.ORIGIN: CSP.START, # Sketch Origin is at start of x-axis.
+        CR.X_MIN: CSP.START,
+        CR.Y_MIN: CSP.START,
+        CR.X_MAX: CSP.END,
+        CR.Y_MAX: CSP.END,
+        CR.X: CSP.EDGE, # Either sketch or ellipse x-axis.
+        CR.Y: CSP.EDGE, # Either sketch or ellipse y-axis.
+        CR.CENTER: CSP.CENTER,
+        CR.START: CSP.START,
+        CR.END: CSP.END,
         # Standalone Points are always START.
-        (CR.CORE, "GeomPoint"): ESP.START,
+        (CR.CORE, "GeomPoint"): CSP.START,
         # All FreeCAD arcs are counterclockwise. Clockwise arcs must be reversed
-        (CR.START, "clockwise"): ESP.END,
-        (CR.END, "clockwise"): ESP.START,
+        (CR.START, "clockwise"): CSP.END,
+        (CR.END, "clockwise"): CSP.START,
     }
     ref_index = api_utils.get_reference_index_by_uid(fc_geo_uid, document)
     sub_part = sub_part_map[sub_part_key]
@@ -873,7 +870,7 @@ def constraint_from_freecad(constraint: FreeCADConstraintXML,
     if constraint.type_.requires_value:
         # Only some constraints like distance require a value.
         kwargs["value"] = constraint.value
-        if constraint.type_ == CTN.ANGLE:
+        if constraint.type_ == CT.ANGLE:
             points_pos = []
             for geo_ref in constraint.get_references():
                 fc_geo, part = geo_ref.get_geometry()
@@ -940,23 +937,23 @@ def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
     constraint.
     """
     type_map = {
-        CTN.ANGLE: SC.ANGLE,
-        CTN.DISTANCE: SC.DISTANCE,
-        CTN.DISTANCE_X: SC.DISTANCE_HORIZONTAL,
-        CTN.DISTANCE_Y: SC.DISTANCE_VERTICAL,
-        CTN.DIAMETER: SC.DISTANCE_DIAMETER,
-        CTN.RADIUS: SC.DISTANCE_RADIUS,
-        CTN.EQUAL: SC.EQUAL,
-        CTN.HORIZONTAL: SC.HORIZONTAL,
-        CTN.PERPENDICULAR: SC.PERPENDICULAR,
-        CTN.PARALLEL: SC.PARALLEL,
-        CTN.VERTICAL: SC.VERTICAL,
-        CTN.COINCIDENT: SC.COINCIDENT,
-        CTN.POINT_ON_OBJECT: SC.COINCIDENT,
+        CT.ANGLE: SC.ANGLE,
+        CT.DISTANCE: SC.DISTANCE,
+        CT.DISTANCE_X: SC.DISTANCE_HORIZONTAL,
+        CT.DISTANCE_Y: SC.DISTANCE_VERTICAL,
+        CT.DIAMETER: SC.DISTANCE_DIAMETER,
+        CT.RADIUS: SC.DISTANCE_RADIUS,
+        CT.EQUAL: SC.EQUAL,
+        CT.HORIZONTAL: SC.HORIZONTAL,
+        CT.PERPENDICULAR: SC.PERPENDICULAR,
+        CT.PARALLEL: SC.PARALLEL,
+        CT.VERTICAL: SC.VERTICAL,
+        CT.COINCIDENT: SC.COINCIDENT,
+        CT.POINT_ON_OBJECT: SC.COINCIDENT,
     }
     if constraint.type_ in type_map:
         return type_map[constraint.type_]
-    if constraint.type_ == CTN.TANGENT:
+    if constraint.type_ == CT.TANGENT:
         geo_pairs = [r.get_geometry() for r in constraint.get_references()]
         if all(g.type_ == "Part::GeomLineSegment" and not p.is_point
                for g, p in geo_pairs):
