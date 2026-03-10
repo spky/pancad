@@ -126,38 +126,38 @@ class InternalGeometryType(IntEnum):
 
 class ConstraintType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD constraint types."""
-    COINCIDENT = 1 #
-    HORIZONTAL = 2 #
-    VERTICAL = 3 #
-    PARALLEL = 4 #
+    COINCIDENT = 1
+    HORIZONTAL = 2
+    VERTICAL = 3
+    PARALLEL = 4
     TANGENT = 5
-    DISTANCE = 6 #
-    DISTANCE_X = 7 #
-    DISTANCE_Y = 8 #
-    ANGLE = 9 #
-    PERPENDICULAR = 10 #
-    RADIUS = 11 #
-    EQUAL = 12 #
-    POINT_ON_OBJECT = 13 #
+    DISTANCE = 6
+    DISTANCE_X = 7
+    DISTANCE_Y = 8
+    ANGLE = 9
+    PERPENDICULAR = 10
+    RADIUS = 11
+    EQUAL = 12
+    POINT_ON_OBJECT = 13
     SYMMETRIC = 14
     INTERNAL_ALIGNMENT = 15
     SNELLS_LAW = 16
     BLOCK = 17
-    DIAMETER = 18 #
+    DIAMETER = 18
     WEIGHT = 19
 
     @classmethod
-    def from_human_name(self, name: str) -> ConstraintType:
+    def from_human_name(cls, name: str) -> ConstraintType:
         """Returns the equivalent ConstraintType from the human name
         associated with it. Useful for interacting with the FreeCAD API.
 
         :raises ValueError: When the name does not match any ConstraintType
         """
-        reversed_names = {v: k for k, v in self._get_human_name_map().items()}
+        reversed_names = {v: k for k, v in cls._get_human_name_map().items()}
         try:
-            return reversed_names[name]
+            return cls(reversed_names[name])
         except KeyError as exc:
-            msg = f"No Constraint Type Number equivalent for '{name}'"
+            msg = f"No Constraint Type matches '{name}'"
             raise ValueError(msg) from exc
 
     @property
@@ -172,30 +172,31 @@ class ConstraintType(IntEnum):
                   self.ANGLE, self.RADIUS, self.DIAMETER}
         return self in valued
 
-    def _get_human_name_map(self) -> dict[ConstraintType, str]:
+    @classmethod
+    def _get_human_name_map(cls) -> dict[ConstraintType, str]:
         """The mapping between the enumeration values and the human name
         assigned by FreeCAD's API.
         """
         return {
-            self.COINCIDENT: "Coincident",
-            self.HORIZONTAL: "Horizontal",
-            self.VERTICAL: "Vertical",
-            self.PARALLEL: "Parallel",
-            self.TANGENT: "Tangent",
-            self.DISTANCE: "Distance",
-            self.DISTANCE_X: "DistanceX",
-            self.DISTANCE_Y: "DistanceY",
-            self.ANGLE: "Angle",
-            self.PERPENDICULAR: "Perpendicular",
-            self.RADIUS: "Radius",
-            self.EQUAL: "Equal",
-            self.POINT_ON_OBJECT: "PointOnObject",
-            self.SYMMETRIC: "Symmetric",
-            self.INTERNAL_ALIGNMENT: "InternalAlignment",
-            self.SNELLS_LAW: "SnellsLaw",
-            self.BLOCK: "Block",
-            self.DIAMETER: "Diameter",
-            self.WEIGHT: "Weight",
+            cls.COINCIDENT: "Coincident",
+            cls.HORIZONTAL: "Horizontal",
+            cls.VERTICAL: "Vertical",
+            cls.PARALLEL: "Parallel",
+            cls.TANGENT: "Tangent",
+            cls.DISTANCE: "Distance",
+            cls.DISTANCE_X: "DistanceX",
+            cls.DISTANCE_Y: "DistanceY",
+            cls.ANGLE: "Angle",
+            cls.PERPENDICULAR: "Perpendicular",
+            cls.RADIUS: "Radius",
+            cls.EQUAL: "Equal",
+            cls.POINT_ON_OBJECT: "PointOnObject",
+            cls.SYMMETRIC: "Symmetric",
+            cls.INTERNAL_ALIGNMENT: "InternalAlignment",
+            cls.SNELLS_LAW: "SnellsLaw",
+            cls.BLOCK: "Block",
+            cls.DIAMETER: "Diameter",
+            cls.WEIGHT: "Weight",
         }
 
 
