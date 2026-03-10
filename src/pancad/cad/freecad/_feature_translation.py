@@ -37,7 +37,7 @@ from pancad.cad.freecad.constants import (
     ConstraintType as CT,
     ConstraintSubPart as CSP,
     InternalGeometryType as IGT,
-    PadTypeNum as PTN,
+    PadType as PT,
 )
 from pancad.cad.freecad._application_types import (
     FreeCADBody,
@@ -262,23 +262,23 @@ def _extrude_from_freecad(feature: FreeCADObjectXML,
 
 def _get_extrude_type_from_freecad(extrude: FreeCADObjectXML) -> FT:
     """Returns the equivalent pancad extrude type from a freecad pad type."""
-    reversible = {PTN.LENGTH, PTN.TWO_LENGTHS}
-    midplanable = {PTN.LENGTH}
-    fc_type = PTN(extrude.get_property("Type").value)
+    reversible = {PT.LENGTH, PT.TWO_LENGTHS}
+    midplanable = {PT.LENGTH}
+    fc_type = PT(extrude.get_property("Type").value)
     key = [fc_type]
     if fc_type in reversible:
         key.append(extrude.get_property("Reversed").value)
     if fc_type in midplanable:
         key.append(extrude.get_property("Midplane").value)
     type_map = {
-        # PadTypeNum, is_reversed, is_midplane
-        (PTN.LENGTH, False, False): FT.DIMENSION,
-        (PTN.LENGTH, True, False): FT.ANTI_DIMENSION,
-        (PTN.LENGTH, True, True): FT.SYMMETRIC,
-        (PTN.LENGTH, False, True): FT.SYMMETRIC,
-        # PadTypeNum, is_reversed
-        (PTN.TWO_LENGTHS, False): FT.TWO_DIMENSIONS,
-        (PTN.TWO_LENGTHS, True): FT.ANTI_TWO_DIMENSIONS,
+        # PadType, is_reversed, is_midplane
+        (PT.LENGTH, False, False): FT.DIMENSION,
+        (PT.LENGTH, True, False): FT.ANTI_DIMENSION,
+        (PT.LENGTH, True, True): FT.SYMMETRIC,
+        (PT.LENGTH, False, True): FT.SYMMETRIC,
+        # PadType, is_reversed
+        (PT.TWO_LENGTHS, False): FT.TWO_DIMENSIONS,
+        (PT.TWO_LENGTHS, True): FT.ANTI_TWO_DIMENSIONS,
     }
     try:
         return type_map[tuple(key)]

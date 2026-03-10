@@ -3,7 +3,7 @@
 from pancad.cad.freecad.constants._archive_constants import (
     UnitSystem,
     ConstraintSubPart,
-    PadTypeNum,
+    PadType,
     InternalGeometryType,
     ConstraintType,
     SubFile,
@@ -22,7 +22,7 @@ from pancad.cad.freecad.constants._archive_constants import (
 __all__ = [
     "UnitSystem",
     "ConstraintSubPart",
-    "PadTypeNum",
+    "PadType",
     "InternalGeometryType",
     "ConstraintType",
     "SubFile",

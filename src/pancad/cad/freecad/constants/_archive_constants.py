@@ -64,7 +64,7 @@ class ConstraintSubPart(IntEnum):
         """Whether the subpart is referencing a point."""
         return self.value > 0
 
-class PadTypeNum(IntEnum):
+class PadType(IntEnum):
     """An enumeration of integers corresponding to FreeCAD Pad type options."""
     LENGTH = 0
     UP_TO_LAST = 1
@@ -147,11 +147,11 @@ class ConstraintType(IntEnum):
     WEIGHT = 19
 
     @classmethod
-    def from_human_name(self, name: str) -> ConstraintTypeNum:
-        """Returns the equivalent ConstraintTypeNum from the human name
+    def from_human_name(self, name: str) -> ConstraintType:
+        """Returns the equivalent ConstraintType from the human name
         associated with it. Useful for interacting with the FreeCAD API.
 
-        :raises ValueError: When the name does not match any ConstraintTypeNums
+        :raises ValueError: When the name does not match any ConstraintType
         """
         reversed_names = {v: k for k, v in self._get_human_name_map().items()}
         try:
@@ -172,7 +172,7 @@ class ConstraintType(IntEnum):
                   self.ANGLE, self.RADIUS, self.DIAMETER}
         return self in valued
 
-    def _get_human_name_map(self) -> dict[ConstraintTypeNum, str]:
+    def _get_human_name_map(self) -> dict[ConstraintType, str]:
         """The mapping between the enumeration values and the human name
         assigned by FreeCAD's API.
         """
