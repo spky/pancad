@@ -33,9 +33,6 @@ from pancad.cad.freecad import api_utils
 from pancad.cad.freecad._bootstrap import get_app_dir
 from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
 from pancad.cad.freecad import xml_utils
-from pancad.cad.freecad.constants import (
-    ObjectType, EdgeSubPart as ESP
-)
 from pancad.cad.freecad.constants.archive_constants import (
     ConstraintTypeNum as CTN,
     ConstraintSubPart as CSP,
@@ -407,7 +404,7 @@ def _new_body_from_container(feature: FeatureContainer,
     if feature.uid in uid_map:
         msg = "pancad uid of container already in uid map"
         raise ValueError(msg, feature)
-    body = document.addObject(ObjectType.BODY)
+    body = document.addObject("PartDesign::Body")
     api_utils.relabel_object(body, feature.name)
 
     body.Placement = new_placement_from_pose(feature.pose)
@@ -452,7 +449,7 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     fc_plane_uid = uid_map[feature.get_support().uid]
 
     # Add equivalent objects to freecad
-    fc_sketch = document.addObject(ObjectType.SKETCH)
+    fc_sketch = document.addObject("Sketcher::SketchObject")
     api_utils.relabel_object(fc_sketch, feature.name)
     api_utils.get_by_uid(fc_parent_uid, document).addObject(fc_sketch)
     fc_sketch.AttachmentSupport = api_utils.get_by_uid(fc_plane_uid, document)
@@ -485,7 +482,7 @@ def _new_pad_from_pancad_extrude(feature: Extrude,
     fc_profile_uid = uid_map[feature.profile.uid]
     fc_profile = api_utils.get_by_uid(fc_profile_uid, document)
 
-    pad = document.addObject(ObjectType.PAD)
+    pad = document.addObject("PartDesign::Pad")
     api_utils.relabel_object(pad, feature.name)
     api_utils.get_by_uid(fc_parent_uid, document).addObject(pad)
     pad.Profile = fc_profile
@@ -732,14 +729,14 @@ def _get_freecad_constraint_indices(
             return [first.index, first.part, second.index]
         case "bugged_distance":
             first, second = refs
-            return [first.index, ESP.START, second.index]
+            return [first.index, CSP.START, second.index]
         case "quadrant_order":
             first, second = refs
             quadrant_map = {
-                1: (first.index, ESP.START, second.index, ESP.START),
-                2: (second.index, ESP.START, first.index, ESP.END),
-                3: (first.index, ESP.END, second.index, ESP.START),
-                4: (second.index, ESP.START, first.index, ESP.START),
+                1: (first.index, CSP.START, second.index, CSP.START),
+                2: (second.index, CSP.START, first.index, CSP.END),
+                3: (first.index, CSP.END, second.index, CSP.START),
+                4: (second.index, CSP.START, first.index, CSP.START),
             }
             try:
                 return quadrant_map[quadrant]
@@ -791,22 +788,22 @@ def get_constraint_pair_from_pancad(geometry: AbstractGeometry,
     else:
         sub_part_key = geometry.self_reference
     sub_part_map = {
-        CR.CORE: ESP.EDGE,
-        CR.ORIGIN: ESP.START, # Sketch Origin is at start of x-axis.
-        CR.X_MIN: ESP.START,
-        CR.Y_MIN: ESP.START,
-        CR.X_MAX: ESP.END,
-        CR.Y_MAX: ESP.END,
-        CR.X: ESP.EDGE, # Either sketch or ellipse x-axis.
-        CR.Y: ESP.EDGE, # Either sketch or ellipse y-axis.
-        CR.CENTER: ESP.CENTER,
-        CR.START: ESP.START,
-        CR.END: ESP.END,
+        CR.CORE: CSP.EDGE,
+        CR.ORIGIN: CSP.START, # Sketch Origin is at start of x-axis.
+        CR.X_MIN: CSP.START,
+        CR.Y_MIN: CSP.START,
+        CR.X_MAX: CSP.END,
+        CR.Y_MAX: CSP.END,
+        CR.X: CSP.EDGE, # Either sketch or ellipse x-axis.
+        CR.Y: CSP.EDGE, # Either sketch or ellipse y-axis.
+        CR.CENTER: CSP.CENTER,
+        CR.START: CSP.START,
+        CR.END: CSP.END,
         # Standalone Points are always START.
-        (CR.CORE, "GeomPoint"): ESP.START,
+        (CR.CORE, "GeomPoint"): CSP.START,
         # All FreeCAD arcs are counterclockwise. Clockwise arcs must be reversed
-        (CR.START, "clockwise"): ESP.END,
-        (CR.END, "clockwise"): ESP.START,
+        (CR.START, "clockwise"): CSP.END,
+        (CR.END, "clockwise"): CSP.START,
     }
     ref_index = api_utils.get_reference_index_by_uid(fc_geo_uid, document)
     sub_part = sub_part_map[sub_part_key]
