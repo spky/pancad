@@ -4,4 +4,4 @@ software application. PanCAD's name is inspired by Pandoc, which is an
 unrelated but similar software application that can convert documents from 
 one file type to another.
 """
-__version__ = "0.0.2.post0"
+__version__ = "0.0.3.dev0"
