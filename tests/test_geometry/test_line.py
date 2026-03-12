@@ -1,9 +1,13 @@
-import copy
+"""Tests for pancad's Line class"""
+from __future__ import annotations
+
 import itertools
 import math
 import unittest
+from typing import TYPE_CHECKING
 
 import numpy as np
+import pytest
 
 from pancad.utils import trigonometry as trig
 from pancad.geometry import spatial_relations
@@ -11,17 +15,105 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.utils import verification
 
+if TYPE_CHECKING:
+    from pancad.utils.pancad_types import VectorLike
+
 ROUNDING_PLACES = 10
 
+# Test id abbreviations:
+# pt=point, vec=vector, para=parallel, perp=perpendicular, dir=direction
+# cw=clockwise, ccw=counter-clockwise, ul=upper left, br=bottom_right
+@pytest.mark.parametrize(
+    "point, direction, expected",
+    [ # Comment summarizes the expected results
+        # The origin because origin is provided.
+        pytest.param((0, 0), (1, 0), (0, 0), id="2d_origin"),
+        pytest.param((0, 0, 0), (1, 0, 0), (0, 0, 0), id="3d_origin"),
+        # The origin because the point is parallel to the direction vector
+        pytest.param((2, 0), (1, 0), (0, 0), id="2d_pt_vec_para"),
+        # The provided point because the point vector and direction
+        # are perpendicular.
+        pytest.param((1, 1), (-1, 1), (1, 1), id="2d_pt_vec_perp"),
+        # Point is cw/ccw of closest point, direction is pointing ul/br:
+        pytest.param((2, 0), (-1, 1), (1, 1), id="2d_cw_pt_ul_dir"),
+        pytest.param((2, 0), (1, -1), (1, 1), id="2d_cw_pt_br_dir"),
+        pytest.param((0, 2), (-1, 1), (1, 1), id="2d_ccw_pt_br_dir"),
+        pytest.param((0, 2), (1, -1), (1, 1), id="2d_ccw_pt_br_dir"),
+    ],
+)
+def test_closest_to_origin(point, direction, expected):
+    """Test function for finding the point on a line closest to the origin."""
+    result = Line.closest_to_origin(point, direction)
+    np.testing.assert_array_almost_equal(np.array(result), np.array(expected))
+
+ZERO_VEC_MSG_RE = r"^Got zero vector for line"
+DIM_MISMATCH_RE = r"dimensions are not equal$"
+@pytest.mark.parametrize(
+    "point, direction, msg",
+    [
+        pytest.param((0, 0), (0, 0), ZERO_VEC_MSG_RE, id="pt0,0_zero_vec"),
+        pytest.param((0, 0, 0), (0, 0, 0), ZERO_VEC_MSG_RE, id="pt0,0,0_zero_vec"),
+        pytest.param((1, 1), (0, 0), ZERO_VEC_MSG_RE, id="pt1,1_zero_vec"),
+        pytest.param((1, 1, 1), (0, 0, 0), ZERO_VEC_MSG_RE, id="pt1,1,1_zero_vec"),
+        pytest.param((0, 0), (1, 0, 0), DIM_MISMATCH_RE, id="2d_pt_3d_vec"),
+        pytest.param((0, 0, 0), (1, 0), DIM_MISMATCH_RE, id="3d_pt_2d_vec"),
+    ]
+)
+def test_closest_to_origin_excs(point, direction, msg):
+    """Test that the closest_to_origin function produces relevant exceptions."""
+    with pytest.raises(ValueError, match=msg):
+        Line.closest_to_origin(point, direction)
+
+# id abbreviations: uv=unit vector
+@pytest.mark.parametrize(
+    "direction, expected",
+    [
+        # Zero Vector Tests
+        ## 2D Tests ##
+        # Positive Unit Vector
+        pytest.param((1, 0), (1, 0), id="1,0"),
+        pytest.param((0, 1), (0, 1), id="0,1"),
+        # Negative Unit Vector
+        pytest.param((-1, 0), (1, 0), id="-1,0to1,0"),
+        pytest.param((0, -1), (0, 1), id="0,-1to0,1"),
+        # 2 Direction Positive and Negative
+        pytest.param((1, 1), trig.get_unit_vector(np.array((1, 1))), id="1,1uv"),
+        pytest.param((-1, -1), trig.get_unit_vector(np.array((1, 1))), id="-1,-1uv"),
+        ## 3D Tests ##
+        # Positive Unit Vector
+        pytest.param((1, 0, 0), (1, 0, 0), id="1,0,0"),
+        pytest.param((0, 1, 0), (0, 1, 0), id="0,1,0"),
+        pytest.param((0, 0, 1), (0, 0, 1), id="0,0,1"),
+        # Negative Unit Vector
+        pytest.param((-1, 0, 0), (1, 0, 0), id="-1,0,0to1,0,0"),
+        pytest.param((0, -1, 0), (0, 1, 0), id="0,-1,0to0,1,0"),
+        pytest.param((0, 0, -1), (0, 0, 1), id="0,0,-1to0,0,1"),
+        # 2 Direction Positive
+        pytest.param((1, 1, 0), trig.get_unit_vector(np.array((1,1,0))), id="1,1,0uv"),
+        pytest.param((0, 1, 1), trig.get_unit_vector(np.array((0,1,1))), id="0,1,1uv"),
+        # 2 Direction Negative
+        pytest.param((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0))), id="-1,-1,0uv"),
+        pytest.param((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1))), id="0,-1,-1uv"),
+        # 3 Direction Positive and Negative
+        pytest.param((1, 1, 1), trig.get_unit_vector(np.array((1,1,1))), id="1,1,1uv"),
+        pytest.param((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1])), id="-1,-1,-1uv"),
+    ]
+)
+def test_line_unique_direction(direction, expected):
+    """Test that Line's direction is correctly translated to a unique vector."""
+    point = Point([0] * len(direction))
+    line = Line(point, direction)
+    np.testing.assert_array_almost_equal(line.direction, expected)
+
 class TestLineInit(unittest.TestCase):
-    
+
     def setUp(self):
         self.pt_a = Point((1,0,0))
         self.pt_b = Point((1,10,0))
-    
+
     def test_line_init_no_arg(self):
         l = Line()
-    
+
     def test_line_len_dunder(self):
         tests = [
             ((0, 0), (1, 1), 2),
@@ -33,61 +125,13 @@ class TestLineInit(unittest.TestCase):
                 point_1, point_2 = Point(pt_a), Point(pt_b)
                 test_line = Line.from_two_points(point_1, point_2)
                 self.assertEqual(len(test_line), length)
-    
+
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
         self.assertEqual(str(test), "<Line(1,0,0)(0,1,0)>")
 
-class TestLineVectorMethods(unittest.TestCase):
-    
-    def test_unique_direction(self):
-        tests = [
-            ## 2D Tests ##
-            ((0, 0), (0, 0)),
-            # Positive Unit Vector
-            ((1, 0), (1, 0)),
-            ((0, 1), (0, 1)),
-            # Negative Unit Vector
-            ((-1, 0), (1, 0)),
-            ((0, -1), (0, 1)),
-            # 2 Direction Positive and Negative
-            ((1, 1), trig.get_unit_vector(np.array((1, 1)))),
-            ((-1, -1), trig.get_unit_vector(np.array((1, 1)))),
-            ## 3D Tests ##
-            # Zero Vector
-            ((0, 0, 0), (0, 0, 0)),
-            # Positive Unit Vector
-            ((1, 0, 0), (1, 0, 0)),
-            ((0, 1, 0), (0, 1, 0)),
-            ((0, 0, 1), (0, 0, 1)),
-            # Negative Unit Vector
-            ((-1, 0, 0), (1, 0, 0)),
-            ((0, -1, 0), (0, 1, 0)),
-            ((0, 0, -1), (0, 0, 1)),
-            # 2 Direction Positive
-            ((1, 1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-            ((0, 1, 1), trig.get_unit_vector(np.array((0,1,1)))),
-            # 2 Direction Negative
-            ((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-            ((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1)))),
-            # 3 Direction Positive and Negative
-            ((1, 1, 1), trig.get_unit_vector(np.array((1,1,1)))),
-            ((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1]))),
-        ]
-        tests_np = []
-        for test in tests:
-            test_np = []
-            for element in test:
-                test_np.append(np.array(element))
-            tests_np.append(test_np)
-        
-        for vector, unit_vector in tests_np:
-            with self.subTest(vector=vector, unit_vector=unit_vector):
-                self.assertCountEqual(Line._unique_direction(vector),
-                                      unit_vector)
-
 class TestLineTwoPointDefinition(unittest.TestCase):
-    
+
     def setUp(self):
         # Point A, Point B, Expected Point Closest to Origin,
         # Vector in Expected Direction (subsequently converted to unit vector)
@@ -123,7 +167,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
             np_vector = trig.to_1d_np(vector)
             unit_vector = trig.get_unit_vector(np_vector)
             self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1d_tuple(unit_vector))
-    
+
     def test_from_two_points_point_closest_to_origin(self):
         for point_a, point_b, expected_point, _ in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
@@ -135,7 +179,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                     self, test_line._point_closest_to_origin, e_pt,
                     ROUNDING_PLACES
                 )
-    
+
     def test_from_two_points_point_closest_to_origin_tuple(self):
         for point_a, point_b, expected_point, _ in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
@@ -146,7 +190,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                     self, test_line._point_closest_to_origin, e_pt,
                     ROUNDING_PLACES
                 )
-    
+
     def test_from_two_points_direction(self):
         for point_a, point_b, _, expected_direction in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
@@ -157,7 +201,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                     self, test_line.direction, expected_direction,
                     ROUNDING_PLACES
                 )
-    
+
     def test_from_two_points_direction_tuple(self):
         for point_a, point_b, _, expected_direction in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
@@ -167,7 +211,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                     self, test_line.direction, expected_direction,
                     ROUNDING_PLACES
                 )
-    
+
     def test_from_two_points_same_point(self):
         pt_a = Point((1, 1))
         pt_b = Point((1, 1))
@@ -175,7 +219,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
             test_line = Line.from_two_points(pt_a, pt_b)
 
 class TestEquationLineDefinitions(unittest.TestCase):
-    
+
     def setUp(self):
         # Slope (m), Y-Intercept (b), Expected Point, Expected Direction
         self.tests = [
@@ -186,7 +230,7 @@ class TestEquationLineDefinitions(unittest.TestCase):
         ]
         for i, (m, b, pt, direction) in enumerate(self.tests):
             self.tests[i] = (m, b, Point(pt), trig.get_unit_vector(direction))
-    
+
     def test_from_slope_and_y_intercept_expected_point(self):
         for m, b, pt, direction in self.tests:
             with self.subTest(slope=m, intercept=b,
@@ -196,7 +240,7 @@ class TestEquationLineDefinitions(unittest.TestCase):
                     self, test_line._point_closest_to_origin, pt,
                     ROUNDING_PLACES
                 )
-    
+
     def test_from_slope_and_y_intercept_expected_direction(self):
         for m, b, pt, direction in self.tests:
             with self.subTest(slope=m, intercept=b,
@@ -205,13 +249,13 @@ class TestEquationLineDefinitions(unittest.TestCase):
                 verification.assertTupleAlmostEqual(
                     self, test_line.direction, direction, ROUNDING_PLACES
                 )
-    
+
     def test_slope_getter_non_nan(self):
         for m, b, pt, direction in self.tests:
             with self.subTest(slope=m, intercept=b):
                 test_line = Line.from_slope_and_y_intercept(m, b)
                 self.assertEqual(test_line.slope, m)
-    
+
     def test_y_intercept_getter_non_nan(self):
         for m, b, pt, direction in self.tests:
             with self.subTest(slope=m, intercept=b):
@@ -219,14 +263,14 @@ class TestEquationLineDefinitions(unittest.TestCase):
                 self.assertEqual(test_line.y_intercept, b)
 
 class TestLineCoordinateSystemConversion(unittest.TestCase):
-    
+
     def setUp(self):
         """
         Test Order:
             Point A, Point B, Phi (Azimuth) Angle, Theta (Inclination) Angle
         Angles get converted to radians prior to test
-        r separately defined for legibility since for line direction unit 
-        vectors it will always be 1. 
+        r separately defined for legibility since for line direction unit
+        vectors it will always be 1.
         """
         tests = [
             ((0, 0, 0), (1, 0, 0), (1, 0, 90)),
@@ -245,7 +289,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                 self.tests_2d.append(
                     (Point(pt_a[:2]), Point(pt_b[:2]), (r, math.radians(phi)))
                 )
-    
+
     def test_direction_polar(self):
         for pt_a, pt_b, (r, phi) in self.tests_2d:
             with self.subTest(
@@ -258,7 +302,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                     self, test_line.direction_polar, (r, phi),
                     ROUNDING_PLACES
                 )
-    
+
     def test_direction_spherical(self):
         for pt_a, pt_b, (r, phi, theta) in self.tests_3d:
             with self.subTest(
@@ -273,7 +317,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                     self, test_line.direction_spherical, (r, phi, theta),
                     ROUNDING_PLACES
                 )
-    
+
     def test_direction_polar_setter(self):
         for pt_a, pt_b, polar_vector in self.tests_2d:
             with self.subTest(
@@ -287,7 +331,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                     self, before_direction, test_line.direction,
                     ROUNDING_PLACES
                 )
-    
+
     def test_direction_spherical_setter(self):
         for pt_a, pt_b, spherical_vector in self.tests_3d:
             with self.subTest(
@@ -303,7 +347,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                 )
 
 class TestLineRichComparison(unittest.TestCase):
-    
+
     def setUp(self):
         self.tests = [
             ((0, 0), (1, 1), (0, 0), (1, 1), True),
@@ -315,7 +359,7 @@ class TestLineRichComparison(unittest.TestCase):
             self.tests[i] = (Point(pt1a), Point(pt1b),
                              Point(pt2a), Point(pt2b),
                              equality)
-    
+
     def test_line_equality(self):
         for pt1a, pt1b, pt2a, pt2b, expected_equality in self.tests:
             with self.subTest(point1a=tuple(pt1a), point1b=tuple(pt1b),
@@ -324,7 +368,7 @@ class TestLineRichComparison(unittest.TestCase):
                 line1 = Line.from_two_points(pt1a, pt1b)
                 line2 = Line.from_two_points(pt2a, pt2b)
                 self.assertEqual(line1 == line2, expected_equality)
-    
+
     def test_line_inequality(self):
         for pt1a, pt1b, pt2a, pt2b, expected_equality in self.tests:
             with self.subTest(point1a=tuple(pt1a), point1b=tuple(pt1b),
@@ -335,7 +379,7 @@ class TestLineRichComparison(unittest.TestCase):
                 self.assertEqual(line1 != line2, not expected_equality)
 
 class TestLinePointMovers2D(unittest.TestCase):
-    
+
     def setUp(self):
         lines = [
             ((0, 1), (1, 1)),
@@ -353,7 +397,7 @@ class TestLinePointMovers2D(unittest.TestCase):
             line_cases = zip(itertools.repeat(line, len(self.new_points)),
                              self.new_points)
             self.line_to_pts.extend(list(line_cases))
-        
+
         phis = [
             0,
             45,
@@ -370,7 +414,7 @@ class TestLinePointMovers2D(unittest.TestCase):
             cases = zip(itertools.repeat(line, len(self.phis)),
                         self.phis)
             self.line_pts_to_phi.extend(list(cases))
-    
+
     def test_move_to_point(self):
         for line, new_pt in self.line_to_pts:
             with self.subTest(line=line, point=new_pt):
@@ -381,7 +425,7 @@ class TestLinePointMovers2D(unittest.TestCase):
                     spatial_relations.parallel(test_line, line)
                 ]
                 self.assertTrue(all(results))
-    
+
     def test_move_to_point_phi(self):
         for (line, new_pt), new_phi in self.line_pts_to_phi:
             with self.subTest(line=line, point=new_pt,
@@ -391,7 +435,7 @@ class TestLinePointMovers2D(unittest.TestCase):
                 expected_line = Line(new_pt, expected_direction)
                 line.move_to_point(new_pt, new_phi)
                 self.assertEqual(expected_line, line)
-    
+
     def test_from_point_and_angle(self):
         for (_, pt), phi in self.line_pts_to_phi:
             with self.subTest(point=pt,
@@ -403,7 +447,7 @@ class TestLinePointMovers2D(unittest.TestCase):
                 self.assertEqual(expected_line, line)
 
 class TestLineUpdate(unittest.TestCase):
-    
+
     def test_update(self):
         line = Line(Point(0, 0, 0), (1, 0, 0))
         new = Line(Point(1, 1, 0), (1, 1, 1))
