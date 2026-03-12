@@ -368,28 +368,34 @@ class Line(AbstractGeometry):
         :param vector: A vector in the direction of the line.
         :returns: The point on the line created by the given point and vector
             closest to the origin.
+        :raises ValueError: When the direction vector is a zero vector or the 
+            point and vector dimensions do not match.
         """
+        if not isinstance(point, Point):
+            point = Point(point)
+        if np.allclose(vector, [0] * len(vector)):
+            msg = f"Got zero vector for line direction: {tuple(vector)}"
+            raise ValueError(msg)
         point_vector = np.array(point)
+        if len(point) != len(vector):
+            msg = f"Point {point} and vector {vector} dimensions are not equal"
+            raise ValueError(msg)
         vector = trig.to_1d_np(vector)
         unit_vector = trig.get_unit_vector(vector)
-        dot_product = np.dot(point_vector, unit_vector)
-        if dot_product == 0:
-            point_closest_to_origin = Point(point_vector)
-        elif abs(dot_product) == np.linalg.norm(point_vector):
+        dot = np.dot(point_vector, unit_vector)
+        if dot == 0:
+            # Point vector and direction are perpendicular, or the point vector
+            # is zero vector. Either way the provided point is the closest.
+            return Point(point_vector)
+        if np.isclose(abs(dot), np.linalg.norm(point_vector)):
+            # Point vector and direction vector are parallel or anti-parallel,
+            # so the closest point must be the origin.
             if len(point) == 2:
-                point_closest_to_origin = Point((0,0))
-            else:
-                point_closest_to_origin = Point((0,0,0))
-        elif (np.linalg.norm(point_vector + unit_vector)
-              < np.linalg.norm(point_vector + unit_vector)):
-            point_closest_to_origin = Point(
-                point_vector + dot_product * unit_vector
-            )
-        else:
-            point_closest_to_origin = Point(
-                point_vector - dot_product * unit_vector
-            )
-        return point_closest_to_origin
+                return Point(0, 0)
+            return Point(0, 0, 0)
+        # No special case, so the off-closest point vector can be subtracted out
+        # to get the closest point.
+        return Point(point_vector - dot * unit_vector)
 
     @staticmethod
     def _unique_direction(vector: np.ndarray) -> np.ndarray:
