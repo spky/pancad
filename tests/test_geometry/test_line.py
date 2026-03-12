@@ -1,6 +1,6 @@
+"""Tests for pancad's Line class"""
 from __future__ import annotations
 
-import copy
 import itertools
 import math
 import unittest
@@ -42,6 +42,7 @@ ROUNDING_PLACES = 10
     ],
 )
 def test_closest_to_origin(point, direction, expected):
+    """Test function for finding the point on a line closest to the origin."""
     result = Line.closest_to_origin(point, direction)
     np.testing.assert_array_almost_equal(np.array(result), np.array(expected))
 
@@ -59,43 +60,50 @@ DIM_MISMATCH_RE = r"dimensions are not equal$"
     ]
 )
 def test_closest_to_origin_excs(point, direction, msg):
+    """Test that the closest_to_origin function produces relevant exceptions."""
     with pytest.raises(ValueError, match=msg):
-        result = Line.closest_to_origin(point, direction)
+        Line.closest_to_origin(point, direction)
 
-# @pytest.mark.parametrize(
-    # "vector, expected",
-    # ## 2D Tests ##
-    # pytest.param((0, 0), (0, 0), id="2d_zero_vec"),
-    # # Positive Unit Vector
-    # pytest.param((1, 0), (1, 0), id="1,0"),
-    # pytest.param((0, 1), (0, 1), id="0,1"),
-    # # Negative Unit Vector
-    # pytest.param((-1, 0), (1, 0), id="-1,0to1,0"),
-    # pytest.param((0, -1), (0, 1), id="0,-1to0,1"),
-    # # 2 Direction Positive and Negative
-    # ((1, 1), trig.get_unit_vector(np.array((1, 1)))),
-    # ((-1, -1), trig.get_unit_vector(np.array((1, 1)))),
-    # ## 3D Tests ##
-    # # Zero Vector
-    # ((0, 0, 0), (0, 0, 0)),
-    # # Positive Unit Vector
-    # ((1, 0, 0), (1, 0, 0)),
-    # ((0, 1, 0), (0, 1, 0)),
-    # ((0, 0, 1), (0, 0, 1)),
-    # # Negative Unit Vector
-    # ((-1, 0, 0), (1, 0, 0)),
-    # ((0, -1, 0), (0, 1, 0)),
-    # ((0, 0, -1), (0, 0, 1)),
-    # # 2 Direction Positive
-    # ((1, 1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-    # ((0, 1, 1), trig.get_unit_vector(np.array((0,1,1)))),
-    # # 2 Direction Negative
-    # ((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-    # ((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1)))),
-    # # 3 Direction Positive and Negative
-    # ((1, 1, 1), trig.get_unit_vector(np.array((1,1,1)))),
-    # ((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1]))),
-# )
+# id abbreviations: uv=unit vector
+@pytest.mark.parametrize(
+    "direction, expected",
+    [
+        # Zero Vector Tests
+        ## 2D Tests ##
+        # Positive Unit Vector
+        pytest.param((1, 0), (1, 0), id="1,0"),
+        pytest.param((0, 1), (0, 1), id="0,1"),
+        # Negative Unit Vector
+        pytest.param((-1, 0), (1, 0), id="-1,0to1,0"),
+        pytest.param((0, -1), (0, 1), id="0,-1to0,1"),
+        # 2 Direction Positive and Negative
+        pytest.param((1, 1), trig.get_unit_vector(np.array((1, 1))), id="1,1uv"),
+        pytest.param((-1, -1), trig.get_unit_vector(np.array((1, 1))), id="-1,-1uv"),
+        ## 3D Tests ##
+        # Positive Unit Vector
+        pytest.param((1, 0, 0), (1, 0, 0), id="1,0,0"),
+        pytest.param((0, 1, 0), (0, 1, 0), id="0,1,0"),
+        pytest.param((0, 0, 1), (0, 0, 1), id="0,0,1"),
+        # Negative Unit Vector
+        pytest.param((-1, 0, 0), (1, 0, 0), id="-1,0,0to1,0,0"),
+        pytest.param((0, -1, 0), (0, 1, 0), id="0,-1,0to0,1,0"),
+        pytest.param((0, 0, -1), (0, 0, 1), id="0,0,-1to0,0,1"),
+        # 2 Direction Positive
+        pytest.param((1, 1, 0), trig.get_unit_vector(np.array((1,1,0))), id="1,1,0uv"),
+        pytest.param((0, 1, 1), trig.get_unit_vector(np.array((0,1,1))), id="0,1,1uv"),
+        # 2 Direction Negative
+        pytest.param((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0))), id="-1,-1,0uv"),
+        pytest.param((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1))), id="0,-1,-1uv"),
+        # 3 Direction Positive and Negative
+        pytest.param((1, 1, 1), trig.get_unit_vector(np.array((1,1,1))), id="1,1,1uv"),
+        pytest.param((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1])), id="-1,-1,-1uv"),
+    ]
+)
+def test_line_unique_direction(direction, expected):
+    """Test that Line's direction is correctly translated to a unique vector."""
+    point = Point([0] * len(direction))
+    line = Line(point, direction)
+    np.testing.assert_array_almost_equal(line.direction, expected)
 
 class TestLineInit(unittest.TestCase):
 
@@ -121,54 +129,6 @@ class TestLineInit(unittest.TestCase):
     def test_line_str_dunder(self):
         test = Line.from_two_points(self.pt_a, self.pt_b)
         self.assertEqual(str(test), "<Line(1,0,0)(0,1,0)>")
-
-class TestLineVectorMethods(unittest.TestCase):
-
-    def test_unique_direction(self):
-        tests = [
-            ## 2D Tests ##
-            ((0, 0), (0, 0)),
-            # Positive Unit Vector
-            ((1, 0), (1, 0)),
-            ((0, 1), (0, 1)),
-            # Negative Unit Vector
-            ((-1, 0), (1, 0)),
-            ((0, -1), (0, 1)),
-            # 2 Direction Positive and Negative
-            ((1, 1), trig.get_unit_vector(np.array((1, 1)))),
-            ((-1, -1), trig.get_unit_vector(np.array((1, 1)))),
-            ## 3D Tests ##
-            # Zero Vector
-            ((0, 0, 0), (0, 0, 0)),
-            # Positive Unit Vector
-            ((1, 0, 0), (1, 0, 0)),
-            ((0, 1, 0), (0, 1, 0)),
-            ((0, 0, 1), (0, 0, 1)),
-            # Negative Unit Vector
-            ((-1, 0, 0), (1, 0, 0)),
-            ((0, -1, 0), (0, 1, 0)),
-            ((0, 0, -1), (0, 0, 1)),
-            # 2 Direction Positive
-            ((1, 1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-            ((0, 1, 1), trig.get_unit_vector(np.array((0,1,1)))),
-            # 2 Direction Negative
-            ((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0)))),
-            ((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1)))),
-            # 3 Direction Positive and Negative
-            ((1, 1, 1), trig.get_unit_vector(np.array((1,1,1)))),
-            ((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1]))),
-        ]
-        tests_np = []
-        for test in tests:
-            test_np = []
-            for element in test:
-                test_np.append(np.array(element))
-            tests_np.append(test_np)
-
-        for vector, unit_vector in tests_np:
-            with self.subTest(vector=vector, unit_vector=unit_vector):
-                self.assertCountEqual(Line._unique_direction(vector),
-                                      unit_vector)
 
 class TestLineTwoPointDefinition(unittest.TestCase):
 
