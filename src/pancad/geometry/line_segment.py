@@ -378,11 +378,11 @@ class LineSegment(AbstractGeometry):
     def __repr__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
-            if isclose0(self.start[i]):
+            if np.isclose(self.start[i], 0):
                 pt_a_strs.append("0")
             else:
                 pt_a_strs.append(f"{self.start[i]:g}")
-            if isclose0(self.end[i]):
+            if np.isclose(self.end[i], 0):
                 pt_b_strs.append("0")
             else:
                 pt_b_strs.append(f"{self.end[i]:g}")
