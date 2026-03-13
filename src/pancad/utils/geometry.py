@@ -7,10 +7,14 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from numbers import Real
 
-from numpy import ndarray
+import numpy as np
+
+from pancad.utils import trigonometry as trig
 
 if TYPE_CHECKING:
     from typing import Any
+
+    from pancad.utils.pancad_types import SpaceVector
 
 ### Wrappers
 def three_dimensional_only(func):
@@ -90,7 +94,7 @@ def no_dimensional_mismatch(func):
     return wrapper
 
 ### Functions
-def parse_vector(*components: Real | Sequence[Real] | ndarray
+def parse_vector(*components: Real | Sequence[Real] | np.ndarray
                  ) -> tuple[Real, Real] | tuple[Real, Real, Real]:
     """Batches structures of vector component inputs to a tuple of Reals. 
     Usually used by pancad to parse position and direction information into the 
@@ -105,7 +109,7 @@ def parse_vector(*components: Real | Sequence[Real] | ndarray
                          f" got {len(components)}")
     if len(components) == 1:
         vector = components[0]
-        if isinstance(vector, ndarray):
+        if isinstance(vector, np.ndarray):
             if vector.shape not in [(2,), (3,), (2, 1), (3, 1)]:
                 raise ValueError("NumPy vectors must be 2 or 3 elements,"
                                  f" got {vector}")
@@ -138,3 +142,35 @@ def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
             raise ValueError("Uneven number of reference_pairs")
         tuples.append(pair)
     return tuples
+
+def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
+    """Returns the point closest to the origin on a line created by a point 
+    and a vector.
+
+    :param point: A vector to a point on the line.
+    :param vector: A vector in the same direction as the line.
+    :returns: A numpy array vector pointing to the closest point on the line.
+    :raises ValueError: When the direction vector is a zero vector or the 
+        point and vector dimensions do not match.
+    """
+    if np.allclose(vector, [0] * len(vector)):
+        msg = f"Got zero vector for line direction: {tuple(vector)}"
+        raise ValueError(msg)
+    if len(point) != len(vector):
+        msg = f"Point {point} and vector {vector} dimensions are not equal"
+        raise ValueError(msg)
+    point_vector = np.array(point)
+    vector = np.array(vector)
+    unit_vector = trig.get_unit_vector(vector)
+    dot = np.dot(point_vector, unit_vector)
+    if dot == 0:
+        # Point vector and direction are perpendicular, or the point vector
+        # is zero vector. Either way the provided point is the closest.
+        return point_vector
+    if np.isclose(abs(dot), np.linalg.norm(point_vector)):
+        # Point vector and direction vector are parallel or anti-parallel,
+        # so the closest point must be the origin.
+        return np.array([0] * len(point))
+    # No special case, so the off-closest point vector can be subtracted out
+    # to get the closest point.
+    return point_vector - dot * unit_vector

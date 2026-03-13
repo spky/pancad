@@ -16,12 +16,16 @@ from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
+from pancad.utils.geometry import closest_to_origin
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
 
+    from numpy.typing import ArrayLike
+
+    from pancad.utils.pancad_types import SpaceVector
 
 class Line(AbstractGeometry):
     """A class representing infinite lines in 2D and 3D space. A Line
@@ -41,15 +45,12 @@ class Line(AbstractGeometry):
                  uid: str=None) -> None:
         self.uid = uid
         self.direction = direction
-        if isinstance(point, Point):
-            self._point_closest_to_origin = Line.closest_to_origin(
-                point, self.direction
-            )
-        elif isinstance(point, tuple):
-            raise ValueError("point cannot be a tuple for Line's init function."
-                             "Use Line.from_two_points instead")
-        else:
-            self._point_closest_to_origin = None
+        if isinstance(point, tuple):
+            msg = ("point cannot be a tuple for Line's init function."
+                   "Use Line.from_two_points or provide a Point instead")
+            raise ValueError(msg)
+        self._point_closest_to_origin = Line._closest_to_origin(point,
+                                                                self.direction)
         super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods
@@ -342,8 +343,8 @@ class Line(AbstractGeometry):
             elif phi is None and theta is not None:
                 direction_end_pt.theta = theta
             self.direction = tuple(direction_end_pt)
-        self._point_closest_to_origin = self.closest_to_origin(point,
-                                                               self.direction)
+        new_closest = self._closest_to_origin(point, self.direction)
+        self._point_closest_to_origin.update(new_closest)
         return self
 
     def update(self, other: Line) -> Self:
@@ -355,6 +356,11 @@ class Line(AbstractGeometry):
         self._point_closest_to_origin.update(other.reference_point)
         self.direction = other.direction
         return self
+
+    @staticmethod
+    def _closest_to_origin(point: ArrayLike, vector: VectorLike) -> Point:
+        """Returns the Point on the Line closest to the origin."""
+        return Point(closest_to_origin(point, vector))
 
     # Static Methods
     @staticmethod
@@ -477,3 +483,15 @@ class Line(AbstractGeometry):
         return super().__repr__().format(
             details=f"({point_str})({direction_str})"
         )
+
+class Axis:
+    """A class representing infinite lines with direction in 2D and 3D space.
+
+    :param point: A point on the axis.
+    :param direction: A vector in the direction of the axis.
+    :param uid: The unique ID of the axis.
+    """
+
+    def __init__(self, point: Point | SpaceVector, direction: SpaceVector,
+                 uid:str=None) -> None:
+        self.uid = uid
