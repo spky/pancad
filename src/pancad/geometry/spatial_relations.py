@@ -192,7 +192,7 @@ def _coincident_point(point: Point,
                         * direction_vector)
         check_point_tuple = trig.to_1d_tuple(ref_pt_to_pt + reference_vector)
 
-        return isclose(check_point_tuple, tuple(point))
+        return np.allclose(check_point_tuple, tuple(point))
     if isinstance(other, LineSegment):
         return coincident(point, other.get_line())
     if isinstance(other, Plane):
@@ -234,7 +234,7 @@ def _coincident_plane(plane: Plane,
         return coplanar(*points)
     if isinstance(other, Plane):
         if plane.reference_point == other.reference_point == Point(0, 0, 0):
-            return isclose(plane.normal, other.normal)
+            return np.allclose(plane.normal, other.normal)
         return plane.reference_point == other.reference_point
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
@@ -332,7 +332,7 @@ def _equal_linesegment(line_segment: LineSegment, *other: LineSegment) -> bool:
     if all(isinstance(g, LineSegment) for g in other):
         length = line_segment.length
         for other_linesegment in other:
-            if not isclose(length, other_linesegment.length):
+            if not np.isclose(length, other_linesegment.length):
                 return False
         return True
     types = [g.__class__ for g in other]
@@ -341,9 +341,9 @@ def _equal_linesegment(line_segment: LineSegment, *other: LineSegment) -> bool:
 @parallel.register
 def _parallel_line(line: Line, other: Line | LineSegment | Plane) -> bool:
     if isinstance(other, Line):
-        return isclose(line.direction, other.direction)
+        return np.allclose(line.direction, other.direction)
     if isinstance(other, LineSegment):
-        return isclose(line.direction, other.get_line().direction)
+        return np.allclose(line.direction, other.get_line().direction)
     if isinstance(other, Plane):
         return parallel(other, line)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
@@ -362,11 +362,11 @@ def _parallel_linesegment(line_segment: LineSegment,
 @parallel.register
 def _parallel_plane(plane: Plane, other: Line | LineSegment | Plane) -> bool:
     if isinstance(other, Line):
-        return isclose(np.dot(other.direction, plane.normal), 0)
+        return np.isclose(np.dot(other.direction, plane.normal), 0)
     if isinstance(other, LineSegment):
         return parallel(plane, other.get_line())
     if isinstance(other, Plane):
-        return isclose(plane.normal, other.normal)
+        return np.allclose(plane.normal, other.normal)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
 @perpendicular.register
@@ -374,7 +374,7 @@ def _perpendicular_line(line: Line, other: Line | LineSegment | Plane) -> bool:
     if isinstance(other, Line):
         if skew(line, other):
             return False
-        return isclose(np.dot(line.direction, other.direction), 0)
+        return np.isclose(np.dot(line.direction, other.direction), 0)
     if isinstance(other, LineSegment):
         return perpendicular(line, other.get_line())
     if isinstance(other, Plane):
@@ -398,11 +398,11 @@ def _perpendicular_plane(plane: Plane, other: Line | LineSegment | Plane) -> boo
         vector_1, vector_2 = conversion.get_2_vectors_on_plane(plane)
         dot_x = np.dot(vector_1, other.direction)
         dot_y = np.dot(vector_2, other.direction)
-        return isclose0(dot_x) and isclose0(dot_y)
+        return np.isclose(dot_x, 0) and np.isclose(dot_y, 0)
     if isinstance(other, LineSegment):
         return perpendicular(plane, other.get_line())
     if isinstance(other, Plane):
-        return isclose(np.dot(other.normal, plane.normal), 0)
+        return np.isclose(np.dot(other.normal, plane.normal), 0)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
 @project.register
@@ -438,7 +438,7 @@ def _skew_line(line: Line, other: Line | LineSegment) -> bool:
         pt1_to_pt2 = (np.array(line.reference_point)
                       - np.array(other.reference_point))
         cross_product = np.cross(line.direction, other.direction)
-        return not isclose(np.dot(pt1_to_pt2, cross_product), 0)
+        return not np.isclose(np.dot(pt1_to_pt2, cross_product), 0)
     if isinstance(other, LineSegment):
         return skew(line, other.get_line())
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
@@ -558,7 +558,7 @@ def _get_intersect_line(line: Line,
 
         non_zero_rows = []
         for c1, c2 in zip(line.direction, other.direction):
-            non_zero_rows.append(not (isclose(c1, 0) and isclose(c2, 0)))
+            non_zero_rows.append(not (np.isclose(c1, 0) and np.isclose(c2, 0)))
 
         if len(line) == 2:
             pass # 2D will always intersect since they are not parallel
@@ -570,14 +570,14 @@ def _get_intersect_line(line: Line,
             pt1_to_pt2 = np.delete(pt1_to_pt2, (1), axis=0)
         elif all(non_zero_rows):
             matrix_a_yz = np.delete(matrix_a, (0), axis=0)
-            if isclose(np.det(matrix_a_yz), 0):
+            if np.isclose(np.linalg.det(matrix_a_yz), 0):
                 return None
             matrix_a = np.delete(matrix_a, (2), axis=0)
         else:
             matrix_a = np.delete(matrix_a, (0), axis=0)
             pt1_to_pt2 = np.delete(pt1_to_pt2, (0), axis=0)
 
-        if isclose(np.linalg.det(matrix_a), 0):
+        if np.isclose(np.linalg.det(matrix_a), 0):
             return None
         _, t = np.linalg.inv(matrix_a) @ pt1_to_pt2
         return line.get_parametric_point(t)
@@ -619,7 +619,7 @@ def _get_intersect_plane(plane: Plane,
              np.dot(other.normal, other.reference_point)]
         )
         n_matrix = np.array([plane.normal, other.normal])
-        zeros = [list(map(isclose0, c)) for c in n_matrix]
+        zeros = [list(map(lambda x: np.isclose(x, 0), c)) for c in n_matrix]
         zero_cols = np.all(zeros, axis=0).tolist()
         zero_index = zero_cols.index(True) if np.any(zero_cols) else 2
 

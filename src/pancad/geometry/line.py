@@ -409,17 +409,18 @@ class Line(AbstractGeometry):
         unit_vector = trig.get_unit_vector(vector)
         if len(unit_vector) == 3:
             x, y, z = unit_vector
-            if x < 0 and isclose0(y) and isclose0(z):
+            if x < 0 and np.isclose(y, 0) and np.isclose(z, 0):
                 unit_vector = -unit_vector
-            elif y < 0 and isclose0(z):
+            elif y < 0 and np.isclose(z, 0):
                 unit_vector = -unit_vector
             elif z < 0:
                 unit_vector = -unit_vector
+
         elif len(unit_vector) == 2:
             x, y = unit_vector
-            if x < 0 and isclose0(y):
+            if x < 0 and np.isclose(y, 0):
                 unit_vector = -unit_vector
-            elif not isclose0(y) and y < 0:
+            elif not np.isclose(y, 0) and y < 0:
                 unit_vector = -unit_vector
         # Add 0 to ensure negative zero representations are eliminated
         return trig.to_1d_tuple(unit_vector + 0)
@@ -448,9 +449,9 @@ class Line(AbstractGeometry):
         """
         if isinstance(other, Line):
             return (
-                isclose(tuple(self._point_closest_to_origin),
+                np.allclose(tuple(self._point_closest_to_origin),
                         tuple(other._point_closest_to_origin))
-                and isclose(self.direction, other.direction)
+                and np.allclose(self.direction, other.direction)
             )
         return NotImplemented
 
@@ -464,11 +465,12 @@ class Line(AbstractGeometry):
         """Returns the short string representation of the line."""
         pt_strs, direction_strs = [], []
         for i, component in enumerate(self.direction):
-            if isclose0(self._point_closest_to_origin[i]):
+            if np.isclose(self._point_closest_to_origin[i], 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{self._point_closest_to_origin[i]:g}")
-            if isclose0(component):
+
+            if np.isclose(component, 0):
                 direction_strs.append("0")
             else:
                 direction_strs.append(f"{component:g}")

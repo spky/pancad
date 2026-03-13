@@ -184,9 +184,9 @@ class Plane(AbstractGeometry):
         """
         if isinstance(other, Plane):
             return (
-                isclose(tuple(self.reference_point),
+                np.allclose(tuple(self.reference_point),
                         tuple(other.reference_point))
-                and isclose(self.normal, other.normal)
+                and np.allclose(self.normal, other.normal)
             )
         return NotImplemented
 
@@ -204,7 +204,7 @@ class Plane(AbstractGeometry):
         for vector in [self.reference_point, self.normal]:
             vector_strings = []
             for component in vector:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     vector_strings.append("0")
                 else:
                     vector_strings.append(f"{component:g}")

@@ -327,7 +327,7 @@ class CoordinateSystem(AbstractGeometry):
     def __repr__(self) -> str:
         pt_strs, axis_strs = [], []
         for component in self.origin:
-            if isclose0(component):
+            if np.isclose(component, 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{component:g}")
@@ -335,7 +335,7 @@ class CoordinateSystem(AbstractGeometry):
         for axis in self.get_axis_vectors():
             component_strs = []
             for component in axis:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     component_strs.append("0")
                 else:
                     component_strs.append(f"{component:g}")
@@ -357,7 +357,7 @@ class CoordinateSystem(AbstractGeometry):
         indentation = "    "
         pt_strs, axis_strs = [], []
         for component in self.origin:
-            if isclose0(component):
+            if np.isclose(component, 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{component:g}")
@@ -365,7 +365,7 @@ class CoordinateSystem(AbstractGeometry):
         for axis in self.get_axis_vectors():
             component_strs = []
             for component in axis:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     component_strs.append("0")
                 else:
                     component_strs.append(f"{component:g}")
