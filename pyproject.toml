@@ -23,6 +23,7 @@ dependencies = [
 ]
 [project.urls]
 Homepage = "https://github.com/spky/pancad"
+Documentation = "https://pancad.readthedocs.io/"
 Issues = "https://github.com/spky/pancad/issues"
 
 [tool.hatch.version]
