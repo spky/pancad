@@ -405,20 +405,38 @@ class TestLineUpdate(unittest.TestCase):
         line.update(new)
         verification.assertPancadAlmostEqual(self, line, new, ROUNDING_PLACES)
 
+ORIGIN_2D = (0, 0) # 2D Origin Point
+ORIGIN_3D = (0, 0, 0) # 3D Origin Point
+X_2D = (1, 0) # 2D X Axis Vector
+Y_2D = (0, 1) # 2D Y Axis Vector
+X_3D = (1, 0, 0) # 3D X Axis Vector
+Y_3D = (0, 1, 0) # 3D Y Axis Vector
+Z_3D = (0, 0, 1) # 3D Z Axis Vector
 
-ORIGIN = (0, 0, 0) # Origin Point
-X_VEC = (1, 0, 0) # X Axis Vector
-Y_VEC = (0, 1, 0) # Y Axis Vector
-Z_VEC = (0, 0, 1) # Z Axis Vector
+# NOTE: Manual test input angles in degrees
 
 QUAT_ROTATIONS = [
     # Init Point, Initial Direction, Rotation Axis Vector, Rotation Angle, Expected, Id Prefix
-    (ORIGIN, X_VEC, (0, 0, 0), 0, X_VEC, "unrotated_x_zero_axis"),
-    (ORIGIN, X_VEC, (1, 0, 0), 0, X_VEC, "unrotated_x_x_axis"),
-    (ORIGIN, X_VEC, (0, 1, 0), 90, (0, 0, -1), "rotate_x_to_-z"),
-    (ORIGIN, X_VEC, (0, 1, 0), -90, Z_VEC, "rotate_x_to_+z"),
-    (ORIGIN, X_VEC, (0, 1, 0), 270, Z_VEC, "opposite_rotate_x_to_+z"),
-    (ORIGIN, X_VEC, (0, 1, 0), 180, (-1, 0, 0), "rotate_x_to_-x"),
+    (ORIGIN_3D, X_3D, (0, 0, 0), 0, X_3D, "q_unrotated_x_zero_axis"),
+    (ORIGIN_3D, X_3D, (1, 0, 0), 0, X_3D, "q_unrotated_x_axis"),
+    (ORIGIN_3D, X_3D, (1, 0, 0), 90, X_3D, "q_rotate_x_around_x"),
+    (ORIGIN_3D, X_3D, (0, 1, 0), 90, (0, 0, -1), "q_rotate_x_to_-z"),
+    (ORIGIN_3D, X_3D, (0, 1, 0), -90, Z_3D, "q_rotate_x_to_+z"),
+    (ORIGIN_3D, X_3D, (0, 1, 0), 270, Z_3D, "q_opposite_rotate_x_to_+z"),
+    (ORIGIN_3D, X_3D, (0, 1, 0), 180, (-1, 0, 0), "q_rotate_x_to_-x"),
+]
+
+MATRIX_2D_ROTATIONS = [
+    # Init Point, Initial Direction, Rotation Angle
+    (ORIGIN_2D, X_2D, 0, X_2D, "rm2_unrotated_x_axis"),
+    (ORIGIN_2D, X_2D, 90, Y_2D, "rm2_rotate_x_to_+y"),
+    (ORIGIN_2D, X_2D, 180, (-1, 0), "rm2_rotate_x_to_-x"),
+]
+
+MATRIX_3D_ROTATIONS = [
+    # Init Point, Initial Direction, (Yaw (Z), Pitch (X), Roll (Y)), expected, Id Prefix
+    (ORIGIN_3D, X_3D, (0, 0, 0), (1, 0, 0), "rm3_unrotated_x_axis"),
+    (ORIGIN_3D, X_3D, (90, 0, 0), Y_3D, "rm3_rotate_x_to_+y"),
 ]
 
 def _quaternion_params(rotations):
@@ -433,9 +451,33 @@ def _quaternion_params(rotations):
         params.append(param)
     return params
 
+def _2d_rotation_params(rotations):
+    """Generates the list of pytest parameters for testing 2D rotation matrix rotations."""
+    params = []
+    for point, initial, angle, expected, id_ in rotations:
+        matrix = trig.rotation_2(radians(angle))
+        test_id = "_".join([id_, str(angle), str(expected)])
+        param = pytest.param(point, initial, matrix, expected, id=test_id)
+        params.append(param)
+    return params
+
+def _3d_rotation_params(rotations):
+    """Generates the list of pytest parameters for testing 3D rotation matrix rotations."""
+    params = []
+    for point, initial, angles, expected, id_ in rotations:
+        matrix = trig.yaw_pitch_roll(*map(radians, angles))
+        test_id = "_".join([id_, str(angles), str(expected)])
+        param = pytest.param(point, initial, matrix, expected, id=test_id)
+        params.append(param)
+    return params
+
 @pytest.mark.parametrize(
     "point, initial, rotation, expected",
-    _quaternion_params(QUAT_ROTATIONS)
+    [
+        *_quaternion_params(QUAT_ROTATIONS),
+        *_3d_rotation_params(MATRIX_3D_ROTATIONS),
+        *_2d_rotation_params(MATRIX_2D_ROTATIONS),
+    ]
 )
 def test_rotate_axis(point, initial, rotation, expected):
     """Tests for Axis rotation with quaternions and rotation matrices.
