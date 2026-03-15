@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import itertools
 import math
+from math import cos, sin, radians
 import unittest
 
 import numpy as np
+import quaternion
 import pytest
 
 from pancad.utils import trigonometry as trig
 from pancad.geometry import spatial_relations
 from pancad.geometry.point import Point
-from pancad.geometry.line import Line
+from pancad.geometry.line import Line, Axis
 from pancad.utils import verification
 
 ROUNDING_PLACES = 10
@@ -402,6 +404,52 @@ class TestLineUpdate(unittest.TestCase):
         new = Line(Point(1, 1, 0), (1, 1, 1))
         line.update(new)
         verification.assertPancadAlmostEqual(self, line, new, ROUNDING_PLACES)
+
+
+ORIGIN = (0, 0, 0) # Origin Point
+X_VEC = (1, 0, 0) # X Axis Vector
+Y_VEC = (0, 1, 0) # Y Axis Vector
+Z_VEC = (0, 0, 1) # Z Axis Vector
+
+QUAT_ROTATIONS = [
+    # Init Point, Initial Direction, Rotation Axis Vector, Rotation Angle, Expected, Id Prefix
+    (ORIGIN, X_VEC, (0, 0, 0), 0, X_VEC, "unrotated_x_zero_axis"),
+    (ORIGIN, X_VEC, (1, 0, 0), 0, X_VEC, "unrotated_x_x_axis"),
+    (ORIGIN, X_VEC, (0, 1, 0), 90, (0, 0, -1), "rotate_x_to_-z"),
+    (ORIGIN, X_VEC, (0, 1, 0), -90, Z_VEC, "rotate_x_to_+z"),
+    (ORIGIN, X_VEC, (0, 1, 0), 270, Z_VEC, "opposite_rotate_x_to_+z"),
+    (ORIGIN, X_VEC, (0, 1, 0), 180, (-1, 0, 0), "rotate_x_to_-x"),
+]
+
+def _quaternion_params(rotations):
+    """Generates the list of pytest parameters for testing quaternion rotation."""
+    params = []
+    for point, initial, rotation_axis, angle, expected, id_ in rotations:
+        quat_w = cos(radians(angle / 2))
+        quat_ijk = map(lambda x: x * sin(radians(angle) / 2), rotation_axis)
+        quat = np.quaternion(quat_w, *quat_ijk)
+        test_id = "_".join([id_, str(angle), str(rotation_axis), str(expected)])
+        param = pytest.param(point, initial, quat, expected, id=test_id)
+        params.append(param)
+    return params
+
+@pytest.mark.parametrize(
+    "point, initial, rotation, expected",
+    _quaternion_params(QUAT_ROTATIONS)
+)
+def test_rotate_axis(point, initial, rotation, expected):
+    """Tests for Axis rotation with quaternions and rotation matrices.
+
+    :param point: Axis definition point.
+    :param initial: Initial axis direction.
+    :param rotation: A quaternion or rotation matrix.
+    :param expected: Expected axis direction result.
+    """
+    axis = Axis(point, initial)
+    rotated = axis.rotate(rotation).direction
+    print(axis, rotated)
+    assert np.allclose(rotated, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
