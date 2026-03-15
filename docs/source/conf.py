@@ -10,6 +10,14 @@ project = 'pancad'
 copyright = '2024, spky'
 author = 'spky'
 
+# -- GitHub links for docs --------------------------------------------------
+html_context = {
+    'display_github': True,
+    'github_user': 'spky',
+    'github_repo': 'pancad',
+    'github_version': 'main/docs/source/',
+}
+
 import pancad.constants
 import pancad.geometry
 import pancad.constants
