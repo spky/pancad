@@ -525,22 +525,35 @@ class Axis(AbstractGeometry):
 
         :param rotation: The matrix or quaternion to rotate with.
         :returns: The updated Axis to enable chaining.
+        :raises ValueError: When provided a rotation that does not correspond to 
+            the dimensions of the Axis.
         """
         raise TypeError(f"Expected numpy array or quaternion, got: {rotation}")
 
     @rotate.register(quaternion.quaternion)
     def _with_quaternion(self, rotation: quaternion.quaternion) -> Self:
-        if len(self) == 2:
-            msg = "Cannot rotate 2D Axes with quaternions"
-            raise ValueError(msg)
-        new = quaternion.rotate_vectors(rotation, self.direction)
+        try:
+            new = quaternion.rotate_vectors(rotation, self.direction)
+        except ValueError as exc:
+            if len(self) == 2:
+                msg = f"Cannot rotate 2D Axis with quaternion: {rotation}"
+                exc.add_note(msg)
+            raise
         self.direction = trig.to_1d_tuple(new + 0)
         self._line.direction = self.direction
         return self
 
     @rotate.register(np.ndarray)
     def _with_matrix(self, rotation: np.ndarray) -> Self:
-        new = rotation @ self.direction
+        try:
+            new = rotation @ self.direction
+        except ValueError as exc:
+            if "has a mismatch in its core dimension" in str(exc):
+                shape = "x".join(map(str, rotation.shape))
+                msg = (f"Cannot rotate {len(self)}D Axis"
+                       f" with {shape} rotation matrix: \n{rotation}")
+                exc.add_note(msg)
+            raise
         self.direction = trig.to_1d_tuple(new + 0)
         self._line.direction = self.direction
         return self

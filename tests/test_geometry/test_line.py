@@ -492,6 +492,19 @@ def test_rotate_axis(point, initial, rotation, expected):
     print(axis, rotated)
     assert np.allclose(rotated, expected)
 
+@pytest.mark.parametrize(
+    "point, direction, rotation, msg",
+    [
+        pytest.param(ORIGIN_2D, X_2D, np.quaternion(1, 0, 0, 0), "Cannot rotate 2D", id="2d_quat"),
+        pytest.param(ORIGIN_2D, X_2D, np.identity(3), "D Axis with ", id="2d@3d_matrix"),
+        pytest.param(ORIGIN_3D, X_3D, np.identity(2), "D Axis with ", id="3d@2d_matrix"),
+    ]
+)
+def test_rotate_axis_exceptions(point, direction, rotation, msg):
+    """Tests for handling axis rotation errors."""
+    axis = Axis(point, direction)
+    with pytest.raises(ValueError, match=msg):
+        axis.rotate(rotation)
 
 if __name__ == "__main__":
     unittest.main()
