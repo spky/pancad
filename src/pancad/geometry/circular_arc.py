@@ -13,7 +13,6 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils import comparison
 from pancad.utils.geometry import (
     three_dimensional_only, two_dimensional_only, no_dimensional_mismatch
 )
@@ -26,7 +25,6 @@ if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
 
-isclose = partial(comparison.isclose, nan_equal=False)
 
 @dataclass
 class ArcParts:

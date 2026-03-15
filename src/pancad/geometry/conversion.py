@@ -11,14 +11,12 @@ import numpy as np
 
 from pancad.utils.trigonometry import get_unit_vector
 from pancad.geometry.point import Point
-from pancad.utils import comparison
 
 if TYPE_CHECKING:
     from pancad.geometry.line import Line
     from pancad.geometry.line_segment import LineSegment
     from pancad.geometry.plane import Plane
 
-isclose = partial(comparison.isclose, nan_equal=True)
 
 def to_line(line_segment: LineSegment) -> Line:
     """Gets the Line from a LineSegment."""

@@ -14,14 +14,12 @@ import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
-from pancad.utils import trigonometry as trig, comparison
+from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point(AbstractGeometry):
     """A class representing points in 2D and 3D space. Point can return its

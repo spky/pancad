@@ -16,12 +16,10 @@ from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
-from pancad.utils import trigonometry as trig, comparison
+from pancad.utils import trigonometry as trig
 
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9
-isclose = partial(comparison.isclose, nan_equal=True)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=True)
 
 ###############################################################################
 # Single Dispatches

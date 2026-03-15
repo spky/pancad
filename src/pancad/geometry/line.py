@@ -15,15 +15,13 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils import comparison, trigonometry as trig
+from pancad.utils import trigonometry as trig
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
 
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Line(AbstractGeometry):
     """A class representing infinite lines in 2D and 3D space. A Line
