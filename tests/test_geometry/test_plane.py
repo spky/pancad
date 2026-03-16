@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 
 from pancad.utils import trigonometry as trig
-from pancad.utils import verification, comparison
+from pancad.utils import verification
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
@@ -61,7 +61,7 @@ class TestPlaneConversion(unittest.TestCase):
         pln = Plane(pt, normal)
         points = conversion.get_3_points_on_plane(pln)
         normal_dot = lambda p : np.dot(tuple(p), pln.normal)
-        close_to_zero = lambda d : comparison.isclose(d, 0)
+        close_to_zero = lambda d: np.isclose(d, 0)
         
         dot_products = list(map(normal_dot, points))
         self.assertTrue(all(map(close_to_zero, dot_products)))

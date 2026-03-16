@@ -12,7 +12,6 @@ import numpy as np
 from numpy.linalg import norm
 
 from pancad.constants import AngleConvention
-from pancad.utils.comparison import isclose
 from pancad.utils.pancad_types import VectorLike
 
 def angle_mod(angle: Real) -> float:
@@ -383,7 +382,7 @@ def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
     :returns: The angle between vector1 and vector2.
     """
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
+    if np.isclose(abs(unit_dot), 1):
         angle = math.acos(round(unit_dot))
     else:
         angle = math.acos(unit_dot)
@@ -408,7 +407,7 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
     :returns: The angle between vector1 and vector2.
     """
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
+    if np.isclose(abs(unit_dot), 1):
         angle = math.acos(round(unit_dot))
     else:
         angle = math.acos(unit_dot)
@@ -430,7 +429,7 @@ def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
     :returns: The angle between vector1 and vector2.
     """
     unit_dot = np.dot(vector1, vector2) / (norm(vector1) * norm(vector2))
-    if isclose(abs(unit_dot), 1):
+    if np.isclose(abs(unit_dot), 1):
         angle = math.acos(round(unit_dot))
     else:
         angle = math.acos(unit_dot)
