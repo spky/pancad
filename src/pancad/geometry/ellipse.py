@@ -15,12 +15,10 @@ from pancad.abstract import AbstractGeometry
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.constants import ConstraintReference
-from pancad.utils import comparison
 from pancad.utils.geometry import two_dimensional_only, no_dimensional_mismatch
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import angle_mod, rotation_2
 
-_isclose = partial(comparison.isclose, nan_equal=False)
 
 
 def updates_reference_points(func):

@@ -17,16 +17,12 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.plane import Plane
-from pancad.utils import comparison
 from pancad.utils.trigonometry import yaw_pitch_roll, rotation_2
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import NoReturn
     from numbers import Real
-
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 SystemAxes3D = namedtuple("SystemAxes3D", ["x", "y", "z"])
 
@@ -327,7 +323,7 @@ class CoordinateSystem(AbstractGeometry):
     def __repr__(self) -> str:
         pt_strs, axis_strs = [], []
         for component in self.origin:
-            if isclose0(component):
+            if np.isclose(component, 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{component:g}")
@@ -335,7 +331,7 @@ class CoordinateSystem(AbstractGeometry):
         for axis in self.get_axis_vectors():
             component_strs = []
             for component in axis:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     component_strs.append("0")
                 else:
                     component_strs.append(f"{component:g}")
@@ -357,7 +353,7 @@ class CoordinateSystem(AbstractGeometry):
         indentation = "    "
         pt_strs, axis_strs = [], []
         for component in self.origin:
-            if isclose0(component):
+            if np.isclose(component, 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{component:g}")
@@ -365,7 +361,7 @@ class CoordinateSystem(AbstractGeometry):
         for axis in self.get_axis_vectors():
             component_strs = []
             for component in axis:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     component_strs.append("0")
                 else:
                     component_strs.append(f"{component:g}")

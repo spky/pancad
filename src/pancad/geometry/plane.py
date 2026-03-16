@@ -10,15 +10,13 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils import trigonometry as trig, comparison
+from pancad.utils import trigonometry as trig
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
     from numbers import Real
 
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
@@ -184,9 +182,9 @@ class Plane(AbstractGeometry):
         """
         if isinstance(other, Plane):
             return (
-                isclose(tuple(self.reference_point),
+                np.allclose(tuple(self.reference_point),
                         tuple(other.reference_point))
-                and isclose(self.normal, other.normal)
+                and np.allclose(self.normal, other.normal)
             )
         return NotImplemented
 
@@ -204,7 +202,7 @@ class Plane(AbstractGeometry):
         for vector in [self.reference_point, self.normal]:
             vector_strings = []
             for component in vector:
-                if isclose0(component):
+                if np.isclose(component, 0):
                     vector_strings.append("0")
                 else:
                     vector_strings.append(f"{component:g}")

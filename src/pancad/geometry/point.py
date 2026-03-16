@@ -14,14 +14,12 @@ import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
-from pancad.utils import trigonometry as trig, comparison
+from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Point(AbstractGeometry):
     """A class representing points in 2D and 3D space. Point can return its
@@ -315,7 +313,7 @@ class Point(AbstractGeometry):
         """
         if isinstance(other, Point):
             if len(self) == len(other):
-                return isclose(tuple(self), tuple(other))
+                return np.allclose(tuple(self), tuple(other))
             raise ValueError("Points must be the same dimension")
         return NotImplemented
 
@@ -343,7 +341,7 @@ class Point(AbstractGeometry):
     def __repr__(self) -> str:
         pt_strs = []
         for component in self.cartesian:
-            if isclose0(component):
+            if np.isclose(component, 0):
                 pt_strs.append("0")
             else:
                 pt_strs.append(f"{component:g}")

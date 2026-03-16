@@ -6,19 +6,16 @@ from __future__ import annotations
 from functools import partial
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
+import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils import comparison
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
-
-isclose = partial(comparison.isclose, nan_equal=False)
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class Circle(AbstractGeometry):
     """A class representing a circle in 2D or 3D space.
@@ -136,8 +133,8 @@ class Circle(AbstractGeometry):
         """
         if isinstance(other, Circle) and len(self) == len(other) == 2:
             return (
-                isclose(self.center.cartesian, other.center.cartesian)
-                and isclose(self.radius, other.radius)
+                np.allclose(self.center.cartesian, other.center.cartesian) \
+                    and np.isclose(self.radius, other.radius)
             )
         return NotImplemented
 

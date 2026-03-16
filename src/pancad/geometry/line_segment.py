@@ -15,7 +15,7 @@ from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
-from pancad.utils import comparison, trigonometry as trig
+from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 from pancad.utils.pancad_types import VectorLike
 
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Self
 
-isclose0 = partial(comparison.isclose, value_b=0, nan_equal=False)
 
 class LineSegment(AbstractGeometry):
     """A class representing finite lines in 2D and 3D space.
@@ -378,11 +377,11 @@ class LineSegment(AbstractGeometry):
     def __repr__(self) -> str:
         pt_a_strs, pt_b_strs = [], []
         for i in range(0, len(self)):
-            if isclose0(self.start[i]):
+            if np.isclose(self.start[i], 0):
                 pt_a_strs.append("0")
             else:
                 pt_a_strs.append(f"{self.start[i]:g}")
-            if isclose0(self.end[i]):
+            if np.isclose(self.end[i], 0):
                 pt_b_strs.append("0")
             else:
                 pt_b_strs.append(f"{self.end[i]:g}")

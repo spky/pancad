@@ -13,7 +13,6 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils import comparison
 from pancad.utils.geometry import (
     three_dimensional_only, two_dimensional_only, no_dimensional_mismatch
 )
@@ -26,7 +25,6 @@ if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
 
-isclose = partial(comparison.isclose, nan_equal=False)
 
 @dataclass
 class ArcParts:
@@ -326,11 +324,11 @@ class CircularArc(AbstractGeometry):
             if len(self) == 3:
                 raise NotImplementedError("3D Arcs not supported yet")
             return (
-                isclose(self.center.cartesian, other.center.cartesian)
-                and isclose(self.start_vector, other.start_vector)
-                and isclose(self.end_vector, other.end_vector)
+                np.allclose(self.center.cartesian, other.center.cartesian)
+                and np.allclose(self.start_vector, other.start_vector)
+                and np.allclose(self.end_vector, other.end_vector)
                 and self.is_clockwise == other.is_clockwise
-                and isclose(self.radius, other.radius)
+                and np.isclose(self.radius, other.radius)
             )
         return NotImplemented
 

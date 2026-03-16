@@ -11,14 +11,12 @@ import numpy as np
 
 from pancad.utils.trigonometry import get_unit_vector
 from pancad.geometry.point import Point
-from pancad.utils import comparison
 
 if TYPE_CHECKING:
     from pancad.geometry.line import Line
     from pancad.geometry.line_segment import LineSegment
     from pancad.geometry.plane import Plane
 
-isclose = partial(comparison.isclose, nan_equal=True)
 
 def to_line(line_segment: LineSegment) -> Line:
     """Gets the Line from a LineSegment."""
@@ -34,11 +32,11 @@ def get_2_points_on_line(line: Line) -> list[Point, Point]:
 def get_2_vectors_on_plane(plane: Plane) -> tuple[tuple, tuple]:
     """Returns 2 unit vectors that are normal to the plane's normal vector."""
     a, b, c = plane.normal
-    if not isclose(c, 0):
+    if not np.isclose(c, 0):
         a1 = a + 1
         b1 = b + 1
         c1 = -(a*a1 + b*b1)/c
-    elif not isclose(b, 0):
+    elif not np.isclose(b, 0):
         a1 = a + 1
         b1 = a*a1 / b
         c1 = c + 1
