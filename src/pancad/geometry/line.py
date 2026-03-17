@@ -470,6 +470,8 @@ class Axis(AbstractGeometry):
         :getter: Returns the direction of the line.
         :setter: Sets the axis direction vector, effectively rotating the axis
             about its point closest to the origin.
+        :raises ValueError: When the direction vector is a zero vector or does
+            not match the dimension of the Axis.
         """
         return self._direction
 
@@ -478,6 +480,10 @@ class Axis(AbstractGeometry):
         vector = trig.to_1d_np(vector)
         if not np.any(vector):
             msg = f"Direction vector cannot be zero vector: {vector}"
+            raise ValueError(msg)
+        if len(vector) != len(self):
+            msg = (f"{len(vector)}D vector cannot be the direction"
+                   f" of a {len(self)}D axis: {vector}")
             raise ValueError(msg)
         self._direction = trig.to_1d_tuple(trig.get_unit_vector(vector))
         # Axis uses Line to inform geometry, but the Line shouldn't be referenced
@@ -510,6 +516,14 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
+    def move_to_point(self, point: Point | SpaceVector) -> Self:
+        """Moves the axis to go through the point without updating its direction.
+        """
+        if not isinstance(point, Point):
+            point = Point(point)
+        self._line.move_to_point(point)
+        return self
+
     def update(self, other: Axis) -> Self:
         """Updates the Axis to match the position and direction of another Axis.
 
@@ -525,7 +539,7 @@ class Axis(AbstractGeometry):
 
         :param rotation: The matrix or quaternion to rotate with.
         :returns: The updated Axis to enable chaining.
-        :raises ValueError: When provided a rotation that does not correspond to 
+        :raises ValueError: When provided a rotation that does not correspond to
             the dimensions of the Axis.
         """
         raise TypeError(f"Expected numpy array or quaternion, got: {rotation}")
@@ -561,7 +575,7 @@ class Axis(AbstractGeometry):
     # Dunders
     def __len__(self) -> int:
         """Returns whether the Axis is 2D or 3D."""
-        return len(self.direction)
+        return len(self._line)
 
     def __repr__(self) -> str:
         direction_strs = []

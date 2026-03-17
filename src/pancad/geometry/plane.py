@@ -10,6 +10,7 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
+from pancad.geometry.line import Axis
 from pancad.utils import trigonometry as trig
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.geometry import three_dimensions_required
@@ -17,41 +18,41 @@ from pancad.utils.geometry import three_dimensions_required
 if TYPE_CHECKING:
     from numbers import Real
 
+    from pancad.utils.pancad_types import Space3DVector
+
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
-    def __init__(self, point: Point | VectorLike=None, normal: VectorLike=None,
+    def __init__(self, point: Point | Space3DVector=None,
+                 normal: Space3DVector=None,
                  uid: str=None):
         self.uid = uid
-        if isinstance(point, VectorLike):
-            point = Point(point)
         if not isinstance(point, Point):
-            type_ = type(point)
-            raise TypeError(f"Expected Point/VectorLike point, got {type_}")
-        self.normal = normal
+            point = Point(point)
+        self._axis = Axis(point, normal)
         self._point_closest_to_origin = Plane._closest_to_origin(point,
                                                                  self.normal)
         super().__init__({ConstraintReference.CORE: self})
 
     # Getters #
     @property
-    def normal(self) -> tuple:
+    def normal(self) -> Space3DVector:
         """The unit vector that describes the normal direction of the plane.
 
         :getter: Returns the normal vector of the plane.
         :setter: Takes a vector, finds its unit vector, and then sets that as
-            the direction of the plane.
+            the normal vector of the plane.
         """
-        return self._normal
+        return self._axis.direction
+
     @normal.setter
     @three_dimensions_required
-    def normal(self, vector: VectorLike):
-        if not isinstance(vector, VectorLike):
-            raise TypeError(f"Expected VectorLike, got {type(vector)}")
-        self._normal = trig.to_1d_tuple(trig.get_unit_vector(vector))
+    def normal(self, vector: Space3DVector):
+        self._axis.direction = vector
+        self._axis.move_to_point(self._point_closest_to_origin)
 
     @property
-    def normal_spherical(self) -> tuple:
+    def normal_spherical(self) -> Space3DVector:
         """The unit vector describing the normal direction of the plane in
         spherical coordinates. Read-only.
         """
@@ -109,7 +110,7 @@ class Plane(AbstractGeometry):
         return vector
 
     @three_dimensions_required
-    def move_to_point(self, point: Point, normal: VectorLike = None) -> Plane:
+    def move_to_point(self, point: Point, normal: Space3DVector=None) -> Plane:
         """Moves the plane to the point. Sets the normal vector at that point if
         it is given. If no normal vector is given, the plane is moved to be
         coincident with the point while maintaining the same normal
@@ -155,7 +156,7 @@ class Plane(AbstractGeometry):
     # Static Methods #
     @staticmethod
     @three_dimensions_required
-    def _closest_to_origin(point: Point, normal: tuple) -> Point:
+    def _closest_to_origin(point: Point, normal: Space3DVector) -> Point:
         """Returns the point on the plane created by the point and normal vector
         closest to the origin.
 
@@ -165,6 +166,8 @@ class Plane(AbstractGeometry):
         """
         x0, y0, z0 = tuple(point)
         a, b, c = tuple(normal)
+        # Equation derived from finding the itersection of a line through the
+        # origin that is also perpendicular to the plane.
         t = (a*x0 + b*y0 + c*z0)/(a**2 + b**2 + c**2)
         return Point(a*t, b*t, c*t)
 
