@@ -9,6 +9,10 @@ Geometry
     :show-inheritance:
     :members:
 
+.. autoclass:: pancad.api.Axis
+    :show-inheritance:
+    :members:
+
 .. autoclass:: pancad.api.Circle
     :show-inheritance:
     :members:

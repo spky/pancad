@@ -5,23 +5,30 @@ points.
 """
 from __future__ import annotations
 
-from functools import partial
+from functools import singledispatchmethod
 import math
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
+import quaternion
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
+from pancad.utils.geometry import closest_to_origin
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Self
 
+    from numpy.typing import ArrayLike
+
+    from pancad.utils.pancad_types import (
+        SpaceVector, Space3DVector, Space2DVector
+    )
 
 class Line(AbstractGeometry):
     """A class representing infinite lines in 2D and 3D space. A Line
@@ -35,21 +42,16 @@ class Line(AbstractGeometry):
     :param direction: A vector in the direction of the line.
     :param uid: The unique ID of the line.
     """
-    def __init__(self,
-                 point: Point=None,
-                 direction: VectorLike=None,
+    def __init__(self, point: Point, direction: VectorLike,
                  uid: str=None) -> None:
         self.uid = uid
         self.direction = direction
-        if isinstance(point, Point):
-            self._point_closest_to_origin = Line.closest_to_origin(
-                point, self.direction
-            )
-        elif isinstance(point, tuple):
-            raise ValueError("point cannot be a tuple for Line's init function."
-                             "Use Line.from_two_points instead")
-        else:
-            self._point_closest_to_origin = None
+        if isinstance(point, tuple):
+            msg = ("point cannot be a tuple for Line's init function."
+                   "Use Line.from_two_points or provide a Point instead")
+            raise ValueError(msg)
+        self._point_closest_to_origin = Line._closest_to_origin(point,
+                                                                self.direction)
         super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods
@@ -155,7 +157,7 @@ class Line(AbstractGeometry):
 
     # Properties
     @property
-    def direction(self) -> tuple[Real]:
+    def direction(self) -> SpaceVector:
         """The unique direction of the line with cartesian components.
 
         pancad Line Directions in 2D are defined to be unique since infinite
@@ -171,19 +173,20 @@ class Line(AbstractGeometry):
 
         :getter: Returns the direction of the line.
         :setter: Finds and sets the vector's unique direction vector as the
-            direction of the Line.
+            direction of the Line. Effectively rotates the line about its point
+            closest to the origin.
         """
         return self._direction
     @direction.setter
     def direction(self, vector: VectorLike) -> None:
-        if vector is not None:
-            vector = trig.to_1d_np(vector)
-            self._direction = Line._unique_direction(vector)
-        else:
-            self._direction = None
+        vector = trig.to_1d_np(vector)
+        if not np.any(vector):
+            msg = f"Direction vector cannot be zero vector: {vector}"
+            raise ValueError(msg)
+        self._direction = Line._unique_direction(vector)
 
     @property
-    def direction_polar(self) -> tuple[Real]:
+    def direction_polar(self) -> Space2DVector:
         """The unique direction of the line with polar components.
 
         :getter: Returns the direction of the line as a (r, phi) tuple. Phi is
@@ -197,7 +200,7 @@ class Line(AbstractGeometry):
         self.direction = trig.polar_to_cartesian(vector)
 
     @property
-    def direction_spherical(self) -> tuple[Real]:
+    def direction_spherical(self) -> Space3DVector:
         """The unique direction of the line with spherical components.
 
         :getter: Returns the direction of the line as a (r, phi, theta) tuple.
@@ -223,7 +226,7 @@ class Line(AbstractGeometry):
 
     @property
     def reference_point(self) -> Point:
-        """The closest point to the origin on the line.
+        """The point on the line closest to the origin.
 
         :getter: Returns a copy of the Point closest to the origin on the line.
         :setter: Read-only.
@@ -342,8 +345,8 @@ class Line(AbstractGeometry):
             elif phi is None and theta is not None:
                 direction_end_pt.theta = theta
             self.direction = tuple(direction_end_pt)
-        self._point_closest_to_origin = self.closest_to_origin(point,
-                                                               self.direction)
+        new_closest = self._closest_to_origin(point, self.direction)
+        self._point_closest_to_origin.update(new_closest)
         return self
 
     def update(self, other: Line) -> Self:
@@ -356,44 +359,10 @@ class Line(AbstractGeometry):
         self.direction = other.direction
         return self
 
-    # Static Methods
     @staticmethod
-    def closest_to_origin(point: Point, vector: VectorLike) -> Point:
-        """Returns the point on a line created by the point and vector closest
-        to the origin.
-
-        :param point: A Point on the line.
-        :param vector: A vector in the direction of the line.
-        :returns: The point on the line created by the given point and vector
-            closest to the origin.
-        :raises ValueError: When the direction vector is a zero vector or the 
-            point and vector dimensions do not match.
-        """
-        if not isinstance(point, Point):
-            point = Point(point)
-        if np.allclose(vector, [0] * len(vector)):
-            msg = f"Got zero vector for line direction: {tuple(vector)}"
-            raise ValueError(msg)
-        point_vector = np.array(point)
-        if len(point) != len(vector):
-            msg = f"Point {point} and vector {vector} dimensions are not equal"
-            raise ValueError(msg)
-        vector = trig.to_1d_np(vector)
-        unit_vector = trig.get_unit_vector(vector)
-        dot = np.dot(point_vector, unit_vector)
-        if dot == 0:
-            # Point vector and direction are perpendicular, or the point vector
-            # is zero vector. Either way the provided point is the closest.
-            return Point(point_vector)
-        if np.isclose(abs(dot), np.linalg.norm(point_vector)):
-            # Point vector and direction vector are parallel or anti-parallel,
-            # so the closest point must be the origin.
-            if len(point) == 2:
-                return Point(0, 0)
-            return Point(0, 0, 0)
-        # No special case, so the off-closest point vector can be subtracted out
-        # to get the closest point.
-        return Point(point_vector - dot * unit_vector)
+    def _closest_to_origin(point: ArrayLike, vector: VectorLike) -> Point:
+        """Returns the Point on the Line closest to the origin."""
+        return Point(closest_to_origin(point, vector))
 
     @staticmethod
     def _unique_direction(vector: np.ndarray) -> np.ndarray:
@@ -454,9 +423,7 @@ class Line(AbstractGeometry):
         return NotImplemented
 
     def __len__(self) -> int:
-        """Returns the number of elements in the line's direction tuple,
-        which is equivalent to the line's number of dimnesions.
-        """
+        """Returns whether the Line is 2D or 3D."""
         return len(self.direction)
 
     def __repr__(self) -> str:
@@ -477,3 +444,131 @@ class Line(AbstractGeometry):
         return super().__repr__().format(
             details=f"({point_str})({direction_str})"
         )
+
+class Axis(AbstractGeometry):
+    """A class representing infinite lines with direction in 2D and 3D space.
+
+    :param point: A point on the axis.
+    :param direction: A vector in the direction of the axis.
+    :param uid: The unique ID of the axis.
+    """
+
+    def __init__(self, point: Point | SpaceVector, direction: SpaceVector,
+                 uid:str=None) -> None:
+        self.uid = uid
+        if not isinstance(point, Point):
+            point = Point(point)
+        self._line = Line(point, direction)
+        self.direction = direction
+        super().__init__({ConstraintReference.CORE: self})
+
+    # Properties
+    @property
+    def direction(self) -> SpaceVector:
+        """The direction of the axis with cartesian components.
+
+        :getter: Returns the direction of the line.
+        :setter: Sets the axis direction vector, effectively rotating the axis
+            about its point closest to the origin.
+        """
+        return self._direction
+
+    @direction.setter
+    def direction(self, vector: VectorLike) -> None:
+        vector = trig.to_1d_np(vector)
+        if not np.any(vector):
+            msg = f"Direction vector cannot be zero vector: {vector}"
+            raise ValueError(msg)
+        self._direction = trig.to_1d_tuple(trig.get_unit_vector(vector))
+        # Axis uses Line to inform geometry, but the Line shouldn't be referenced
+        # by constraints. Axis should be referenced directly.
+        self._line.direction = vector
+
+    @property
+    def reference_point(self) -> Point:
+        """The point on the axis closest to the origin.
+
+        :getter: Returns a copy of the Point closest to the origin on the axis.
+        :setter: Read-only.
+        """
+        return self._line.reference_point
+
+    @property
+    def reference_line(self) -> Line:
+        """Returns the Line that is coincident with the Axis.
+
+        :getter: Returns a copy of the Line coincident with the Axis.
+        :setter: Read-only.
+        """
+        return self._line.copy()
+
+    # Public Methods
+    def copy(self) -> Axis:
+        """Returns a copy of the Axis.
+
+        :returns: A new Axis with the same position and direction as this Axis.
+        """
+        return Axis(self.reference_point, self.direction)
+
+    def update(self, other: Axis) -> Self:
+        """Updates the Axis to match the position and direction of another Axis.
+
+        :param other: The Axis to update to.
+        :returns: The updated Axis.
+        """
+        self.direction = other.direction
+        self._line.update(other.reference_line)
+
+    @singledispatchmethod
+    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+        """Rotates the axis about its point closest to the origin.
+
+        :param rotation: The matrix or quaternion to rotate with.
+        :returns: The updated Axis to enable chaining.
+        :raises ValueError: When provided a rotation that does not correspond to 
+            the dimensions of the Axis.
+        """
+        raise TypeError(f"Expected numpy array or quaternion, got: {rotation}")
+
+    @rotate.register(quaternion.quaternion)
+    def _with_quaternion(self, rotation: quaternion.quaternion) -> Self:
+        try:
+            new = quaternion.rotate_vectors(rotation, self.direction)
+        except ValueError as exc:
+            if len(self) == 2:
+                msg = f"Cannot rotate 2D Axis with quaternion: {rotation}"
+                exc.add_note(msg)
+            raise
+        self.direction = trig.to_1d_tuple(new + 0)
+        self._line.direction = self.direction
+        return self
+
+    @rotate.register(np.ndarray)
+    def _with_matrix(self, rotation: np.ndarray) -> Self:
+        try:
+            new = rotation @ self.direction
+        except ValueError as exc:
+            if "has a mismatch in its core dimension" in str(exc):
+                shape = "x".join(map(str, rotation.shape))
+                msg = (f"Cannot rotate {len(self)}D Axis"
+                       f" with {shape} rotation matrix: \n{rotation}")
+                exc.add_note(msg)
+            raise
+        self.direction = trig.to_1d_tuple(new + 0)
+        self._line.direction = self.direction
+        return self
+
+    # Dunders
+    def __len__(self) -> int:
+        """Returns whether the Axis is 2D or 3D."""
+        return len(self.direction)
+
+    def __repr__(self) -> str:
+        direction_strs = []
+        for component in self.direction:
+            if np.isclose(component, 0):
+                direction_strs.append("0")
+            else:
+                direction_strs.append(f"{component:g}")
+        direction_str = ",".join(direction_strs)
+        return super().__repr__().format(details=f"({direction_str})")
