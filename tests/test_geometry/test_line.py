@@ -7,7 +7,7 @@ from math import cos, sin, radians
 import unittest
 
 import numpy as np
-import quaternion
+import quaternion # pylint: disable=unused-import
 import pytest
 
 from pancad.utils import trigonometry as trig
