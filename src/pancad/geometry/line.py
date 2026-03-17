@@ -5,7 +5,7 @@ points.
 """
 from __future__ import annotations
 
-from functools import partial, singledispatchmethod
+from functools import singledispatchmethod
 import math
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING

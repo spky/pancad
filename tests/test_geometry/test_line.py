@@ -444,7 +444,8 @@ def _quaternion_params(rotations):
     params = []
     for point, initial, rotation_axis, angle, expected, id_ in rotations:
         quat_w = cos(radians(angle / 2))
-        quat_ijk = map(lambda x: x * sin(radians(angle) / 2), rotation_axis)
+        quat_ijk = map(lambda x, y: x * sin(radians(y) / 2),
+                       rotation_axis, itertools.repeat(angle))
         quat = np.quaternion(quat_w, *quat_ijk)
         test_id = "_".join([id_, str(angle), str(rotation_axis), str(expected)])
         param = pytest.param(point, initial, quat, expected, id=test_id)
