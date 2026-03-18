@@ -17,6 +17,8 @@ from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
     from numbers import Real
+    from typing import Self
+    import quaternion
 
     from pancad.utils.pancad_types import Space3DVector
 
@@ -40,16 +42,15 @@ class Plane(AbstractGeometry):
         """The unit vector that describes the normal direction of the plane.
 
         :getter: Returns the normal vector of the plane.
-        :setter: Takes a vector, finds its unit vector, and then sets that as
-            the normal vector of the plane.
+        :setter: Finds the vector's unit vector and sets that as the plane
+            normal vector.
         """
         return self._axis.direction
 
     @normal.setter
     @three_dimensions_required
     def normal(self, vector: Space3DVector):
-        self._axis.direction = vector
-        self._axis.move_to_point(self._point_closest_to_origin)
+        self._axis.move_to_point(self._point_closest_to_origin, vector)
 
     @property
     def normal_spherical(self) -> Space3DVector:
@@ -72,6 +73,7 @@ class Plane(AbstractGeometry):
         :getter: Returns a copy of the Point instance representing the point
             closest to the origin on the plane.
         """
+        # Copy to prevent remote changes of the plane reference point.
         return self._point_closest_to_origin.copy()
 
     @property
@@ -98,33 +100,30 @@ class Plane(AbstractGeometry):
         x0, y0, z0 = tuple(self.reference_point)
         return -(a*x0 + b*y0 + c*z0)
 
-    def get_normal_vector(self, vertical: bool=True) -> np.ndarray:
-        """Returns the normal vector of the plane as a numpy vector
-
-        :param vertical: If True, the vector will be 3x1, otherwise 1x3
-        :returns: A numpy vector of the normal vector
-        """
-        vector = np.array(self.normal)
-        if vertical:
-            return vector.reshape(3, 1)
-        return vector
-
-    @three_dimensions_required
-    def move_to_point(self, point: Point, normal: Space3DVector=None) -> Plane:
+    def move_to_point(self, point: Point, normal: Space3DVector=None) -> Self:
         """Moves the plane to the point. Sets the normal vector at that point if
-        it is given. If no normal vector is given, the plane is moved to be
-        coincident with the point while maintaining the same normal
-        vector.
+        it is given.
 
         :param point: A point the plane will be coincident to.
-        :param normal: A new normal vector for the plane
-        :returns: This plane so it can be fed into further functions
+        :param normal: A new normal vector for the plane. Defaults to the
+            original normal vector when None.
+        :returns: The updated Plane to enable chaining.
         """
-        self.normal = normal
-        self._point_closest_to_origin.update(
-            Plane._closest_to_origin(point, normal)
-        )
+        if normal is None:
+            normal = self.normal
+        new_closest = Plane._closest_to_origin(point, normal)
+        self._point_closest_to_origin.update(new_closest)
+        if normal is not None:
+            self.normal = normal
         return self
+
+    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+        """Rotates the plane about its point closest to the origin.
+
+        :param rotation: The matrix or quaternion to rotate with.
+        :returns: The updated Plane to enable chaining.
+        """
+        pass
 
     def update(self, other: Plane) -> None:
         """Updates the plane to match the position and normal direction of
@@ -155,7 +154,6 @@ class Plane(AbstractGeometry):
 
     # Static Methods #
     @staticmethod
-    @three_dimensions_required
     def _closest_to_origin(point: Point, normal: Space3DVector) -> Point:
         """Returns the point on the plane created by the point and normal vector
         closest to the origin.

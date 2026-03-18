@@ -516,25 +516,36 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
-    def move_to_point(self, point: Point | SpaceVector) -> Self:
-        """Moves the axis to go through the point without updating its direction.
+    def move_to_point(self,
+                      point: Point | SpaceVector,
+                      direction: SpaceVector=None) -> Self:
+        """Moves the axis to go through the point. Leaves direction constant
+        unless provided.
+
+        :param point: A point the Axis should go through.
+        :param direction: The new direction the Axis should point. Defaults to
+            leaving the direction constant.
+        :returns: The updated Axis to enable chaining.
         """
         if not isinstance(point, Point):
             point = Point(point)
         self._line.move_to_point(point)
+        if direction is not None:
+            self.direction = direction
+            self._line.direction = direction
         return self
 
     def update(self, other: Axis) -> Self:
         """Updates the Axis to match the position and direction of another Axis.
 
         :param other: The Axis to update to.
-        :returns: The updated Axis.
+        :returns: The updated Axis to enable chaining.
         """
         self.direction = other.direction
         self._line.update(other.reference_line)
 
     @singledispatchmethod
-    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.

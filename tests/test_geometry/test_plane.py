@@ -2,6 +2,7 @@ import math
 import unittest
 
 import numpy as np
+import pytest
 
 from pancad.utils import trigonometry as trig
 from pancad.utils import verification
@@ -12,6 +13,33 @@ from pancad.geometry.plane import Plane
 from pancad.geometry import conversion
 
 ROUNDING_PLACES = 10
+
+ORIGIN = (0, 0, 0)
+X_VEC = (1, 0, 0)
+Y_VEC = (0, 1, 0)
+Z_VEC = (0, 0, 1)
+
+# id abbreviations: trans=translate, [xyz][+-]1= Add/subtract 1 from component.
+# xy=XY-Plane, xz=XZ-Plane, yz=YZ-Plane, - indicates normal is antiparallel.
+@pytest.mark.parametrize(
+    "init_point, init_normal, point, normal, exp_point, exp_normal",
+    [
+        pytest.param(ORIGIN, Z_VEC, ORIGIN, Z_VEC, ORIGIN, Z_VEC, id="xy_unrotated"),
+        pytest.param(ORIGIN, (0, 0, -1), ORIGIN, (0, 0, -1), ORIGIN, (0, 0, -1), id="-xy_unrotated"),
+        pytest.param(ORIGIN, Z_VEC, (0, 0, 1), None, (0, 0, 1), Z_VEC, id="xy_trans_z+1"),
+        pytest.param(ORIGIN, Z_VEC, (1, 1, 1), None, (0, 0, 1), Z_VEC, id="xy_trans_x+1y+1z+1"),
+        pytest.param(ORIGIN, Z_VEC, ORIGIN, Y_VEC, ORIGIN, Y_VEC, id="xy_normal_set_to_xz"),
+        pytest.param(ORIGIN, Z_VEC, (0, 1, 0), Y_VEC, (0, 1, 0), Y_VEC, id="xy_normal_set_to_xz,y+1"),
+        pytest.param(ORIGIN, Z_VEC, (1, 1, 1), Y_VEC, (0, 1, 0), Y_VEC, id="xy_normal_set_to_xz,x+1y+1z+1"),
+    ]
+)
+def test_move_to_point(init_point, init_normal, point, normal, exp_point, exp_normal):
+    plane = Plane(init_point, init_normal)
+    plane.move_to_point(point, normal)
+    result_pt = np.array(plane.reference_point)
+    print(plane.reference_point, result_pt, plane.normal)
+    np.testing.assert_array_almost_equal(result_pt, exp_point)
+    np.testing.assert_array_almost_equal(plane.normal, exp_normal)
 
 class TestPlaneInit(unittest.TestCase):
     
