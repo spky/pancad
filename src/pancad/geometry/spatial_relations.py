@@ -5,7 +5,7 @@ constraints in CAD programs.
 
 Example Relations: Coincident, Parallel, Perpendicular, Skew
 """
-from functools import singledispatch, partial
+from functools import singledispatch
 import math
 
 import numpy as np
