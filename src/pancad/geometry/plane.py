@@ -2,7 +2,6 @@
 graphics, and other geometry use cases."""
 from __future__ import annotations
 
-from functools import partial
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -12,7 +11,6 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Axis
 from pancad.utils import trigonometry as trig
-from pancad.utils.pancad_types import VectorLike
 from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
@@ -123,7 +121,12 @@ class Plane(AbstractGeometry):
         :param rotation: The matrix or quaternion to rotate with.
         :returns: The updated Plane to enable chaining.
         """
-        pass
+        try:
+            self._axis.rotate(rotation)
+        except ValueError as exc:
+            exc.add_note(f"Rotation of Plane Axis failed using: {rotation}")
+            raise
+        return self
 
     def update(self, other: Plane) -> None:
         """Updates the plane to match the position and normal direction of
