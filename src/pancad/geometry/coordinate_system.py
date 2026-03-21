@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 from dataclasses import dataclass, fields
-from functools import partial, singledispatchmethod, partialmethod
+from functools import singledispatchmethod, partialmethod
 from textwrap import indent
 from typing import TYPE_CHECKING, Self
 

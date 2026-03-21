@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import quaternion
 import pytest
 
 import pancad.utils.geometry as geo_utils
@@ -49,3 +50,69 @@ def test_closest_to_origin_excs(point, direction, msg):
     """Test that the closest_to_origin function produces relevant exceptions."""
     with pytest.raises(ValueError, match=msg):
         geo_utils.closest_to_origin(point, direction)
+
+@pytest.mark.parametrize(
+    "vector",
+    [
+        (1, 0, 0), (0, 1, 0), (0, 0, 1),
+        (-1, 0, 0), (0, -1, 0), (0, 0, -1),
+        (1, 1, 1), (-1, -1, -1),
+    ]
+)
+def test_get_perpendicular(vector):
+    """Test that get_perpendicular always returns a perpendicular vector."""
+    perp = geo_utils.get_perpendicular(vector)
+    assert np.dot(vector, perp) == pytest.approx(0)
+
+@pytest.mark.parametrize(
+    "vector, err_type, msg",
+    [
+        pytest.param((0, 0, 0), ValueError, "Expected non-zero vector", id="zero_input"),
+        pytest.param((1, 1), TypeError, "only supports 3D vectors", id="2d_input"),
+        pytest.param((1, 1, 1, 1), TypeError, "only supports 3D vectors", id="4d_input"),
+    ]
+)
+def test_get_perpendicular_excs(vector, err_type, msg):
+    """Test the error handling of get_perpendicular."""
+    with pytest.raises(err_type, match=msg):
+        geo_utils.get_perpendicular(vector)
+
+@pytest.mark.parametrize(
+    "start, target",
+    [
+        pytest.param((1, 0, 0), (1, 0, 0), id="unrotated_x"),
+        pytest.param((1, 0, 0), (-1, 0, 0), id="x_to_-x"),
+        pytest.param((1, 0, 0), (0, 1, 0), id="x_to_y"),
+        pytest.param((1, 0, 0), (1/np.sqrt(2), 1/np.sqrt(2), 0), id="x_to_(1,1,0)normed"),
+        pytest.param((1, 0, 0), (-1/np.sqrt(2), 1/np.sqrt(2), 0), id="x_to_(-1,1,0)normed"),
+        pytest.param((1, 0, 0), (-1/np.sqrt(2), -1/np.sqrt(2), 0), id="x_to_(-1,-1,0)normed"),
+        pytest.param((1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
+                     (-1/np.sqrt(3), -1/np.sqrt(3), -1/np.sqrt(3)),
+                     id="(1,1,1)normed_to_(-1,-1,-1)normed"),
+    ]
+)
+def test_get_rotation_quat(start, target):
+    """Test that the quaternions returned by get_rotation_quat actually rotate
+    the start vector to the target vector.
+    """
+    q = geo_utils.get_rotation_quat(start, target)
+    rotated = quaternion.rotate_vectors(q, start)
+    print(f"{q} | Rotated: {rotated}")
+    assert rotated == pytest.approx(target)
+
+MUST_BE_3D_MSG = "start/target must be 3D"
+START_TARGET_ZERO_MSG = "start/target cannot be zero vector"
+@pytest.mark.parametrize(
+    "start, target, err_type, msg",
+    [
+        pytest.param((1, 0), (0, 1), TypeError, MUST_BE_3D_MSG, id="2d_input"),
+        pytest.param((1, 0), (0, 1, 0), TypeError, MUST_BE_3D_MSG, id="2d3d_start_target"),
+        pytest.param((1, 1, 1, 1), (2, 2, 2, 2), TypeError, MUST_BE_3D_MSG, id="4d_input"),
+        pytest.param((0, 0, 0), (1, 1, 1), ValueError, START_TARGET_ZERO_MSG, id="zero_start"),
+        pytest.param((1, 1, 1), (0, 0, 0), ValueError, START_TARGET_ZERO_MSG, id="zero_target"),
+    ]
+)
+def test_get_rotation_quat_excs(start, target, err_type, msg):
+    """Test the error handling of get_rotation_quat."""
+    with pytest.raises(err_type, match=msg):
+        geo_utils.get_rotation_quat(start, target)
