@@ -107,6 +107,8 @@ class Plane(AbstractGeometry):
             original normal vector when None.
         :returns: The updated Plane to enable chaining.
         """
+        if not isinstance(point, Point):
+            point = Point(point)
         if normal is None:
             normal = self.normal
         new_closest = Plane._closest_to_origin(point, normal)

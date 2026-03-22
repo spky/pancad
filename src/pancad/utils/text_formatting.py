@@ -1,6 +1,15 @@
 """A module providing functions for common string formatting operations.
 Originally intended for command line reports/summaries.
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from numbers import Real
 
 def get_table_string(data: list[dict] | dict,
                      column_map: dict=None,
@@ -37,3 +46,18 @@ def get_table_string(data: list[dict] | dict,
             for i, row in enumerate(rows):
                 string_rows[i] = column_delimiter.join([string_rows[i], row])
     return "\n".join(string_rows)
+
+def format_vector(vector: Sequence[Real], delim: str=",", decimals: int=3) -> str:
+    """Formats a vector of numbers into a printable string.
+
+    :param vector: A sequence of Real numbers.
+    :param delim: The string to appear between the numbers.
+    :param decimals: The number of decimals to show in output floats
+    """
+    strings = []
+    for component in vector:
+        if np.isclose(component, 0):
+            strings.append("0")
+        else:
+            strings.append(f"{component:.{decimals}g}")
+    return delim.join(strings)
