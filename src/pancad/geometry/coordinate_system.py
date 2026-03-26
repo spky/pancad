@@ -27,14 +27,14 @@ if TYPE_CHECKING:
     )
 
 class CoordinateSystem(AbstractGeometry):
-    """A class representing coordinate systems in 2D and 3D space. Initial
-    rotation is defined by Tait-Bryan (zyx) yaw-pitch-roll angles.
+    """A class representing coordinate systems in 2D and 3D space.
 
     :param origin: A 2D or 3D center Point of the coordinate system.
     :param rotation: A rotation matrix or quaternion to rotate the canonical
         2D/3D CoordinateSystem to a desired orientation.
     :param uid: The unique ID of the coordinate system.
     """
+
     def __init__(self,
                  origin: Point | SpaceVector,
                  rotation: np.ndarray | np.quaternion=None,
@@ -58,7 +58,9 @@ class CoordinateSystem(AbstractGeometry):
     def from_yaw_pitch_roll(cls, position: Point | Space3DVector,
                             yaw: Real=0, pitch: Real=0, roll: Real=0,
                             **kwargs) -> None:
-        """Initializes a Pose from yaw, pitch, and roll angles in radians."""
+        """Initializes a CoordinateSystem from yaw, pitch, and roll angles in
+        radians.
+        """
         rotation = yaw_pitch_roll(yaw, pitch, roll)
         return cls(position, rotation, **kwargs)
 
@@ -106,7 +108,8 @@ class CoordinateSystem(AbstractGeometry):
     def copy(self) -> CoordinateSystem:
         """Returns a copy of the CoordinateSystem.
 
-        :returns: the same origin, axes, and planes, but not the same uid.
+        :returns: A CoordinateSystem with the same origin, axes, and planes, but
+            not the same uid.
         """
         return CoordinateSystem(self.origin).update(self)
 
@@ -226,6 +229,7 @@ class CoordinateSystem(AbstractGeometry):
 
 class Pose(AbstractGeometry):
     """The position and orientation of a 3D object."""
+
     def __init__(self, coordinate_system: CoordinateSystem,
                  *, uid: str=None) -> None:
         self.uid = uid
@@ -283,7 +287,7 @@ class Pose(AbstractGeometry):
         return self.get_reference(CR.TOP)
 
     def move_to_point(self, location: Point) -> Self:
-        """Moves the pose to a new location with no rotation."""
+        """Moves the Pose to a new location with no rotation."""
         self.coordinate_system.move_to_point(location)
 
     def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:

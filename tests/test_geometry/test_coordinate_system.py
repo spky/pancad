@@ -206,7 +206,3 @@ def test_update(canon_3d_system):
     new = CoordinateSystem((2,2,2))
     canon_3d_system.update(new)
     assert canon_3d_system.origin.cartesian == pytest.approx(new.origin.cartesian)
-
-# def test_unrotated_3d_system_quaternion(unrotated_3d_system):
-    # quat = unrotated_3d_system.get_quaternion()
-    # assert quat == np.quaternion(1, 0, 0, 0)
