@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 import math
-from functools import partial
 from numbers import Real
 from sqlite3 import PrepareProtocol
 from typing import Self, TYPE_CHECKING

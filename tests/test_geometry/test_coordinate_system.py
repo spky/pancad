@@ -158,10 +158,10 @@ def test_init_with_rotations(origin, rotation, expected):
             assert geometry.normal == pytest.approx(expected[ref])
 
 @pytest.mark.parametrize(
-    "origin, rotation, expected",
+    "origin, rotation, _",
     [*_rotate_3d_quaternion_params((0, 0, 0))]
 )
-def test_get_quaternion(origin, rotation, expected):
+def test_get_quaternion(origin, rotation, _):
     """Test that the quaternions from get_quaternion actually rotate canon
     coordinate systems to match the target coordinate systems.
     """
