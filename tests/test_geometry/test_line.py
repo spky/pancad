@@ -412,7 +412,7 @@ Y_2D = (0, 1) # 2D Y Axis Vector
 X_3D = (1, 0, 0) # 3D X Axis Vector
 Y_3D = (0, 1, 0) # 3D Y Axis Vector
 Z_3D = (0, 0, 1) # 3D Z Axis Vector
-
+SQ2R = 1 / np.sqrt(2) # 1 over the square root of 2
 # NOTE: Manual test input angles in degrees
 
 QUAT_ROTATIONS = [
@@ -424,6 +424,8 @@ QUAT_ROTATIONS = [
     (ORIGIN_3D, X_3D, (0, 1, 0), -90, Z_3D, "q_rotate_x_to_+z"),
     (ORIGIN_3D, X_3D, (0, 1, 0), 270, Z_3D, "q_opposite_rotate_x_to_+z"),
     (ORIGIN_3D, X_3D, (0, 1, 0), 180, (-1, 0, 0), "q_rotate_x_to_-x"),
+    (ORIGIN_3D, X_3D, (0, 1, 0), 135, (-SQ2R, 0, -SQ2R), "q_rotate_x_135_around_y"),
+    (ORIGIN_3D, Z_3D, (0, 1, 0), 135, (SQ2R, 0, -SQ2R), "q_rotate_z_135_around_y"),
 ]
 
 MATRIX_2D_ROTATIONS = [

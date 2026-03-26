@@ -14,6 +14,7 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Axis
 from pancad.geometry.plane import Plane
 from pancad.utils.trigonometry import yaw_pitch_roll
+from pancad.utils.geometry import get_rotation_quat
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.text_formatting import format_vector
 
@@ -109,42 +110,63 @@ class CoordinateSystem(AbstractGeometry):
         """
         return CoordinateSystem(self.origin).update(self)
 
-    # def get_quaternion(self) -> np.quaternion:
-        # """Returns a quaternion that can be used to rotate other vectors from
-        # the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
-        # (0, 0, 1) to this coordinate system.
-        # """
-        # # TODO: Update get_quaternion to work with new Axis and Plane
-        # canon_vectors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
-        # system_vectors = [self.x_vector, self.y_vector, self.z_vector]
-        # canon = SystemAxes3D(*[np.array(axis) for axis in canon_vectors])
-        # sys = SystemAxes3D(*[np.array(axis) for axis in system_vectors])
-        # if all(np.isclose(np.dot(c, s), 1) for c, s in zip(canon, sys)):
-            # # Check if the axes are all close to the canon axis directions and
-            # # return a quaternion with no rotation if so.
-            # return np.quaternion(1, 0, 0, 0)
-        # parallel_to_canons = [np.isclose(abs(np.dot(c, s)), 1)
-                              # for c, s in zip(canon, sys)]
-        # if all(parallel_to_canons):
-            # # Can only happen if all axes are counter-parallel, since they've all
-            # # been checked for whether they are the exact same. That would mean
-            # # that this is an opposite-handed coordinate system and wouldn't be
-            # # possible to rotate to.
-            # msg =("Cannot create a quaternion to rotate to this coordinate"
-                  # "system from a canon right-handed coordinate_system")
-            # raise ValueError(msg)
-        # canon_axis = canon[parallel_to_canons.index(False)]
-        # current_axis = sys[parallel_to_canons.index(False)]
-        # euler_axis = np.cross(canon_axis, current_axis)
-        # euler_axis = euler_axis / np.linalg.norm(euler_axis)
-        # normed_dot = (
-            # np.dot(canon_axis, current_axis)
-            # / (np.linalg.norm(canon_axis) * np.linalg.norm(current_axis))
-        # )
-        # cos_half_theta = np.sqrt((1 + normed_dot)/2)
-        # sin_half_theta = np.sqrt((1 - normed_dot)/2)
-        # quat_vector = euler_axis * sin_half_theta
-        # return np.quaternion(cos_half_theta, *quat_vector)
+    def is_equal(self, other: AbstractGeometry) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is equal to this
+        geometry element since the uids would not be the same.
+        """
+        comparisons = []
+        for ref, geometry in self.children.items():
+            if ref == CR.CORE:
+                continue
+            comparisons.append(geometry.is_equal(other.get_reference(ref)))
+        return all(comparisons)
+
+    def get_quaternion(self) -> np.quaternion:
+        """Returns a quaternion that can be used to rotate other vectors from
+        the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
+        (0, 0, 1) to this coordinate system.
+        """
+        if len(self) == 2:
+            msg = "Cannot return a quaternion for 2D CoordinateSystems"
+            raise ValueError(msg)
+        canon_cs = CoordinateSystem((0, 0, 0))
+        quats = {}
+        for ref in (CR.X, CR.Y, CR.Z):
+            canon_axis = canon_cs.get_reference(ref)
+            cs_axis = self.get_reference(ref)
+            quats[ref] = get_rotation_quat(canon_axis.direction,
+                                           cs_axis.direction)
+        quats = {ref: q for ref, q in quats.items()
+                 if not np.isclose(q, np.quaternion(1, 0, 0, 0))}
+        if not quats:
+            # All quaternions were identity quaternions, so just return one.
+            return np.quaternion(1, 0, 0, 0)
+        ref = next(iter(quats)) # Get one of the remaining references
+        if np.allclose([q for _, q in quats.items()], [quats[ref]] * len(quats)):
+            # Since identity quats have been filtered out, if all the leftover
+            # rotations are almost equal then the either all the rotations were
+            # equal or the rotation was around one of the canon axes.
+            return quats[ref]
+        if len(quats) == 2:
+            # Special cases past here
+            ref_1, ref_2 = tuple(quats)
+            if np.allclose(quats[ref_1], -quats[ref_2]):
+                # The the remaining axes are flipped, but have rotations that are
+                # in opposite directions. Either will work.
+                return quats[ref_1]
+            rot_axis_1 = quaternion.as_vector_part(quats[ref_1])
+            rot_axis_2 = quaternion.as_vector_part(quats[ref_2])
+            if np.dot(rot_axis_1, rot_axis_2) == 0:
+                # Both remaining axes must have been flipped around if the
+                # rotation axes are perpendicular.
+                shared_axis = np.cross(canon_cs.get_reference(ref_1).direction,
+                                       canon_cs.get_reference(ref_2).direction)
+                return np.quaternion(0, *shared_axis)
+        msg = ("Failed to find quaternion to rotate to this CoordinateSystem's"
+               f" axes: {self.x_axis}, {self.y_axis}, {self.z_axis}."
+               f" Leftover Quaternion Candidates: {quats}")
+        raise NotImplementedError(msg)
 
     def update(self, other: CoordinateSystem) -> Self:
         """Updates the origin, axes, and planes of the CoordinateSystem to match
@@ -190,6 +212,8 @@ class CoordinateSystem(AbstractGeometry):
     def __repr__(self) -> str:
         label_map = {"": self.origin.cartesian,
                      "X": self.x_axis.direction, "Y": self.y_axis.direction}
+        if len(self) == 3:
+            label_map["Z"] = self.z_axis.direction
         strings = [f"{l}({format_vector(v)})" for l, v in label_map.items()]
         return super().__repr__().format(details="".join(strings))
 

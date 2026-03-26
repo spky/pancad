@@ -75,6 +75,13 @@ class Plane(AbstractGeometry):
         return self._point_closest_to_origin.copy()
 
     @property
+    def reference_axis(self) -> Axis:
+        """the axis normal to the plane and going through the point closest to
+        the origin. Read-only
+        """
+        return self._axis.copy()
+
+    @property
     def theta(self) -> Real:
         """The spherical inclination component of the plane's normal vector in
         radians. Read-only.
@@ -89,6 +96,14 @@ class Plane(AbstractGeometry):
         point and normal vector, but with a different uid.
         """
         return Plane(self.reference_point, self.normal)
+
+    def is_equal(self, other: Plane) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is equal to this
+        geometry element since the uids would not be the same.
+        """
+        return (self.reference_axis.is_equal(other.reference_axis)
+                and self.reference_point.is_equal(other.reference_point))
 
     def get_d(self) -> Real:
         """Returns the Plane's Point-Normal form constant d (equation of form

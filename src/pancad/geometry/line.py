@@ -516,6 +516,14 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
+    def is_equal(self, other: AbstractGeometry) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is equal to this
+        geometry element since the uids would not be the same.
+        """
+        return (np.allclose(self.direction, other.direction)
+                and self.reference_point.is_equal(other.reference_point))
+
     def move_to_point(self,
                       point: Point | SpaceVector,
                       direction: SpaceVector=None) -> Self:

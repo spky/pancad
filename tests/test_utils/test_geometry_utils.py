@@ -81,6 +81,8 @@ def test_get_perpendicular_excs(vector, err_type, msg):
     "start, target",
     [
         pytest.param((1, 0, 0), (1, 0, 0), id="unrotated_x"),
+        pytest.param((0, 1, 0), (0, 1, 0), id="unrotated_y"),
+        pytest.param((0, 0, 1), (0, 0, 1), id="unrotated_z"),
         pytest.param((1, 0, 0), (-1, 0, 0), id="x_to_-x"),
         pytest.param((1, 0, 0), (0, 1, 0), id="x_to_y"),
         pytest.param((1, 0, 0), (1/np.sqrt(2), 1/np.sqrt(2), 0), id="x_to_(1,1,0)normed"),

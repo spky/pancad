@@ -4,6 +4,7 @@ from __future__ import annotations
 from itertools import repeat
 from math import radians, sqrt, cos, sin
 from typing import TYPE_CHECKING
+from pprint import pp
 
 import pytest
 import numpy as np
@@ -61,12 +62,24 @@ QUAT_INIT_ROTATIONS = {
     "full_rotate_around_z_axis": [X_3D, 360],
     "rotate_x_to_-x_around_y": [Y_3D, 180],
     "rotate_x_to_-x_around_z": [Z_3D, 180],
+    "rotate_y_to_-y_around_x": [X_3D, 180],
+    "rotate_y_to_-y_around_z": [Z_3D, 180],
+    "rotate_z_to_-z_around_x": [X_3D, 180],
+    "rotate_z_to_-z_around_y": [Y_3D, 180],
     "rotate_x_to_z_around_y": [Y_3D, -90],
     "rotate_x_to_y_around_z": [Z_3D, 90],
     "rotate_x_45_around_z": [Z_3D, 45],
     "rotate_x_135_around_z": [Z_3D, 135],
     "rotate_x_225_around_z": [Z_3D, 225],
     "rotate_x_315_around_z": [Z_3D, 315],
+    "rotate_x_45_around_y": [Y_3D, 45],
+    "rotate_x_135_around_y": [Y_3D, 135],
+    "rotate_x_225_around_y": [Y_3D, 225],
+    "rotate_x_315_around_y": [Y_3D, 315],
+    "rotate_z_45_around_x": [X_3D, 45],
+    "rotate_z_135_around_x": [X_3D, 135],
+    "rotate_z_225_around_x": [X_3D, 225],
+    "rotate_z_315_around_x": [X_3D, 315],
 }
 
 INIT_ROTATION_AXIS_RESULTS = {
@@ -76,12 +89,24 @@ INIT_ROTATION_AXIS_RESULTS = {
     "no_rotate_around_zero_axis": [X_3D, Y_3D, Z_3D],
     "rotate_x_to_-x_around_y": [-X_3D, Y_3D, -Z_3D],
     "rotate_x_to_-x_around_z": [-X_3D, -Y_3D, Z_3D],
+    "rotate_y_to_-y_around_x": [X_3D, -Y_3D, -Z_3D],
+    "rotate_y_to_-y_around_z": [-X_3D, -Y_3D, Z_3D],
+    "rotate_z_to_-z_around_x": [X_3D, -Y_3D, -Z_3D],
+    "rotate_z_to_-z_around_y": [-X_3D, Y_3D, -Z_3D],
     "rotate_x_to_z_around_y": [Z_3D, Y_3D, -X_3D],
     "rotate_x_to_y_around_z": [Y_3D, -X_3D, Z_3D],
     "rotate_x_45_around_z": [(1/sqrt(2), 1/sqrt(2), 0), (-1/sqrt(2), 1/sqrt(2), 0), Z_3D],
     "rotate_x_135_around_z": [(-1/sqrt(2), 1/sqrt(2), 0), (-1/sqrt(2), -1/sqrt(2), 0), Z_3D],
     "rotate_x_225_around_z": [(-1/sqrt(2), -1/sqrt(2), 0), (1/sqrt(2), -1/sqrt(2), 0), Z_3D],
     "rotate_x_315_around_z": [(1/sqrt(2), -1/sqrt(2), 0), (1/sqrt(2), 1/sqrt(2), 0), Z_3D],
+    "rotate_x_45_around_y": [(1/sqrt(2), 0, -1/sqrt(2)), Y_3D, (1/sqrt(2), 0, 1/sqrt(2))],
+    "rotate_x_135_around_y": [(-1/sqrt(2), 0, -1/sqrt(2)), Y_3D, (1/sqrt(2), 0, -1/sqrt(2))],
+    "rotate_x_225_around_y": [(-1/sqrt(2), 0, 1/sqrt(2)), Y_3D, (-1/sqrt(2), 0, -1/sqrt(2))],
+    "rotate_x_315_around_y": [(1/sqrt(2), 0, 1/sqrt(2)), Y_3D, (-1/sqrt(2), 0, 1/sqrt(2))],
+    "rotate_z_45_around_x": [X_3D, (0, 1/sqrt(2), 1/sqrt(2)), (0, -1/sqrt(2), 1/sqrt(2))],
+    "rotate_z_135_around_x": [X_3D, (0, -1/sqrt(2), 1/sqrt(2)), (0, -1/sqrt(2), -1/sqrt(2))],
+    "rotate_z_225_around_x": [X_3D, (0, -1/sqrt(2), -1/sqrt(2)), (0, 1/sqrt(2), -1/sqrt(2))],
+    "rotate_z_315_around_x": [X_3D, (0, 1/sqrt(2), -1/sqrt(2)), (0, 1/sqrt(2), 1/sqrt(2))],
 }
 
 def _rotate_3d_quaternion_params(origin: Space3DVector):
@@ -120,22 +145,40 @@ def test_init_with_rotations(origin, rotation, expected):
     orientations.
     """
     cs = CoordinateSystem(origin, rotation)
-    print(cs)
+    pp(expected)
     for ref, geometry in cs.children.items():
         if ref == CR.ORIGIN:
-            print(geometry.self_reference, geometry)
+            print(geometry.self_reference, geometry, expected[ref])
             assert geometry.cartesian == pytest.approx(expected[ref])
         if ref in AXIS_REFS:
-            print(geometry.self_reference, geometry)
+            print(geometry.self_reference, geometry, expected[ref])
             assert geometry.direction == pytest.approx(expected[ref])
         if ref in PLANE_REFS:
-            print(geometry.self_reference, geometry)
+            print(geometry.self_reference, geometry, expected[ref])
             assert geometry.normal == pytest.approx(expected[ref])
+
+@pytest.mark.parametrize(
+    "origin, rotation, expected",
+    [*_rotate_3d_quaternion_params((0, 0, 0))]
+)
+def test_get_quaternion(origin, rotation, expected):
+    """Test that the quaternions from get_quaternion actually rotate canon
+    coordinate systems to match the target coordinate systems.
+    """
+    target_cs = CoordinateSystem(origin, rotation)
+    quat = target_cs.get_quaternion()
+    start_cs = CoordinateSystem((0, 0, 0))
+    start_cs.rotate(quat)
+    assert start_cs.is_equal(target_cs)
 
 @pytest.fixture(name="canon_3d_system")
 def fixture_canon_3d_system():
     """An unrotated 3D CoordinateSystem centered at the origin."""
     return CoordinateSystem((0, 0, 0))
+
+def test_is_equal_3d(canon_3d_system):
+    """Test whether coordinate_systems can compare each other's equality."""
+    assert canon_3d_system.is_equal(canon_3d_system)
 
 def test_2d_repr_dunder():
     """Test that the CoordinateSystem repr runs and has info for 2D systems."""
@@ -143,7 +186,7 @@ def test_2d_repr_dunder():
 
 def test_3d_repr_dunder(canon_3d_system):
     """Test that the CoordinateSystem repr runs and has info for 3D systems."""
-    assert repr(canon_3d_system) == "<CoordinateSystem(0,0,0)X(1,0,0)Y(0,1,0)>"
+    assert repr(canon_3d_system) == "<CoordinateSystem(0,0,0)X(1,0,0)Y(0,1,0)Z(0,0,1)>"
 
 def test_3d_move_to_point(canon_3d_system):
     """Test 3d CoordinateSystems can be move to other points."""
