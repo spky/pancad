@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pancad.abstract import (
         AbstractFeature, AbstractConstraint, AbstractGeometry, PancadThing
     )
-    from pancad.geometry.line import Line
+    from pancad.geometry.line import Axis
     from pancad.geometry.plane import Plane
     from pancad.geometry.point import Point
 
@@ -86,19 +86,19 @@ class FeatureSystem(AbstractGeometrySystem):
         return self.coordinate_system.origin
 
     @property
-    def x_axis(self) -> Line:
+    def x_axis(self) -> Axis:
         """The x axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_x()
+        return self.coordinate_system.x_axis
 
     @property
-    def y_axis(self) -> Line:
+    def y_axis(self) -> Axis:
         """The y axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_y()
+        return self.coordinate_system.y_axis
 
     @property
-    def z_axis(self) -> Line:
+    def z_axis(self) -> Axis:
         """The z axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_z()
+        return self.coordinate_system.z_axis
 
     @property
     def xy_plane(self) -> Plane:
@@ -396,14 +396,14 @@ class SketchGeometrySystem(AbstractGeometrySystem):
         return self.coordinate_system.origin
 
     @property
-    def x_axis(self) -> Line:
+    def x_axis(self) -> Axis:
         """The x axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_x()
+        return self.coordinate_system.x_axis
 
     @property
-    def y_axis(self) -> Line:
+    def y_axis(self) -> Axis:
         """The y axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_y()
+        return self.coordinate_system.y_axis
 
     # Public Methods
     def get_dependencies(self) -> list[AbstractFeature]:
@@ -546,21 +546,21 @@ class ThreeDSketchSystem(SketchGeometrySystem):
                          feature=feature, uid=uid)
 
     @property
-    def z_axis(self) -> Line:
+    def z_axis(self) -> Axis:
         """The z axis of the system's coordinate system."""
-        return self.coordinate_system.get_axis_line_z()
+        return self.coordinate_system.z_axis
 
     @property
     def xy_plane(self) -> Plane:
         """The xy plane of the system's coordinate system."""
-        return self.coordinate_system.get_xy_plane()
+        return self.coordinate_system.xy_plane
 
     @property
     def xz_plane(self) -> Plane:
         """The xz plane of the system's coordinate system."""
-        return self.coordinate_system.get_xz_plane()
+        return self.coordinate_system.xz_plane
 
     @property
     def yz_plane(self) -> Plane:
         """The yz plane of the system's coordinate system."""
-        return self.coordinate_system.get_yz_plane()
+        return self.coordinate_system.yz_plane

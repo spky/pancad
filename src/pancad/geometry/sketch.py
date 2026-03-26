@@ -118,7 +118,7 @@ class Sketch(AbstractFeature):
         if constraint.type_name == SketchConstraint.ALIGN_AXES:
             feat = next(f for f in constraint.get_dependencies()
                         if f is not self)
-            return feat.feature_system.coordinate_system.get_xy_plane()
+            return feat.feature_system.coordinate_system.xy_plane
         raise ValueError("Unsupported constraint type for placing sketches:"
                          f" {constraint}")
 
