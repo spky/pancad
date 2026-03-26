@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 import math
-from functools import partial
 from numbers import Real
 from sqlite3 import PrepareProtocol
 from typing import Self, TYPE_CHECKING
@@ -221,6 +220,13 @@ class Point(AbstractGeometry):
     def copy(self) -> Point:
         """Returns a copy of the Point at the same position, different uid."""
         return Point(self.cartesian)
+
+    def is_equal(self, other: Point) -> Point:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is equal to this
+        geometry element since the uids would not be the same.
+        """
+        return np.allclose(self.cartesian, other.cartesian)
 
     def phi_degrees(self) -> Real:
         """Returns the polar/spherical azimuth angle of the Point in degrees."""

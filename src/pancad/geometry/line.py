@@ -470,6 +470,8 @@ class Axis(AbstractGeometry):
         :getter: Returns the direction of the line.
         :setter: Sets the axis direction vector, effectively rotating the axis
             about its point closest to the origin.
+        :raises ValueError: When the direction vector is a zero vector or does
+            not match the dimension of the Axis.
         """
         return self._direction
 
@@ -478,6 +480,10 @@ class Axis(AbstractGeometry):
         vector = trig.to_1d_np(vector)
         if not np.any(vector):
             msg = f"Direction vector cannot be zero vector: {vector}"
+            raise ValueError(msg)
+        if len(vector) != len(self):
+            msg = (f"{len(vector)}D vector cannot be the direction"
+                   f" of a {len(self)}D axis: {vector}")
             raise ValueError(msg)
         self._direction = trig.to_1d_tuple(trig.get_unit_vector(vector))
         # Axis uses Line to inform geometry, but the Line shouldn't be referenced
@@ -510,22 +516,49 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
+    def is_equal(self, other: AbstractGeometry) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is equal to this
+        geometry element since the uids would not be the same.
+        """
+        return (np.allclose(self.direction, other.direction)
+                and self.reference_point.is_equal(other.reference_point))
+
+    def move_to_point(self,
+                      point: Point | SpaceVector,
+                      direction: SpaceVector=None) -> Self:
+        """Moves the axis to go through the point. Leaves direction constant
+        unless provided.
+
+        :param point: A point the Axis should go through.
+        :param direction: The new direction the Axis should point. Defaults to
+            leaving the direction constant.
+        :returns: The updated Axis to enable chaining.
+        """
+        if not isinstance(point, Point):
+            point = Point(point)
+        self._line.move_to_point(point)
+        if direction is not None:
+            self.direction = direction
+            self._line.direction = direction
+        return self
+
     def update(self, other: Axis) -> Self:
         """Updates the Axis to match the position and direction of another Axis.
 
         :param other: The Axis to update to.
-        :returns: The updated Axis.
+        :returns: The updated Axis to enable chaining.
         """
         self.direction = other.direction
         self._line.update(other.reference_line)
 
     @singledispatchmethod
-    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
         :returns: The updated Axis to enable chaining.
-        :raises ValueError: When provided a rotation that does not correspond to 
+        :raises ValueError: When provided a rotation that does not correspond to
             the dimensions of the Axis.
         """
         raise TypeError(f"Expected numpy array or quaternion, got: {rotation}")
@@ -561,7 +594,7 @@ class Axis(AbstractGeometry):
     # Dunders
     def __len__(self) -> int:
         """Returns whether the Axis is 2D or 3D."""
-        return len(self.direction)
+        return len(self._line)
 
     def __repr__(self) -> str:
         direction_strs = []

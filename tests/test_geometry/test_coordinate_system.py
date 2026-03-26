@@ -1,179 +1,208 @@
-from itertools import combinations_with_replacement
-import unittest
-import pytest
+"""Tests for pancad's CoordinateSystem geometry class."""
+from __future__ import annotations
+
+from itertools import repeat
 from math import radians, sqrt, cos, sin
+from typing import TYPE_CHECKING
+from pprint import pp
 
+import pytest
 import numpy as np
-import quaternion
+import quaternion # pylint: disable=unused-import
 
-from pancad.geometry.point import Point
-from pancad.geometry.coordinate_system import CoordinateSystem, SystemParts
-from pancad.geometry.line import Line
-from pancad.geometry.plane import Plane
-from pancad.utils.verification import assertPancadAlmostEqual
-from pancad.utils.trigonometry import (
-    rotation_x, rotation_y, rotation_z, rotation_2, yaw_pitch_roll
+from pancad.constants import ConstraintReference as CR
+from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.utils.trigonometry import rotation_2, to_1d_tuple
+
+if TYPE_CHECKING:
+    from numbers import Real
+    from pancad.utils.pancad_types import (
+        SpaceVector, Space3DVector, Space2DVector
+    )
+
+PLANE_REFS = (CR.XY, CR.XZ, CR.YZ)
+AXIS_REFS = (CR.X, CR.Y, CR.Z)
+
+# Canonical Axes
+X_3D = np.array([1, 0, 0])
+Y_3D = np.array([0, 1, 0])
+Z_3D = np.array([0, 0, 1])
+
+def _rotate_2d_params(origin: Space2DVector):
+    """Return parameters for testing 2D coordinate system rotation during
+    initialization.
+
+    :param origin: The origin point of the coordinate system.
+    """
+    params = []
+    x_axis = (1, 0)
+    y_axis = to_1d_tuple(x_axis @ rotation_2(radians(-90)))
+    init_axes = {CR.X: x_axis, CR.Y: y_axis}
+    for angle in range(0, 405, 45):
+        rotation = rotation_2(radians(angle))
+        expected = {ref: rotation @ v for ref, v in init_axes.items()}
+        expected[CR.ORIGIN] = origin
+        id_ = f"2d_Origin{origin}_X{x_axis}_Y{y_axis}_Rot{angle}deg"
+        params.append(pytest.param(origin, rotation, expected, id=id_))
+    params.append( # Add case for when the rotation is set to None
+        pytest.param(origin, None, {CR.ORIGIN: origin, **init_axes},
+                     id=f"2d_Origin{origin}_RotNone_unrotated")
+    )
+    return params
+
+# The quaternion inputs are split into two dicts to make it slightly easier to read:
+# one for the rotation axis and the angle to rotate around, and one for the
+# expected axes per test. The dicts share the test id as their keys.
+
+QUAT_INIT_ROTATIONS = {
+    # Rotation axis, right-hand (thumb aligned with axis) rotation angle (in degrees)
+    "no_rotate_around_zero_axis": [(0, 0, 0), 0],
+    "full_rotate_around_x_axis": [X_3D, 360],
+    "full_rotate_around_y_axis": [X_3D, 360],
+    "full_rotate_around_z_axis": [X_3D, 360],
+    "rotate_x_to_-x_around_y": [Y_3D, 180],
+    "rotate_x_to_-x_around_z": [Z_3D, 180],
+    "rotate_y_to_-y_around_x": [X_3D, 180],
+    "rotate_y_to_-y_around_z": [Z_3D, 180],
+    "rotate_z_to_-z_around_x": [X_3D, 180],
+    "rotate_z_to_-z_around_y": [Y_3D, 180],
+    "rotate_x_to_z_around_y": [Y_3D, -90],
+    "rotate_x_to_y_around_z": [Z_3D, 90],
+    "rotate_x_45_around_z": [Z_3D, 45],
+    "rotate_x_135_around_z": [Z_3D, 135],
+    "rotate_x_225_around_z": [Z_3D, 225],
+    "rotate_x_315_around_z": [Z_3D, 315],
+    "rotate_x_45_around_y": [Y_3D, 45],
+    "rotate_x_135_around_y": [Y_3D, 135],
+    "rotate_x_225_around_y": [Y_3D, 225],
+    "rotate_x_315_around_y": [Y_3D, 315],
+    "rotate_z_45_around_x": [X_3D, 45],
+    "rotate_z_135_around_x": [X_3D, 135],
+    "rotate_z_225_around_x": [X_3D, 225],
+    "rotate_z_315_around_x": [X_3D, 315],
+}
+
+INIT_ROTATION_AXIS_RESULTS = {
+    "full_rotate_around_x_axis": [X_3D, Y_3D, Z_3D],
+    "full_rotate_around_y_axis": [X_3D, Y_3D, Z_3D],
+    "full_rotate_around_z_axis": [X_3D, Y_3D, Z_3D],
+    "no_rotate_around_zero_axis": [X_3D, Y_3D, Z_3D],
+    "rotate_x_to_-x_around_y": [-X_3D, Y_3D, -Z_3D],
+    "rotate_x_to_-x_around_z": [-X_3D, -Y_3D, Z_3D],
+    "rotate_y_to_-y_around_x": [X_3D, -Y_3D, -Z_3D],
+    "rotate_y_to_-y_around_z": [-X_3D, -Y_3D, Z_3D],
+    "rotate_z_to_-z_around_x": [X_3D, -Y_3D, -Z_3D],
+    "rotate_z_to_-z_around_y": [-X_3D, Y_3D, -Z_3D],
+    "rotate_x_to_z_around_y": [Z_3D, Y_3D, -X_3D],
+    "rotate_x_to_y_around_z": [Y_3D, -X_3D, Z_3D],
+    "rotate_x_45_around_z": [(1/sqrt(2), 1/sqrt(2), 0), (-1/sqrt(2), 1/sqrt(2), 0), Z_3D],
+    "rotate_x_135_around_z": [(-1/sqrt(2), 1/sqrt(2), 0), (-1/sqrt(2), -1/sqrt(2), 0), Z_3D],
+    "rotate_x_225_around_z": [(-1/sqrt(2), -1/sqrt(2), 0), (1/sqrt(2), -1/sqrt(2), 0), Z_3D],
+    "rotate_x_315_around_z": [(1/sqrt(2), -1/sqrt(2), 0), (1/sqrt(2), 1/sqrt(2), 0), Z_3D],
+    "rotate_x_45_around_y": [(1/sqrt(2), 0, -1/sqrt(2)), Y_3D, (1/sqrt(2), 0, 1/sqrt(2))],
+    "rotate_x_135_around_y": [(-1/sqrt(2), 0, -1/sqrt(2)), Y_3D, (1/sqrt(2), 0, -1/sqrt(2))],
+    "rotate_x_225_around_y": [(-1/sqrt(2), 0, 1/sqrt(2)), Y_3D, (-1/sqrt(2), 0, -1/sqrt(2))],
+    "rotate_x_315_around_y": [(1/sqrt(2), 0, 1/sqrt(2)), Y_3D, (-1/sqrt(2), 0, 1/sqrt(2))],
+    "rotate_z_45_around_x": [X_3D, (0, 1/sqrt(2), 1/sqrt(2)), (0, -1/sqrt(2), 1/sqrt(2))],
+    "rotate_z_135_around_x": [X_3D, (0, -1/sqrt(2), 1/sqrt(2)), (0, -1/sqrt(2), -1/sqrt(2))],
+    "rotate_z_225_around_x": [X_3D, (0, -1/sqrt(2), -1/sqrt(2)), (0, 1/sqrt(2), -1/sqrt(2))],
+    "rotate_z_315_around_x": [X_3D, (0, 1/sqrt(2), -1/sqrt(2)), (0, 1/sqrt(2), 1/sqrt(2))],
+}
+
+def _rotate_3d_quaternion_params(origin: Space3DVector):
+    """Return parameters for testing 3D coordinate system rotation using
+    quaternions during initialization.
+
+    :param origin: The origin point of the coordinate system.
+    """
+    params = []
+    for id_, (rotation_axis, angle) in QUAT_INIT_ROTATIONS.items():
+        quat_w = cos(radians(angle / 2))
+        quat_ijk = map(lambda a, b: a * sin(radians(b) / 2),
+                       rotation_axis, repeat(angle))
+        quat = np.quaternion(quat_w, *quat_ijk)
+        x_vec, y_vec, z_vec = INIT_ROTATION_AXIS_RESULTS[id_]
+        expected = {
+            CR.ORIGIN: origin,
+            CR.X: x_vec, CR.Y: y_vec, CR.Z: z_vec,
+            CR.XY: z_vec, CR.XZ: y_vec, CR.YZ: x_vec,
+        }
+        test_id = f"Origin{origin}_{id_}"
+        params.append(pytest.param(origin, quat, expected, id=test_id))
+    return params
+
+@pytest.mark.parametrize(
+    "origin, rotation, expected",
+    [
+        *_rotate_2d_params((0, 0)),
+        *_rotate_2d_params((1, 1)), # set of 2D tests offset from origin
+        *_rotate_3d_quaternion_params((0, 0, 0)),
+        *_rotate_3d_quaternion_params((1, 1, 1)),
+    ]
 )
+def test_init_with_rotations(origin, rotation, expected):
+    """Tests initializing CoordinateSystems at different origin points and
+    orientations.
+    """
+    cs = CoordinateSystem(origin, rotation)
+    pp(expected)
+    for ref, geometry in cs.children.items():
+        if ref == CR.ORIGIN:
+            print(geometry.self_reference, geometry, expected[ref])
+            assert geometry.cartesian == pytest.approx(expected[ref])
+        if ref in AXIS_REFS:
+            print(geometry.self_reference, geometry, expected[ref])
+            assert geometry.direction == pytest.approx(expected[ref])
+        if ref in PLANE_REFS:
+            print(geometry.self_reference, geometry, expected[ref])
+            assert geometry.normal == pytest.approx(expected[ref])
 
-ROUNDING_PLACES = 10
+@pytest.mark.parametrize(
+    "origin, rotation, _",
+    [*_rotate_3d_quaternion_params((0, 0, 0))]
+)
+def test_get_quaternion(origin, rotation, _):
+    """Test that the quaternions from get_quaternion actually rotate canon
+    coordinate systems to match the target coordinate systems.
+    """
+    target_cs = CoordinateSystem(origin, rotation)
+    quat = target_cs.get_quaternion()
+    start_cs = CoordinateSystem((0, 0, 0))
+    start_cs.rotate(quat)
+    assert start_cs.is_equal(target_cs)
 
-@pytest.fixture
-def parts_2d_canon():
-    origin = Point(0, 0)
-    return SystemParts(origin, Line(origin, (1, 0)), Line(origin, (0, 1)))
-
-@pytest.fixture
-def parts_3d_canon():
-    origin = Point(0, 0, 0)
-    directions = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
-    lines = [Line(origin, direction) for direction in directions]
-    planes = [Plane(origin, direction) for direction in reversed(directions)]
-    return SystemParts(origin, *lines, *planes)
-
-@pytest.mark.parametrize("parts", [("parts_2d_canon"), ("parts_3d_canon")])
-def test_system_parts_init(parts, request):
-    request.getfixturevalue(parts)
-
-rotation_2d_tests = []
-for angle in range(0, 405, 45):
-    vector = (cos(radians(angle)), sin(radians(angle)))
-    rotation_2d_tests.append(("parts_2d_canon", angle, vector))
-del angle, vector
-
-@pytest.mark.parametrize("parts,angle,expected_x_axis", rotation_2d_tests)
-def test_system_parts_rotation_2d(parts, angle, expected_x_axis, request):
-    if angle in [180, 225, 270, 315]:
-        pytest.xfail("Failing due to lack of Axis vs Line implementation")
-    system_parts = request.getfixturevalue(parts)
-    matrix = rotation_2(radians(angle))
-    assert system_parts.rotate(matrix).x.direction == expected_x_axis
-
-rotation_3d_tests = []
-for angles in combinations_with_replacement(range(0, 405, 45), 3):
-    rotation_3d_tests.append(("parts_3d_canon", angles, None))
-del angles
-
-@pytest.mark.parametrize("parts,ypr_angles,expected", rotation_3d_tests)
-def test_system_parts_rotation_3d(parts, ypr_angles, expected, request):
-    # TODO: Add expected conditions to this test as part of Axis implementation
-    system_parts = request.getfixturevalue(parts)
-    matrix = yaw_pitch_roll(*map(radians, ypr_angles))
-    system_parts.rotate(matrix)
-
-@pytest.fixture
-def unrotated_3d_system():
+@pytest.fixture(name="canon_3d_system")
+def fixture_canon_3d_system():
+    """An unrotated 3D CoordinateSystem centered at the origin."""
     return CoordinateSystem((0, 0, 0))
 
-def test_unrotated_3d_system_quaternion(unrotated_3d_system):
-    quat = unrotated_3d_system.get_quaternion()
-    assert quat == np.quaternion(1, 0, 0, 0)
+def test_is_equal_3d(canon_3d_system):
+    """Test whether coordinate_systems can compare each other's equality."""
+    assert canon_3d_system.is_equal(canon_3d_system)
 
+def test_2d_repr_dunder():
+    """Test that the CoordinateSystem repr runs and has info for 2D systems."""
+    assert repr(CoordinateSystem((0, 0))) == "<CoordinateSystem(0,0)X(1,0)Y(0,1)>"
 
+def test_3d_repr_dunder(canon_3d_system):
+    """Test that the CoordinateSystem repr runs and has info for 3D systems."""
+    assert repr(canon_3d_system) == "<CoordinateSystem(0,0,0)X(1,0,0)Y(0,1,0)Z(0,0,1)>"
 
-class TestCSInit(unittest.TestCase):
-    def test_point_init_2d(self):
-        pt = Point(0, 0)
-        cs = CoordinateSystem(pt)
-        expected = ((1, 0), (0, 1))
-        self.assertCountEqual(cs.get_axis_vectors(), expected)
-    
-    def test_point_init_3d(self):
-        pt = Point(0, 0, 0)
-        cs = CoordinateSystem(pt)
-        expected = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
-        self.assertEqual(cs.get_axis_vectors(), expected)
-    
-    def test_point_angle_init_2d(self):
-        pytest.xfail("Failing due to lack of Axis vs Line implementation")
-        pt = Point(0, 0)
-        alpha = radians(90)
-        cs = CoordinateSystem(pt, alpha)
-        expected = ((0, 1), (-1, 0))
-        for cs_axis, exp_axis in zip(cs.get_axis_vectors(), expected):
-            assertPancadAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
-    
-    def test_point_angle_init_3d(self):
-        pt = Point(0, 0, 0)
-        alpha = radians(90)
-        cs = CoordinateSystem(pt, alpha)
-        expected = ((0, 1, 0), (-1, 0, 0), (0, 0, 1))
-        for cs_axis, exp_axis in zip(cs.get_axis_vectors(), expected):
-            assertPancadAlmostEqual(self, cs_axis, exp_axis, ROUNDING_PLACES)
+def test_3d_move_to_point(canon_3d_system):
+    """Test 3d CoordinateSystems can be move to other points."""
+    canon_3d_system.move_to_point((1, 1, 1))
+    assert canon_3d_system.origin.cartesian == pytest.approx((1,1,1))
+    axes = {CR.X: (0, 1, 1), CR.Y: (1, 0, 1), CR.Z: (1, 1, 0)}
+    for ref, vec in axes.items():
+        axis = canon_3d_system.get_reference(ref)
+        assert axis.reference_point.cartesian == pytest.approx(vec)
+    planes = {CR.XY: (0, 0, 1), CR.XZ: (0, 1, 0), CR.YZ: (1, 0, 0)}
+    for ref, vec in planes.items():
+        plane = canon_3d_system.get_reference(ref)
+        assert plane.reference_point.cartesian == pytest.approx(vec)
 
-class TestCSStringDunders(unittest.TestCase):
-    
-    def setUp(self):
-        pt = Point(0, 0, 0)
-        self.cs = CoordinateSystem(pt)
-    
-    def test_str(self):
-        result = str(self.cs)
-    
-    def test_repr(self):
-        result = repr(self.cs)
-
-class TestCSReferenceGeometry(unittest.TestCase):
-    
-    def setUp(self):
-        self.pt = Point(0, 0, 0)
-        self.cs = CoordinateSystem(self.pt)
-    
-    def test_axis_lines(self):
-        lines = [
-            self.cs.get_axis_line_x(),
-            self.cs.get_axis_line_y(),
-            self.cs.get_axis_line_z(),
-        ]
-        expected = [
-            Line(self.pt, (1, 0, 0)),
-            Line(self.pt, (0, 1, 0)),
-            Line(self.pt, (0, 0, 1)),
-        ]
-        for cs_line, exp in zip(lines, expected):
-            with self.subTest(coordinate_sys_line=cs_line, expected=exp):
-                assertPancadAlmostEqual(self, cs_line, exp, ROUNDING_PLACES)
-    
-    def test_planes(self):
-        planes = [
-            self.cs.get_xy_plane(),
-            self.cs.get_xz_plane(),
-            self.cs.get_yz_plane(),
-        ]
-        expected = [
-            Plane(self.pt, (0, 0, 1)),
-            Plane(self.pt, (0, 1, 0)),
-            Plane(self.pt, (1, 0, 0)),
-        ]
-        for cs_plane, exp in zip(planes, expected):
-            with self.subTest(coordinate_sys_line=cs_plane, expected=exp):
-                assertPancadAlmostEqual(self, cs_plane, exp, ROUNDING_PLACES)
-
-class TestCSUpdate(unittest.TestCase):
-    
-    def test_update(self):
-        cs = CoordinateSystem((0, 0, 0))
-        new = CoordinateSystem((2, 2, 2), radians(45), radians(45), radians(45))
-        cs.update(new)
-        assertPancadAlmostEqual(self, cs, new, ROUNDING_PLACES)
-
-class TestCSWithQuaternions(unittest.TestCase):
-    
-    def setUp(self):
-        self.pt = Point(0, 0, 0)
-        self.angle = radians(90)
-        self.rotation_matrix = rotation_z(self.angle)
-        self.quat = quaternion.from_rotation_matrix(self.rotation_matrix)
-    
-    def test_from_quaternion(self):
-        cs = CoordinateSystem.from_quaternion(self.pt, self.quat)
-        expected = [[0, 1, 0],
-                    [-1, 0, 0],
-                    [0, 0, 1]]
-        np.testing.assert_allclose(cs.get_axis_vectors(), expected, atol=1e-10)
-    
-    def test_get_quaternion(self):
-        cs = CoordinateSystem.from_quaternion(self.pt, self.quat)
-        quat = cs.get_quaternion()
-
-if __name__ == "__main__":
-    unittest.main()
+def test_update(canon_3d_system):
+    """Test that coordinate systems can be updated to other coordinate systems"""
+    new = CoordinateSystem((2,2,2))
+    canon_3d_system.update(new)
+    assert canon_3d_system.origin.cartesian == pytest.approx(new.origin.cartesian)
