@@ -36,6 +36,10 @@ dependencies = [
     "pylint",
 ]
 
+[tool.hatch.envs.lint.scripts]
+check = [
+    "pylint {args:.}",
+]
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
@@ -68,4 +72,12 @@ dependencies = [
     "sphinxcontrib-qthelp==2.0.0",
     "sphinxcontrib-serializinghtml==2.0.0",
     "urllib3==2.2.3",
+]
+
+[tool.hatch.envs.docs.scripts]
+build = [
+    "make docs",
+]
+force-build = [
+    "make -B docs",
 ]
