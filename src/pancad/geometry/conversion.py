@@ -4,7 +4,6 @@ LineSegment can be used to define a Line.
 """
 from __future__ import annotations
 
-from functools import partial
 from typing import TYPE_CHECKING
 
 import numpy as np

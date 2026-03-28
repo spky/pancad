@@ -6,8 +6,6 @@ used to view the quality of CAD sketch imports.
 import math
 import turtle
 
-import numpy as np
-
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment

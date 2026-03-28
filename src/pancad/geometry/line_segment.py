@@ -4,7 +4,6 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from math import copysign
-from functools import partial
 from numbers import Real
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING

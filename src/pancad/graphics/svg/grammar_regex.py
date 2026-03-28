@@ -53,9 +53,6 @@ exponent: Finds exponents such as "E+100"
 number: Finds numbers in strings. Works for float, int, or scientific formats.
 coordinate_pair: Finds pairs of numbers in a string.
 """
-import re
-from collections import namedtuple
-
 from pancad.graphics.svg import PathParameterType, PathCommandCharacter
 from pancad.utils.regex import capture_re
 
