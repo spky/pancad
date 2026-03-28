@@ -53,7 +53,7 @@ class TestWhiteSpace(unittest.TestCase):
                 self.assertEqual(len(matches), 2)
     
     def test_comma_wsp_match(self):
-        regex = re.compile(gre.comma_wsp.dc)
+        regex = re.compile(gre.COMMA_WSP.dc)
         # print(regex.pattern.encode("utf-8"))
         tests = [
             ("A, A", ", "),
@@ -71,7 +71,7 @@ class TestWhiteSpace(unittest.TestCase):
                 self.assertEqual(match[0], expected)
     
     def test_comma_wsp_not_match(self):
-        regex = re.compile(gre.comma_wsp.dc)
+        regex = re.compile(gre.COMMA_WSP.dc)
         tests = [
             "AA", "A|A",
         ]
@@ -83,7 +83,7 @@ class TestWhiteSpace(unittest.TestCase):
 class TestNumbers(unittest.TestCase):
     
     def test_exponent_match(self):
-        regex = re.compile(gre.exponent.dc)
+        regex = re.compile(gre.EXPONENT.dc)
         tests = [
             "E100","e100", "e+100", "e-100",
         ]
@@ -93,7 +93,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_fractional_constant(self):
-        regex = re.compile(gre.fractional_const.dc)
+        regex = re.compile(gre.FRACTIONAL_CONST.dc)
         tests = [
             "1.1", ".1", "1."
         ]
@@ -103,7 +103,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_floating_point_constant_match(self):
-        regex = re.compile(gre.float_const.dc)
+        regex = re.compile(gre.FLOAT_CONST.dc)
         tests = [
             "10E100", "1.100E+100", ".100E-100", "100.", "0.100"
         ]
@@ -113,7 +113,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_floating_point_constant_not_match(self):
-        regex = re.compile(gre.float_const.dc)
+        regex = re.compile(gre.FLOAT_CONST.dc)
         tests = [
             "E", "E+100", ".E-100", "."
         ]
@@ -123,7 +123,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertFalse(match)
     
     def test_number_match(self):
-        regex = re.compile(gre.number.dc)
+        regex = re.compile(gre.NUMBER.dc)
         tests = [
             "1", "10", "1e-100", "1.100", "1.100e+100", ".100", "-.100",
             "+1", "+1.1", "-1."
@@ -133,7 +133,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertEqual(regex.search(string)[0], string)
     
     def test_nonnegative_number_match(self):
-        regex = re.compile(gre.nonnegative_number.dc)
+        regex = re.compile(gre.NONNEGATIVE_NUMBER.dc)
         tests = [
             "1", "1.0", "1e-100"
         ]
@@ -142,7 +142,7 @@ class TestNumbers(unittest.TestCase):
                 self.assertEqual(regex.search(string)[0], string)
     
     def test_nonnegative_number_not_match(self):
-        regex = re.compile(gre.nonnegative_number.dc)
+        regex = re.compile(gre.NONNEGATIVE_NUMBER.dc)
         tests = [
             "-1", "-1.0", "-1e-100"
         ]
@@ -153,7 +153,7 @@ class TestNumbers(unittest.TestCase):
 class TestCoordinates(unittest.TestCase):
     
     def test_coordinate_pair_match(self):
-        regex = re.compile(gre.coordinate_pair.dc)
+        regex = re.compile(gre.COORDINATE_PAIR.dc)
         tests = [
             "1,1",
             "1, 1",
@@ -170,7 +170,7 @@ class TestCoordinates(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_coordinate_pair_not_match(self):
-        regex = re.compile(gre.coordinate_pair.dc)
+        regex = re.compile(gre.COORDINATE_PAIR.dc)
         tests = [
             "1",
             "11",
@@ -182,7 +182,7 @@ class TestCoordinates(unittest.TestCase):
                 self.assertFalse(match)
     
     def test_coordinate_pair_sequence_match(self):
-        regex = re.compile(gre.coordinate_pair_sequence.dc)
+        regex = re.compile(gre.COORDINATE_PAIR_SEQUENCE.dc)
         tests = [
             "1,1",
             "1,1 1,1",
@@ -200,7 +200,7 @@ class TestCoordinates(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_coordinate_pair_sequence_not_match(self):
-        regex = re.compile(gre.coordinate_pair_sequence.dc)
+        regex = re.compile(gre.COORDINATE_PAIR_SEQUENCE.dc)
         tests = [
             "a",
             "1,1,1",
@@ -212,7 +212,7 @@ class TestCoordinates(unittest.TestCase):
                 self.assertNotEqual(match, string)
     
     def test_coordinate_sequence_match(self):
-        regex = re.compile(gre.coordinate_sequence.dc)
+        regex = re.compile(gre.COORDINATE_SEQUENCE.dc)
         tests = [
             "1,1",
             "1,1, 1",
@@ -233,7 +233,7 @@ class TestCoordinates(unittest.TestCase):
 class TestCommands(unittest.TestCase):
     
     def test_moveto(self):
-        regex = re.compile(gre.moveto)
+        regex = re.compile(gre.MOVETO)
         tests = [
             "M1,1",
             "M 1 1 2 2",
@@ -244,7 +244,7 @@ class TestCommands(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_horizontal_lineto(self):
-        regex = re.compile(gre.horizontal_lineto)
+        regex = re.compile(gre.HORIZONTAL_LINETO)
         tests = [
             "H1",
             "H 1 2",
@@ -255,7 +255,7 @@ class TestCommands(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_elliptical_arc(self):
-        regex = re.compile(gre.elliptical_arc)
+        regex = re.compile(gre.ELLIPTICAL_ARC)
         tests = [
             "A3 3 2 1 1 0 0",
             "A3.3 3.3 -1.1 1 1 0 0",
@@ -268,7 +268,7 @@ class TestCommands(unittest.TestCase):
                 self.assertEqual(match[0], string)
     
     def test_command(self):
-        regex = re.compile(gre.command)
+        regex = re.compile(gre.COMMAND)
         tests = [
             ("M 1 1 L 2 2", ("M 1 1 ", "L 2 2")),
             ("M1,1L2,2", ("M1,1", "L2,2")),

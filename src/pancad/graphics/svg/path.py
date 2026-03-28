@@ -13,7 +13,7 @@ import numpy as np
 from pancad.graphics.svg import (
     PathParameterType, PathCommandCharacter as PCC
 )
-from pancad.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
+from pancad.graphics.svg.grammar_regex import COMMAND, NUMBER, SVG_CMD_TYPES
 from pancad.graphics.svg.parsers import to_number
 
 from pancad.geometry.line import Line
@@ -158,12 +158,12 @@ class Path:
         :returns: A tuple where the first element is the command's character and
             the second element is the command's parameter string
         """
-        d_commands = re.findall(command, path_data)
+        d_commands = re.findall(COMMAND, path_data)
 
         cmd_params = []
         for cmd in d_commands:
             character = cmd[0]
-            parameters = re.findall(number.ca, cmd)
+            parameters = re.findall(NUMBER.ca, cmd)
             parameters = map(to_number, parameters)
             parameters = Path._batch_command(character, parameters)
             cmd_params.append(
