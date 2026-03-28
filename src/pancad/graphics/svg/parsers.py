@@ -349,43 +349,53 @@ def lineto_to_dict(command: str, current_point: list, path_id: str,
     line_pts = [current_point]
     lines = []
     if cmd_type.endswith("lineto"):
-        coordinates = parse_lineto(command)
+        # coordinates = parse_lineto(command)
         subpath_initial_point = current_point
-        if relative:
-            for c in coordinates:
-                line_pts.append([current_point[0] + c[0],
-                                current_point[1] + c[1]])
-        else:
-            line_pts.extend(coordinates)
-        current_point = line_pts[-1]
+        new_pts = _get_lineto_points(command, current_point, relative)
+        line_pts.extend(new_pts)
     elif cmd_type.endswith("horizontal"):
         subpath_initial_point = None
-        x_values = parse_horizontal(command)
-        for x in x_values:
-            if relative:
-                next_point = [current_point[0] + x, current_point[1]]
-            else:
-                next_point = [x, current_point[1]]
-            line_pts.append(next_point)
-            current_point = next_point
+        line_pts.extend(_get_horizontal_points(command, current_point, relative))
     elif cmd_type.endswith("vertical"):
         subpath_initial_point = None
-        y_values = parse_vertical(command)
-        for y in y_values:
-            if relative:
-                next_point = [current_point[0], current_point[1] + y]
-            else:
-                next_point = [current_point[0], y]
-            line_pts.append(next_point)
-            current_point = next_point
+        line_pts.extend(_get_vertical_points(command, current_point, relative))
     else:
         raise ValueError(f"{command} is not v/V/h/H/l/L!")
+    current_point = line_pts[-1]
     point_count = len(line_pts)
     for i in range(1, point_count):
         current_point = line_pts[i]
         lines.append(line(path_id, shape_count, line_pts[i-1], line_pts[i]))
         shape_count += 1
     return current_point, lines, subpath_initial_point, shape_count
+
+def _get_lineto_points(command, current_point, relative: bool):
+    if relative:
+        points = []
+        for c in parse_lineto(command):
+            points.append([current_point[0] + c[0], current_point[1] + c[1]])
+        return points
+    return parse_lineto(command)
+
+def _get_horizontal_points(command, current_point, relative: bool):
+    points = []
+    for x in parse_horizontal(command):
+        if relative:
+            points.append([current_point[0] + x, current_point[1]])
+        else:
+            points.append([x, current_point[1]])
+        current_point = points[-1]
+    return points
+
+def _get_vertical_points(command, current_point, relative: bool):
+    points = []
+    for y in parse_vertical(command):
+        if relative:
+            points.append([current_point[0], current_point[1] + y])
+        else:
+            points.append([current_point[0], y])
+        current_point = points[-1]
+    return points
 
 def parse_horizontal(command: str) -> list:
     """Returns a list of the lengths given in an absolute or relative
