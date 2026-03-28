@@ -31,8 +31,9 @@ from pancad.filetypes.part_file import PartFile
 
 from pancad.cad.freecad import api_utils
 from pancad.cad.freecad._bootstrap import get_app_dir
-from pancad.cad.freecad.api_utils import FreeCADUID, FreeCADConstraintGeoRef
+from pancad.cad.freecad.api_utils import FreeCADConstraintGeoRef
 from pancad.cad.freecad import xml_utils
+from pancad.cad.freecad.xml_utils import FreeCADUID
 from pancad.cad.freecad.constants import (
     ConstraintType as CT,
     ConstraintSubPart as CSP,
@@ -125,7 +126,7 @@ def new_part_from_document(file: FCStd) -> PartFile:
     return part
 
 def new_feature_from_freecad(feature: FreeCADObjectXML,
-                             uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                             uid_map: dict[FreeCADUID, PancadThing]
                              ) -> AbstractFeature:
     """Creates a new pancad feature from a FreeCAD one and adds it to the
     PartFile.
@@ -142,7 +143,7 @@ def new_feature_from_freecad(feature: FreeCADObjectXML,
     return func(feature, uid_map)
 
 def _sketch_from_freecad(feature: FreeCADObjectXML,
-                         uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                         uid_map: dict[FreeCADUID, PancadThing]
                          ) -> Sketch:
     new_uids = uid_map.copy() # Copy so it's still possible to error out.
     sketch = Sketch(name=feature.get_property("Label").value)
@@ -173,10 +174,9 @@ def _sketch_from_freecad(feature: FreeCADObjectXML,
 
 def _add_sketch_geometry_from_freecad(fc_sketch: FreeCADObjectXML,
                                       pc_sketch: Sketch,
-                                      uid_map: dict[xml_utils.FreeCADUID,
-                                                    PancadThing]
+                                      uid_map: dict[FreeCADUID, PancadThing]
                                       ) -> None:
-    """Creates pancad sketch geometry from FreeCAD geometry and adds it to the 
+    """Creates pancad sketch geometry from FreeCAD geometry and adds it to the
     uid_map.
     """
     fc_ext_geo = fc_sketch.get_property("ExternalGeo").value
@@ -192,10 +192,9 @@ def _add_sketch_geometry_from_freecad(fc_sketch: FreeCADObjectXML,
 
 def _add_sketch_constraints_from_freecad(fc_sketch: FreeCADObjectXML,
                                          pc_sketch: Sketch,
-                                         uid_map: dict[xml_utils.FreeCADUID,
-                                                       PancadThing]
+                                         uid_map: dict[FreeCADUID, PancadThing]
                                          ) -> None:
-    """Creates pancad sketch constraints from FreeCAD constraints and adds it to 
+    """Creates pancad sketch constraints from FreeCAD constraints and adds it to
     the uid_map.
     """
     for fc_con in fc_sketch.get_property("Constraints").value:
@@ -216,7 +215,7 @@ def _get_sketch_support(sketch: FreeCADObjectXML) -> FreeCADObjectXML:
     return sketch.document.get_object(support.name)
 
 def _get_origin_feature_body(feature: FreeCADObjectXML,
-                             uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                             uid_map: dict[FreeCADUID, PancadThing]
                              ) -> FreeCADObjectXML:
     """Returns the body containing the origin subfeature."""
     origin = None
@@ -233,7 +232,7 @@ def _get_origin_feature_body(feature: FreeCADObjectXML,
     raise ValueError(f"No Body found with origin '{origin.name}'")
 
 def _extrude_from_freecad(feature: FreeCADObjectXML,
-                          uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                          uid_map: dict[FreeCADUID, PancadThing]
                           ) -> Extrude:
     # Determine the equivalent FeatureType.
     pc_type = _get_extrude_type_from_freecad(feature)
@@ -297,7 +296,7 @@ def in_links(feature: FreeCADObjectXML, links: Collection[FreeCADLink]) -> bool:
 
 def get_typed_objects(types: str | Container[str],
                       doc: FreeCADDocumentXML,
-                      uids: Container[xml_utils.FreeCADUID],
+                      uids: Container[FreeCADUID],
                       empty_allowed: bool=False
                       ) -> list[FreeCADObjectXML]:
     """Returns a list of objects with a type from the document and that are also
@@ -320,7 +319,7 @@ def get_typed_objects(types: str | Container[str],
     raise ValueError(msg)
 
 def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
-                               uid_map: dict[xml_utils.FreeCADUID, PancadThing]
+                               uid_map: dict[FreeCADUID, PancadThing]
                                ) -> None:
     """Maps the PartFile's top level container to a FreeCAD Body."""
     container = part.container
@@ -337,10 +336,9 @@ def map_container_from_freecad(feature: FreeCADObjectXML, part: PartFile,
 
 def _map_origin_features_from_freecad(origin: FreeCADObjectXML,
                                       container: FeatureContainer,
-                                      uid_map: dict[xml_utils.FreeCADUID,
-                                                    PancadThing]
+                                      uid_map: dict[FreeCADUID, PancadThing]
                                       ) -> None:
-    """Maps the origin and its origin features to a feature container and adds 
+    """Maps the origin and its origin features to a feature container and adds
     them to the uid map.
     """
     map_name_to_feat = {xml_utils.get_map_name(origin.name): origin}
@@ -368,7 +366,7 @@ def new_document_from_part(part: PartFile) -> FreeCADDocument:
     document = App.newDocument()
     api_utils.relabel_object(document, part.name)
 
-    uid_map = {part.uid: FreeCADUID.from_document(document)}
+    uid_map = {part.uid: api_utils.read_document_uid(document)}
     # TODO: Move the body to the correct location in the tree
     new_feature_from_pancad(part.container, document, uid_map)
     return document
@@ -429,10 +427,9 @@ def _new_body_from_container(feature: FeatureContainer,
         if pancad_uid in uid_map:
             msg = "pancad uid of element already in uid map"
             raise ValueError(msg, system.children[reference])
-        new_uids[pancad_uid] = FreeCADUID.from_feature(origin_map[map_name],
-                                                       document)
-
-    new_uids[feature.uid] = FreeCADUID.from_feature(body, document)
+        new_uids[pancad_uid] = api_utils.read_feature_uid(origin_map[map_name],
+                                                          document)
+    new_uids[feature.uid] = api_utils.read_feature_uid(body, document)
     uid_map.update(new_uids)
 
     # Moving deeper down into to the subfeatures
@@ -466,10 +463,11 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     ]
     for index, pc_geo in sys_pairs:
         fc_geo = fc_sketch.ExternalGeo[index]
-        new_uid_map_items[pc_geo.uid] = FreeCADUID.from_sketch_geometry(
+        new_uid_map_items[pc_geo.uid] = api_utils.read_geometry_uid(
             fc_geo, "ExternalGeo", fc_sketch, document
         )
-    new_uid_map_items[feature.uid] = FreeCADUID.from_feature(fc_sketch, document)
+    new_uid_map_items[feature.uid] = api_utils.read_feature_uid(fc_sketch,
+                                                                document)
     uid_map.update(new_uid_map_items)
     _add_sketch_geometry_from_pancad(feature, document, uid_map)
     _add_sketch_constraints_from_pancad(feature, document, uid_map)
@@ -515,7 +513,7 @@ def _new_pad_from_pancad_extrude(feature: Extrude,
     pad.Offset = 0
 
     fc_profile.Visibility = False
-    uid_map[feature.uid] = FreeCADUID.from_feature(pad, document)
+    uid_map[feature.uid] = api_utils.read_feature_uid(pad, document)
     return pad
 
 
@@ -533,7 +531,7 @@ def _add_sketch_geometry_from_pancad(sketch: Sketch,
     for pc_geo, is_construction in zip(system.geometry, system.construction):
         fc_geo = pancad_to_freecad_geometry(pc_geo)
         fc_sketch.addGeometry(fc_geo, is_construction)
-        new_uid_map_items[pc_geo.uid] = FreeCADUID.from_sketch_geometry(
+        new_uid_map_items[pc_geo.uid] = api_utils.read_geometry_uid(
             fc_geo, "Geometry", fc_sketch, document
         )
         if fc_geo.TypeId == "Part::GeomEllipse":
@@ -555,8 +553,7 @@ def _add_sketch_constraints_from_pancad(sketch: Sketch,
     for pc_cons in sketch.geometry_system.constraints:
         fc_cons = new_constraint_from_pancad(pc_cons, document, uid_map)
         fc_sketch.addConstraint(fc_cons)
-        fc_cons_uid = FreeCADUID.from_sketch_constraint(fc_cons, fc_sketch,
-                                                        document)
+        fc_cons_uid = api_utils.read_constraint_uid(fc_cons, fc_sketch, document)
         new_uid_map_items[pc_cons.uid] = fc_cons_uid
     uid_map.update(new_uid_map_items)
     return fc_sketch
@@ -713,7 +710,7 @@ def _get_freecad_constraint_indices(
 
     :param input_type: A string for the reading type required for the references
     :param refs: The geometry reference pairs read from pancad objects.
-    :param quadrant: The quadrant of an angle constraint. Should be None if not 
+    :param quadrant: The quadrant of an angle constraint. Should be None if not
         an angle.
     :raises ValueError: When input_type or quadrant is an unexpected value.
     """
@@ -933,7 +930,7 @@ def reference_from_freecad(geo_ref: ConstraintGeoRef) -> CR:
         raise ValueError(msg) from exc
 
 def sketch_constraint_from_freecad(constraint: FreeCADConstraintXML) -> SC:
-    """Returns the equivalent pancad SketchConstraint from a freecad 
+    """Returns the equivalent pancad SketchConstraint from a freecad
     constraint.
     """
     type_map = {
