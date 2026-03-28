@@ -114,31 +114,25 @@ def path_cmd_type(path_data_cmd: str) -> str:
     :param path_data_cmd: one command of an svg path object's path data
     :returns: the type of the first command
     """
-    match path_data_cmd[0]:
-        case "M":
-            return "absolute_moveto"
-        case "m":
-            return "relative_moveto"
-        case "A":
-            return "absolute_arc"
-        case "a":
-            return "relative_arc"
-        case "z" | "Z":
-            return "closepath"
-        case "L":
-            return "absolute_lineto"
-        case "l":
-            return "relative_lineto"
-        case "H":
-            return "absolute_horizontal"
-        case "h":
-            return "relative_horizontal"
-        case "V":
-            return "absolute_vertical"
-        case "v":
-            return "relative_vertical"
-        case _:
-            raise ValueError(f"'{path_data_cmd[0]}' not a supported cmd type")
+    cmd_map = {
+        "M": "absolute_moveto",
+        "m": "relative_moveto",
+        "A": "absolute_arc",
+        "a": "relative_arc",
+        "Z": "closepath",
+        "z": "closepath",
+        "L": "absolute_lineto",
+        "l": "relative_lineto",
+        "H": "absolute_horizontal",
+        "h": "relative_horizontal",
+        "V": "absolute_vertical",
+        "v": "relative_vertical",
+    }
+    try:
+        return cmd_map[path_data_cmd[0]]
+    except KeyError as exc:
+        msg = f"'{path_data_cmd[0]}' not a supported cmd type"
+        raise ValueError(msg) from exc
 
 def clean_command(command: str) -> str:
     """Returns a string with just the numerical data part of a path data
@@ -177,9 +171,9 @@ def create_sublists(list_: list, no_parameters: int) -> list:
         raise ValueError(f"{list_} length is not divisible by {no_parameters}")
     no_sublists = int(list_length/no_parameters)
     sublists = []
-    for i in range(no_sublists):
+    for _ in range(no_sublists):
         sublist = []
-        for j in range(no_parameters):
+        for _ in range(no_parameters):
             sublist.append(list_.pop(0))
         sublists.append(sublist)
     return sublists
@@ -304,8 +298,8 @@ def arc_to_dict(command: str, current_point: list, path_id: str,
         else:
             next_point = [arc[5], arc[6]]
         rx, ry = arc[0], arc[1]
-        large_arc = True if arc[3] else False
-        sweep = True if arc[4] else False
+        large_arc = bool(arc[3])
+        sweep = bool(arc[4])
         if rx == ry:
             arcs.append(
                 circular_arc(path_id, shape_count,
@@ -351,7 +345,7 @@ def lineto_to_dict(command: str, current_point: list, path_id: str,
               shape_count)
     """
     cmd_type = path_cmd_type(command)
-    relative = True if cmd_type.startswith("relative") else False
+    relative = cmd_type.startswith("relative")
     line_pts = [current_point]
     lines = []
     if cmd_type.endswith("lineto"):
