@@ -5,8 +5,11 @@ The Path class is primarily intended to generate pancad geometry using its
 initialization 'd' (the string representing the path's path data) argument.
 
 """
+from __future__ import annotations
+
 import re
 from itertools import islice
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -22,6 +25,8 @@ from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.geometry.coordinate_system import CoordinateSystem
 
+if TYPE_CHECKING:
+    from numbers import Real
 
 class Path:
     """A class that represents svg path elements and syncs them with pancad
@@ -64,6 +69,7 @@ class Path:
 
     @property
     def svg_id(self) -> str:
+        """The id appearing in the svg file for the path."""
         return self._svg_id
 
     # Setters #
@@ -77,8 +83,8 @@ class Path:
 
     @geometry.setter
     def geometry(self, geometry_list: list):
-        explicit_cmds = cls._geometry_to_explicit(geometry_list)
-        implicit_cmds = cls._to_implicit(explicit_cmds)
+        explicit_cmds = self._geometry_to_explicit(geometry_list)
+        implicit_cmds = self._to_implicit(explicit_cmds)
         self.d = self._implicit_to_string(implicit_cmds)
 
     @svg_id.setter
@@ -164,42 +170,44 @@ class Path:
         for cmd in d_commands:
             character = cmd[0]
             parameters = re.findall(NUMBER.ca, cmd)
-            parameters = map(to_number, parameters)
+            parameters = list(map(to_number, parameters))
             parameters = Path._batch_command(character, parameters)
             cmd_params.append(
-                (character, list(parameters))
+                (character, parameters)
             )
         return cmd_params
 
     @staticmethod
-    def _batch_command(character: str, parameters: list[float|int]) -> tuple:
+    def _batch_command(character: str, parameters: list[Real]
+                       ) -> list[Real | list[Real]]:
         """Returns the command's parameters in batches according to its command
-        type
+        type.
         """
-        for cmd_type, cmd_letters in SVG_CMD_TYPES.items():
-            if character in cmd_letters:
-                match cmd_type:
-                    case PathParameterType.PAIR:
-                        batch_size = 2
-                        break
-                    case PathParameterType.SINGLE:
-                        batch_size = 1
-                        break
-                    case PathParameterType.ARC:
-                        batch_size = 7
-                        break
-                    case PathParameterType.CLOSEPATH:
-                        return parameters
-
+        letter_type_map = {}
+        for type_, letters in SVG_CMD_TYPES.items():
+            letter_type_map.update({l: type_ for l in letters})
+        cmd_type = letter_type_map[character]
+        if cmd_type == PathParameterType.CLOSEPATH:
+            if len(parameters) != 0:
+                msg = f"Expected 0 {cmd_type.name} params, got: {parameters}"
+                raise ValueError(msg)
+            return parameters
+        batch_map = {PathParameterType.PAIR: 2,
+                     PathParameterType.SINGLE: 1,
+                     PathParameterType.ARC: 7}
+        batch_size = batch_map[cmd_type]
+        out_params = []
         # itertools.batched is not in Python 3.11, so its equivalent is below
-        while batch := tuple(islice(parameters, batch_size)):
+        param_iter = iter(parameters)
+        while batch := tuple(islice(param_iter, batch_size)):
             if len(batch) != batch_size:
                 raise ValueError(f"Incomplete {cmd_type.name} parameters,"
                                  f" must have {batch_size} elements")
-            elif batch_size == 1:
-                yield batch[0]
+            if batch_size == 1:
+                out_params.append(batch[0])
             else:
-                yield batch
+                out_params.append(batch)
+        return out_params
 
     @staticmethod
     def _to_explicit(cmd_params: list[tuple[str, str]]
@@ -228,10 +236,9 @@ class Path:
                     explicit.append((character, None))
                 case _:
                     if len(explicit) == 0:
-                        raise ValueError("First command must be m or M,"
-                                         f"given: {character}")
-                    else:
-                        explicit.extend([(character, p) for p in params])
+                        msg = f"First command must be m or M, got: {character}"
+                        raise ValueError(msg)
+                    explicit.extend([(character, p) for p in params])
         return explicit
 
     @staticmethod
@@ -243,23 +250,18 @@ class Path:
         """
         character, coordinate = explicit_cmds.pop(0)
         previous_character = character
-        combine_with_previous = False
         cmds = [(character, [coordinate])]
         for character, param in explicit_cmds:
-
             if character == PCC.ABS_LINE and previous_character == PCC.ABS_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
             elif character == PCC.REL_LINE and previous_character == PCC.REL_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
             elif (character not in (PCC.REL_MOVE, PCC.ABS_MOVE)
                     and character == previous_character):
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
             else:
                 param = [param]
             cmds.append((character, param))
