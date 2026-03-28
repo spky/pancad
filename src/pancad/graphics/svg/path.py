@@ -280,11 +280,20 @@ class Path:
             element
         :returns: A list of equivalent pancad Geometry
         """
+        not_supported = {
+            PCC.REL_ARC, PCC.ABS_ARC,
+            PCC.REL_CURVE, PCC.ABS_CURVE,
+            PCC.REL_SMOOTH_CURVE, PCC.ABS_SMOOTH_CURVE,
+            PCC.REL_QUADRATIC, PCC.ABS_QUADRATIC,
+            PCC.REL_BEZIER, PCC.ABS_BEZIER,
+        }
         geometry = []
         _, coordinate = explicit_cmds.pop(0)
         current_pt = Point(coordinate)
         sub_path_pt = current_pt.copy()
         for character, param in explicit_cmds:
+            if character in not_supported:
+                raise NotImplementedError(f"{character} not implemented yet")
             match character:
                 case PCC.ABS_MOVE:
                     # Absolute Moveto
@@ -327,26 +336,6 @@ class Path:
                     # Closepath
                     geometry.append(LineSegment(current_pt, sub_path_pt))
                     current_pt = sub_path_pt.copy()
-                case PCC.REL_ARC:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.ABS_ARC:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.REL_CURVE:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.ABS_CURVE:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.REL_SMOOTH_CURVE:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.ABS_SMOOTH_CURVE:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.REL_QUADRATIC:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.ABS_QUADRATIC:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.REL_BEZIER:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case PCC.ABS_BEZIER:
-                    raise NotImplementedError(f"{character} not implemented yet")
                 case _:
                     raise ValueError(f"{character} not recognized")
         return geometry
