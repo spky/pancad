@@ -131,7 +131,7 @@ class SVGElement(ET.Element):
         new_element.attrib = element.attrib
         return new_element
 
-class svg(SVGElement):
+class SvgTag(SVGElement):
     """A class representing a SVG 1.1 svg tagged element.
 
     :param id_: The id of the element, defaults to None.
@@ -255,7 +255,7 @@ class svg(SVGElement):
             case _:
                 super().set(key, value)
 
-class g(SVGElement):
+class SvgGroup(SVGElement):
     """A class representing a SVG 1.1 g tagged element.
 
     :param id_: The id of the element, defaults to None.
@@ -266,7 +266,7 @@ class g(SVGElement):
         """Constructor method"""
         super().__init__("g", id_)
 
-class path(SVGElement):
+class SvgPath(SVGElement):
     """A class representing a SVG 1.1 path tagged element.
 
     :param id_: The id of the element, defaults to None.
@@ -315,7 +315,7 @@ class path(SVGElement):
             case _:
                 super().set(key, value)
 
-class circle(SVGElement):
+class SvgCircle(SVGElement):
     """A class representing a SVG 1.1 circle tagged element
 
     :param id_: The id of the element, defaults to None.
@@ -414,13 +414,14 @@ class circle(SVGElement):
             case _:
                 super().set(key, value)
 
-class defs(SVGElement):
+class SvgDefs(SVGElement):
     """A class representing a SVG 1.1 defs tagged element
 
     :param id_: The id of the element, defaults to None.
     """
 
     tags = ["defs", "svg:defs", "{http://www.w3.org/2000/svg}defs"]
+
     def __init__(self, id_: str = None):
         """Constructor method"""
         super().__init__("defs", id_)
