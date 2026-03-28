@@ -52,17 +52,17 @@ class TestSVG(unittest.TestCase):
         check = [goal_height]*3 + [1]
         self.assertCountEqual(test, check)
     
-    def test_viewBox_str(self):
-        goal_viewBox = "-1 -2 3 4"
-        self.svg.viewBox = goal_viewBox
-        test = [self.svg._viewBox, self.svg.viewBox, self.svg.get("viewBox")]
-        check = [goal_viewBox]*3
+    def test_view_box_str(self):
+        goal_view_box = "-1 -2 3 4"
+        self.svg.view_box = goal_view_box
+        test = [self.svg._view_box, self.svg.view_box, self.svg.get("view_box")]
+        check = [goal_view_box]*3
         self.assertCountEqual(test, check)
     
-    def test_viewBox_list(self):
-        goal_viewBox = [-1, -2, 3, 4]
-        self.svg.viewBox = goal_viewBox
-        test = [self.svg._viewBox, self.svg.viewBox, self.svg.get("viewBox")]
+    def test_view_box_list(self):
+        goal_view_box = [-1, -2, 3, 4]
+        self.svg.view_box = goal_view_box
+        test = [self.svg._view_box, self.svg.view_box, self.svg.get("view_box")]
         check = ["-1 -2 3 4"]*3
         self.assertCountEqual(test, check)
     
