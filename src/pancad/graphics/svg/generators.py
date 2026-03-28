@@ -2,6 +2,8 @@
 for svg styles.
 """
 
+from numbers import Real
+
 from pancad.graphics.svg import validators as sv
 
 def make_path_data(commands: list, delimiter: str = "\n") -> str:
@@ -47,6 +49,9 @@ def make_arc(rx: float, ry: float, x_axis_rotation: float,
     :param relative: determines whether the command will be relative
     :returns: The svg arc command string
     """
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # Having this many arguments here makes sense due to how poorly svg arcs are
+    # defined. They just really do take that many parameters all at once.
     cmd = "a" if relative else "A"
     arc_params = [rx, ry, x_axis_rotation, large_arc_flag, sweep_flag, x, y]
     str_params = []
@@ -132,9 +137,9 @@ class SVGStyle:
                  returns it as a string
         """
         settings = []
-        for prop in self._properties:
-            if self._properties[prop] is not None:
-                settings.append(prop + ":" + self._properties[prop])
+        for name, value in self._properties.items():
+            if value is not None:
+                settings.append(f"{name}:{value}")
         return ";".join(settings)
 
     def set_from_dict(self, property_dictionary: dict) -> None:
@@ -157,75 +162,61 @@ class SVGStyle:
         :param name: The styling property's name
         :param value: The styling property's value
         """
-        match name:
-            case "color-interpolation":
-                if value in ["auto", "sRGB", "linearRGB", "inherit"]:
-                    set_value = value
-            case "color-interpolation-filters":
-                if value in ["auto", "sRGB", "linearRGB", "inherit"]:
-                    set_value = value
-            case "color-profile":
-                if value in ["auto", "sRGB", "inherit"]:
-                    # Custom color profile names not supported
-                    set_value = value
-            case "color-rendering":
-                if value in ["auto", "optimizeSpeed",
-                             "optimizeQuality", "inherit"]:
-                    set_value = value
-            case "fill":
-                set_value = sv.paint(value)
-            case "fill-opacity":
-                if value in ["inherit"]:
-                    set_value = value
-                elif isinstance(value, float) or isinstance(value, int):
-                    # Clamps value to be 0 or 1 if outside that range
-                    set_value = str(sorted((0, value, 1))[1])
-            case "fill-rule":
-                if value in ["nonzero", "evenodd", "inherit"]:
-                    set_value = value
-            case "image-rendering":
-                if value in ["auto", "optimizeSpeed",
-                             "optimizeQuality", "inherit"]:
-                    set_value = value
-            case "marker":
-                raise ValueError("marker is not yet supported")
-            case "marker-end":
-                raise ValueError("marker is not yet supported")
-            case "marker-mid":
-                raise ValueError("marker is not yet supported")
-            case "marker-start":
-                raise ValueError("marker is not yet supported")
-            case "shape-rendering":
-                if value in ["auto", "optimizeSpeed", "crispEdges",
-                             "geometricPrecision", "inherit"]:
-                    set_value = value
-            case "stroke":
-                set_value = sv.paint(value)
-            case "stroke-dasharray":
-                raise ValueError("stroke-dasharray is not yet supported")
-            case "stroke-dashoffset":
-                raise ValueError("stroke-dashoffset is not yet supported")
-            case "stroke-linecap":
-                set_value = sv.stroke_linecap(value)
-            case "stroke-linejoin":
-                set_value = sv.stroke_linejoin(value)
-            case "stroke-miterlimit":
-                if value in ["inherit"]:
-                    set_value = value
-                else:
-                    value = sv.number(value)
-                    if float(value) >= 1:
-                        set_value = value
-            case "stroke-opacity":
-                set_value = sv.stroke_opacity(value)
-            case "stroke-width":
-                value = sv.length(value)
-                if sv.length_value(value) >= 0:
-                    set_value = value
-            case "text-rendering":
-                if value in ["auto", "optimizeSpeed", "optimizeLegibility",
-                             "geometricPrecision", "inherit"]:
-                    set_value = value
-            case _:
-                raise ValueError(f"'{name}' is not a supported style property")
-        self._properties[name] = set_value
+        valid_map = {
+            "color-interpolation": {"auto", "sRGB", "linearRGB", "inherit"},
+            "color-interpolation-filters": {"auto", "sRGB", "linearRGB", "inherit"},
+            "color-profile": {"auto", "sRGB", "inherit"},
+            "color-rendering": {"auto", "optimizeSpeed", "optimizeQuality", "inherit"},
+            "fill-rule": {"nonzero", "evenodd", "inherit"},
+            "image-rendering": {"auto", "optimizeSpeed", "optimizeQuality", "inherit"},
+            "shape-rendering": {"auto", "optimizeSpeed", "crispEdges",
+                                "geometricPrecision", "inherit"},
+            "text-rendering": {"auto", "optimizeSpeed", "optimizeLegibility",
+                               "geometricPrecision", "inherit"},
+        }
+        if name in valid_map:
+            self._properties[name] = value
+            return
+        func_map = {
+            "fill": sv.paint,
+            "stroke": sv.paint,
+            "stroke-linecap": sv.stroke_linecap,
+            "stroke-linejoin": sv.stroke_linejoin,
+            "stroke-opacity": sv.stroke_opacity,
+            "stroke-width": self._stroke_width,
+            "fill-opacity": self._fill_opacity,
+            "stroke-miterlimit": self._stroke_miterlimit,
+        }
+        if name in func_map:
+            self._properties[name] = func_map[name](value)
+            return
+        not_supported = {"marker", "marker-end", "marker-mid", "marker-start",
+                         "stroke-dasharray", "stroke-dashoffset"}
+        if name in not_supported:
+            msg = f"svg property '{name}' is not yet supported"
+            raise NotImplementedError(msg)
+        raise ValueError(f"'{name}' is not a supported style property")
+
+    @staticmethod
+    def _fill_opacity(value):
+        if value == "inherit":
+            return value
+        if isinstance(value, Real):
+            return str(sorted((0, value, 1))[1])
+        raise ValueError(f"Unexpected value for fill-opacity: {value}")
+
+    @staticmethod
+    def _stroke_miterlimit(value):
+        if value == "inherit":
+            return value
+        value = sv.number(value)
+        if float(value) >= 1:
+            return value
+        raise ValueError(f"Unexpected value for stroke-miterlimit: {value}")
+
+    @staticmethod
+    def _stroke_width(value):
+        value = sv.length(value)
+        if sv.length_value(value) >= 0:
+            return value
+        raise ValueError(f"Unexpected value for stroke-width: {value}")
