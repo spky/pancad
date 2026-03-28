@@ -3,7 +3,6 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from functools import partial
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 import numpy as np

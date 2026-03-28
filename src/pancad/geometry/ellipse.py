@@ -4,7 +4,6 @@ graphics, and other geometry use cases.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from functools import partial
 from math import atan2, cos, sin, sqrt
 from numbers import Real
 from typing import overload, Self
