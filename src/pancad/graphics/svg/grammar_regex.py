@@ -53,30 +53,24 @@ exponent: Finds exponents such as "E+100"
 number: Finds numbers in strings. Works for float, int, or scientific formats.
 coordinate_pair: Finds pairs of numbers in a string.
 """
-from pancad.graphics.svg import PathParameterType, PathCommandCharacter
+from pancad.graphics.svg import PathParameterType, PathCommandCharacter as PCC
 from pancad.utils.regex import capture_re
 
 # Manual Constants
 
 SVG_CMD_TYPES = {
     PathParameterType.PAIR: [
-        PathCommandCharacter.M, PathCommandCharacter.m,
-        PathCommandCharacter.L, PathCommandCharacter.l,
-        PathCommandCharacter.C, PathCommandCharacter.c,
-        PathCommandCharacter.S, PathCommandCharacter.s,
-        PathCommandCharacter.Q, PathCommandCharacter.q,
-        PathCommandCharacter.T, PathCommandCharacter.t,
+        PCC.ABS_MOVE, PCC.REL_MOVE,
+        PCC.ABS_LINE, PCC.REL_LINE,
+        PCC.ABS_CURVE, PCC.REL_CURVE,
+        PCC.ABS_SMOOTH_CURVE, PCC.REL_SMOOTH_CURVE,
+        PCC.ABS_QUADRATIC, PCC.REL_QUADRATIC,
+        PCC.ABS_BEZIER, PCC.REL_BEZIER,
     ],
-    PathParameterType.SINGLE: [
-        PathCommandCharacter.H, PathCommandCharacter.h,
-        PathCommandCharacter.V, PathCommandCharacter.v,
-    ],
-    PathParameterType.ARC: [
-        PathCommandCharacter.A, PathCommandCharacter.a,
-    ],
-    PathParameterType.CLOSEPATH: [
-        PathCommandCharacter.Z, PathCommandCharacter.z,
-    ],
+    PathParameterType.SINGLE: [PCC.ABS_HORIZONTAL, PCC.REL_HORIZONTAL,
+                               PCC.ABS_VERTICAL, PCC.REL_VERTICAL],
+    PathParameterType.ARC: [PCC.ABS_ARC, PCC.REL_ARC],
+    PathParameterType.CLOSEPATH: [PCC.ABS_CLOSEPATH, PCC.REL_CLOSEPATH],
 }
 WSP = capture_re("\u0020|\u0009|\u000D|\u000A", "whitespace")
 SIGN = capture_re(r"\+|-", "sign")
@@ -187,13 +181,13 @@ for _, cmd_letters in SVG_CMD_TYPES.items():
 
 command =  f"{WSP.dc}*({_PIPE.join(_command_list)})"
 
-moveto = _cmd_re(PathCommandCharacter.M)
-lineto = _cmd_re(PathCommandCharacter.L)
-horizontal_lineto = _cmd_re(PathCommandCharacter.H)
-vertical_lineto = _cmd_re(PathCommandCharacter.V)
-curveto = _cmd_re(PathCommandCharacter.C)
-smooth_curveto = _cmd_re(PathCommandCharacter.S)
-quad_bezier_curveto = _cmd_re(PathCommandCharacter.Q)
-smooth_quad_bezier_curveto = _cmd_re(PathCommandCharacter.T)
-elliptical_arc = _cmd_re(PathCommandCharacter.A)
-closepath = _cmd_re(PathCommandCharacter.Z)
+moveto = _cmd_re(PCC.ABS_MOVE)
+lineto = _cmd_re(PCC.ABS_LINE)
+horizontal_lineto = _cmd_re(PCC.ABS_HORIZONTAL)
+vertical_lineto = _cmd_re(PCC.ABS_VERTICAL)
+curveto = _cmd_re(PCC.ABS_CURVE)
+smooth_curveto = _cmd_re(PCC.ABS_SMOOTH_CURVE)
+quad_bezier_curveto = _cmd_re(PCC.ABS_QUADRATIC)
+smooth_quad_bezier_curveto = _cmd_re(PCC.ABS_BEZIER)
+elliptical_arc = _cmd_re(PCC.ABS_ARC)
+closepath = _cmd_re(PCC.ABS_CLOSEPATH)

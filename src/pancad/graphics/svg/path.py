@@ -11,7 +11,7 @@ from itertools import islice
 import numpy as np
 
 from pancad.graphics.svg import (
-    PathParameterType, PathCommandCharacter as CmdChar
+    PathParameterType, PathCommandCharacter as PCC
 )
 from pancad.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
 from pancad.graphics.svg.parsers import to_number
@@ -108,10 +108,10 @@ class Path:
             if isinstance(geometry, LineSegment):
                 if previous_pt is None or previous_pt != geometry.start:
                     cmds.append(
-                        (CmdChar.M, tuple(geometry.start))
+                        (PCC.ABS_MOVE, tuple(geometry.start))
                     )
                 cmds.append(
-                    (CmdChar.L, tuple(geometry.end))
+                    (PCC.ABS_LINE, tuple(geometry.end))
                 )
                 previous_pt = geometry.end
             elif isinstance(geometry, (Point, Line, Plane, CoordinateSystem)):
@@ -210,21 +210,21 @@ class Path:
         explicit = []
         for character, params in cmd_params:
             match character:
-                case CmdChar.M:
+                case PCC.ABS_MOVE:
                     explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(CmdChar.L, p) for p in params]
+                        [(PCC.ABS_LINE, p) for p in params]
                     )
-                case CmdChar.m:
+                case PCC.REL_MOVE:
                     if len(explicit) == 0:
                         # If m is the first command in the path, it is absolute
-                        explicit.append((CmdChar.M, params.pop(0)))
+                        explicit.append((PCC.ABS_MOVE, params.pop(0)))
                     else:
                         explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(CmdChar.l, p) for p in params]
+                        [(PCC.REL_LINE, p) for p in params]
                     )
-                case CmdChar.z | CmdChar.Z:
+                case PCC.REL_CLOSEPATH | PCC.ABS_CLOSEPATH:
                     explicit.append((character, None))
                 case _:
                     if len(explicit) == 0:
@@ -247,15 +247,15 @@ class Path:
         cmds = [(character, [coordinate])]
         for character, param in explicit_cmds:
 
-            if character == CmdChar.L and previous_character == CmdChar.M:
+            if character == PCC.ABS_LINE and previous_character == PCC.ABS_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
                 combine_with_previous = False
-            elif character == CmdChar.l and previous_character == CmdChar.m:
+            elif character == PCC.REL_LINE and previous_character == PCC.REL_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
                 combine_with_previous = False
-            elif (character not in (CmdChar.m, CmdChar.M)
+            elif (character not in (PCC.REL_MOVE, PCC.ABS_MOVE)
                     and character == previous_character):
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
@@ -284,66 +284,66 @@ class Path:
         sub_path_pt = current_pt.copy()
         for character, param in explicit_cmds:
             match character:
-                case CmdChar.M:
+                case PCC.ABS_MOVE:
                     # Absolute Moveto
                     current_pt = Point(param)
                     sub_path_pt = current_pt.copy()
-                case CmdChar.m:
+                case PCC.REL_MOVE:
                     # Relative Moveto
                     current_pt = Point(np.array(current_pt) + np.array(param))
                     sub_path_pt = current_pt.copy()
-                case CmdChar.L:
+                case PCC.ABS_LINE:
                     # Absolute Lineto
                     geometry.append(LineSegment(current_pt, param))
                     current_pt = Point(param)
-                case CmdChar.l:
+                case PCC.REL_LINE:
                     # Relative Lineto
                     new_pt = Point(np.array(current_pt) + np.array(param))
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.H:
+                case PCC.ABS_HORIZONTAL:
                     # Absolute Horizontal Lineto
                     new_pt = Point(param, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.h:
+                case PCC.REL_HORIZONTAL:
                     # Relative Horizontal Lineto
                     new_pt = Point(param + current_pt.x, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.V:
+                case PCC.ABS_VERTICAL:
                     # Absolute Vertical Lineto
                     new_pt = Point(current_pt.x, param)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.v:
+                case PCC.REL_VERTICAL:
                     # Relative Vertical Lineto
                     new_pt = Point(current_pt.x, param + current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.z | CmdChar.Z:
+                case PCC.REL_CLOSEPATH | PCC.ABS_CLOSEPATH:
                     # Closepath
                     geometry.append(LineSegment(current_pt, sub_path_pt))
                     current_pt = sub_path_pt.copy()
-                case CmdChar.a:
+                case PCC.REL_ARC:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.A:
+                case PCC.ABS_ARC:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.c:
+                case PCC.REL_CURVE:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.C:
+                case PCC.ABS_CURVE:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.s:
+                case PCC.REL_SMOOTH_CURVE:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.S:
+                case PCC.ABS_SMOOTH_CURVE:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.q:
+                case PCC.REL_QUADRATIC:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.Q:
+                case PCC.ABS_QUADRATIC:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.t:
+                case PCC.REL_BEZIER:
                     raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.T:
+                case PCC.ABS_BEZIER:
                     raise NotImplementedError(f"{character} not implemented yet")
                 case _:
                     raise ValueError(f"{character} not recognized")
