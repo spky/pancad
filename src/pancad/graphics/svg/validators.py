@@ -6,7 +6,7 @@ browser.
 import re
 from numbers import Real
 
-from pancad.graphics.svg import enum_color_keywords
+from pancad.graphics.svg.constants import Color
 
 FLOAT_RE = r"[+-]?[0-9]*\.[0-9]+"
 INTEGER_RE = "[+-]?[0-9]+"
@@ -97,7 +97,7 @@ def color(setting: str) -> str:
             if int(val) > 100:
                 raise ValueError(f"Provided value of '{setting}' has rgb >100%")
         return setting
-    if setting.upper() in enum_color_keywords.Color.__members__:
+    if setting.upper() in Color.__members__:
         return setting
     raise ValueError(f"Color '{setting}' is not in a recognized format")
 

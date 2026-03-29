@@ -53,7 +53,8 @@ EXPONENT: Finds exponents such as "E+100"
 NUMBER: Finds numbers in strings. Works for float, int, or scientific formats.
 COORDINATE_PAIR: Finds pairs of numbers in a string.
 """
-from pancad.graphics.svg import PathParameterType, PathCommandCharacter as PCC
+from pancad.graphics.svg.constants import (PathParameterType,
+                                           PathCommandCharacter as PCC)
 from pancad.utils.regex import capture_re
 
 # Manual Constants

@@ -300,18 +300,25 @@ def arc_to_dict(command: str, current_point: list, path_id: str,
         rx, ry = arc[0], arc[1]
         large_arc = bool(arc[3])
         sweep = bool(arc[4])
+        arc_data = {
+            "id": f"{path_id}_{shape_count}",
+            "start": current_point,
+            "end": next_point,
+            "large_arc_flag": large_arc,
+            "sweep_flag": sweep,
+        }
         if rx == ry:
-            arcs.append(
-                circular_arc(path_id, shape_count,
-                             current_point, next_point,
-                             rx, large_arc, sweep)
-            )
+            arc_data.update({"radius": rx, "geometry_type": "circular_arc"})
         else:
-            arcs.append(
-                elliptical_arc(path_id, shape_count,
-                               current_point, next_point,
-                               rx, ry, arc[2], large_arc, sweep)
+            arc_data.update(
+                {
+                    "x_radius": rx,
+                    "y_radius": ry,
+                    "x_axis_rotation": arc[2],
+                    "geometry_type": "elliptical_arc"
+                }
             )
+        arcs.append(arc_data)
         current_point = next_point
         shape_count += 1
     return current_point, arcs, subpath_initial_point, shape_count
@@ -349,7 +356,6 @@ def lineto_to_dict(command: str, current_point: list, path_id: str,
     line_pts = [current_point]
     lines = []
     if cmd_type.endswith("lineto"):
-        # coordinates = parse_lineto(command)
         subpath_initial_point = current_point
         new_pts = _get_lineto_points(command, current_point, relative)
         line_pts.extend(new_pts)
@@ -435,61 +441,6 @@ def line(path_id: str, shape_count: int,
     return {
         "id": path_id + "_" + str(shape_count),
         "start": start, "end": end, "geometry_type": "line"
-    }
-
-def circular_arc(
-        path_id: str, shape_count: int,
-        start: list[float, float], end: list[float, float],
-        radius: float, large_arc_flag: bool, sweep_flag: bool
-    ) -> dict:
-    """Returns a dictionary of defining the geometry of a svg circular arc.
-
-    :param path_id: id of the svg path the arc is in
-    :param shape_count: the shape number of the line in the svg path
-    :param start: the start point of the arc, [x, y]
-    :param end: the end point of the arc, [x, y]
-    :param radius: the radius of the associated circle
-    :param large_arc_flag: svg large arc flag
-    :param sweep_flag: svg sweep flag
-    :returns: A dictionary with keys for id, start, end, radius,
-              large_arc_flag, sweep_flag and geometry_type. geometry_type
-              is set to 'circular arc'.
-    """
-    return {
-        "id": path_id + "_" + str(shape_count),
-        "start": start, "end": end, "radius": radius,
-        "large_arc_flag": large_arc_flag, "sweep_flag": sweep_flag,
-        "geometry_type": "circular_arc"
-    }
-
-def elliptical_arc(
-        path_id: str, shape_count: int,
-        start: list[float, float], end: list[float, float],
-        x_radius: float, y_radius: float,
-        x_axis_rotation: float, large_arc_flag: bool, sweep_flag: bool
-    ) -> dict:
-    """Returns a dictionary of defining the geometry of a svg elliptical arc.
-
-    :param path_id: id of the svg path the arc is in
-    :param shape_count: the shape number of the line in the svg path
-    :param start: the start point of the arc, [x, y]
-    :param end: the end point of the arc, [x, y]
-    :param x_radius: the major axis radius of the associated ellipse
-    :param y_radius: the minor axis radius of the associated ellipse
-    :param x_axis_rotation: the major axis angle of the associated ellipse
-    :param large_arc_flag: svg large arc flag
-    :param sweep_flag: svg sweep flag
-    :returns: A dictionary with keys for id, start, end, x_radius,
-              y_radius, x_axis_rotation, large_arc_flag, sweep_flag, and
-              geometry_type. geometry_type is set to 'elliptical_arc'.
-    """
-    return {
-        "id": path_id + "_" + str(shape_count),
-        "start": start, "end": end,
-        "x_radius": x_radius, "y_radius": y_radius,
-        "x_axis_rotation": x_axis_rotation,
-        "large_arc_flag": large_arc_flag, "sweep_flag": sweep_flag,
-        "geometry_type": "elliptical_arc"
     }
 
 def circle(id_: str, radius: float, center: list[float, float]):

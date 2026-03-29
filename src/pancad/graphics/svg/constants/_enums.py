@@ -1,8 +1,6 @@
-"""A module that provides the color keywords that svg recognizes for
-its color datatype in a Color enum
-"""
+"""A module providing enumerations for interfacing with svg files."""
 
-from enum import StrEnum
+from enum import StrEnum, Enum, auto
 
 class Color(StrEnum):
     """A StrEnum class for specifying svg colors. Color options are from the
@@ -156,3 +154,39 @@ class Color(StrEnum):
     WHITESMOKE = "rgb(245, 245, 245)"
     YELLOW = "rgb(255, 255, 0)"
     YELLOWGREEN = "rgb(154, 205, 50)"
+
+class PathCommandCharacter(StrEnum):
+    """An enumeration of the characters used to define svg path element strings.
+    """
+    REL_ARC = "a"
+    ABS_ARC = "A"
+    REL_MOVE = "m"
+    ABS_MOVE = "M"
+    REL_LINE = "l"
+    ABS_LINE = "L"
+    REL_CURVE = "c"
+    ABS_CURVE = "C"
+    REL_SMOOTH_CURVE = "s"
+    ABS_SMOOTH_CURVE = "S"
+    REL_QUADRATIC = "q"
+    ABS_QUADRATIC = "Q"
+    REL_BEZIER = "t"
+    ABS_BEZIER = "T"
+    REL_HORIZONTAL = "h"
+    ABS_HORIZONTAL = "H"
+    REL_VERTICAL = "v"
+    ABS_VERTICAL = "V"
+    REL_CLOSEPATH = "z"
+    ABS_CLOSEPATH = "Z"
+
+    def __repr__(self):
+        return self.value
+
+class PathParameterType(Enum):
+    """An enumeration of svg path parameter input types used to dispatch reading
+    and writing functionality.
+    """
+    PAIR = auto()
+    SINGLE = auto()
+    ARC = auto()
+    CLOSEPATH = auto()

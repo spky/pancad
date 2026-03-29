@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from pancad.graphics.svg import (
+from pancad.graphics.svg.constants import (
     PathParameterType, PathCommandCharacter as PCC
 )
 from pancad.graphics.svg.grammar_regex import COMMAND, NUMBER, SVG_CMD_TYPES

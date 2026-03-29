@@ -217,8 +217,15 @@ class TestSVGPath(unittest.TestCase):
                 [
                     [1.2, 0.6], # Current Point
                     [
-                        sp.circular_arc("path1", 0, [0, 0], [1.2, 0.6],
-                                        0.3, False, True),
+                        {
+                            "id": "path1_0",
+                            "start": [0, 0],
+                            "end": [1.2, 0.6],
+                            "radius": 0.3,
+                            "large_arc_flag": False,
+                            "sweep_flag": True,
+                            "geometry_type": "circular_arc",
+                        }
                     ], # Arcs
                     [0, 0], # Subpath Initial Point
                     1, # Shape Count
@@ -233,8 +240,17 @@ class TestSVGPath(unittest.TestCase):
                 [
                     [1.2, 0.6], # Current Point
                     [
-                        sp.elliptical_arc("path1", 0, [0, 0], [1.2, 0.6],
-                                          0.4, 0.3, 0, False, True),
+                        {
+                            "id": "path1_0",
+                            "start": [0, 0],
+                            "end": [1.2, 0.6],
+                            "x_radius": 0.4,
+                            "y_radius": 0.3,
+                            "x_axis_rotation": 0,
+                            "large_arc_flag": False,
+                            "sweep_flag": True,
+                            "geometry_type": "elliptical_arc"
+                        }
                     ], # Arcs
                     [0, 0], # Subpath Initial Point
                     1, # Shape Count
