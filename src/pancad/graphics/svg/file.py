@@ -106,7 +106,7 @@ class SVGFile(ET.ElementTree):
                         "standalone": standalone}
         if self._declaration is not None:
             self.getroot().remove(self._declaration)
-        self._declaration = self.xml_PI(instructions, tail)
+        self._declaration = self.xml_pi(instructions, tail)
         self.getroot().insert(0, self._declaration)
 
     def parse(self, filepath: str = None) -> None:
@@ -116,12 +116,14 @@ class SVGFile(ET.ElementTree):
         :param filepath: The filepath of the svg file to parse, defaults to
                          None which will cause it to read the internal filepath
         """
+        # pylint: disable=arguments-differ
+        # See github issue #221
         if filepath is None:
             filepath = self.filepath
         else:
             filepath = file_handlers.filepath(filepath)
         file_handlers.validate_operation(filepath, self.mode, "r")
-        with open(filepath, self.mode) as file:
+        with open(filepath, self.mode, encoding="utf-8") as file:
             raw_tree = ET.parse(file)
             self.svg = seu.upgrade_element(raw_tree.getroot())
 
@@ -135,6 +137,8 @@ class SVGFile(ET.ElementTree):
         :param indent: The set of characters to place before xml levels.
                        Defaults to two spaces
         """
+        # pylint: disable=arguments-differ
+        # See github issue #221
         if filepath is None:
             filepath = self.filepath
         else:
@@ -161,7 +165,7 @@ class SVGFile(ET.ElementTree):
             raise InvalidAccessModeError(f"Invalid Mode: '{self._mode}'")
 
     @staticmethod
-    def xml_PI(properties: dict, tail: str = "\n") -> ET.Element:
+    def xml_pi(properties: dict, tail: str = "\n") -> ET.Element:
         """Returns an processing instruction element to be placed in an xml
         file. The declaration will have a newline
         appended to the end of it unless it an alternative is provided

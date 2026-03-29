@@ -1,6 +1,6 @@
 import unittest
 
-from pancad.graphics.svg import Path
+from pancad.graphics.svg.path import Path
 from pancad.geometry.line_segment import LineSegment
 
 class TestPathDataParsing(unittest.TestCase):

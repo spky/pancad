@@ -48,35 +48,30 @@ WSP: Finds path data whitespace, defined as a space, tab, newline, or carriage
 SIGN: Finds signs: + or -.
 DIGIT_SEQUENCE: Finds series of integers.
 FLAG: Finds a 0 or 1 flag.
-comma_wsp: Finds a comma or whitespace.
-exponent: Finds exponents such as "E+100"
-number: Finds numbers in strings. Works for float, int, or scientific formats.
-coordinate_pair: Finds pairs of numbers in a string.
+COMMA_WSP: Finds a comma or whitespace.
+EXPONENT: Finds exponents such as "E+100"
+NUMBER: Finds numbers in strings. Works for float, int, or scientific formats.
+COORDINATE_PAIR: Finds pairs of numbers in a string.
 """
-from pancad.graphics.svg import PathParameterType, PathCommandCharacter
+from pancad.graphics.svg.constants import (PathParameterType,
+                                           PathCommandCharacter as PCC)
 from pancad.utils.regex import capture_re
 
 # Manual Constants
 
 SVG_CMD_TYPES = {
     PathParameterType.PAIR: [
-        PathCommandCharacter.M, PathCommandCharacter.m,
-        PathCommandCharacter.L, PathCommandCharacter.l,
-        PathCommandCharacter.C, PathCommandCharacter.c,
-        PathCommandCharacter.S, PathCommandCharacter.s,
-        PathCommandCharacter.Q, PathCommandCharacter.q,
-        PathCommandCharacter.T, PathCommandCharacter.t,
+        PCC.ABS_MOVE, PCC.REL_MOVE,
+        PCC.ABS_LINE, PCC.REL_LINE,
+        PCC.ABS_CURVE, PCC.REL_CURVE,
+        PCC.ABS_SMOOTH_CURVE, PCC.REL_SMOOTH_CURVE,
+        PCC.ABS_QUADRATIC, PCC.REL_QUADRATIC,
+        PCC.ABS_BEZIER, PCC.REL_BEZIER,
     ],
-    PathParameterType.SINGLE: [
-        PathCommandCharacter.H, PathCommandCharacter.h,
-        PathCommandCharacter.V, PathCommandCharacter.v,
-    ],
-    PathParameterType.ARC: [
-        PathCommandCharacter.A, PathCommandCharacter.a,
-    ],
-    PathParameterType.CLOSEPATH: [
-        PathCommandCharacter.Z, PathCommandCharacter.z,
-    ],
+    PathParameterType.SINGLE: [PCC.ABS_HORIZONTAL, PCC.REL_HORIZONTAL,
+                               PCC.ABS_VERTICAL, PCC.REL_VERTICAL],
+    PathParameterType.ARC: [PCC.ABS_ARC, PCC.REL_ARC],
+    PathParameterType.CLOSEPATH: [PCC.ABS_CLOSEPATH, PCC.REL_CLOSEPATH],
 }
 WSP = capture_re("\u0020|\u0009|\u000D|\u000A", "whitespace")
 SIGN = capture_re(r"\+|-", "sign")
@@ -86,38 +81,38 @@ INT_CONST = capture_re("[0-9]+", "integer_constant")
 FLAG = capture_re("0|1", "flag")
 
 # Derived Whitespace/Separators
-comma_wsp = capture_re(f"{WSP.dc}+,?{WSP.dc}*|,{WSP.dc}*", "comma_whitespace")
+COMMA_WSP = capture_re(f"{WSP.dc}+,?{WSP.dc}*|,{WSP.dc}*", "comma_whitespace")
 
 # Number Components
-exponent = capture_re(f"(?:e|E){SIGN.dc}?{DIGIT_SEQUENCE.dc}", "exponent")
+EXPONENT = capture_re(f"(?:e|E){SIGN.dc}?{DIGIT_SEQUENCE.dc}", "exponent")
 
-fractional_const = capture_re(
+FRACTIONAL_CONST = capture_re(
     rf"{DIGIT_SEQUENCE.dc}?\.{DIGIT_SEQUENCE.dc}|{DIGIT_SEQUENCE.dc}\.",
     "fractional_constant"
 )
-float_const = capture_re(
-    f"{fractional_const.dc}{exponent.dc}?|{DIGIT_SEQUENCE.dc}{exponent.dc}",
+FLOAT_CONST = capture_re(
+    f"{FRACTIONAL_CONST.dc}{EXPONENT.dc}?|{DIGIT_SEQUENCE.dc}{EXPONENT.dc}",
     "floating_point_constant"
 )
-_number_pattern = f"{SIGN.dc}?{float_const.dc}|{SIGN.dc}?{INT_CONST.dc}"
+_NUMBER_PATTERN = f"{SIGN.dc}?{FLOAT_CONST.dc}|{SIGN.dc}?{INT_CONST.dc}"
 
 # Numbers
-number = capture_re(_number_pattern, "number")
-nonnegative_number = capture_re(f"{float_const.dc}|{INT_CONST.dc}",
+NUMBER = capture_re(_NUMBER_PATTERN, "number")
+NONNEGATIVE_NUMBER = capture_re(f"{FLOAT_CONST.dc}|{INT_CONST.dc}",
                                  "nonnegative_number")
 
 
 
 # Coordinates
-coordinate = capture_re(_number_pattern, "coordinate")
-coordinate_pair = capture_re(f"{coordinate.dc}{comma_wsp.dc}{coordinate.dc}",
+COORDINATE = capture_re(_NUMBER_PATTERN, "coordinate")
+COORDINATE_PAIR = capture_re(f"{COORDINATE.dc}{COMMA_WSP.dc}{COORDINATE.dc}",
                               "coordinate_pair")
-coordinate_pair_sequence = capture_re(
-    f"(?:{coordinate_pair.pa}{comma_wsp.dc}?|{coordinate_pair.pa})+",
+COORDINATE_PAIR_SEQUENCE = capture_re(
+    f"(?:{COORDINATE_PAIR.pa}{COMMA_WSP.dc}?|{COORDINATE_PAIR.pa})+",
     "coordinate_pair_sequence"
 )
-coordinate_sequence = capture_re(
-    f"(?:{coordinate.dc}{comma_wsp.dc}?|{coordinate.dc})+",
+COORDINATE_SEQUENCE = capture_re(
+    f"(?:{COORDINATE.dc}{COMMA_WSP.dc}?|{COORDINATE.dc})+",
     "coordinate_sequence"
 )
 
@@ -130,13 +125,13 @@ def _arc_command(character_re: str) -> str:
     following order: rx, ry, x-axis-rotation, large-arc-flag, sweep-flag, x, y
     """
     _elliptical_args = [
-        nonnegative_number.dc, nonnegative_number.dc, number.dc,
-        FLAG.dc, FLAG.dc, coordinate_pair.dc
+        NONNEGATIVE_NUMBER.dc, NONNEGATIVE_NUMBER.dc, NUMBER.dc,
+        FLAG.dc, FLAG.dc, COORDINATE_PAIR.dc
     ]
-    elliptical_arc_arg = capture_re(f"{comma_wsp.dc.join(_elliptical_args)}",
+    elliptical_arc_arg = capture_re(f"{COMMA_WSP.dc.join(_elliptical_args)}",
                                      "elliptical_arc_argument")
     elliptical_arc_arg_sequence = capture_re(
-        f"(?:{elliptical_arc_arg.pa}{comma_wsp.dc}?|{elliptical_arc_arg.pa})+",
+        f"(?:{elliptical_arc_arg.pa}{COMMA_WSP.dc}?|{elliptical_arc_arg.pa})+",
         "elliptical_arc_argument_sequence"
     )
     return f"{character_re}{WSP.dc}*{elliptical_arc_arg_sequence.dc}"
@@ -144,22 +139,21 @@ def _arc_command(character_re: str) -> str:
 def _pair_command(character_re: str) -> str:
     """Returns an svg command regex for a command that takes a sequence of
     coordinate pairs as its arguments"""
-    return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
+    return f"{character_re}{WSP.dc}*{COORDINATE_SEQUENCE.dc}"
 
 def _singles_command(character_re: str) -> str:
     """Returns an svg command regex for a command that takes a sequence of
     standalone coordinates as its arguments"""
-    return f"{character_re}{WSP.dc}*{coordinate_sequence.dc}"
+    return f"{character_re}{WSP.dc}*{COORDINATE_SEQUENCE.dc}"
 
 def _upper_lower_case_command(character: str, group: str="command") -> str:
     """Initializes a command character that consists of the upper and lower case
     characters to initialize svg command regular expressions.
     """
-    if len(character) == 1:
-        pattern = f"{character.upper()}|{character.lower()}"
-        return capture_re(pattern, group)
-    else:
+    if len(character) != 1:
         raise ValueError(f"character must be 1 character, given: {character}")
+    pattern = f"{character.upper()}|{character.lower()}"
+    return capture_re(pattern, group)
 
 def _cmd_re(character: str):
     """Returns an svg command regex for a command based on its character and
@@ -185,15 +179,15 @@ for _, cmd_letters in SVG_CMD_TYPES.items():
         [_cmd_re(letter) for letter in cmd_letters]
     )
 
-command =  f"{WSP.dc}*({_PIPE.join(_command_list)})"
+COMMAND =  f"{WSP.dc}*({_PIPE.join(_command_list)})"
 
-moveto = _cmd_re(PathCommandCharacter.M)
-lineto = _cmd_re(PathCommandCharacter.L)
-horizontal_lineto = _cmd_re(PathCommandCharacter.H)
-vertical_lineto = _cmd_re(PathCommandCharacter.V)
-curveto = _cmd_re(PathCommandCharacter.C)
-smooth_curveto = _cmd_re(PathCommandCharacter.S)
-quad_bezier_curveto = _cmd_re(PathCommandCharacter.Q)
-smooth_quad_bezier_curveto = _cmd_re(PathCommandCharacter.T)
-elliptical_arc = _cmd_re(PathCommandCharacter.A)
-closepath = _cmd_re(PathCommandCharacter.Z)
+MOVETO = _cmd_re(PCC.ABS_MOVE)
+LINETO = _cmd_re(PCC.ABS_LINE)
+HORIZONTAL_LINETO = _cmd_re(PCC.ABS_HORIZONTAL)
+VERTICAL_LINETO = _cmd_re(PCC.ABS_VERTICAL)
+CURVETO = _cmd_re(PCC.ABS_CURVE)
+SMOOTH_CURVETO = _cmd_re(PCC.ABS_SMOOTH_CURVE)
+QUAD_BEZIER_CURVETO = _cmd_re(PCC.ABS_QUADRATIC)
+SMOOTH_QUAD_BEZIER_CURVETO = _cmd_re(PCC.ABS_BEZIER)
+ELLIPTICAL_ARC = _cmd_re(PCC.ABS_ARC)
+CLOSEPATH = _cmd_re(PCC.ABS_CLOSEPATH)

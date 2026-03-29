@@ -23,7 +23,7 @@ class SVGElement(ET.Element):
     def __init__(self, tag: str, id_: str = None) -> None:
         """Constructor method"""
         super().__init__(tag)
-        self.ownerSVGElement = None
+        self.owner_svg_element = None
         if id_ is not None:
             self.id_ = id_
 
@@ -53,7 +53,6 @@ class SVGElement(ET.Element):
 
     @attrib.setter
     def attrib(self, attribute_dictionary: dict) -> None:
-
         for attribute in attribute_dictionary:
             self.set(attribute, attribute_dictionary[attribute])
 
@@ -63,7 +62,7 @@ class SVGElement(ET.Element):
 
         :param subelement: the element to be added to this element
         """
-        subelement.ownerSVGElement = self
+        subelement.owner_svg_element = self
         super().append(subelement)
 
     def remove(self, subelement: SVGElement) -> None:
@@ -72,7 +71,7 @@ class SVGElement(ET.Element):
 
         :param subelement: the element to be removed from this element
         """
-        subelement.ownerSVGElement = None
+        subelement.owner_svg_element = None
         super().remove(subelement)
 
     def set(self, key: str, value: str | ET.Element) -> None:
@@ -86,8 +85,8 @@ class SVGElement(ET.Element):
         match key:
             case "id":
                 self.id_ = value
-            case "ownerSVGElement":
-                self.ownerSVGElement = value
+            case "owner_svg_element":
+                self.owner_svg_element = value
             case _:
                 super().set(key, value)
 
@@ -123,6 +122,8 @@ class SVGElement(ET.Element):
         if cls.tags is None:
             new_element = cls(element.tag)
         elif element.tag in cls.tags:
+            # pylint: disable=no-value-for-parameter
+            # See github issue #221
             new_element = cls()
         else:
             raise ValueError("Wrong element tag provided: "
@@ -132,11 +133,13 @@ class SVGElement(ET.Element):
         new_element.attrib = element.attrib
         return new_element
 
-class svg(SVGElement):
+class SvgTag(SVGElement):
     """A class representing a SVG 1.1 svg tagged element.
 
     :param id_: The id of the element, defaults to None.
     """
+    # pylint: disable=too-many-instance-attributes
+    # See github issue #221
 
     tags = ["svg", "svg:svg", "{http://www.w3.org/2000/svg}svg"]
     def __init__(self, id_: str = None) -> None:
@@ -182,14 +185,14 @@ class svg(SVGElement):
         return self._unit
 
     @property
-    def viewBox(self) -> str:
-        """The viewBox of the svg element.
+    def view_box(self) -> str:
+        """The view_box of the svg element.
 
-        :getter: Returns the svg viewBox string
-        :setting: Takes either a 4 element float list or a viewBox
-                  string and sets it to the viewBox attribute
+        :getter: Returns the svg view_box string
+        :setting: Takes either a 4 element float list or a view_box
+                  string and sets it to the view_box attribute
         """
-        return self._viewBox
+        return self._view_box
 
     @height.setter
     def height(self, height: str) -> None:
@@ -214,28 +217,28 @@ class svg(SVGElement):
     @unit.setter
     def unit(self, unit: str) -> None:
         if unit != sv.length_unit(unit):
-            raise ValueError(f"Provided '{unit}' can only contain an "
-                             + f"svg unit string, nothing else")
+            msg = f"Provided '{unit}' can only contain an svg unit string"
+            raise ValueError(msg)
         self._unit = unit
         if self._width_value is not None:
             self.width = str(self._width_value) + self._unit
         if self._height_value is not None:
             self.height = str(self._height_value) + self._unit
 
-    @viewBox.setter
-    def viewBox(self, viewBox: str | list[float, float, float, float]):
-        if isinstance(viewBox, str):
-            self._viewBox = viewBox
-        elif isinstance(viewBox, list):
-            if len(viewBox) != 4:
-                raise ValueError(f"{viewBox} must have 4 elements")
-            elif viewBox[2] < 0 or viewBox[3] < 0:
-                raise ValueError(f"{viewBox} elements 2 and 3 must be >0")
-            self._viewBox = " ".join([str(viewBox[0]), str(viewBox[1]),
-                                      str(viewBox[2]), str(viewBox[3])])
+    @view_box.setter
+    def view_box(self, view_box: str | list[float, float, float, float]):
+        if isinstance(view_box, str):
+            self._view_box = view_box
+        elif isinstance(view_box, list):
+            if len(view_box) != 4:
+                raise ValueError(f"{view_box} must have 4 elements")
+            if view_box[2] < 0 or view_box[3] < 0:
+                raise ValueError(f"{view_box} elements 2 and 3 must be >0")
+            self._view_box = " ".join([str(view_box[0]), str(view_box[1]),
+                                      str(view_box[2]), str(view_box[3])])
         else:
-            raise ValueError(f"{viewBox} viewBox must be a list or str")
-        super().set("viewBox", self._viewBox)
+            raise ValueError(f"{view_box} view_box must be a list or str")
+        super().set("view_box", self._view_box)
 
     def set(self, key: str, value: str) -> None:
         """Extends the SVGElement set function to sync svg element
@@ -249,14 +252,14 @@ class svg(SVGElement):
                 self.width = value
             case "height":
                 self.height = value
-            case "viewBox":
-                self.viewBox = value
+            case "view_box":
+                self.view_box = value
             case "unit":
                 self.unit = value
             case _:
                 super().set(key, value)
 
-class g(SVGElement):
+class SvgGroup(SVGElement):
     """A class representing a SVG 1.1 g tagged element.
 
     :param id_: The id of the element, defaults to None.
@@ -267,7 +270,7 @@ class g(SVGElement):
         """Constructor method"""
         super().__init__("g", id_)
 
-class path(SVGElement):
+class SvgPath(SVGElement):
     """A class representing a SVG 1.1 path tagged element.
 
     :param id_: The id of the element, defaults to None.
@@ -316,7 +319,7 @@ class path(SVGElement):
             case _:
                 super().set(key, value)
 
-class circle(SVGElement):
+class SvgCircle(SVGElement):
     """A class representing a SVG 1.1 circle tagged element
 
     :param id_: The id of the element, defaults to None.
@@ -415,13 +418,14 @@ class circle(SVGElement):
             case _:
                 super().set(key, value)
 
-class defs(SVGElement):
+class SvgDefs(SVGElement):
     """A class representing a SVG 1.1 defs tagged element
 
     :param id_: The id of the element, defaults to None.
     """
 
     tags = ["defs", "svg:defs", "{http://www.w3.org/2000/svg}defs"]
+
     def __init__(self, id_: str = None):
         """Constructor method"""
         super().__init__("defs", id_)

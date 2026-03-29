@@ -126,19 +126,19 @@ class TestSVGValidators(unittest.TestCase):
         answers = ["1.0",1.0,"0.1",".1",".9",]
         for ans in answers:
             with self.subTest(ans=ans):
-                self.assertTrue(re.match(f"^{sv.float_re}$", str(ans)))
+                self.assertTrue(re.match(f"^{sv.FLOAT_RE}$", str(ans)))
     
     def test_int_str(self):
         answers = ["1",1,"9",9,1000,"1000"]
         for ans in answers:
             with self.subTest(ans=ans):
-                self.assertTrue(re.match(f"^{sv.integer_re}$", str(ans)))
+                self.assertTrue(re.match(f"^{sv.INTEGER_RE}$", str(ans)))
     
     def test_number_re(self):
         answers = ["1",1,"9",9,1000,"1000","1.0",1.0,"0.1",".1",".9",]
         for ans in answers:
             with self.subTest(ans=ans):
-                self.assertTrue(re.match(f"^{sv.number_re}$", str(ans)))
+                self.assertTrue(re.match(f"^{sv.NUMBER_RE}$", str(ans)))
     
     def test_number(self):
         answers = ["1",1,"9",9,1000,"1000","1.0",1.0,"0.1",".1",".9",]

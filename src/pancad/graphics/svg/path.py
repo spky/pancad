@@ -5,15 +5,18 @@ The Path class is primarily intended to generate pancad geometry using its
 initialization 'd' (the string representing the path's path data) argument.
 
 """
+from __future__ import annotations
+
 import re
 from itertools import islice
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from pancad.graphics.svg import (
-    PathParameterType, PathCommandCharacter as CmdChar
+from pancad.graphics.svg.constants import (
+    PathParameterType, PathCommandCharacter as PCC
 )
-from pancad.graphics.svg.grammar_regex import command, number, SVG_CMD_TYPES
+from pancad.graphics.svg.grammar_regex import COMMAND, NUMBER, SVG_CMD_TYPES
 from pancad.graphics.svg.parsers import to_number
 
 from pancad.geometry.line import Line
@@ -22,6 +25,8 @@ from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.geometry.coordinate_system import CoordinateSystem
 
+if TYPE_CHECKING:
+    from numbers import Real
 
 class Path:
     """A class that represents svg path elements and syncs them with pancad
@@ -64,6 +69,7 @@ class Path:
 
     @property
     def svg_id(self) -> str:
+        """The id appearing in the svg file for the path."""
         return self._svg_id
 
     # Setters #
@@ -77,8 +83,8 @@ class Path:
 
     @geometry.setter
     def geometry(self, geometry_list: list):
-        explicit_cmds = cls._geometry_to_explicit(geometry_list)
-        implicit_cmds = cls._to_implicit(explicit_cmds)
+        explicit_cmds = self._geometry_to_explicit(geometry_list)
+        implicit_cmds = self._to_implicit(explicit_cmds)
         self.d = self._implicit_to_string(implicit_cmds)
 
     @svg_id.setter
@@ -108,10 +114,10 @@ class Path:
             if isinstance(geometry, LineSegment):
                 if previous_pt is None or previous_pt != geometry.start:
                     cmds.append(
-                        (CmdChar.M, tuple(geometry.start))
+                        (PCC.ABS_MOVE, tuple(geometry.start))
                     )
                 cmds.append(
-                    (CmdChar.L, tuple(geometry.end))
+                    (PCC.ABS_LINE, tuple(geometry.end))
                 )
                 previous_pt = geometry.end
             elif isinstance(geometry, (Point, Line, Plane, CoordinateSystem)):
@@ -158,48 +164,50 @@ class Path:
         :returns: A tuple where the first element is the command's character and
             the second element is the command's parameter string
         """
-        d_commands = re.findall(command, path_data)
+        d_commands = re.findall(COMMAND, path_data)
 
         cmd_params = []
         for cmd in d_commands:
             character = cmd[0]
-            parameters = re.findall(number.ca, cmd)
-            parameters = map(to_number, parameters)
+            parameters = re.findall(NUMBER.ca, cmd)
+            parameters = list(map(to_number, parameters))
             parameters = Path._batch_command(character, parameters)
             cmd_params.append(
-                (character, list(parameters))
+                (character, parameters)
             )
         return cmd_params
 
     @staticmethod
-    def _batch_command(character: str, parameters: list[float|int]) -> tuple:
+    def _batch_command(character: str, parameters: list[Real]
+                       ) -> list[Real | list[Real]]:
         """Returns the command's parameters in batches according to its command
-        type
+        type.
         """
-        for cmd_type, cmd_letters in SVG_CMD_TYPES.items():
-            if character in cmd_letters:
-                match cmd_type:
-                    case PathParameterType.PAIR:
-                        batch_size = 2
-                        break
-                    case PathParameterType.SINGLE:
-                        batch_size = 1
-                        break
-                    case PathParameterType.ARC:
-                        batch_size = 7
-                        break
-                    case PathParameterType.CLOSEPATH:
-                        return parameters
-
+        letter_type_map = {}
+        for type_, letters in SVG_CMD_TYPES.items():
+            letter_type_map.update({l: type_ for l in letters})
+        cmd_type = letter_type_map[character]
+        if cmd_type == PathParameterType.CLOSEPATH:
+            if len(parameters) != 0:
+                msg = f"Expected 0 {cmd_type.name} params, got: {parameters}"
+                raise ValueError(msg)
+            return parameters
+        batch_map = {PathParameterType.PAIR: 2,
+                     PathParameterType.SINGLE: 1,
+                     PathParameterType.ARC: 7}
+        batch_size = batch_map[cmd_type]
+        out_params = []
         # itertools.batched is not in Python 3.11, so its equivalent is below
-        while batch := tuple(islice(parameters, batch_size)):
+        param_iter = iter(parameters)
+        while batch := tuple(islice(param_iter, batch_size)):
             if len(batch) != batch_size:
                 raise ValueError(f"Incomplete {cmd_type.name} parameters,"
                                  f" must have {batch_size} elements")
-            elif batch_size == 1:
-                yield batch[0]
+            if batch_size == 1:
+                out_params.append(batch[0])
             else:
-                yield batch
+                out_params.append(batch)
+        return out_params
 
     @staticmethod
     def _to_explicit(cmd_params: list[tuple[str, str]]
@@ -210,28 +218,27 @@ class Path:
         explicit = []
         for character, params in cmd_params:
             match character:
-                case CmdChar.M:
+                case PCC.ABS_MOVE:
                     explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(CmdChar.L, p) for p in params]
+                        [(PCC.ABS_LINE, p) for p in params]
                     )
-                case CmdChar.m:
+                case PCC.REL_MOVE:
                     if len(explicit) == 0:
                         # If m is the first command in the path, it is absolute
-                        explicit.append((CmdChar.M, params.pop(0)))
+                        explicit.append((PCC.ABS_MOVE, params.pop(0)))
                     else:
                         explicit.append((character, params.pop(0)))
                     explicit.extend(
-                        [(CmdChar.l, p) for p in params]
+                        [(PCC.REL_LINE, p) for p in params]
                     )
-                case CmdChar.z | CmdChar.Z:
+                case PCC.REL_CLOSEPATH | PCC.ABS_CLOSEPATH:
                     explicit.append((character, None))
                 case _:
                     if len(explicit) == 0:
-                        raise ValueError("First command must be m or M,"
-                                         f"given: {character}")
-                    else:
-                        explicit.extend([(character, p) for p in params])
+                        msg = f"First command must be m or M, got: {character}"
+                        raise ValueError(msg)
+                    explicit.extend([(character, p) for p in params])
         return explicit
 
     @staticmethod
@@ -243,23 +250,18 @@ class Path:
         """
         character, coordinate = explicit_cmds.pop(0)
         previous_character = character
-        combine_with_previous = False
         cmds = [(character, [coordinate])]
         for character, param in explicit_cmds:
-
-            if character == CmdChar.L and previous_character == CmdChar.M:
+            if character == PCC.ABS_LINE and previous_character == PCC.ABS_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
-            elif character == CmdChar.l and previous_character == CmdChar.m:
+            elif character == PCC.REL_LINE and previous_character == PCC.REL_MOVE:
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
-            elif (character not in (CmdChar.m, CmdChar.M)
+            elif (character not in (PCC.REL_MOVE, PCC.ABS_MOVE)
                     and character == previous_character):
                 character, coordinates = cmds.pop(-1)
                 param = coordinates + [param]
-                combine_with_previous = False
             else:
                 param = [param]
             cmds.append((character, param))
@@ -278,73 +280,62 @@ class Path:
             element
         :returns: A list of equivalent pancad Geometry
         """
+        not_supported = {
+            PCC.REL_ARC, PCC.ABS_ARC,
+            PCC.REL_CURVE, PCC.ABS_CURVE,
+            PCC.REL_SMOOTH_CURVE, PCC.ABS_SMOOTH_CURVE,
+            PCC.REL_QUADRATIC, PCC.ABS_QUADRATIC,
+            PCC.REL_BEZIER, PCC.ABS_BEZIER,
+        }
         geometry = []
         _, coordinate = explicit_cmds.pop(0)
         current_pt = Point(coordinate)
         sub_path_pt = current_pt.copy()
         for character, param in explicit_cmds:
+            if character in not_supported:
+                raise NotImplementedError(f"{character} not implemented yet")
             match character:
-                case CmdChar.M:
+                case PCC.ABS_MOVE:
                     # Absolute Moveto
                     current_pt = Point(param)
                     sub_path_pt = current_pt.copy()
-                case CmdChar.m:
+                case PCC.REL_MOVE:
                     # Relative Moveto
                     current_pt = Point(np.array(current_pt) + np.array(param))
                     sub_path_pt = current_pt.copy()
-                case CmdChar.L:
+                case PCC.ABS_LINE:
                     # Absolute Lineto
                     geometry.append(LineSegment(current_pt, param))
                     current_pt = Point(param)
-                case CmdChar.l:
+                case PCC.REL_LINE:
                     # Relative Lineto
                     new_pt = Point(np.array(current_pt) + np.array(param))
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.H:
+                case PCC.ABS_HORIZONTAL:
                     # Absolute Horizontal Lineto
                     new_pt = Point(param, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.h:
+                case PCC.REL_HORIZONTAL:
                     # Relative Horizontal Lineto
                     new_pt = Point(param + current_pt.x, current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.V:
+                case PCC.ABS_VERTICAL:
                     # Absolute Vertical Lineto
                     new_pt = Point(current_pt.x, param)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.v:
+                case PCC.REL_VERTICAL:
                     # Relative Vertical Lineto
                     new_pt = Point(current_pt.x, param + current_pt.y)
                     geometry.append(LineSegment(current_pt, new_pt))
                     current_pt = new_pt.copy()
-                case CmdChar.z | CmdChar.Z:
+                case PCC.REL_CLOSEPATH | PCC.ABS_CLOSEPATH:
                     # Closepath
                     geometry.append(LineSegment(current_pt, sub_path_pt))
                     current_pt = sub_path_pt.copy()
-                case CmdChar.a:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.A:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.c:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.C:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.s:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.S:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.q:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.Q:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.t:
-                    raise NotImplementedError(f"{character} not implemented yet")
-                case CmdChar.T:
-                    raise NotImplementedError(f"{character} not implemented yet")
                 case _:
                     raise ValueError(f"{character} not recognized")
         return geometry

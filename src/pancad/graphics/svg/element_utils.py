@@ -14,16 +14,16 @@ def upgrade_element(element: ET.Element) -> se.SVGElement:
     :param element: A python ElementTree.Element
     :returns: The upgraded element, subclassed based on its tag
     """
-    if element.tag in se.svg.tags:
-        new = se.svg.from_element(element)
-    elif element.tag in se.g.tags:
-        new = se.g.from_element(element)
-    elif element.tag in se.path.tags:
-        new = se.path.from_element(element)
-    elif element.tag in se.circle.tags:
-        new = se.circle.from_element(element)
-    elif element.tag in se.defs.tags:
-        new = se.defs.from_element(element)
+    if element.tag in se.SvgTag.tags:
+        new = se.SvgTag.from_element(element)
+    elif element.tag in se.SvgGroup.tags:
+        new = se.SvgGroup.from_element(element)
+    elif element.tag in se.SvgPath.tags:
+        new = se.SvgPath.from_element(element)
+    elif element.tag in se.SvgCircle.tags:
+        new = se.SvgCircle.from_element(element)
+    elif element.tag in se.SvgDefs.tags:
+        new = se.SvgDefs.from_element(element)
     else:
         new = se.SVGElement.from_element(element)
     for sub in list(element):
