@@ -160,26 +160,6 @@ class Test2DEllipseInitialization(TestInit):
                                   uid=self.uid)
 
 class TestEllipseDunders(unittest.TestCase):
-    
-    def test_rich_equal_true(self):
-        center = (0, 0)
-        a = 2
-        b = 1
-        major_direction = (1, 0)
-        ellipse_a = Ellipse(center, a, b, major_direction)
-        ellipse_b = Ellipse(center, a, b, major_direction)
-        self.assertTrue(ellipse_a == ellipse_b)
-    
-    def test_rich_equal_false(self):
-        center = (0, 0)
-        a = 2
-        b = 1
-        b_mismatch = 1.5
-        major_direction = (1, 0)
-        ellipse_a = Ellipse(center, a, b, major_direction)
-        ellipse_b = Ellipse(center, a, b_mismatch, major_direction)
-        self.assertFalse(ellipse_a == ellipse_b)
-    
     def test_copy(self):
         center = (0, 0)
         a = 2
@@ -187,7 +167,7 @@ class TestEllipseDunders(unittest.TestCase):
         major_direction = (1, 0)
         ellipse_a = Ellipse(center, a, b, major_direction)
         ellipse_b = ellipse_a.copy()
-        self.assertTrue(ellipse_a == ellipse_b)
+        self.assertTrue(ellipse_a.is_equal(ellipse_b))
 
 class Test2DEllipseChanges(TestInit):
     

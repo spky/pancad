@@ -354,6 +354,17 @@ class Ellipse(AbstractGeometry):
                        self.major_axis_direction,
                        self.minor_axis_direction)
 
+    def is_equal(self, other: Ellipse) -> bool:
+        return all(
+            [
+                self.semi_major_axis == other.semi_major_axis,
+                self.semi_minor_axis == other.semi_minor_axis,
+                self.center.is_equal(other.center),
+                self.major_axis_line.is_equal(other.major_axis_line),
+                self.minor_axis_line.is_equal(other.minor_axis_line),
+            ]
+        )
+
     def get_linear_eccentricity(self) -> float:
         """Returns the linear eccentricity value of the Ellipse."""
         return self.parts.linear_eccentricity

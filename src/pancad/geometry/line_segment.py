@@ -186,6 +186,9 @@ class LineSegment(AbstractGeometry):
         """
         return LineSegment(self.start.copy(), self.end.copy())
 
+    def is_equal(self, other: LineSegment) -> bool:
+        return self.start.is_equal(other.start) and self.end.is_equal(other.end)
+
     def get_fit_box(self) -> tuple[Point, Point]:
         """Returns the corner points of the smallest axis-aligned box that fits 
         the line segment.
@@ -351,21 +354,6 @@ class LineSegment(AbstractGeometry):
         but no assigned uid.
         """
         return self.copy()
-
-    def __eq__(self, other: LineSegment) -> bool:
-        """Rich comparison for LineSegment equality that allows for line
-        segments to be directly compared with ==.
-        
-        :param other: The point to compare self to.
-        :returns: Whether the line segments' points are equal, which implies the 
-                  lines are also equal.
-        """
-        if isinstance(other, LineSegment):
-            return (
-                self.start == other.start
-                and self.end == other.end
-            )
-        return NotImplemented
 
     def __len__(self) -> int:
         """Returns the number of elements in the line segment's start, which 

@@ -299,6 +299,10 @@ class Line(AbstractGeometry):
         """
         return Line(self.reference_point, self.direction)
 
+    def is_equal(self, other: Line) -> bool:
+        return (self.reference_point.is_equal(other.reference_point)
+                and np.allclose(self.direction, other.direction))
+
     def get_parametric_point(self, t: Real) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by
         the unique unit vector direction of the line and initialized at the
@@ -405,22 +409,6 @@ class Line(AbstractGeometry):
         copy module.
         """
         return self.copy()
-
-    def __eq__(self, other: Line) -> bool:
-        """Rich comparison for line equality that allows for lines to be
-        directly compared with ==.
-
-        :param other: The line to compare self to.
-        :returns: Whether the tuples of the lines' reference_points and
-            directions are equal.
-        """
-        if isinstance(other, Line):
-            return (
-                np.allclose(tuple(self._point_closest_to_origin),
-                        tuple(other._point_closest_to_origin))
-                and np.allclose(self.direction, other.direction)
-            )
-        return NotImplemented
 
     def __len__(self) -> int:
         """Returns whether the Line is 2D or 3D."""

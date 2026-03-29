@@ -297,38 +297,6 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                     ROUNDING_PLACES
                 )
 
-class TestLineRichComparison(unittest.TestCase):
-
-    def setUp(self):
-        self.tests = [
-            ((0, 0), (1, 1), (0, 0), (1, 1), True),
-            ((1, 0), (1, 1), (0, 0), (1, 1), False),
-            ((0, 0, 0), (1, 1, 1), (0, 0, 0), (1, 1, 1), True),
-            ((1, 0, 0), (1, 1, 0), (0, 0, 0), (1, 1, 0), False),
-        ]
-        for i, (pt1a, pt1b, pt2a, pt2b, equality) in enumerate(self.tests):
-            self.tests[i] = (Point(pt1a), Point(pt1b),
-                             Point(pt2a), Point(pt2b),
-                             equality)
-
-    def test_line_equality(self):
-        for pt1a, pt1b, pt2a, pt2b, expected_equality in self.tests:
-            with self.subTest(point1a=tuple(pt1a), point1b=tuple(pt1b),
-                              point2a=tuple(pt2a), point2b=tuple(pt2b),
-                              expected_equality=expected_equality):
-                line1 = Line.from_two_points(pt1a, pt1b)
-                line2 = Line.from_two_points(pt2a, pt2b)
-                self.assertEqual(line1 == line2, expected_equality)
-
-    def test_line_inequality(self):
-        for pt1a, pt1b, pt2a, pt2b, expected_equality in self.tests:
-            with self.subTest(point1a=tuple(pt1a), point1b=tuple(pt1b),
-                              point2a=tuple(pt2a), point2b=tuple(pt2b),
-                              expected_equality= not expected_equality):
-                line1 = Line.from_two_points(pt1a, pt1b)
-                line2 = Line.from_two_points(pt2a, pt2b)
-                self.assertEqual(line1 != line2, not expected_equality)
-
 class TestLinePointMovers2D(unittest.TestCase):
 
     def setUp(self):
@@ -385,7 +353,7 @@ class TestLinePointMovers2D(unittest.TestCase):
                 expected_direction = trig.polar_to_cartesian((1, new_phi))
                 expected_line = Line(new_pt, expected_direction)
                 line.move_to_point(new_pt, new_phi)
-                self.assertEqual(expected_line, line)
+                self.assertTrue(line.is_equal(expected_line))
 
     def test_from_point_and_angle(self):
         for (_, pt), phi in self.line_pts_to_phi:
@@ -395,7 +363,7 @@ class TestLinePointMovers2D(unittest.TestCase):
                 expected_direction = trig.polar_to_cartesian((1, phi))
                 expected_line = Line(pt, expected_direction)
                 line = Line.from_point_and_angle(pt, phi)
-                self.assertEqual(expected_line, line)
+                self.assertTrue(line.is_equal(expected_line))
 
 class TestLineUpdate(unittest.TestCase):
 
@@ -403,7 +371,7 @@ class TestLineUpdate(unittest.TestCase):
         line = Line(Point(0, 0, 0), (1, 0, 0))
         new = Line(Point(1, 1, 0), (1, 1, 1))
         line.update(new)
-        verification.assertPancadAlmostEqual(self, line, new, ROUNDING_PLACES)
+        self.assertTrue(line.is_equal(new))
 
 ORIGIN_2D = (0, 0) # 2D Origin Point
 ORIGIN_3D = (0, 0, 0) # 3D Origin Point

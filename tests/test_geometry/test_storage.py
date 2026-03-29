@@ -58,4 +58,4 @@ class MemoryDatabase(TestCase):
                 con.execute(INSERT_SQL % table, (i, sql_value))
                 with self.subTest(f"Expected: {expected}, Value: {expected}"):
                     result = con.execute(WHERE_SQL % (table, i)).fetchone()
-                    self.assertEqual(expected, result)
+                    self.assertTrue(result.is_equal(expected))

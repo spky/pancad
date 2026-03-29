@@ -112,7 +112,7 @@ class Path:
         previous_pt = None
         for geometry in geometry_list:
             if isinstance(geometry, LineSegment):
-                if previous_pt is None or previous_pt != geometry.start:
+                if previous_pt is None or not previous_pt.is_equal(geometry.start):
                     cmds.append(
                         (PCC.ABS_MOVE, tuple(geometry.start))
                     )

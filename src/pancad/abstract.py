@@ -192,6 +192,13 @@ class AbstractGeometry(PancadThing):
 
     # Abstract Methods
     @abstractmethod
+    def is_equal(self, other: AbstractGeometry) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is 'python equal' to this
+        geometry element since the uids would not be the same.
+        """
+
+    @abstractmethod
     def update(self, other: AbstractGeometry) -> Self:
         """Takes geometry of the same type as the calling geometry and updates
         the calling geometry to match the new geometry while maintaining its

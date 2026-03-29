@@ -114,10 +114,6 @@ class CoordinateSystem(AbstractGeometry):
         return CoordinateSystem(self.origin).update(self)
 
     def is_equal(self, other: AbstractGeometry) -> bool:
-        """Returns whether the other geometry is geometrically equal. This is a
-        separate check from whether a geometry element is equal to this
-        geometry element since the uids would not be the same.
-        """
         comparisons = []
         for ref, geometry in self.children.items():
             if ref == CR.CORE:
@@ -285,6 +281,9 @@ class Pose(AbstractGeometry):
     def top(self) -> Plane:
         """Top plane of the Pose."""
         return self.get_reference(CR.TOP)
+
+    def is_equal(self, other: Pose) -> bool:
+        return self.coordinate_system.is_equal(other.coordinate_system)
 
     def move_to_point(self, location: Point) -> Self:
         """Moves the Pose to a new location with no rotation."""

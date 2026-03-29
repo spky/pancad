@@ -309,20 +309,6 @@ class Point(AbstractGeometry):
         """
         return self.cartesian[item]
 
-    def __eq__(self, other: Point) -> bool:
-        """Rich comparison for point equality that allows for points to be
-        directly compared with ==.
-
-        :param other: The point to compare self to.
-        :returns: Whether the cartesian tuples of the points are equal.
-        :raises ValueError: When comparing Points of differing dimensions.
-        """
-        if isinstance(other, Point):
-            if len(self) == len(other):
-                return np.allclose(tuple(self), tuple(other))
-            raise ValueError("Points must be the same dimension")
-        return NotImplemented
-
     def __len__(self) -> int:
         """Returns the dimension of the Point, 2 or 3."""
         return len(self.cartesian)

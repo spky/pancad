@@ -241,6 +241,13 @@ class FeatureSystem(AbstractGeometrySystem):
         # dependency_graph = {feature.uid:
         # sorter = graphlib.TopologicalSorter(
 
+    def is_equal(self, other: FeatureSystem) -> bool:
+        if not self.coordinate_system.is_equal(other.coordinate_system):
+            return False
+        if len(self.features) != len(other.features):
+            return False
+        return all(sf.is_equal(of) for sf, of in zip(self.features, other.features))
+
     def update(self, other: FeatureSystem) -> Self:
         """Updates the coordinate_system of the system to match
         another system. Does not directly modify the geometry inside the sketch.
@@ -483,6 +490,13 @@ class SketchGeometrySystem(AbstractGeometrySystem):
     def get_non_construction_geometry(self) -> list[AbstractGeometry]:
         """Returns a tuple of the sketch's non-construction geometry."""
         return [g for g in self._geometry if g.uid not in self._construction]
+
+    def is_equal(self, other: SketchGeometrySystem) -> bool:
+        if not self.coordinate_system.is_equal(other.coordinate_system):
+            return False
+        if len(self.geometry) != len(other.geometry):
+            return False
+        return all(sg.is_equal(og) for sg, og in zip(self.geometry, other.geometry))
 
     def update(self, other: SketchGeometrySystem) -> Self:
         """Updates the origin, axes, planes and context of the Sketch to match
