@@ -70,6 +70,10 @@ class FeatureContainer(AbstractFeature):
     def pose(self, value: Pose) -> None:
         self._pose.update(value)
 
+    def is_equal(self, other: FeatureContainer) -> bool:
+        return (self.pose.is_equal(other.pose)
+                and self.feature_system.is_equal(other.feature_system))
+
     # Python Dunders #
     def __contains__(self, item: object) -> bool:
         return item is self or item in self.feature_system or item is self.pose

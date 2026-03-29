@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
-import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
