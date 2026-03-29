@@ -122,6 +122,8 @@ class SVGElement(ET.Element):
         if cls.tags is None:
             new_element = cls(element.tag)
         elif element.tag in cls.tags:
+            # pylint: disable=no-value-for-parameter
+            # See github issue #221
             new_element = cls()
         else:
             raise ValueError("Wrong element tag provided: "
@@ -136,6 +138,8 @@ class SvgTag(SVGElement):
 
     :param id_: The id of the element, defaults to None.
     """
+    # pylint: disable=too-many-instance-attributes
+    # See github issue #221
 
     tags = ["svg", "svg:svg", "{http://www.w3.org/2000/svg}svg"]
     def __init__(self, id_: str = None) -> None:

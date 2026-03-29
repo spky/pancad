@@ -116,6 +116,8 @@ class SVGFile(ET.ElementTree):
         :param filepath: The filepath of the svg file to parse, defaults to
                          None which will cause it to read the internal filepath
         """
+        # pylint: disable=arguments-differ
+        # See github issue #221
         if filepath is None:
             filepath = self.filepath
         else:
@@ -135,6 +137,8 @@ class SVGFile(ET.ElementTree):
         :param indent: The set of characters to place before xml levels.
                        Defaults to two spaces
         """
+        # pylint: disable=arguments-differ
+        # See github issue #221
         if filepath is None:
             filepath = self.filepath
         else:
