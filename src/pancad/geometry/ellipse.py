@@ -354,6 +354,17 @@ class Ellipse(AbstractGeometry):
                        self.major_axis_direction,
                        self.minor_axis_direction)
 
+    def is_equal(self, other: Ellipse) -> bool:
+        return all(
+            [
+                self.semi_major_axis == other.semi_major_axis,
+                self.semi_minor_axis == other.semi_minor_axis,
+                self.center.is_equal(other.center),
+                self.major_axis_line.is_equal(other.major_axis_line),
+                self.minor_axis_line.is_equal(other.minor_axis_line),
+            ]
+        )
+
     def get_linear_eccentricity(self) -> float:
         """Returns the linear eccentricity value of the Ellipse."""
         return self.parts.linear_eccentricity
@@ -390,17 +401,6 @@ class Ellipse(AbstractGeometry):
     # Python Dunders #
     def __copy__(self) -> Ellipse:
         return self.copy()
-
-    def __eq__(self, other: Ellipse) -> bool:
-        if isinstance(other, Ellipse):
-            if len(self) == len(other):
-                return (self.center == other.center
-                        and self.semi_major_axis == other.semi_major_axis
-                        and self.semi_minor_axis == other.semi_minor_axis
-                        and self.major_axis_line == other.major_axis_line
-                        and self.minor_axis_line == other.minor_axis_line)
-            return False
-        return NotImplemented
 
     def __len__(self) -> int:
         """Returns whether the ellipse is 2D or 3D."""

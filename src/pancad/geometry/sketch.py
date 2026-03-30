@@ -122,6 +122,10 @@ class Sketch(AbstractFeature):
         raise ValueError("Unsupported constraint type for placing sketches:"
                          f" {constraint}")
 
+    def is_equal(self, other: Sketch) -> bool:
+        return (self.pose.is_equal(other.pose)
+                and self.geometry_system.is_equal(other.geometry_system))
+
     # Python Dunders #
     def __repr__(self) -> str:
         """Returns the short string representation of the sketch"""

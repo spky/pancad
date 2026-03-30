@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
-import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
@@ -94,6 +93,9 @@ class Circle(AbstractGeometry):
             return self
         raise ValueError("Cannot update circle to a different dimension")
 
+    def is_equal(self, other: Circle) -> bool:
+        return self.radius == other.radius and self.center.is_equal(other.center)
+
     # Private Methods
     def _validate_circle_parameters(self) -> None:
         """Validates all the circle's parameters to check they make geometric 
@@ -121,21 +123,6 @@ class Circle(AbstractGeometry):
         orientation vectors, but with no assigned uid.
         """
         return Circle(self.center, self.radius)
-
-    def __eq__(self, other: Circle) -> bool:
-        """Rich comparison for circle equality that allows for circles to be 
-        directly compared with ==.
-        
-        :param other: The circle to compare this circle to.
-        :returns: Whether the tuples of the circle's center points, radii and 
-            orientations directions are equal.
-        """
-        if isinstance(other, Circle) and len(self) == len(other) == 2:
-            return (
-                np.allclose(self.center.cartesian, other.center.cartesian) \
-                    and np.isclose(self.radius, other.radius)
-            )
-        return NotImplemented
 
     def __len__(self) -> int:
         """Returns whether the circle is 2D or 3D."""

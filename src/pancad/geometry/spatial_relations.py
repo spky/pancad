@@ -175,9 +175,9 @@ def skew(geometry_a, geometry_b) -> bool:
 def _coincident_point(point: Point,
                       other: Point | Line | LineSegment | Plane) -> bool:
     if isinstance(other, Point):
-        return point == other
+        return point.is_equal(other)
     if isinstance(other, Line):
-        if other.reference_point == point:
+        if other.reference_point.is_equal(point):
             # Cover the edge cases where point is the zero vector or if the
             # point is the reference_point
             return True
@@ -203,9 +203,9 @@ def _coincident_line(line: Line,
     if isinstance(other, Point):
         return coincident(other, line)
     if isinstance(other, Line):
-        return line == other
+        return line.is_equal(other)
     if isinstance(other, LineSegment):
-        return line == other.get_line()
+        return line.is_equal(other.get_line())
     if isinstance(other, Plane):
         return coincident(other, line)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
@@ -231,9 +231,10 @@ def _coincident_plane(plane: Plane,
                   *conversion.get_2_points_on_line(other)]
         return coplanar(*points)
     if isinstance(other, Plane):
-        if plane.reference_point == other.reference_point == Point(0, 0, 0):
+        if (plane.reference_point.is_equal(other.reference_point)
+                and plane.reference_point.is_equal(Point(0, 0, 0))):
             return np.allclose(plane.normal, other.normal)
-        return plane.reference_point == other.reference_point
+        return plane.reference_point.is_equal(other.reference_point)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
 
 @collinear.register

@@ -64,13 +64,3 @@ class Test2DCircle(TestInit):
     def test_for_str_error(self):
         circle = Circle(self.center, self.radius, uid=self.uid)
         str_str = str(circle)
-    
-    def test_equality_true(self):
-        circle_1 = Circle(self.center, self.radius, uid=self.uid + "_1")
-        circle_2 = Circle(self.center, self.radius, uid=self.uid + "_2")
-        self.assertTrue(circle_1 == circle_2)
-    
-    def test_equality_false(self):
-        circle_1 = Circle(self.center, self.radius, uid=self.uid + "_1")
-        circle_2 = Circle(self.center, self.radius + 1, uid=self.uid + "_2")
-        self.assertFalse(circle_1 == circle_2)

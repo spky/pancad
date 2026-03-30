@@ -166,6 +166,10 @@ class Extrude(AbstractFeature):
         """Return opposite length value with the associated unit."""
         return self._get_value_string(self.opposite_length)
 
+    def is_equal(self, other: Extrude) -> bool:
+        return (self.profile.is_equal(other.profile)
+                and self.settings == other.settings)
+
     # Private Methods #
     def _get_value_string(self, value: Real | None) -> str:
         """Returns a string of the constraint's value with the constraint's 

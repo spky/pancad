@@ -291,6 +291,17 @@ class CircularArc(AbstractGeometry):
             self.normal_vector = other.normal_vector
         return self
 
+    def is_equal(self, other: CircularArc) -> bool:
+        return all(
+            [
+                self.radius == other.radius,
+                self.center.is_equal(other.center),
+                np.allclose(self.start_vector, other.start_vector),
+                np.allclose(self.end_vector, other.end_vector),
+                self.is_clockwise == other.is_clockwise,
+            ]
+        )
+
     # Python Dunders
     def __conform__(self, protocol: PrepareProtocol) -> str:
         if protocol is PrepareProtocol:
@@ -317,19 +328,6 @@ class CircularArc(AbstractGeometry):
                            self.end_vector,
                            self.is_clockwise,
                            self.normal_vector)
-
-    def __eq__(self, other: CircularArc) -> bool:
-        if isinstance(other, CircularArc):
-            if len(self) == 3:
-                raise NotImplementedError("3D Arcs not supported yet")
-            return (
-                np.allclose(self.center.cartesian, other.center.cartesian)
-                and np.allclose(self.start_vector, other.start_vector)
-                and np.allclose(self.end_vector, other.end_vector)
-                and self.is_clockwise == other.is_clockwise
-                and np.isclose(self.radius, other.radius)
-            )
-        return NotImplemented
 
     def __len__(self) -> int:
         """Returns whether the arc is 2D or 3D."""

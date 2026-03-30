@@ -28,12 +28,12 @@ class ArcTest(unittest.TestCase):
         start = array(center) + (radius * array(start_vector))
         end = array(center) + (radius * array(end_vector))
         tests = [
-            ("center", Point(center), test.center),
+            ("center", Point(center).cartesian, test.center.cartesian),
             ("radius", radius, test.radius),
             ("start_vector", start_vector, test.start_vector),
-            ("start", Point(start), test.start),
+            ("start", Point(start).cartesian, test.start.cartesian),
             ("end_vector", end_vector, test.end_vector),
-            ("end", Point(end), test.end),
+            ("end", Point(end).cartesian, test.end.cartesian),
             ("is_clockwise", is_clockwise, test.is_clockwise),
         ]
         if len(test) == 3:

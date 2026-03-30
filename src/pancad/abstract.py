@@ -99,6 +99,13 @@ class AbstractFeature(PancadThing):
             return list(dependencies)
         return []
 
+    @abstractmethod
+    def is_equal(self, other: AbstractFeature) -> bool:
+        """Returns whether the other feature is geometrically equal. This is a
+        separate check from whether a feature element is 'python equal' to this
+        feature element since the uids would not be the same.
+        """
+
 
 class AbstractGeometry(PancadThing):
     """A class defining interfaces common to all pancad Geometry Elements."""
@@ -191,6 +198,13 @@ class AbstractGeometry(PancadThing):
         return list(self._references.keys())
 
     # Abstract Methods
+    @abstractmethod
+    def is_equal(self, other: AbstractGeometry) -> bool:
+        """Returns whether the other geometry is geometrically equal. This is a
+        separate check from whether a geometry element is 'python equal' to this
+        geometry element since the uids would not be the same.
+        """
+
     @abstractmethod
     def update(self, other: AbstractGeometry) -> Self:
         """Takes geometry of the same type as the calling geometry and updates

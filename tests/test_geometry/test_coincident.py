@@ -20,7 +20,7 @@ class TestInit(unittest.TestCase):
         original_a = self.a.copy()
         new_a = Point(1, 1)
         self.a.update(new_a)
-        self.assertEqual(c.get_parents()[0], new_a)
+        self.assertTrue(c.get_parents()[0].is_equal(new_a))
 
 if __name__ == "__main__":
     unittest.main()

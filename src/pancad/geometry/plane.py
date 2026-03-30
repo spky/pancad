@@ -193,22 +193,6 @@ class Plane(AbstractGeometry):
     def __copy__(self) -> Plane:
         return self.copy()
 
-    def __eq__(self, other: Plane) -> bool:
-        """Rich comparison for plane equality that allows for planes to be
-        directly compared with ==.
-
-        :param other: The plane to compare self to.
-        :returns: Whether the tuples of the planes' reference_points and
-                  normal vectors are equal
-        """
-        if isinstance(other, Plane):
-            return (
-                np.allclose(tuple(self.reference_point),
-                        tuple(other.reference_point))
-                and np.allclose(self.normal, other.normal)
-            )
-        return NotImplemented
-
     def __len__(self) -> int:
         """Returns the number of elements in the plane's normal tuple,
         which is equivalent to the plane's number of dimnesions. Should always be
