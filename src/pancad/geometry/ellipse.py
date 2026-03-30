@@ -402,17 +402,6 @@ class Ellipse(AbstractGeometry):
     def __copy__(self) -> Ellipse:
         return self.copy()
 
-    def __eq__(self, other: Ellipse) -> bool:
-        if isinstance(other, Ellipse):
-            if len(self) == len(other):
-                return (self.center == other.center
-                        and self.semi_major_axis == other.semi_major_axis
-                        and self.semi_minor_axis == other.semi_minor_axis
-                        and self.major_axis_line == other.major_axis_line
-                        and self.minor_axis_line == other.minor_axis_line)
-            return False
-        return NotImplemented
-
     def __len__(self) -> int:
         """Returns whether the ellipse is 2D or 3D."""
         return len(self.center)
