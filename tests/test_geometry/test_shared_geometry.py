@@ -1,4 +1,5 @@
-"""Tests for methods shared by all pancad geometry."""
+"""Tests for methods shared by all pancad geometry (and features when applicable).
+"""
 
 import pytest
 
@@ -13,7 +14,18 @@ from pancad.api import(
     Plane,
     Point,
     TwoDSketchSystem,
+    Extrude,
+    FeatureContainer,
+    FeatureSystem,
 )
+from pancad.geometry.coordinate_system import Pose
+from tests.sample_pancad_objects.sample_sketches import square, circle
+
+def _square_extrude(length: float) -> Extrude:
+    return Extrude.from_length(square(), length)
+
+def _pose(x: float=0, y: float=0, z: float=0) -> Pose:
+    return Pose(CoordinateSystem((x, y, z)))
 
 EQ = True # Equal
 NOT_EQ = False # Not Equal
@@ -21,7 +33,7 @@ CW = True # Clockwise
 CCW = False # Counter-Clockwise
 
 @pytest.mark.parametrize(
-    "geometry, other, expected",
+    "element, other, expected",
     [
         (Axis((0, 0, 0), (1, 0, 0)), Axis((0, 0, 0), (1, 0, 0)), EQ),
         (Axis((0, 0, 0), (1, 0, 0)), Axis((0, 1, 0), (1, 0, 0)), NOT_EQ),
@@ -39,6 +51,8 @@ CCW = False # Counter-Clockwise
             CircularArc((0, 0), 1, (1, 0), (0, 1), CCW),
             NOT_EQ
         ),
+        (CoordinateSystem((0, 0)), CoordinateSystem((0, 0)), EQ),
+        (CoordinateSystem((0, 0)), CoordinateSystem((1, 1)), NOT_EQ),
         (CoordinateSystem((0, 0, 0)), CoordinateSystem((0, 0, 0)), EQ),
         (CoordinateSystem((0, 0, 0)), CoordinateSystem((1, 1, 1)), NOT_EQ),
         (Line(Point(0, 0), (1, 0)), Line(Point(0, 0), (1, 0)), EQ),
@@ -56,7 +70,25 @@ CCW = False # Counter-Clockwise
         (TwoDSketchSystem([Point(0,0,0)]), TwoDSketchSystem([Point(0,0,0)]), EQ),
         (TwoDSketchSystem([Point(0,0,0)]), TwoDSketchSystem([Point(1,1,1)]), NOT_EQ),
         (TwoDSketchSystem([Point(0,0,0)]), TwoDSketchSystem(), NOT_EQ),
+        (_square_extrude(1), _square_extrude(1), EQ),
+        (_square_extrude(1), _square_extrude(2), NOT_EQ),
+        (FeatureContainer(), FeatureContainer(), EQ),
+        (_pose(0, 0, 0), _pose(0, 0, 0), EQ),
+        (_pose(0, 0, 0), _pose(1, 1, 1), NOT_EQ),
+        (
+            FeatureContainer(_pose(0,0,0), FeatureSystem(features=[square()])),
+            FeatureContainer(_pose(0,0,0), FeatureSystem(features=[square()])),
+            EQ,
+        ),
+        (
+            FeatureContainer(_pose(0,0,0), FeatureSystem(features=[square()])),
+            FeatureContainer(_pose(0,0,0), FeatureSystem(features=[circle()])),
+            NOT_EQ,
+        ),
     ]
 )
-def test_is_equal(geometry, other, expected):
-    assert geometry.is_equal(other) == expected
+def test_is_equal(element, other, expected):
+    """Test that all is_equals on all Geometry and Features successfully 
+    compares geometric equality by using known pairings of geometry and features.
+    """
+    assert element.is_equal(other) == expected
