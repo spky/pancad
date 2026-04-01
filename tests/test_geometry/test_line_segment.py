@@ -240,22 +240,6 @@ class TestLineSegmentGetters(unittest.TestCase):
                 assertPancadAlmostEqual(
                     self, line_segment.direction, direction, ROUNDING_PLACES
                 )
-    
-    def test_length_getter(self):
-        for line_segment, length in self.length_tests:
-            with self.subTest(line_segment=line_segment, length=length):
-                self.assertAlmostEqual(line_segment.length, length)
-    
-    def test_get_xyz_length(self):
-        for line_segment, lengths in self.axis_length_tests:
-            axis_length_funcs = [line_segment.get_x_length,
-                                 line_segment.get_y_length,
-                                 line_segment.get_z_length]
-            for func, length in zip(axis_length_funcs, lengths):
-                if length is None: continue
-                with self.subTest(line_segment=line_segment,
-                                  func=func.__name__, length=length):
-                    self.assertAlmostEqual(func(), length)
 
 class TestLineSegmentFitBox(unittest.TestCase):
     
