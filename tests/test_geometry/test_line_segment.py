@@ -1,16 +1,97 @@
+"""Tests for pancad's LineSegment class"""
+from __future__ import annotations
+
 import itertools
 import math
 import unittest
+from typing import TYPE_CHECKING
 
 import numpy as np
+import pytest
+
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
-from pancad.utils import trigonometry as trig
+from pancad.utils import trigonometry as trig, solvers
 # from pancad.utils import verification
 from pancad.utils.verification import assertPancadAlmostEqual
 
+if TYPE_CHECKING:
+    from typing import Literal
+
 ROUNDING_PLACES = 10
+
+@pytest.mark.parametrize(
+    "segment, along, expected",
+    [
+        (LineSegment((0, 0), (1, 2)), None, math.hypot(1, 2)),
+        (LineSegment((0, 0), (1, 2)), "x", 1),
+        (LineSegment((0, 0), (1, 2)), "y", 2),
+        (LineSegment((0, 0, 0), (1, 2, 3)), None, math.hypot(1, 2, 3)),
+        (LineSegment((0, 0, 0), (1, 2, 3)), "x", 1),
+        (LineSegment((0, 0, 0), (1, 2, 3)), "y", 2),
+        (LineSegment((0, 0, 0), (1, 2, 3)), "z", 3),
+        (LineSegment((1, 2), (0, 0)), None, math.hypot(1, 2)),
+        (LineSegment((1, 2), (0, 0)), "x", 1),
+        (LineSegment((1, 2), (0, 0)), "y", 2),
+        (LineSegment((1, 2, 3), (0, 0, 0)), None, math.hypot(1, 2, 3)),
+        (LineSegment((1, 2, 3), (0, 0, 0)), "x", 1),
+        (LineSegment((1, 2, 3), (0, 0, 0)), "y", 2),
+        (LineSegment((1, 2, 3), (0, 0, 0)), "z", 3),
+    ]
+)
+def test_get_length(segment: LineSegment, along: Literal["x", "y", "z", None], expected):
+    assert solvers.get_length(segment, along) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "segment, along, msg",
+    [
+        pytest.param(LineSegment((0, 0), (1, 1)), "z",
+                     r"Expected one of \['x', 'y'\]", id="2dZ"),
+        pytest.param(LineSegment((0, 0, 0), (1, 1, 1)),
+                     "W", r"Expected one of \['x', 'y', 'z'\]", id="3dW"),
+    ]
+)
+def test_get_length_excs(segment, along, msg):
+    with pytest.raises(TypeError, match=msg):
+        solvers.get_length(segment, along)
+
+@pytest.mark.parametrize(
+    "segment, value, from_, along, expected",
+    [
+        pytest.param(LineSegment((0, 0), (1, 1)), np.sqrt(8), "start", None,
+                     LineSegment((0, 0), (2, 2)), id="2dStartNone2"),
+        pytest.param(LineSegment((0, 0), (1, 1)), np.sqrt(8), "end", None,
+                     LineSegment((-1, -1), (1, 1)), id="2dEndNone2"),
+        pytest.param(LineSegment((0, 0), (1, 0)), 2, "start", "y",
+                     LineSegment((0, 0), (1, 2)), id="2dStartY2"),
+        pytest.param(LineSegment((0, 0), (1, 0)), 2, "end", "y",
+                     LineSegment((0, -2), (1, 0)), id="2dEndY2"),
+        pytest.param(LineSegment((0, 0, 0), (1, 1, 1)), np.sqrt(12), "start", None,
+                     LineSegment((0, 0, 0), (2, 2, 2)), id="3dStartNone2"),
+        pytest.param(LineSegment((0, 0, 0), (1, 1, 1)), np.sqrt(12), "end", None,
+                     LineSegment((-1, -1, -1), (1, 1, 1)), id="3dEndNone2"),
+    ]
+)
+def test_set_length(segment, value, from_, along, expected):
+    solvers.set_length(segment, value, from_, along)
+    assert segment.is_equal(expected)
+
+@pytest.mark.parametrize(
+    "segment, value, along, from_, error_type, msg",
+    [
+        pytest.param(LineSegment((0, 0), (1, 1)), 0, "start", None,
+                     ValueError, "Length cannot be set to 0", id="ZeroLength"),
+        pytest.param(LineSegment((0, 0), (1, 1)), 1, "Fake", None,
+                     TypeError, "^Unexpected from_", id="FromFake"),
+        pytest.param(LineSegment((0, 0), (1, 1)), 1, "start", "W",
+                     TypeError, "^Unexpected along", id="AlongW"),
+    ]
+)
+def test_set_length_excs(segment, value, along, from_, error_type, msg):
+    with pytest.raises(error_type, match=msg):
+        solvers.set_length(segment, value, along, from_)
 
 class TestLineSegmentInit2d(unittest.TestCase):
     def setUp(self):
