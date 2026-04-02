@@ -12,7 +12,7 @@ import numpy as np
 from numpy.linalg import norm
 
 from pancad.constants import AngleConvention
-from pancad.utils.pancad_types import VectorLike
+from pancad.utils.pancad_types import VectorLike, PolarVector, SphericalVector
 
 def angle_mod(angle: Real) -> float:
     """Returns the angle bounded from -2pi to +2pi since python's modulo 
@@ -285,7 +285,7 @@ def theta_of_cartesian(cartesian: VectorLike) -> float:
         return math.pi + math.atan(math.hypot(x, y) / z)
     raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
 
-def cartesian_to_polar(cartesian: VectorLike) -> tuple[float, float]:
+def cartesian_to_polar(cartesian: VectorLike) -> PolarVector:
     """Returns the polar version of the given cartesian vector.
     
     :param cartesian: A 2D vector with cartesian components x and y.
@@ -293,7 +293,7 @@ def cartesian_to_polar(cartesian: VectorLike) -> tuple[float, float]:
               and phi (azimuth) in radians.
     """
     if len(cartesian) == 2:
-        return (r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
+        return PolarVector(r_of_cartesian(cartesian), phi_of_cartesian(cartesian))
     if len(cartesian) == 3:
         raise ValueError("2D, use cartesian_to_spherical for 3D points")
     raise ValueError("Invalid cartesian vector, must be 2 long to return")
@@ -353,7 +353,7 @@ def spherical_to_cartesian(spherical: VectorLike) -> tuple[float, float, float]:
         raise ValueError("3D, use polar_to_cartesian for 2D points")
     raise ValueError("Vector must be 3 long to return a spherical vector")
 
-def cartesian_to_spherical(cartesian: VectorLike) -> tuple[float, float, float]:
+def cartesian_to_spherical(cartesian: VectorLike) -> SphericalVector:
     """Returns the spherical version of the given cartesian vector.
     
     :param cartesian: A 3D vector with cartesian components x, y, z.
@@ -361,9 +361,9 @@ def cartesian_to_spherical(cartesian: VectorLike) -> tuple[float, float, float]:
         (azimuth in radians), and theta (inclination in radians).
     """
     if len(cartesian) == 3:
-        return (r_of_cartesian(cartesian),
-                phi_of_cartesian(cartesian),
-                theta_of_cartesian(cartesian))
+        return SphericalVector(r_of_cartesian(cartesian),
+                               phi_of_cartesian(cartesian),
+                               theta_of_cartesian(cartesian))
     if len(cartesian) == 2:
         raise ValueError("2D, use cartesian_to_polar for 2D points")
     raise ValueError("Invalid cartesian vector, must be 3 long")

@@ -267,8 +267,8 @@ class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_TAU
         IS_EXPLEMENT = False
         for l1, l2 in self.segment_pairs:
-            phi1 = l1.phi
-            phi2 = l2.phi
+            phi1 = trig.cartesian_to_polar(l1.direction).phi
+            phi2 = trig.cartesian_to_polar(l2.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -285,8 +285,8 @@ class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_TAU
         IS_EXPLEMENT = True
         for l1, l2 in self.segment_pairs:
-            phi1 = l1.phi
-            phi2 = l2.phi
+            phi1 = trig.cartesian_to_polar(l1.direction).phi
+            phi2 = trig.cartesian_to_polar(l2.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -304,8 +304,8 @@ class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_PI
         IS_SUPPLEMENT = False
         for l1, l2 in self.segment_pairs:
-            phi1 = l1.phi
-            phi2 = l2.phi
+            phi1 = trig.cartesian_to_polar(l1.direction).phi
+            phi2 = trig.cartesian_to_polar(l2.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -333,8 +333,8 @@ class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_PI
         IS_SUPPLEMENT = True
         for l1, l2 in self.segment_pairs:
-            phi1 = l1.phi
-            phi2 = l2.phi
+            phi1 = trig.cartesian_to_polar(l1.direction).phi
+            phi2 = trig.cartesian_to_polar(l2.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -362,8 +362,8 @@ class TestGetAngleBetweenLineSegments2d(unittest.TestCase):
         CONVENTION = AC.SIGN_PI
         IS_SUPPLEMENT = False
         for l1, l2 in self.segment_pairs:
-            phi1 = l1.phi
-            phi2 = l2.phi
+            phi1 = trig.cartesian_to_polar(l1.direction).phi
+            phi2 = trig.cartesian_to_polar(l2.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -418,8 +418,8 @@ class TestGetAngleBetweenLineLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_PI
         IS_SUPPLEMENT = False
         for ls, l in self.pairs:
-            phi1 = ls.phi
-            phi2 = l.phi
+            phi1 = trig.cartesian_to_polar(ls.direction).phi
+            phi2 = trig.cartesian_to_polar(l.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             
@@ -448,8 +448,8 @@ class TestGetAngleBetweenLineLineSegments2d(unittest.TestCase):
         CONVENTION = AC.PLUS_PI
         IS_SUPPLEMENT = False
         for ls, l in self.pairs:
-            phi1 = l.phi
-            phi2 = ls.phi
+            phi1 = trig.cartesian_to_polar(ls.direction).phi
+            phi2 = trig.cartesian_to_polar(l.direction).phi
             if phi1 < 0: phi1 += math.tau
             if phi2 < 0: phi2 += math.tau
             

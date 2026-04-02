@@ -16,7 +16,7 @@ from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
-from pancad.utils import trigonometry as trig
+from pancad.utils import trigonometry as trig, solvers
 
 RELATIVE_TOLERANCE = 1e-9
 ABSOLUTE_TOLERANCE = 1e-9
@@ -329,9 +329,9 @@ def _coplanar_point(point: Point, *other: Point | Line | LineSegment) -> bool:
 @equal.register
 def _equal_linesegment(line_segment: LineSegment, *other: LineSegment) -> bool:
     if all(isinstance(g, LineSegment) for g in other):
-        length = line_segment.length
+        length = solvers.get_length(line_segment)
         for other_linesegment in other:
-            if not np.isclose(length, other_linesegment.length):
+            if not np.isclose(length, solvers.get_length(other_linesegment)):
                 return False
         return True
     types = [g.__class__ for g in other]

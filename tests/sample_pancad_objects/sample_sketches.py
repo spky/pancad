@@ -13,6 +13,7 @@ from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.point import Point
 from pancad.geometry.system import TwoDSketchSystem
 from pancad.geometry.sketch import Pose, Sketch
+from pancad.utils import solvers
 
 from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
 
@@ -338,7 +339,7 @@ def sketch_with_line_angled_to_x_axis(quadrant: int, angle: float,
         [
             make_constraint(SC.COINCIDENT, line_origin, system.origin),
             make_constraint(SC.DISTANCE, line.start, line.end,
-                            value=line.length, unit="mm"),
+                            value=solvers.get_length(line), unit="mm"),
             make_constraint(SC.ANGLE, system.x_axis, line,
                             value=angle, quadrant=quadrant),
         ]
