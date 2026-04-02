@@ -251,7 +251,13 @@ class Point(AbstractGeometry):
         return self
 
     def update(self, other: Point) -> Self:
-        """Updates the point to match the position of another point."""
+        """Updates the point to match the position of another point.
+
+        :raises ValueError: When trying to update a 2D point to 3D point vice-versa.
+        """
+        if len(self) != len(other):
+            msg = f"Cannot update a {len(self)}D point to a {len(other)}D point"
+            raise ValueError(msg)
         self.cartesian = other.cartesian
         return self
 

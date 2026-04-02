@@ -9,7 +9,9 @@ from functools import singledispatch
 
 import numpy as np
 
+from pancad.abstract import AbstractGeometry
 from pancad.geometry.line_segment import LineSegment
+from pancad.utils.pancad_types import FitBox2D
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -36,11 +38,10 @@ def get_length(segment: LineSegment,
         return lengths[along]
     except KeyError as exc:
         expected = ["x", "y"]
-        dim = len(segment)
-        if dim == 3:
+        if len(segment) == 3:
             expected.append("z")
         msg = (f"Incorrect along. Expected one of {expected}"
-               f" for a {dim}D LineSegment. Got: {along}")
+               f" for a {len(segment)}D LineSegment. Got: {along}")
         raise TypeError(msg) from exc
 
 def set_length(segment: LineSegment,
@@ -99,5 +100,27 @@ def set_length(segment: LineSegment,
     move_pt.cartesian = from_pt.cartesian + vector_sign * new_vector
     return segment
 
-def get_fit_box(geometry):
-    pass
+@singledispatch
+def get_fit_box(geometry: AbstractGeometry) -> FitBox2D:
+    """Returns the minimum (bottom-left) and maximum (top-right) corner points
+    of the smallest axis-aligned 2D box that fits over the geometry.
+
+    :raises NotImplementedError: When provided AbstractGeometry that cannot have
+        its FitBox solved for yet, or when provided 3D geometry.
+    :raises TypeError: When provided a non-AbstractGeometry element.
+    """
+    if isinstance(geometry, AbstractGeometry):
+        msg = f"Cannot get the fit box of {geometry.__class__} geometries yet."
+        raise NotImplementedError(msg)
+    raise TypeError(f"Expected a subclass of AbstractGeometry, got: {geometry}")
+
+@get_fit_box.register
+def _line_segment(geometry: LineSegment) -> FitBox2D:
+    if len(geometry) != 2:
+        msg = f"Fit boxes of 3D geometry are not supported. Got: {geometry}"
+        raise NotImplementedError(msg)
+    min_coords = (min(geometry.start.x, geometry.end.x),
+                  min(geometry.start.y, geometry.end.y))
+    max_coords = (max(geometry.start.x, geometry.end.x),
+                  max(geometry.start.y, geometry.end.y))
+    return FitBox2D(min_coords, max_coords)
