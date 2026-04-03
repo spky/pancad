@@ -134,7 +134,9 @@ def get_intersect(geometry_a, geometry_b) -> Point | Line | LineSegment:
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
 @singledispatch
-def get_angle_between(geometry_a, geometry_b) -> float | None:
+def get_angle_between(geometry_a, geometry_b,
+                      opposite: bool=False, convention: AC=AC.PLUS_PI
+                      ) -> float | None:
     """Returns the value of the angle between geometry a and b. This function
     dispatches to a more specific function based on the type of the first
     argument.
@@ -154,6 +156,8 @@ def get_angle_between(geometry_a, geometry_b) -> float | None:
         etc).
     :returns: The value of the angle between the geometries in radians. If the
         elements (usually lines) are skew, returns None.
+    :raises NotImplementedError: When an unsupported geometry type or combination
+        of geometry types is provided.
     """
     raise NotImplementedError(f"Unsupported 1st type {geometry_a.__class__}")
 
@@ -457,31 +461,45 @@ def _get_angle_between_line(line: Line,
                             opposite: bool=False,
                             convention: AC=AC.PLUS_PI) -> float | None:
     if isinstance(other, Line):
-        if parallel(line, other):
-            if opposite:
-                return math.pi
-            return 0
-        if skew(line, other):
-            return None
-        return trig.get_vector_angle(line.direction, other.direction,
-                                     opposite=opposite, convention=convention)
+        return _angle_bw_line_and_line(line, other, opposite, convention)
     if isinstance(other, LineSegment):
-        if skew(line, other):
-            return None
-        return trig.get_vector_angle(
-            line.direction, other.direction,
-            opposite=opposite, convention=convention
-        )
+        return _angle_bw_line_and_line_segment(line, other, opposite, convention)
     if isinstance(other, Plane):
-        if perpendicular(line, other):
-            if convention in (AC.SIGN_PI, AC.SIGN_180):
-                raise NotImplementedError("Signed perpendicular angle between"
-                                          " lines and planes not yet implemented")
-            return math.pi/2
-        projected_line = project(line, other)
-        return get_angle_between(line, projected_line,
-                                 opposite=opposite, convention=convention)
+        return _angle_bw_line_and_plane(line, other, opposite, convention)
     raise NotImplementedError(f"Unsupported 2nd type: {other.__class__}")
+
+def _angle_bw_line_and_line(line: Line, other: Line,
+                            opposite: bool, convention: AC) -> float | None:
+    # Returns angle between a Line and another Line
+    if parallel(line, other):
+        if opposite:
+            return math.pi
+        return 0
+    if skew(line, other):
+        return None
+    return trig.get_vector_angle(line.direction, other.direction,
+                                 opposite=opposite, convention=convention)
+
+def _angle_bw_line_and_line_segment(line: Line, other: LineSegment,
+                                    opposite: bool, convention: AC
+                                    ) -> float | None:
+    # Returns angle between a Line and a LineSegment
+    if skew(line, other):
+        return None
+    return trig.get_vector_angle(line.direction, other.direction,
+                                 opposite=opposite, convention=convention)
+
+def _angle_bw_line_and_plane(line: Line, other: Plane,
+                             opposite: bool, convention: AC) -> float | None:
+    # Returns angle between a Line and a Plane
+    if perpendicular(line, other):
+        if convention in (AC.SIGN_PI, AC.SIGN_180):
+            msg = "Signed perpendicular angle between lines/planes not yet implemented"
+            raise NotImplementedError(msg)
+        return math.pi/2
+    projected_line = project(line, other)
+    return get_angle_between(line, projected_line,
+                             opposite=opposite, convention=convention)
 
 @get_angle_between.register
 def _get_angle_between_line_segment(line_segment: LineSegment,
