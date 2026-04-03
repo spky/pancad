@@ -14,7 +14,6 @@ from pancad.utils import trigonometry as trig
 from pancad.geometry import spatial_relations
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
-from pancad.utils import verification
 
 ROUNDING_PLACES = 10
 
@@ -126,10 +125,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                 pt_a, pt_b = Point(point_a), Point(point_b)
                 e_pt = Point(expected_point)
                 test_line = Line.from_two_points(pt_a, pt_b)
-                verification.assertPointsAlmostEqual(
-                    self, test_line._point_closest_to_origin, e_pt,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.reference_point.cartesian, e_pt.cartesian)
 
     def test_from_two_points_point_closest_to_origin_tuple(self):
         for point_a, point_b, expected_point, _ in self.tests:
@@ -137,10 +133,7 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                               expected_point=expected_point):
                 e_pt = Point(expected_point)
                 test_line = Line.from_two_points(point_a, point_b)
-                verification.assertPointsAlmostEqual(
-                    self, test_line._point_closest_to_origin, e_pt,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.reference_point.cartesian, e_pt.cartesian)
 
     def test_from_two_points_direction(self):
         for point_a, point_b, _, expected_direction in self.tests:
@@ -148,20 +141,14 @@ class TestLineTwoPointDefinition(unittest.TestCase):
                               expected_direction=expected_direction):
                 pt_a, pt_b = Point(point_a), Point(point_b)
                 test_line = Line.from_two_points(pt_a, pt_b)
-                verification.assertTupleAlmostEqual(
-                    self, test_line.direction, expected_direction,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction, expected_direction)
 
     def test_from_two_points_direction_tuple(self):
         for point_a, point_b, _, expected_direction in self.tests:
             with self.subTest(point_a=point_a, point_b=point_b,
                               expected_direction=expected_direction):
                 test_line = Line.from_two_points(point_a, point_b)
-                verification.assertTupleAlmostEqual(
-                    self, test_line.direction, expected_direction,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction, expected_direction)
 
     def test_from_two_points_same_point(self):
         pt_a = Point((1, 1))
@@ -187,19 +174,14 @@ class TestEquationLineDefinitions(unittest.TestCase):
             with self.subTest(slope=m, intercept=b,
                               expected_closest_to_origin_point=pt):
                 test_line = Line.from_slope_and_y_intercept(m, b)
-                verification.assertPointsAlmostEqual(
-                    self, test_line._point_closest_to_origin, pt,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.reference_point.cartesian, pt.cartesian)
 
     def test_from_slope_and_y_intercept_expected_direction(self):
         for m, b, pt, direction in self.tests:
             with self.subTest(slope=m, intercept=b,
                               expected_direction=direction):
                 test_line = Line.from_slope_and_y_intercept(m, b)
-                verification.assertTupleAlmostEqual(
-                    self, test_line.direction, direction, ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction, direction)
 
     def test_slope_getter_non_nan(self):
         for m, b, pt, direction in self.tests:
@@ -249,10 +231,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                                      + f" Degrees: {math.degrees(phi)}")
                     ):
                 test_line = Line.from_two_points(pt_a, pt_b)
-                verification.assertTupleAlmostEqual(
-                    self, test_line.direction_polar, (r, phi),
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction_polar, (r, phi))
 
     def test_direction_spherical(self):
         for pt_a, pt_b, (r, phi, theta) in self.tests_3d:
@@ -264,10 +243,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                                     + f" Degrees: {math.degrees(theta)}")
                     ):
                 test_line = Line.from_two_points(pt_a, pt_b)
-                verification.assertTupleAlmostEqual(
-                    self, test_line.direction_spherical, (r, phi, theta),
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction_spherical, (r, phi, theta), atol=1e-15)
 
     def test_direction_polar_setter(self):
         for pt_a, pt_b, polar_vector in self.tests_2d:
@@ -278,10 +254,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                 test_line = Line.from_two_points(pt_a, pt_b)
                 before_direction = test_line.direction
                 test_line.direction_polar = polar_vector
-                verification.assertTupleAlmostEqual(
-                    self, before_direction, test_line.direction,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction, before_direction, atol=1e-15)
 
     def test_direction_spherical_setter(self):
         for pt_a, pt_b, spherical_vector in self.tests_3d:
@@ -292,10 +265,7 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                 test_line = Line.from_two_points(pt_a, pt_b)
                 before_direction = test_line.direction
                 test_line.direction_spherical = spherical_vector
-                verification.assertTupleAlmostEqual(
-                    self, before_direction, test_line.direction,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(test_line.direction, before_direction, atol=1e-15)
 
 class TestLinePointMovers2D(unittest.TestCase):
 

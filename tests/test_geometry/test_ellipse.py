@@ -7,7 +7,6 @@ import numpy as np
 from pancad.geometry.ellipse import Ellipse
 from pancad.geometry.line import Line
 from pancad.geometry.point import Point
-from pancad.utils.verification import assertPancadAlmostEqual
 
 ROUNDING_PLACES = 10
 
@@ -72,21 +71,15 @@ class TestInit(unittest.TestCase):
         
         # Real and geometry Sub-tests
         with self.subTest("center !=", expected=center, got=test.center):
-            assertPancadAlmostEqual(self, test.center, center, ROUNDING_PLACES)
+            self.assertTrue(test.center.is_equal(center))
         with self.subTest("major_axis_line !=",
                           expected=major_axis_line,
                           got=test.major_axis_line):
-            assertPancadAlmostEqual(self,
-                                    test.major_axis_line,
-                                    major_axis_line,
-                                    ROUNDING_PLACES)
+            self.assertTrue(test.major_axis_line.is_equal(major_axis_line))
         with self.subTest("minor_axis_line !=",
                           expected=minor_axis_line,
                           got=test.minor_axis_line):
-            assertPancadAlmostEqual(self,
-                                    test.minor_axis_line,
-                                    minor_axis_line,
-                                    ROUNDING_PLACES)
+            self.assertTrue(test.minor_axis_line.is_equal(minor_axis_line))
         with self.subTest("semi_major_axis !=",
                           expected=semi_major_axis,
                           got=test.semi_major_axis):
