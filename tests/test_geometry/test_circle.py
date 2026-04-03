@@ -2,7 +2,6 @@ import unittest
 
 from pancad.geometry.circle import Circle
 from pancad.geometry.point import Point
-from pancad.utils.verification import assertPancadAlmostEqual
 
 ROUNDING_PLACES = 10
 
@@ -20,8 +19,7 @@ class TestInit(unittest.TestCase):
                      vector_2: tuple=None,):
         with self.subTest(expected_center=center_point,
                           test_center=test_circle.center):
-            assertPancadAlmostEqual(self, test_circle.center, center_point,
-                                    ROUNDING_PLACES)
+            self.assertTrue(test_circle.center.is_equal(center_point))
         with self.subTest(expected_radius=radius,
                           test_radius=test_circle.radius):
             self.assertAlmostEqual(test_circle.radius, radius, ROUNDING_PLACES)

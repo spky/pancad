@@ -13,7 +13,6 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
 from pancad.utils import trigonometry as trig, solvers
-from pancad.utils.verification import assertPancadAlmostEqual
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -141,7 +140,7 @@ class TestLineSegmentInit2d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                assertPancadAlmostEqual(self, test, check, ROUNDING_PLACES)
+                self.assertTrue(test.is_equal(check))
 
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
@@ -149,7 +148,8 @@ class TestLineSegmentInit2d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                assertPancadAlmostEqual(self, test, check, ROUNDING_PLACES)
+                self.assertTrue(test.is_equal(check))
+                # assertPancadAlmostEqual(self, test, check, ROUNDING_PLACES)
 
 class TestLineSegmentInit3d(unittest.TestCase):
     def setUp(self):
@@ -163,7 +163,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                assertPancadAlmostEqual(self, test, check, ROUNDING_PLACES)
+                self.assertTrue(test.is_equal(check))
 
     def test_init_two_tuples(self):
         line_seg = LineSegment(self.pt_a, self.pt_b)
@@ -171,7 +171,7 @@ class TestLineSegmentInit3d(unittest.TestCase):
                          line_seg.get_line())
         for check, test in zip(self.check_features, test_features):
             with self.subTest(test=test, check=check):
-                assertPancadAlmostEqual(self, test, check, ROUNDING_PLACES)
+                self.assertTrue(test.is_equal(check))
 
 class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
     def test_init_polar_vector(self):
@@ -179,28 +179,28 @@ class TestLineSegmentFromPointLengthAngle(unittest.TestCase):
         polar = (2, math.radians(45))
         test_ls = LineSegment.from_point_length_angle(point, polar)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
-        assertPancadAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
+        self.assertTrue(test_ls.is_equal(expected_ls))
 
     def test_init_polar_float(self):
         point = (0, 0)
         polar = (2, math.radians(45))
         test_ls = LineSegment.from_point_length_angle(point, *polar)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2)))
-        assertPancadAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
+        self.assertTrue(test_ls.is_equal(expected_ls))
 
     def test_init_spherical_vector(self):
         point = (0, 0, 0)
         spherical = (2, math.radians(45), math.radians(90))
         test_ls = LineSegment.from_point_length_angle(point, spherical)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
-        assertPancadAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
+        self.assertTrue(test_ls.is_equal(expected_ls))
 
     def test_init_spherical_float(self):
         point = (0, 0, 0)
         spherical = (2, math.radians(45), math.radians(90))
         test_ls = LineSegment.from_point_length_angle(point, *spherical)
         expected_ls = LineSegment(point, (math.sqrt(2), math.sqrt(2), 0))
-        assertPancadAlmostEqual(self, test_ls, expected_ls, ROUNDING_PLACES)
+        self.assertTrue(test_ls.is_equal(expected_ls))
 
 class TestLineSegmentFromPointLengthAngleExceptions(unittest.TestCase):
 
@@ -273,9 +273,7 @@ class TestLineSegmentGetters(unittest.TestCase):
     def test_direction_getter(self):
         for line_segment, direction in self.direction_tests:
             with self.subTest(line_segment=line_segment, direction=direction):
-                assertPancadAlmostEqual(
-                    self, line_segment.direction, direction, ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(line_segment.direction, direction)
 
 class TestLineSegmentUpdate(unittest.TestCase):
 
@@ -283,7 +281,7 @@ class TestLineSegmentUpdate(unittest.TestCase):
         ls = LineSegment((0, 0, 0), (1, 0, 0))
         new = LineSegment((1, 1, 1), (2, 2, 2))
         ls.update(new)
-        assertPancadAlmostEqual(self, ls, new, ROUNDING_PLACES)
+        self.assertTrue(ls.is_equal(new))
 
 if __name__ == "__main__":
     unittest.main()

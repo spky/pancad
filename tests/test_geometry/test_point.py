@@ -4,7 +4,6 @@ import math
 import numpy as np
 
 from pancad.geometry.point import Point
-from pancad.utils import verification
 
 ROUNDING_PLACES = 10
 
@@ -87,14 +86,8 @@ class TestPointInit(unittest.TestCase):
         for r, phi in tests:
             with self.subTest(r=r, phi=(f"Degrees: {math.degrees(phi)} "
                                         f"Radians: {phi}")):
-                verification.assertTupleAlmostEqual(
-                    self, Point.from_polar((r, phi)).polar, (r, phi),
-                    ROUNDING_PLACES
-                )
-                verification.assertTupleAlmostEqual(
-                    self, Point.from_polar(r, phi).polar, (r, phi),
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(Point.from_polar((r, phi)).polar, (r, phi))
+                np.testing.assert_allclose(Point.from_polar(r, phi).polar, (r, phi))
     
     def test_from_spherical(self):
         tests = [
@@ -110,15 +103,10 @@ class TestPointInit(unittest.TestCase):
                               theta=(f"Degrees: {math.degrees(theta)} "
                                      f"Radians: {theta}")):
                 spherical = (r, phi, theta)
-                verification.assertTupleAlmostEqual(
-                    self, Point.from_spherical(spherical).spherical, spherical,
-                    ROUNDING_PLACES
-                )
-                verification.assertTupleAlmostEqual(
-                    self, Point.from_spherical(r, phi, theta).spherical,
-                    spherical,
-                    ROUNDING_PLACES
-                )
+                np.testing.assert_allclose(Point.from_spherical(spherical).spherical,
+                                           spherical)
+                np.testing.assert_allclose(Point.from_spherical(r, phi, theta).spherical,
+                                           spherical)
 
 class TestPointUpdate(unittest.TestCase):
     
@@ -126,7 +114,7 @@ class TestPointUpdate(unittest.TestCase):
         pt = Point(0, 0, 0)
         new = Point(1, 1, 1)
         pt.update(new)
-        verification.assertPancadAlmostEqual(self, pt, new, ROUNDING_PLACES)
+        np.testing.assert_allclose(pt.cartesian, new.cartesian)
 
 class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 
@@ -304,23 +292,13 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
         for polar_coordinate, xy_coordinate in self.coordinates_polar:
             with self.subTest(test=[polar_coordinate, xy_coordinate]):
                 self.pt.polar = polar_coordinate
-                verification.assertTupleAlmostEqual(
-                    self,
-                    self.pt.cartesian,
-                    xy_coordinate,
-                    self.default_places
-                )
+                np.testing.assert_allclose(self.pt.cartesian, xy_coordinate, atol=1e-15)
     
     def test_spherical_setter(self):
         for spherical_coordinate, xy_coordinate in self.coordinates_spherical:
             with self.subTest(test=[spherical_coordinate, xy_coordinate]):
                 self.pt.spherical = spherical_coordinate
-                verification.assertTupleAlmostEqual(
-                    self,
-                    self.pt.cartesian,
-                    xy_coordinate,
-                    self.default_places
-                )
+                np.testing.assert_allclose(self.pt.cartesian, xy_coordinate, atol=1e-15)
 
 class TestRSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the r setter in Point correctly updates the point's position 
@@ -364,9 +342,7 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_polar=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.r = r
-                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
-                                                        expected_spherical,
-                                                        self.default_places)
+                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
     
     def test_exceptions_r_setter(self):
         for initial_spherical, r, expected_spherical in self.change_tests:
@@ -419,9 +395,7 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
                                   expected_polar=expected_polar):
                     self.pt.polar = initial_polar
                     self.pt.r = r
-                    verification.assertTupleAlmostEqual(self, self.pt.polar,
-                                                        expected_polar,
-                                                        self.default_places)
+                    np.testing.assert_allclose(self.pt.polar, expected_polar, atol=1e-15)
     
     def test_exceptions_r_setter(self):
         for initial_polar, r, expected_polar in self.change_tests:
@@ -470,9 +444,7 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_spherical=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.phi = phi
-                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
-                                                        expected_spherical,
-                                                        self.default_places)
+                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
     
     def test_exceptions_phi_setter(self):
         for initial_spherical, phi, expected_spherical in self.change_tests:
@@ -483,7 +455,7 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
                     with self.assertRaises(expected_spherical):
                         self.pt.phi = phi
 
-class TestPhiSetterpolarEdgeCases(unittest.TestCase):
+class TestPhiSetterPolarEdgeCases(unittest.TestCase):
     """Tests whether the phi setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in polar coordinates"""
     def setUp(self):
@@ -521,9 +493,7 @@ class TestPhiSetterpolarEdgeCases(unittest.TestCase):
                                   expected_polar=expected_polar):
                     self.pt.polar = initial_polar
                     self.pt.phi = phi
-                    verification.assertTupleAlmostEqual(self, self.pt.polar,
-                                                        expected_polar,
-                                                        self.default_places)
+                    np.testing.assert_allclose(self.pt.polar, expected_polar, atol=1e-15)
     
     def test_exceptions_phi_setter(self):
         for initial_polar, phi, expected_polar in self.change_tests:
@@ -576,9 +546,7 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                                   expected_spherical=expected_spherical):
                     self.pt.spherical = initial_spherical
                     self.pt.theta = theta
-                    verification.assertTupleAlmostEqual(self, self.pt.spherical,
-                                                        expected_spherical,
-                                                        self.default_places)
+                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
     
     def test_exceptions_theta_setter(self):
         for initial_spherical, theta, expected_spherical in self.change_tests:
@@ -609,8 +577,7 @@ class TestPointNumericDunders(unittest.TestCase):
         pts = [[Point(a), Point(b)] for a, b in coords]
         for (pt1, pt2), result in zip(pts, results):
             with self.subTest(point1=pt1, point2=pt2, result=result):
-                verification.assertTupleAlmostEqual(self, pt1+pt2, result,
-                                                    ROUNDING_PLACES)
+                np.testing.assert_allclose(pt1 + pt2, result, atol=1e-15)
                 self.assertEqual(str(pt1+pt2), str(result))    
     
     def test_sub(self):
@@ -622,8 +589,7 @@ class TestPointNumericDunders(unittest.TestCase):
         pts = [[Point(a), Point(b)] for a, b in coords]
         for (pt1, pt2), result in zip(pts, results):
             with self.subTest(point1=pt1, point2=pt2, result=result):
-                verification.assertTupleAlmostEqual(self, pt1-pt2, result,
-                                                    ROUNDING_PLACES)
+                np.testing.assert_allclose(pt1 - pt2, result, atol=1e-15)
                 self.assertEqual(str(pt1-pt2), str(result))
         
 

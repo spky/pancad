@@ -10,7 +10,7 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.plane import Plane
-from pancad.utils import verification, trigonometry as trig
+from pancad.utils import trigonometry as trig
 from pancad.constants import AngleConvention as AC
 
 ROUNDING_PLACES = 10
@@ -700,8 +700,7 @@ class TestGetIntersectLineLineSegment(unittest.TestCase):
                 if intersection is None:
                     self.assertEqual(result_pt, intersection)
                 else:
-                    verification.assertPointsAlmostEqual(self, result_pt,
-                                                         intersection)
+                    self.assertTrue(result_pt.is_equal(intersection))
 
 class TestGetIntersectLinePlane(unittest.TestCase):
     
@@ -729,17 +728,11 @@ class TestGetIntersectLinePlane(unittest.TestCase):
     def test_get_intersect_line_plane(self):
         for intersect, plane, line in self.tests:
             with self.subTest(intersect=intersect, plane=plane, line=line):
-                verification.assertPancadAlmostEqual(
-                    self,
-                    spatial_relations.get_intersect(plane, line),
-                    intersect,
-                    ROUNDING_PLACES,
+                self.assertTrue(
+                    spatial_relations.get_intersect(plane, line).is_equal(intersect)
                 )
-                verification.assertPancadAlmostEqual(
-                    self,
-                    spatial_relations.get_intersect(line, plane),
-                    intersect,
-                    ROUNDING_PLACES,
+                self.assertTrue(
+                    spatial_relations.get_intersect(line, plane).is_equal(intersect)
                 )
 
 class TestGetIntersectPlanePlane(unittest.TestCase):
@@ -748,22 +741,16 @@ class TestGetIntersectPlanePlane(unittest.TestCase):
         pln1 = Plane(Point(0, 0, 0), (0, 0, 1))
         pln2 = Plane(Point(0, 0, 0), (0, 1, 0))
         line = Line.from_point_and_angle((0, 0, 0), 0, math.radians(90))
-        verification.assertPancadAlmostEqual(
-            self,
-            spatial_relations.get_intersect(pln1, pln2),
-            line,
-            ROUNDING_PLACES
+        self.assertTrue(
+            spatial_relations.get_intersect(pln1, pln2).is_equal(line)
         )
     
     def test_plane_plane_off_origin(self):
         pln1 = Plane(Point(0, 0, 1), (0, 0, 1))
         pln2 = Plane(Point(0, 0, 0), (0, 1, 0))
         line = Line.from_point_and_angle((0, 0, 1), 0, math.radians(90))
-        verification.assertPancadAlmostEqual(
-            self,
-            spatial_relations.get_intersect(pln1, pln2),
-            line,
-            ROUNDING_PLACES
+        self.assertTrue(
+            spatial_relations.get_intersect(pln1, pln2).is_equal(line)
         )
 
 class TestPerpendicularLineLineSegment(unittest.TestCase):
@@ -898,47 +885,37 @@ class TestProjectOntoPlane(unittest.TestCase):
         pt = Point(1, 1, 0)
         pln = Plane((0, 0, 0), (0, 1, 0))
         pt_project = spatial_relations.project(pt, pln)
-        verification.assertPancadAlmostEqual(self, pt_project, Point(1, 0, 0),
-                                             ROUNDING_PLACES)
+        self.assertTrue(pt_project.is_equal(Point(1, 0, 0)))
     
     def test_point_to_offset_xz_plane(self):
         pt = Point(1, 1, 0)
         pln = Plane((0, 20, 0), (0, 1, 0))
         pt_project = spatial_relations.project(pt, pln)
-        verification.assertPancadAlmostEqual(self, pt_project, Point(1, 20, 0),
-                                             ROUNDING_PLACES)
+        self.assertTrue(pt_project.is_equal(Point(1, 20, 0)))
     
     def test_line_to_xz_plane(self):
         line = Line.from_two_points((0, 0, 0), (1, 1, 0))
         pln = Plane((0, 0, 0), (0, 1, 0))
         line_project = spatial_relations.project(line, pln)
-        verification.assertPancadAlmostEqual(self, line_project,
-                                             Line.from_two_points((0,0,0),(1,0,0)),
-                                             ROUNDING_PLACES)
+        self.assertTrue(line_project.is_equal(Line.from_two_points((0,0,0),(1,0,0))))
     
     def test_line_to_xz_plane_perpendicular(self):
         line = Line.from_two_points((0, 0, 0), (0, 1, 0))
         pln = Plane((0, 0, 0), (0, 1, 0))
         line_project = spatial_relations.project(line, pln)
-        verification.assertPancadAlmostEqual(self, line_project,
-                                             Point(0, 0, 0),
-                                             ROUNDING_PLACES)
+        self.assertTrue(line_project.is_equal(Point(0, 0, 0)))
     
     def test_line_segment_to_xz_plane(self):
         line = LineSegment((0, 0, 0), (1, 1, 0))
         pln = Plane((0, 0, 0), (0, 1, 0))
         line_project = spatial_relations.project(line, pln)
-        verification.assertPancadAlmostEqual(self, line_project,
-                                             LineSegment((0,0,0),(1,0,0)),
-                                             ROUNDING_PLACES)
+        self.assertTrue(line_project.is_equal(LineSegment((0,0,0),(1,0,0))))
     
     def test_line_segment_to_xz_plane_perpendicular(self):
         line = LineSegment((0, 0, 0), (0, 1, 0))
         pln = Plane((0, 0, 0), (0, 1, 0))
         line_project = spatial_relations.project(line, pln)
-        verification.assertPancadAlmostEqual(self, line_project,
-                                             Point(0, 0, 0),
-                                             ROUNDING_PLACES)
+        self.assertTrue(line_project.is_equal(Point(0, 0, 0)))
 
 if __name__ == "__main__":
     unittest.main()
