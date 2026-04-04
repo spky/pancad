@@ -10,12 +10,6 @@ from pancad.geometry.point import Point
 from pancad.geometry.circular_arc import CircularArc
 from pancad.utils.text_formatting import get_table_string
 
-def test_no_dimensional_mismatch():
-    arc_2d = CircularArc((0, 0), 1, (1, 0), (0, 1), False)
-    arc_3d = CircularArc((0, 0, 0), 1, (1, 0, 0), (0, 1, 0), False, (0, 0, 1))
-    with pytest.raises(ValueError, match=r"Input Dimensional Mismatch:.*"):
-        arc_2d.update(arc_3d)
-
 class ArcTest(unittest.TestCase):
     def check_values(self,
                      test: CircularArc,

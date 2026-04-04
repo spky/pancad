@@ -18,6 +18,7 @@ from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
     from uuid import UUID
+    from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 
 class Point(AbstractGeometry):
@@ -31,37 +32,34 @@ class Point(AbstractGeometry):
     :param components: Either the (x, y) or (x, y, z) as individual Real number
         arguments or as a single vector.
     :param uid: The unique ID of the point for interoperable CAD identification.
-    :param unit: The unit of the point's length values.
     """
     def __init__(self, *components: Real | Sequence[Real] | np.ndarray,
-                 uid: str | UUID=None, unit: str=None):
+                 uid: str | UUID=None):
         self._iter_index = 0 # Used for __iter__ counting
         self.uid = uid
-        self.unit = unit
         self.cartesian = parse_vector(*components)
         super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods #
     @classmethod
     def from_polar(cls, *components: Real | Sequence[Real] | np.ndarray,
-                   uid: str | UUID=None, unit: str=None):
+                   uid: str | UUID=None):
         """Initializes a point from polar coordinates.
 
         :param components: The (Radius (r), Azimuth (phi)) individual Real
             number arguments or as a single vector. Azimuth must be in radians.
         :param uid: The unique ID of the point for interoperable CAD
             identification.
-        :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 2 long.
         """
         vector = parse_vector(*components)
         if len(vector) != 2:
             raise ValueError(f"Expected a vector 2 long, got {vector}")
-        return cls(trig.polar_to_cartesian(vector), uid=uid, unit=unit)
+        return cls(trig.polar_to_cartesian(vector), uid=uid)
 
     @classmethod
     def from_spherical(cls, *components: Real | Sequence[Real] | np.ndarray,
-                       uid: str | UUID=None, unit: str=None):
+                       uid: str | UUID=None):
         """Initializes a point from spherical coordinates (Radius (r), Azimuth
         (phi), Elevation (theta)). Azimuth and Elevation angles must be in
         radians.
@@ -71,13 +69,12 @@ class Point(AbstractGeometry):
             Elevation must be in radians.
         :param uid: The unique ID of the point for interoperable CAD
             identification.
-        :param unit: The unit of the Radius value.
         :raises ValueError: When provided a vector not 3 long.
         """
         vector = parse_vector(*components)
         if len(vector) != 3:
             raise ValueError(f"Expected a vector 3 long, got {vector}")
-        return cls(trig.spherical_to_cartesian(vector), uid=uid, unit=unit)
+        return cls(trig.spherical_to_cartesian(vector), uid=uid)
 
     # Cartesian Coordinates #
     @property
@@ -87,6 +84,7 @@ class Point(AbstractGeometry):
         :raises ValueError: When provided a tuple not 2 or 3 long.
         """
         return self._cartesian
+
     @cartesian.setter
     def cartesian(self, value: Sequence[Real]) -> None:
         if len(value) not in [2, 3]:
@@ -97,6 +95,7 @@ class Point(AbstractGeometry):
     def x(self) -> Real:
         """The point's cartesian x-coordinate."""
         return self.cartesian[0]
+
     @x.setter
     def x(self, value: Real) -> None:
         if len(self) == 2:
@@ -108,6 +107,7 @@ class Point(AbstractGeometry):
     def y(self) -> Real:
         """The point's cartesian y-coordinate."""
         return self.cartesian[1]
+
     @y.setter
     def y(self, value: Real) -> None:
         if len(self) == 2:
@@ -122,33 +122,36 @@ class Point(AbstractGeometry):
         :raises IndexError: When the getter is called on a 2D point.
         """
         return self.cartesian[2]
+
     @z.setter
     def z(self, value: Real) -> None:
         self.cartesian = (self.cartesian[0], self.cartesian[1], value)
 
     # Polar/Spherical Coordinates
     @property
-    def polar(self) -> tuple[Real]:
+    def polar(self) -> PolarVector:
         """The polar coordinates of the point (r, phi). Azimuth angle is and
         must be in radians.
 
         :raises ValueError: When called if the point is 3D.
         """
         return trig.cartesian_to_polar(self.cartesian)
+
     @polar.setter
-    def polar(self, value: tuple[Real]) -> None:
+    def polar(self, value: tuple[Real, Real]) -> None:
         self.cartesian = trig.polar_to_cartesian(value)
 
     @property
-    def spherical(self) -> tuple[Real]:
+    def spherical(self) -> SphericalVector:
         """The spherical coordinates (r, phi, theta) of the point. Azimuth
         and inclination angles are and must be in radians.
 
         :raises ValueError: When called if the point is 2D.
         """
         return trig.cartesian_to_spherical(self.cartesian)
+
     @spherical.setter
-    def spherical(self, value: tuple[Real]) -> None:
+    def spherical(self, value: tuple[Real, Real, Real]) -> None:
         self.cartesian = trig.spherical_to_cartesian(value)
 
     @property
@@ -158,7 +161,10 @@ class Point(AbstractGeometry):
         :raises ValueError: If r < 0, r is NaN, r == 0 and phi is NaN, or r != 0
             and phi and theta are NaNs.
         """
-        return trig.r_of_cartesian(self.cartesian)
+        if len(self) == 2:
+            return self.polar.r
+        return self.spherical.r
+
     @r.setter
     def r(self, value: Real) -> None:
         if value < 0:
@@ -187,18 +193,22 @@ class Point(AbstractGeometry):
         :raises ValueError: If phi is NaN and r != 0, r == 0 and phi is not NaN,
             or if phi is NaN and theta is not NaN.
         """
-        return trig.phi_of_cartesian(self.cartesian)
+        if len(self) == 2:
+            return self.polar.phi
+        return self.spherical.phi
+
     @phi.setter
     def phi(self, value: Real) -> None:
         if len(self) == 2: # Polar
-            if self.r != 0 and math.isnan(value):
+            if self.polar.r != 0 and math.isnan(value):
                 raise ValueError("phi cannot be NaN if r is non-zero")
-            if self.r == 0 and not math.isnan(value):
+            if self.polar.r == 0 and not math.isnan(value):
                 raise ValueError("phi can only be NaN if r is zero")
-            self.polar = (self.r, value)
+            self.polar = (self.polar.r, value)
         else:
             # Spherical (or invalid)
-            if math.isnan(self.theta) and not math.isnan(value): # AKA r == 0
+            if math.isnan(self.spherical.theta) and not math.isnan(value):
+                # r would need to be NaN
                 raise ValueError("Phi can only be NaN if theta is also NaN")
             self.spherical = (self.r, value, self.theta)
 
@@ -209,12 +219,13 @@ class Point(AbstractGeometry):
         :raises ValueError: If phi is NaN and theta is not 0, pi or NaN.
         :raises IndexError: When the getter is called on a 2D point.
         """
-        return trig.theta_of_cartesian(self.cartesian)
+        return self.spherical.theta
+
     @theta.setter
     def theta(self, value: Real) -> None:
-        if math.isnan(self.phi) and value not in [0, math.pi, math.nan]:
+        if math.isnan(self.spherical.phi) and value not in [0, math.pi, math.nan]:
             raise ValueError("theta must be NaN, 0, or pi if phi is NaN")
-        self.spherical = (self.r, self.phi, value)
+        self.spherical = (self.spherical.r, self.spherical.phi, value)
 
     # Public Methods #
     def copy(self) -> Point:
@@ -230,24 +241,29 @@ class Point(AbstractGeometry):
 
     def phi_degrees(self) -> Real:
         """Returns the polar/spherical azimuth angle of the Point in degrees."""
-        return math.degrees(self.phi)
+        if len(self) == 2:
+            return math.degrees(self.polar.phi)
+        return math.degrees(self.spherical.phi)
 
     def theta_degrees(self) -> Real:
         """Returns the spherical inclination angle of the point in degrees."""
-        return math.degrees(self.theta)
+        return math.degrees(self.spherical.theta)
 
     def set_phi_degrees(self, value: Real) -> Self:
         """Sets the polar/spherical azimuth coordinate of the point using a
         value in degrees. Returns the updated point.
         """
-        self.phi = math.radians(value)
+        if len(self) == 2:
+            self.polar = (self.polar.r, math.radians(value))
+        else:
+            self.spherical = (self.spherical.r, math.radians(value), self.spherical.theta)
         return self
 
     def set_theta_degrees(self, value: Real) -> Self:
         """Sets the spherical inclination coordinate of the point using a
         value in degrees. Returns the updated point.
         """
-        self.theta = math.radians(value)
+        self.spherical = (self.spherical.r, self.spherical.phi, math.radians(value))
         return self
 
     def update(self, other: Point) -> Self:
