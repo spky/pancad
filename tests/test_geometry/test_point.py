@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 from pancad.geometry.point import Point
+from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 ROUNDING_PLACES = 10
 
@@ -224,7 +225,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                     self.assertTrue(math.isnan(self.pt.phi))
                     self.assertEqual(self.pt.r, expected_r)
                 else:
-                    self.assertEqual(self.pt.polar, (expected_r, expected_phi))
+                    self.assertEqual(self.pt.polar, PolarVector(expected_r, expected_phi))
     
     def test_spherical_getter(self):
         for (coordinate, expected_r,
@@ -249,7 +250,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                 else:
                     self.assertEqual(
                         self.pt.spherical,
-                        (expected_r, expected_phi, expected_theta)
+                        SphericalVector(expected_r, expected_phi, expected_theta)
                     )
     
     def test_2D_cartesian_setters(self):

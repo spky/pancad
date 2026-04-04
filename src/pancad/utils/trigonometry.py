@@ -1,18 +1,24 @@
 """A module to provide trigonometric functions that translate geometry 
 between formats.
 """
+from __future__ import annotations
 
 from functools import partial
 import math
 from math import degrees
 from numbers import Real
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm
 
 from pancad.constants import AngleConvention
-from pancad.utils.pancad_types import VectorLike, PolarVector, SphericalVector
+from pancad.utils.pancad_types import (
+    VectorLike, PolarVector, SphericalVector
+)
+
+if TYPE_CHECKING:
+    from pancad.utils.pancad_types import Space3DVector, Space2DVector
 
 def angle_mod(angle: Real) -> float:
     """Returns the angle bounded from -2pi to +2pi since python's modulo 
@@ -298,7 +304,7 @@ def cartesian_to_polar(cartesian: VectorLike) -> PolarVector:
         raise ValueError("2D, use cartesian_to_spherical for 3D points")
     raise ValueError("Invalid cartesian vector, must be 2 long to return")
 
-def polar_to_cartesian(polar: VectorLike) -> tuple[float, float]:
+def polar_to_cartesian(polar: VectorLike) -> Space2DVector:
     """Returns the cartesian version of the given polar vector.
     
     :param polar: A 2D vector with polar components r (radial distance) and phi 
@@ -316,42 +322,41 @@ def polar_to_cartesian(polar: VectorLike) -> tuple[float, float]:
         raise ValueError("phi cannot be NaN if r is non-zero")
     return (r * math.cos(phi), r * math.sin(phi))
 
-def spherical_to_cartesian(spherical: VectorLike) -> tuple[float, float, float]:
+def spherical_to_cartesian(spherical: VectorLike) -> Space3DVector:
     """Returns the cartesian version of the given spherical vector.
     
     :param spherical: A 3D vector with spherical components r (radial distance), 
         phi (azimuth in radians), and theta (inclination in radians).
     :returns: An equivalent 3D vector with cartesian components x, y, and z.
     """
-    if len(spherical) == 3:
-        r, phi, theta = spherical
-        if r == 0 and math.isnan(phi) and math.isnan(theta):
-            return (0, 0, 0)
-        if r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
-            return (
-                r * math.sin(theta) * math.cos(phi),
-                r * math.sin(theta) * math.sin(phi),
-                r * math.cos(theta)
-            )
-        if r > 0 and math.isnan(phi) and theta == 0:
-            return (0, 0, r)
-        if r > 0 and math.isnan(phi) and theta == math.pi:
-            return (0, 0, -r)
-        if r < 0:
-            raise ValueError(f"r cannot be less than zero: {r}")
-        if not math.isnan(theta) and (not 0 <= theta <= math.pi):
-            raise ValueError(f"theta must be between 0 and pi, value: {theta}")
-        if math.isnan(phi) and math.isnan(theta):
-            raise ValueError(f"r value {r} cannot be non-zero if phi and "
-                             + "theta are NaN.")
-        if math.isnan(theta):
-            raise ValueError("Theta cannot be NaN if r is non-zero")
-        if math.isnan(phi) and (theta != 0 or theta != math.pi):
-            raise ValueError("If phi is NaN, theta must be pi/2")
-        raise ValueError("Unhandled spherical case!")
     if len(spherical) == 2:
-        raise ValueError("3D, use polar_to_cartesian for 2D points")
-    raise ValueError("Vector must be 3 long to return a spherical vector")
+        msg = "Vector must be 3D to return a cartesian spherical equivalent."
+        raise ValueError(msg)
+    r, phi, theta = spherical
+    if r == 0 and math.isnan(phi) and math.isnan(theta):
+        return (0, 0, 0)
+    if r > 0 and not math.isnan(phi) and (0 <= theta <= math.pi):
+        return (
+            r * math.sin(theta) * math.cos(phi),
+            r * math.sin(theta) * math.sin(phi),
+            r * math.cos(theta)
+        )
+    if r > 0 and math.isnan(phi) and theta == 0:
+        return (0, 0, r)
+    if r > 0 and math.isnan(phi) and theta == math.pi:
+        return (0, 0, -r)
+    if r < 0:
+        raise ValueError(f"r cannot be less than zero: {r}")
+    if not math.isnan(theta) and (not 0 <= theta <= math.pi):
+        raise ValueError(f"theta must be between 0 and pi, value: {theta}")
+    if math.isnan(phi) and math.isnan(theta):
+        raise ValueError(f"r value {r} cannot be non-zero if phi and "
+                         + "theta are NaN.")
+    if math.isnan(theta):
+        raise ValueError("Theta cannot be NaN if r is non-zero")
+    if math.isnan(phi) and (theta != 0 or theta != math.pi):
+        raise ValueError("If phi is NaN, theta must be pi/2")
+    raise ValueError(f"Unhandled spherical case! Got: {spherical}")
 
 def cartesian_to_spherical(cartesian: VectorLike) -> SphericalVector:
     """Returns the spherical version of the given cartesian vector.
