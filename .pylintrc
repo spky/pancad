@@ -23,4 +23,11 @@ generated-members=self.spherical.r,
                   self.spherical.phi,
                   self.spherical.theta,
                   self.polar.r,
-                  self.polar.phi
+                  self.polar.phi,
+                  freecad.open,
+                  freecad.DocumentObject
+                  freecad.Document,
+                  freecad.Placement,
+                  freecad.newDocument,
+                  freecad.Vector,
+                  freecad.Units

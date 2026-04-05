@@ -357,7 +357,6 @@ def new_document_from_part(part: PartFile) -> FreeCADDocument:
     api_utils.relabel_object(document, part.name)
 
     uid_map = {part.uid: api_utils.read_document_uid(document)}
-    # TODO: Move the body to the correct location in the tree
     new_feature_from_pancad(part.container, document, uid_map)
     return document
 
@@ -367,12 +366,6 @@ def new_feature_from_pancad(feature: AbstractFeature,
     """Creates a new FreeCAD Feature from a pancad feature and adds it to the
     provided uid_map.
     """
-    # TODO: Think of a less jank way to dispatch features to the right
-    # functions, maybe someday. Maybe by having each feature type have a
-    # dispatch string. singledispatch requires importing FreeCAD types.
-    # It might also be possible to truly have each feature have common
-    # interfaces, but that would need to be mapped out thoroughly for stuff like
-    # sketches.
     funcs = [
         (FeatureContainer, _new_body_from_container),
         (Sketch, _new_sketch_from_pancad_sketch),
@@ -440,7 +433,6 @@ def _new_sketch_from_pancad_sketch(feature: Sketch,
     api_utils.relabel_object(fc_sketch, feature.name)
     api_utils.get_by_uid(fc_parent_uid, document).addObject(fc_sketch)
     fc_sketch.AttachmentSupport = api_utils.get_by_uid(fc_plane_uid, document)
-    # TODO: Add logic for assigning MapMode and raising errors around it
     fc_sketch.MapMode = "FlatFace"
 
     new_uid_map_items = {}
@@ -498,7 +490,6 @@ def _new_pad_from_pancad_extrude(feature: Extrude,
     }
     pad.Type, pad.Reversed, pad.Midplane = pad_type_map[feature.type_]
 
-    # TODO: Once Extrude supports UpToFace, add offset and UpToFace logic.
     pad.UpToFace = None
     pad.Offset = 0
 
@@ -525,8 +516,7 @@ def _add_sketch_geometry_from_pancad(sketch: Sketch,
             fc_geo, "Geometry", fc_sketch, document
         )
         if fc_geo.TypeId == "Part::GeomEllipse":
-            # TODO: Implement Ellipse mapping
-            msg = "Ellipse mapping hasn't been implemented yet!"
+            msg = "Ellipse mapping hasn't been implemented yet. See #235"
             raise NotImplementedError(msg, fc_geo)
     uid_map.update(new_uid_map_items)
     return fc_sketch
@@ -640,7 +630,6 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     """Creates a new FreeCAD Constraint from a pancad constraint and adds it to
     the provided uid_map.
     """
-    # TODO: Add a check for whether there are point-to-point tangents
     input_map = {
         # If present, the integer is the number of points in the references.
         CT.ANGLE: "quadrant_order",
