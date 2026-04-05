@@ -68,7 +68,14 @@ class Tangent(AbstractStateConstraint):
 
 class AlignAxes(AbstractStateConstraint):
     """A constraint that forces two coordinate systems to share the same
-    location and the same respective axis directions.
+    location and the same respective axis directions or two axes to share the
+    same axis directons.
     """
 
     type_name = SketchConstraint.ALIGN_AXES
+
+class AntiAlignAxes(AbstractStateConstraint):
+    """A constraint that forces two axes to share anti-parallel axis directions.
+    """
+
+    type_name = SketchConstraint.ANTI_ALIGN_AXES
