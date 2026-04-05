@@ -1,7 +1,6 @@
 """A module providing functions for reading FreeCAD xml directly."""
 from __future__ import annotations
 
-import dataclasses
 from functools import partialmethod
 from collections import namedtuple
 from typing import TYPE_CHECKING
@@ -11,12 +10,23 @@ from zipfile import ZipFile
 from pathlib import Path
 import graphlib
 
-import numpy as np
-
 from pancad.cad.freecad import xml_utils
-from pancad.cad.freecad.constants import (ConstraintType,
-                                          ConstraintSubPart,
-                                          InternalGeometryType)
+from pancad.cad.freecad.xml_utils import (
+    FCMetadata,
+    FreeCADLink,
+    FreeCADExpression,
+    FreeCADPlacement,
+    GeomData,
+    GeomPoint,
+    GeomLineSegment,
+    GeomCircle,
+    GeomEllipse,
+    GeomArcOfCircle,
+    PropertyPartShape,
+    SketchGeoExt,
+    ConstraintData,
+)
+from pancad.cad.freecad.constants import ConstraintType, InternalGeometryType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,9 +34,7 @@ if TYPE_CHECKING:
     from os import PathLike
     from xml.etree.ElementTree import Element, ElementTree
 
-    import quaternion
-
-    from pancad.cad.freecad.xml_utils import FreeCADUID
+    from pancad.cad.freecad.xml_utils import FreeCADUID, ConstraintGeoRef
 
 logger = logging.getLogger(__name__)
 
@@ -128,48 +136,6 @@ class FCStd:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} '{self.metadata.label}'>"
 
-@dataclasses.dataclass
-class FCMetadata:
-    """Dataclass tracking metadata that is available on all FreeCAD files.
-
-    :param label: The name of the file.
-    :param uid: The internally generated unique id for the file.
-    :param unit_system: The units for the file's dimensions.
-    :param last_modified_date: The date the file was modified last.
-    :param user_id: The id for the file entered by the designer.
-    """
-    label: str
-    uid: str
-    unit_system: str
-    last_modified_date: str
-    user_id: str
-
-@dataclasses.dataclass(frozen=True)
-class FreeCADLink:
-    """A class for tracking FreeCAD App::PropertyLinkSub data. See
-    https://freecad.github.io/SourceDoc/d3/d76/classApp_1_1PropertyLinkSub.html
-
-    :param name: The object the link is to.
-    :param subs: The linked subelement name of the object. Empty strings are
-        converted to None.
-    :param shadows: Not certain, but appears to be "shadow subname references"
-        in FreeCAD documentation. Likely connected to topological naming.
-    :raises ValueError: Raised if sub is an empty string or when sub is None but
-        shadow is not None.
-    """
-    name: str
-    sub: str = None
-    shadow: str = None
-
-    def __post_init__(self):
-        if self.sub == "":
-            # Blank sub strings indicate the link is just to the object.
-            # Blank subs cannot be converted to None here without unfreezing the
-            # dataclass, so it just raises an error.
-            raise ValueError("sub cannot be an empty string")
-        if self.sub is None and self.shadow is not None:
-            raise ValueError("Unexpected LinkSub format: sub is None,"
-                             f" but shadow is '{self.shadow}'")
 
 class FreeCADDocumentXML:
     """A class providing an interface to FCStd Document.xml files.
@@ -498,67 +464,6 @@ class FreeCADObjectXML:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} '{self.name}'>"
 
-@dataclasses.dataclass
-class FreeCADPlacement:
-    """Dataclass tracking a FreeCAD Placement object's properties from FCStd xml
-    """
-    location: tuple[float, float, float]
-    quat: quaternion.quaternion
-    o_vector: tuple[float, float, float]
-
-    @classmethod
-    def from_element(cls, element: Element) -> FreeCADPlacement:
-        """Creates Placement directly from an xml element"""
-        xyz = ["x", "y", "z"]
-        location = xml_utils.read_vector(element, xyz, "P", False)
-        o_vector = xml_utils.read_vector(element, xyz, "O", False)
-        quat_vector = xml_utils.read_vector(element, ["Q0", "Q1", "Q2", "Q3"],
-                                            is_2d=False)
-        return cls(location, np.quaternion(*quat_vector), o_vector)
-
-@dataclasses.dataclass
-class FreeCADExpression:
-    """Dataclass for tracking the definition of FreeCAD expressions that define
-    derived properties in the model.
-    """
-    path: str
-    expression: str
-
-@dataclasses.dataclass
-class PropertyPartShape:
-    """Dataclass for tracking the definition of FreeCAD PropertyPartShape
-    elements
-    """
-    element_map: str
-    brp: str
-    txt: str = None
-    hash_index: int = None
-    elements: list[tuple[str, str]] = dataclasses.field(default_factory=list)
-
-    @classmethod
-    def from_element(cls, element: Element) -> PropertyPartShape:
-        """Creates PropertyPartShape directly from an xml element"""
-        inputs = {}
-        part = xml_utils.find_single(element, "Part")
-        inputs["element_map"] = xml_utils.read_attr(part, "ElementMap")
-        inputs["brp"] = xml_utils.read_attr(part, "file")
-        if part.get("HasherIndex") is not None:
-            inputs["hash_index"] = xml_utils.read_attr(part, "HasherIndex", int)
-        for sub in xml_utils.find_single(element, "ElementMap"):
-            values = []
-            for name in ("key", "value"):
-                value = xml_utils.read_attr(sub, name)
-                if value != "Dummy": # Have not found any non-Dummy cases so far
-                    msg = ("Expected 'Dummy' for ElementMap element"
-                           f" value {name}, got {value}")
-                    raise ValueError(msg)
-                values.append(value)
-            inputs.setdefault("elements", []).append(tuple(values))
-        ele_map_2 = element.find("ElementMap2")
-        if ele_map_2 is not None:
-            inputs["txt"] = xml_utils.read_attr(ele_map_2, "file")
-        return cls(**inputs)
-
 class FreeCADPropertyXML:
     """A class providing interfaces to FCStd Document.xml element properties.
 
@@ -813,179 +718,6 @@ class FreeCADPropertyXML:
         type_wo_ns = self.type_.split("::")[-1]
         return f"<FreeCADPropertyXML {self.name} {type_wo_ns}>"
 
-@dataclasses.dataclass
-class GeometryExtension:
-    """A dataclass for tracking all FreeCAD GeometryExtensions."""
-    geometry: FreeCADGeometryXML
-    type_: str
-
-@dataclasses.dataclass
-class SketchGeoExt(GeometryExtension):
-    """A dataclass tracking Sketcher::SketchGeometryExtension values."""
-    id_: int
-    internal_geometry_type: int
-    geometry_mode_flags: int
-    geometry_layer: int
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> SketchGeoExt:
-        """Returns a SketchGeoExt from a GeoExtension xml element typed as a
-        Sketch Extension.
-        """
-        type_ = xml_utils.read_attr(element, "type")
-        attr_map = [
-            ("id", int, "id_"),
-            ("internalGeometryType", int, "internal_geometry_type"),
-            ("geometryModeFlags", lambda x: int(x, base=2), "geometry_mode_flags"),
-            ("geometryLayer", int, "geometry_layer")
-        ]
-        attrs = {}
-        for name, func, input_name in attr_map:
-            try:
-                attrs[input_name] = func(xml_utils.read_attr(element, name))
-            except ValueError as exc:
-                exc.add_note(f"Exception occurred on GeoExtension type {type_}")
-                raise
-        try:
-            intern_type = attrs["internal_geometry_type"]
-            attrs["internal_geometry_type"] = InternalGeometryType(intern_type)
-        except ValueError as exc:
-            msg = f"Unsupported internalGeometryType value: {intern_type}"
-            raise NotImplementedError(msg) from exc
-        return cls(parent, type_, **attrs)
-
-@dataclasses.dataclass
-class GeomData:
-    """Dataclass for tracking data common to all FreeCAD Geometry."""
-    parent: FreeCADGeometryXML = dataclasses.field(repr=False)
-    type_: str = dataclasses.field(repr=False)
-    tag: str
-
-@dataclasses.dataclass
-class GeomPoint(GeomData):
-    """Dataclass for tracking FreeCAD Sketch Point info."""
-    location: tuple[float, float]
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> GeomPoint:
-        """Returns a GeomPoint from a GeomPoint xml element."""
-        point = xml_utils.read_vector(element, ("X", "Y", "Z"))
-        return cls(parent, parent.type_, element.tag, point)
-
-@dataclasses.dataclass
-class GeomLineSegment(GeomData):
-    """Dataclass for tracking FreeCAD Sketch Line Segment info."""
-    start: tuple[float, float]
-    end: tuple[float, float]
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> GeomLineSegment:
-        """Returns a GeomLineSegment from a LineSegment xml element."""
-        xyz = ("X", "Y", "Z")
-        point_to_input_name = [("Start", "start"), ("End", "end")]
-        points = {}
-        for point, input_name in point_to_input_name:
-            try:
-                points[input_name] = xml_utils.read_vector(element, xyz, point)
-            except ValueError as exc:
-                exc.add_note(f"Occurred on LineSegment {point} point")
-                raise
-        return cls(parent, parent.type_, element.tag, **points)
-
-@dataclasses.dataclass
-class GeomCircle(GeomData):
-    """Dataclass for tracking FreeCAD Sketch Circle info."""
-    center: tuple[float, float]
-    radius: float
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> GeomCircle:
-        """Returns a GeomCircle from a Circle xml element."""
-        xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element, xyz, "Center")
-        normal = xml_utils.read_vector(element, xyz, "Normal", False)
-        attrs = xml_utils.read_float_attrs(
-            element, {"AngleXU": "angle", "Radius": "radius"}
-        )
-        extras = [(normal, (0, 0, 1), "Normal"), (attrs["angle"], 0, "AngleXU")]
-        for value, expected, extra_name in extras:
-            try:
-                xml_utils.check_constant(value, expected)
-            except ValueError as exc:
-                exc.add_note(f"Occurred on Circle {extra_name}")
-                raise
-        return cls(parent, parent.type_, element.tag, center, attrs["radius"])
-
-@dataclasses.dataclass
-class GeomEllipse(GeomData):
-    """Dataclass for tracking FreeCAD Sketch Ellipse info."""
-    center: tuple[float, float]
-    major_radius: float
-    minor_radius: float
-    major_axis_angle: float
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> GeomEllipse:
-        """Returns a GeomEllipse from a Ellipse xml element."""
-        xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element, xyz, "Center")
-        normal = xml_utils.read_vector(element, xyz, "Normal", False)
-        try:
-            xml_utils.check_constant(normal, (0, 0, 1))
-        except ValueError as exc:
-            exc.add_note("Occurred on Ellipse Normal")
-            raise
-        attrs = xml_utils.read_float_attrs(
-            element,
-            {
-                "MajorRadius": "major_radius",
-                "MinorRadius": "minor_radius",
-                "AngleXU": "major_axis_angle",
-            }
-        )
-        return cls(parent, parent.type_, element.tag, center, **attrs)
-
-@dataclasses.dataclass
-class GeomArcOfCircle(GeomData):
-    """Dataclass for tracking FreeCAD Sketch Ellipse info."""
-    center: tuple[float, float]
-    radius: float
-    start_angle: float
-    end_angle: float
-
-    @classmethod
-    def from_element(cls, parent: FreeCADGeometryXML, element: Element
-                     ) -> GeomArcOfCircle:
-        """Returns a GeomArcOfCircle from a ArcOfCircle xml element."""
-        xyz = ("X", "Y", "Z")
-        center = xml_utils.read_vector(element, xyz, "Center")
-        normal = xml_utils.read_vector(element, xyz, "Normal", False)
-        attrs = xml_utils.read_float_attrs(
-            element,
-            {
-                "Radius": "radius",
-                "StartAngle": "start_angle",
-                "EndAngle": "end_angle",
-                "AngleXU": "angle",
-            }
-        )
-        extras = [(normal, (0, 0, 1), "Normal"), (attrs["angle"], 0, "AngleXU")]
-        for value, expected, extra_name in extras:
-            try:
-                xml_utils.check_constant(value, expected)
-            except ValueError as exc:
-                exc.add_note(f"Occurred on ArcOfCircle {extra_name}")
-                raise
-        del attrs["angle"]
-        return cls(parent, parent.type_, element.tag, center, **attrs)
-
-
-
 class FreeCADGeometryXML:
     """A class providing interfaces to FCStd Document.xml sketch geometry
     elements.
@@ -1125,208 +857,6 @@ class FreeCADGeometryXML:
         geo_type = self.geometry.__class__.__name__
         sketch_name = self.parent.parent.name
         return f"<{self.__class__.__name__} {geo_type} {sketch_name} {self.id_}>"
-
-@dataclasses.dataclass
-class ConstraintGeoRef:
-    """A dataclass tracking the index and subpart of a FreeCAD constraint's
-    reference to geometry.
-
-    :param index: The index of the geometry as entered in the constraint xml.
-        Negative numbers are in the ExternalGeo list.
-    :param part: The sub part integer for the part of the geometry being
-        constrained.
-    :param id_: The integer id of the geometry.
-    :param constraint:
-    """
-    index: int
-    part: ConstraintSubPart
-    constraint: FreeCADConstraintXML
-    id_: int | None = dataclasses.field(init=False)
-    list_name: str | None = dataclasses.field(init=False)
-
-    def __post_init__(self):
-        if self.index == -2000:
-            self.list_name = None
-        elif self.index < 0:
-            self.list_name = "ExternalGeo"
-        else:
-            self.list_name = "Geometry"
-        geo = self._get_geometry_by_index()
-        if geo is None:
-            self.id_ = None
-        else:
-            self.id_ = geo.id_
-
-    @property
-    def list_index(self) -> int | None:
-        """The index of the geometry inside the list it resides in. Updates
-        dynamically if the list changes. This is None when the reference is
-        empty and just to fill out the 3 required for FreeCAD constraints.
-
-        :raises LookupError: When the geometry id cannot be found in the sketch
-            list. This would mean there's unexpected FreeCAD behavior or that
-            the geometry has been deleted.
-        """
-        if self.id_ is None:
-            return None
-        sketch = self.constraint.parent.parent
-        list_geo = sketch.get_property(self.list_name).value
-        try:
-            return next(i for i, g in enumerate(list_geo) if g.id_ == self.id_)
-        except StopIteration as exc:
-            msg = (f"Geometry id {self.id_} not found in sketch '{sketch.name}'"
-                   f" {self.list_name} list")
-            raise LookupError(msg) from exc
-
-    def get_geometry(self) -> tuple[FreeCADGeometryXML, ConstraintSubPart] | None:
-        """Returns the geometry from the sketch based on the ids of the
-        constrained geometry.
-        """
-        if self.id_ is None:
-            return None
-        sketch = self.constraint.parent.parent
-        list_geo = sketch.get_property(self.list_name).value
-        try:
-            return (next(g for g in list_geo if g.id_ == self.id_), self.part)
-        except StopIteration as exc:
-            msg = (f"Geometry id {self.id_} not found in sketch '{sketch.name}'"
-                   f" {self.list_name} list")
-            raise LookupError(msg) from exc
-
-    def _get_list_index_from_index(self) -> int | None:
-        """Returns the list index from the index stored in the xml."""
-        if self.index == -2000:
-            return None
-        if self.index < 0:
-            return -1 - self.index
-        return self.index
-
-    def _get_geometry_by_index(self) -> FreeCADGeometryXML | None:
-        list_index = self._get_list_index_from_index()
-        if list_index is None:
-            return None
-        sketch = self.constraint.parent.parent
-        return sketch.get_property(self.list_name).value[list_index]
-
-@dataclasses.dataclass
-class InternalAlignment:
-    """Dataclass for tracking how a constraint is used for interally aligning
-    geometry like Ellipse subgeometry.
-    """
-    type_: InternalGeometryType
-    index: int
-
-@dataclasses.dataclass
-class ConstraintState:
-    """Dataclass for tracking the sketch-specific state data of a FreeCAD
-    constraint.
-    """
-    label_distance: float
-    label_position: float
-    driving: bool
-    virtual_space: bool
-    active: bool
-
-@dataclasses.dataclass
-class ConstraintPairs:
-    """Class tracking the three pairs of ConstraintGeoRef integers in FreeCAD
-    constraints.
-    """
-    first: ConstraintGeoRef
-    second: ConstraintGeoRef
-    third: ConstraintGeoRef
-
-    def get_geometry(self) -> list[tuple[FreeCADGeometryXML, ConstraintSubPart]]:
-        """Returns a list of the filled geometry references, tuples of
-        (geometry, subpart).
-        """
-        references = []
-        for pair in [self.first, self.second, self.third]:
-            if pair.list_index is not None:
-                references.append(pair.get_geometry())
-        return references
-
-    def as_list(self) -> list[ConstraintGeoRef]:
-        """Returns the non-empty geometry references in a list."""
-        return  [r for r in [self.first, self.second, self.third]
-                 if r.id_ is not None]
-
-@dataclasses.dataclass
-class ConstraintData:
-    """A dataclass tracking all xml data stored for a FreeCAD sketch
-    constraint.
-    """
-    parent: FreeCADConstraintXML = dataclasses.field(repr=False)
-    name: str | None
-    type_: ConstraintType
-    value: float
-    pairs: ConstraintPairs
-    state: ConstraintState
-    internal_alignment: InternalAlignment = None
-
-    @classmethod
-    def from_element(cls, parent: FreeCADConstraintXML, element: Element
-                     ) -> ConstraintData:
-        """Returns a ConstraintData dataclass from a Constrain xml element."""
-        name = xml_utils.read_attr(element, "Name")
-        if name == "":
-            name = None
-        attrs = cls._read_element_data(element)
-        # Consolidate the data into smaller structures
-        state_attrs = ["label_distance", "label_position",
-                       "driving", "virtual_space", "active"]
-        state = ConstraintState(**{a: attrs[a] for a in state_attrs})
-        attrs = {k: v for k, v in attrs.items() if k not in state_attrs}
-        pairs = {}
-        pair_nums =["First", "Second", "Third"]
-        for num, pos in zip(pair_nums, map(lambda x: f"{x}Pos", pair_nums)):
-            pairs[num.lower()] = ConstraintGeoRef(attrs[num],
-                                                  ConstraintSubPart(attrs[pos]),
-                                                  parent)
-            del attrs[num], attrs[pos]
-        pairs = ConstraintPairs(**pairs)
-        return cls(parent, name, pairs=pairs, state=state, **attrs)
-
-    @staticmethod
-    def _read_element_data(element: Element) -> dict[str, float | int | bool]:
-        # Get always there attributes first
-        floats = {"Value": "value",
-                  "LabelDistance": "label_distance",
-                  "LabelPosition": "label_position"}
-        bools = {"IsDriving": "driving",
-                 "IsInVirtualSpace": "virtual_space",
-                 "IsActive": "active"}
-        ints = {"Type": "type_"} # Actually an int enumeration for the type
-        numbers =["First", "Second", "Third"]
-        for num in numbers:
-            ints.update({num: num, f"{num}Pos": f"{num}Pos"})
-        converts =[(floats, float), (bools, xml_utils.read_bool), (ints, int)]
-        attrs = {}
-        for names, converter in converts:
-            try:
-                attrs.update(xml_utils.read_attrs(element, names, converter))
-            except ValueError as exc:
-                exc.add_note("Occurred while reading ConstraintData")
-                raise
-        # Get the sometimes there attributes
-        internal_names = {"InternalAlignmentType": "type_",
-                          "InternalAlignmentIndex": "index"}
-        if any(name in element.attrib for name in internal_names):
-            align_data = xml_utils.read_int_attrs(element, internal_names)
-            try:
-                align_data["type_"] = InternalGeometryType(align_data["type_"])
-            except ValueError as exc:
-                exc.add_note("Unrecognized internal alignment type number"
-                             f" {align_data['type_']}")
-                raise
-            attrs["internal_alignment"] = InternalAlignment(**align_data)
-        try:
-            attrs["type_"] = ConstraintType(attrs["type_"])
-        except ValueError as exc:
-            exc.add_note(f"Unrecognized type number {attrs['type_']}")
-            raise
-        return attrs
-
 
 class FreeCADConstraintXML:
     """A class providing interfaces to FCStd Document.xml geometry elements.
