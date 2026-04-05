@@ -30,7 +30,6 @@ from pancad.geometry.sketch import Sketch
 from pancad.filetypes.part_file import PartFile
 
 from pancad.cad.freecad import api_utils
-from pancad.cad.freecad._bootstrap import get_app_dir
 from pancad.cad.freecad.api_utils import FreeCADConstraintGeoRef
 from pancad.cad.freecad import xml_utils
 from pancad.cad.freecad.xml_utils import FreeCADUID
@@ -53,16 +52,7 @@ from pancad.cad.freecad._application_types import (
     FreeCADSketch,
 )
 
-for _ in range(0, 2):
-    try:
-        import FreeCAD as App
-        import Sketcher
-        import Part
-    except ImportError:
-        import sys
-        sys.path.append(str(get_app_dir()))
-        continue
-    break
+from pancad.cad.freecad.api import freecad, freecad_sketcher, freecad_part
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -90,7 +80,7 @@ logger = logging.getLogger(__name__)
 ################################################################################
 def new_placement_from_pose(pose: Pose) -> FreeCADPlacement:
     """Creates a FreeCADPlacement from a pancad Pose."""
-    placement = App.Placement()
+    placement = freecad.Placement()
     placement.Base = tuple(pose.origin)
     quat = pose.coordinate_system.get_quaternion()
     # FreeCAD Quaternions have their real component at the end.
@@ -363,7 +353,7 @@ def _map_origin_features_from_freecad(origin: FreeCADObjectXML,
 ################################################################################
 def new_document_from_part(part: PartFile) -> FreeCADDocument:
     """Creates a new FreeCADDocument from a PartFile"""
-    document = App.newDocument()
+    document = freecad.newDocument()
     api_utils.relabel_object(document, part.name)
 
     uid_map = {part.uid: api_utils.read_document_uid(document)}
@@ -568,28 +558,28 @@ def pancad_to_freecad_geometry(geometry: AbstractGeometry) -> FreeCADGeometry:
 
 @pancad_to_freecad_geometry.register
 def _line_segment(line_segment: LineSegment) -> FreeCADLineSegment:
-    start = App.Vector(tuple(line_segment.start) + (0,))
-    end = App.Vector(tuple(line_segment.end) + (0,))
-    return Part.LineSegment(start, end)
+    start = freecad.Vector(tuple(line_segment.start) + (0,))
+    end = freecad.Vector(tuple(line_segment.end) + (0,))
+    return freecad_part.LineSegment(start, end)
 
 @pancad_to_freecad_geometry.register
 def _ellipse(ellipse: Ellipse) -> FreeCADEllipse:
-    major_axis_point = App.Vector(tuple(ellipse.major_axis_max) + (0,))
-    minor_axis_point = App.Vector(tuple(ellipse.minor_axis_max) + (0,))
-    center = App.Vector(tuple(ellipse.center) + (0,))
-    return Part.Ellipse(major_axis_point, minor_axis_point, center)
+    major_axis_point = freecad.Vector(tuple(ellipse.major_axis_max) + (0,))
+    minor_axis_point = freecad.Vector(tuple(ellipse.minor_axis_max) + (0,))
+    center = freecad.Vector(tuple(ellipse.center) + (0,))
+    return freecad_part.Ellipse(major_axis_point, minor_axis_point, center)
 
 @pancad_to_freecad_geometry.register
 def _circle(circle: Circle) -> FreeCADCircle:
-    center = App.Vector(tuple(circle.center) + (0,))
-    normal = App.Vector((0, 0, 1))
-    return Part.Circle(center, normal, circle.radius)
+    center = freecad.Vector(tuple(circle.center) + (0,))
+    normal = freecad.Vector((0, 0, 1))
+    return freecad_part.Circle(center, normal, circle.radius)
 
 @pancad_to_freecad_geometry.register
 def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
-    center = App.Vector(tuple(arc.center) + (0,))
-    normal = App.Vector((0, 0, 1))
-    circle =  Part.Circle(center, normal, arc.radius)
+    center = freecad.Vector(tuple(arc.center) + (0,))
+    normal = freecad.Vector((0, 0, 1))
+    circle =  freecad_part.Circle(center, normal, arc.radius)
 
     if arc.is_clockwise:
         # All FreeCAD circular arcs are drawn counterclockwise
@@ -607,7 +597,7 @@ def _circular_arc(arc: CircularArc) -> FreeCADCircularArc:
     if end < start:
         # FreeCAD forces the end angle to be larger than the start angle
         end += 2 * pi
-    return Part.ArcOfCircle(circle, start, end)
+    return freecad_part.ArcOfCircle(circle, start, end)
 
 ################################################################################
 # pancad ---> FreeCAD Constraints
@@ -692,12 +682,12 @@ def new_constraint_from_pancad(constraint: AbstractConstraint,
     )
     pc_value = getattr(constraint, "value", None)
     if pc_value is None:
-        return Sketcher.Constraint(type_.human_name, *indicies)
+        return freecad_sketcher.Constraint(type_.human_name, *indicies)
     # Add value if available from pancad constraint for distance, etc.
     unit_map = {"degrees": "deg"}
     unit = unit_map.setdefault(constraint.unit, constraint.unit)
-    return Sketcher.Constraint(type_.human_name, *indicies,
-                               App.Units.Quantity(f"{pc_value} {unit}"))
+    return freecad_sketcher.Constraint(type_.human_name, *indicies,
+                                       freecad.Units.Quantity(f"{pc_value} {unit}"))
 
 def _get_freecad_constraint_indices(
             input_type: Literal["quadrant_order", "original_order",

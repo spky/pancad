@@ -8,19 +8,8 @@ from dataclasses import astuple
 
 import pytest
 
-from pancad.cad.freecad._bootstrap import get_app_dir
-from pancad.cad.freecad import api_utils
-from pancad.cad.freecad import xml_utils
-
-for _ in range(0, 2):
-    try:
-        import FreeCAD as freecad
-        import Part
-    except ImportError:
-        import sys
-        sys.path.append(str(get_app_dir()))
-        continue
-    break
+from pancad.cad.freecad import api_utils, xml_utils
+from pancad.cad.freecad.api import freecad, freecad_part
 
 SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
 
@@ -79,7 +68,7 @@ def test_get_geometry_sketch_id(sketches):
                                                         sketch)
             try:
                 test_id = geometry.getExtensionOfType(ext_type).Id
-            except Part.OCCError:
+            except freecad_part.OCCError:
                 if geometry.TypeId == "Part::GeomPoint":
                     # Some elements like GeomPoint can't have their Id checked
                     # because FreeCAD doesn't store its id correctly in the

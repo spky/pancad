@@ -9,6 +9,8 @@ import argparse
 from enum import StrEnum, auto
 import json
 
+# Repeated logic from pancad.cad.freecad.api here so that this module can be
+# executed without direct access to pancad by the FreeCAD API.
 for _ in range(0, 2):
     try:
         import FreeCAD
