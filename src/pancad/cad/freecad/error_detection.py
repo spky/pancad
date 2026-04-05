@@ -9,17 +9,14 @@ import argparse
 from enum import StrEnum, auto
 import json
 
-# Repeated logic from pancad.cad.freecad.api here so that this module can be
-# executed without direct access to pancad by the FreeCAD API.
-for _ in range(0, 2):
-    try:
-        import FreeCAD
-    except ImportError:
-        import sys
-        from pancad.cad.freecad._bootstrap import get_app_dir
-        sys.path.append(str(get_app_dir()))
-        continue
-    break
+try:
+    import FreeCAD as freecad
+except ImportError as exc:
+    raise RuntimeError(
+        "error_detection.py can only be run by the FreeCAD api Python"
+        " executable with the api already available. Running it outside of that"
+        " context is not supported."
+    ) from exc
 
 class ErrorCategory(StrEnum):
     """An enumeration used to define FreeCAD error categories for model validation.
@@ -49,7 +46,7 @@ def _parse_args() -> argparse.Namespace:
                         help="Filepath of the FreeCAD file to check")
     return parser.parse_args()
 
-def _key(object_: FreeCAD.DocumentObject) -> str:
+def _key(object_: freecad.DocumentObject) -> str:
     """Returns the report key for the FreeCAD object/"""
     return f"{object_.ID}: {object_.Label}"
 
@@ -59,7 +56,7 @@ def main():
     temporary json file so the primary pancad process can read it.
     """
     args = _parse_args()
-    document = FreeCAD.open(args.filepath)
+    document = freecad.open(args.filepath)
     # Recompute the FreeCAD document before checking
     document.recompute()
     data = []
