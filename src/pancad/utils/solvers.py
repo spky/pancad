@@ -4,18 +4,30 @@ they would be cyclically dependent.
 """
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING
-from functools import singledispatch
+from functools import singledispatch, singledispatchmethod
 
 import numpy as np
 
-from pancad.abstract import AbstractGeometry
+from pancad.abstract import AbstractGeometry, AbstractConstraint
+from pancad.constants import (ConstraintVariableName as CVN,
+                              ConstraintEquationName as CEN)
+
+from pancad.constraints.state_constraint import Coincident
 from pancad.geometry.line_segment import LineSegment
-from pancad.utils.pancad_types import FitBox2D
+from pancad.geometry.line import Axis
+from pancad.geometry.point import Point
+from pancad.utils.pancad_types import FitBox2D, SpaceVector
 
 if TYPE_CHECKING:
     from numbers import Real
     from typing import Literal
+    from uuid import UUID
+
+    import numpy.typing as npt
+
+    from pancad.abstract import AbstractGeometrySystem, PancadThing
 
 def get_length(segment: LineSegment,
                along: Literal["x", "y", "z"]=None) -> float:
@@ -124,3 +136,190 @@ def _line_segment(geometry: LineSegment) -> FitBox2D:
     max_coords = (max(geometry.start.x, geometry.end.x),
                   max(geometry.start.y, geometry.end.y))
     return FitBox2D(min_coords, max_coords)
+
+################################################################################
+# Constraint Residuals
+################################################################################
+
+@dataclasses.dataclass
+class ConstraintVariable:
+    """A dataclass for tracking the names of variables used by constraint functions.
+
+    :param source: The unique id of the source.
+    :param name: The ConstraintVariableName that defines what part of the source
+        element the variable is referring to.
+    :param initial: The initial value of the variable.
+    :param start: The start index for the variable.
+    """
+    source: str | UUID
+    name: CVN
+    initial: Real | SpaceVector
+    start: int
+    delim: str = dataclasses.field(repr=False)
+
+    @property
+    def key(self) -> str:
+        """The identifying unique key of the constraint variable."""
+        return self.delim.join(map(str, [self.source, self.name]))
+
+    def get_slicer(self) -> tuple[int, int]:
+        """Returns first variable index and last index + 1 of the variable vector
+        representing this value.
+        """
+        if isinstance(self.initial, tuple):
+            return (self.start, self.start + len(self.initial))
+        return (self.start, self.start + 1)
+
+@dataclasses.dataclass
+class ConstraintFunction:
+    """A dataclass for tracking imposed and internal constraint function names
+    and parameter names.
+    """
+    source: str
+    name: CEN
+    params: list[ConstraintVariable] = dataclasses.field(repr=False)
+    delim: str = dataclasses.field(repr=False)
+
+    @property
+    def key(self) -> str:
+        """The identifying unique key of the constraint function."""
+        return self.delim.join(map(str, [self.source, self.name]))
+
+def line_ref_point_res(direction: npt.NDArray, point: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close an axis or line's reference point is to
+    being the closest to origin point.
+    """
+    return np.array([np.dot(direction, point)])
+
+def unit_vector_res(vector: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close a vector is to being a unit vector."""
+    return np.array([np.sum(np.array(vector)**2) - 1])
+
+def point_line_coincident_res(direction: npt.NDArray, ref_point: np.NDArray,
+                              point: npt.NDArray, t_param: Real) -> npt.NDArray:
+    """Returns the residual for how close a point is to being coincident on an
+    axis or line.
+    """
+    return np.array(direction) * t_param + np.array(ref_point) - np.array(point)
+
+class SystemSolver:
+    """A class that solves a geometry system's internal and imposed constraints
+    and updates its geometry to meet them.
+    """
+    _delim = "_"
+    _func_map = {
+        CEN.UNIT_VECTOR: unit_vector_res,
+        CEN.LINE_REF_POINT: line_ref_point_res,
+        CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
+    }
+
+    def __init__(self, system: AbstractGeometrySystem) -> None:
+        self._system = system
+        self._functions = []
+        self._variables = []
+        self._x0 = []
+        for c in self._system.constraints:
+            self._add_constraint(c)
+
+    def fun(self, x: npt.NDArray) -> npt.NDArray:
+        """Returns the residuals of the system for a given vector value."""
+        results = []
+        for func in self._functions:
+            results.append(self._calc_func(func, x))
+        return np.concatenate(results)
+
+    def _calc_func(self, func: ConstraintFunction, x: npt.NDArray) -> Real:
+        params = [x[slice(*p.get_slicer())] for p in func.params]
+        return self._func_map[func.name](*params)
+
+    def _get_var(self, source: AbstractGeometry | AbstractConstraint, name: CVN
+                 ) -> ConstraintVariable:
+        source_vars = [v for v in self._variables if v.source == source.uid]
+        try:
+            return next(v for v in source_vars if v.name == name)
+        except StopIteration as exc:
+            msg = f"Could not find a {name} variable for {source}"
+            raise LookupError(msg) from exc
+
+    @singledispatchmethod
+    def _add_constraint(self, constraint: AbstractConstraint) -> None:
+        """Adds a constraint to the residuals list."""
+        msg = f"Solving the constraint type of {constraint} has not yet been implemented"
+        raise NotImplementedError(msg)
+
+    @_add_constraint.register
+    def _coincident(self, constraint: Coincident) -> None:
+        for geo in constraint.get_parents():
+            # Ensure the parent geometry constraints have been added.
+            if not any(v.source == geo.uid for v in self._variables):
+                self._add_geometry_variables(geo)
+                self._add_geometry_funcs(geo)
+        geo_types = {type(g) for g in constraint.get_geometry()}
+
+        # Add coincident constraint equation based on geometry combo.
+        if geo_types == {Axis, Point}:
+            # # Point and Axis
+            axis = next(g for g in constraint.get_geometry() if isinstance(g, Axis))
+            point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
+            t_param = ConstraintVariable(constraint.uid, CVN.PARAMETER, 0,
+                                         len(self._x0), self._delim)
+            self._variables.append(t_param)
+            self._x0.append(t_param.initial)
+            params = [self._get_var(axis, CVN.DIRECTION),
+                      self._get_var(axis, CVN.REF_POINT),
+                      self._get_var(point, CVN.LOCATION),
+                      t_param]
+            func = ConstraintFunction(constraint.uid, CEN.POINT_LINE_COINCIDENT,
+                                      params, self._delim)
+            self._functions.append(func)
+        elif geo_types == {Point}:
+            # Both are points
+            raise NotImplementedError("Point to point not completed yet")
+        else:
+            msg = (f"Coincident combo {constraint.get_parents()} is not"
+                   " supported and/or may be invalid.")
+            raise NotImplementedError(msg)
+
+    @singledispatchmethod
+    def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:
+        """Adds a geometry's internal constraints to the function list."""
+        if not isinstance(geometry, Point):
+            msg = (f"Solving the internal geometry constraints of {geometry} has not"
+                   " yet been implemented")
+            raise NotImplementedError(msg)
+
+    @_add_geometry_funcs.register
+    def _axis(self, geometry: Axis) -> None:
+        geo_vars = [v for v in self._variables if v.source == geometry.uid]
+        func_param_map = {CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
+                          CEN.UNIT_VECTOR: [CVN.DIRECTION]}
+        for name, params in func_param_map.items():
+            func = ConstraintFunction(geometry.uid,
+                                      name,
+                                      [v for v in geo_vars if v.name in params],
+                                      self._delim)
+            self._functions.append(func)
+
+    @singledispatchmethod
+    def _add_geometry_variables(self, geometry: AbstractGeometry) -> None:
+        """Adds a geometry's internal variables to the variable list."""
+        msg = (f"Solving the internal geometry constraints of {geometry} has not"
+               " yet been implemented")
+        raise NotImplementedError(msg)
+
+    @_add_geometry_variables.register
+    def _axis_vars(self, geometry: Axis) -> None:
+        values = {CVN.DIRECTION: geometry.direction,
+                  CVN.REF_POINT: geometry.reference_point.cartesian}
+        for name, vector in values.items():
+            variable = ConstraintVariable(geometry.uid, name, vector,
+                                          len(self._x0), self._delim)
+            self._x0.extend(variable.initial)
+            self._variables.append(variable)
+
+    @_add_geometry_variables.register
+    def _point_vars(self, geometry: Point) -> None:
+        variable = ConstraintVariable(geometry.uid, CVN.LOCATION, geometry.cartesian,
+                                      len(self._x0), self._delim)
+        self._x0.extend(variable.initial)
+        self._variables.append(variable)

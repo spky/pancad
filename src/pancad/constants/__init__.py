@@ -6,3 +6,4 @@ from ._software_name import SoftwareName
 from .constraint_reference import ConstraintReference
 from .feature_type import FeatureType
 from .sketch_constraint import SketchConstraint
+from ._solver_constants import ConstraintVariableName, ConstraintEquationName
