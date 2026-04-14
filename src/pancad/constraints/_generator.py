@@ -9,7 +9,7 @@ from pancad.constants import SketchConstraint
 from pancad.constraints.distance import (
     Angle, Diameter, Distance, HorizontalDistance, Radius, VerticalDistance
 )
-from pancad.constraints.snapto import Horizontal, Vertical
+from pancad.constraints.snapto import Horizontal, Vertical, Fixed
 from pancad.constraints.state_constraint import (
     Coincident, Equal, Parallel, Perpendicular, AlignAxes
 )
@@ -35,6 +35,7 @@ SKETCH_CONSTRAINT_TO_CLASS = {
     SketchConstraint.DISTANCE_HORIZONTAL: HorizontalDistance,
     SketchConstraint.DISTANCE_VERTICAL: VerticalDistance,
     SketchConstraint.EQUAL: Equal,
+    SketchConstraint.FIXED: Fixed,
     SketchConstraint.PARALLEL: Parallel,
     SketchConstraint.PERPENDICULAR: Perpendicular,
     SketchConstraint.VERTICAL: Vertical,
@@ -43,7 +44,7 @@ SKETCH_CONSTRAINT_TO_CLASS = {
 @overload
 def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,
                     uid: UUID | str=None
-                    ) -> AbstractStateConstraint | AbstractSnapTo: ...
+                    ) -> AbstractStateConstraint | AbstractSnapTo | Fixed: ...
 
 @overload
 def make_constraint(type_: SketchConstraint, *geometry: AbstractGeometry,

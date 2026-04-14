@@ -43,6 +43,11 @@ class SketchConstraint(StrEnum):
     """Refers to constraints holding contextual values of two geometry elements
     to the same value. Example: 2 line segments to the same length.
     """
+    FIXED = auto()
+    """Refers to constraints that lock a geometry into its position, orientation,
+    and size. Example: A point can be fixed to its current location and an Axis
+    can be fixed to its current location and current direction.
+    """
     HORIZONTAL = auto()
     """Refers to constraints holding a single geometry element (or multiple
     geometry elements relative to each) other parallel to a 2D coordinate

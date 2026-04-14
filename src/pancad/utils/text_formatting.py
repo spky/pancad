@@ -39,7 +39,7 @@ def get_table_string(data: list[dict] | dict,
 
         lengths = list(map(lambda s: len(str(s)), rows))
         column_width = max(column_width, *lengths)
-        rows = [f"{{{str(s)}: <{column_width}}}" for s in rows]
+        rows = [f"{str(s):<{column_width}}" for s in rows]
         if len(string_rows) == 0:
             string_rows = rows
         else:
