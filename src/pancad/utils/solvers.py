@@ -193,6 +193,7 @@ class ConstraintVariable:
     initial: Real | SpaceVector
     start: int
     delim: str = dataclasses.field(repr=False)
+    element: AbstractGeometry | AbstractConstraint
 
     @property
     def key(self) -> str:
@@ -209,8 +210,8 @@ class ConstraintVariable:
 
 @dataclasses.dataclass
 class ConstraintEquation:
-    """A dataclass for tracking imposed and internal constraint function names
-    and parameter names.
+    """A dataclass for tracking imposed and internal constraint equation function
+    names and parameter names.
     """
     source: str
     name: CEN
@@ -260,25 +261,39 @@ class SystemSolver:
     def solve(self, method: str="lm", **kwargs) -> npt.NDArray:
         """Returns the roots of the system's functions as a 1D numpy array.
 
-        :param method: The type of solver that should be used. Defaults to 
+        :param method: The type of solver that should be used. Defaults to
             Levenberg-Marquardt (lm). See scipy.optimize.root for other options.
         """
         return find_root(self.fun, self._x0, method=method, **kwargs)
 
     def label_x(self, x: npt.NDArray) -> str:
         """Returns a string table with each vector variable value labeled and indexed."""
-        column_map = {"#": "#", "Value": "value", "Name": "name", "Source": "source"}
+        column_map = {
+            "#": "#",
+            "Value": "value",
+            "Name": "name",
+            "Source": "source",
+            "Element": "element",
+        }
         data = []
         index = 0
         i = 0
         for var in self._variables:
             for i, value in enumerate(x[slice(*var.get_slicer())], index):
-                data.append({"#": i, "value": value, "name": var.name, "source": var.source})
+                data.append(
+                    {
+                        "#": i,
+                        "value": value,
+                        "name": var.name,
+                        "source": var.source,
+                        "element": var.element,
+                    }
+                )
             index = i + 1
         return get_table_string(data, column_map)
 
     def label_fun(self, results: npt.NDArray) -> str:
-        """Returns a string table with each vector variable value labeled and 
+        """Returns a string table with each vector variable value labeled and
         indexed assuming the vector is in the same order as the equation function
         output.
         """
@@ -346,7 +361,8 @@ class SystemSolver:
             axis = next(g for g in constraint.get_geometry() if isinstance(g, Axis))
             point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
             t_param = ConstraintVariable(constraint.uid, CVN.PARAMETER, 0,
-                                         len(self._x0), self._delim)
+                                         len(self._x0), self._delim,
+                                         constraint)
             self._variables.append(t_param)
             self._x0.append(t_param.initial)
             params = [
@@ -416,14 +432,14 @@ class SystemSolver:
         }
         for name, vector in values.items():
             variable = ConstraintVariable(geometry.uid, name, vector,
-                                          len(self._x0), self._delim)
+                                          len(self._x0), self._delim, geometry)
             self._x0.extend(variable.initial)
             self._variables.append(variable)
 
     @_add_geometry_variables.register
     def _point_vars(self, geometry: Point) -> None:
         variable = ConstraintVariable(geometry.uid, CVN.LOCATION, geometry.cartesian,
-                                      len(self._x0), self._delim)
+                                      len(self._x0), self._delim, geometry)
         self._x0.extend(variable.initial)
         self._variables.append(variable)
 
