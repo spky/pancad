@@ -1,4 +1,4 @@
-"""A module providing an enumeration for the constraint types available to 2D 
+"""A module providing an enumeration for the constraint types available to 2D
 sketches"""
 
 from enum import StrEnum, auto
@@ -6,7 +6,12 @@ from enum import StrEnum, auto
 class SketchConstraint(StrEnum):
     """An enumeration used to refer to a type of sketch constraint."""
     ALIGN_AXES = auto()
-    """Refers to constraints aligning all axes between two coordinate systems.
+    """Refers to constraints aligning all axes between two coordinate systems or
+    aligning the axis directions of two Axis elements.
+    """
+    ANTI_ALIGN_AXES = auto()
+    """Refers to constraints to force two Axis elements to share anti-parallel
+    axis directions.
     """
     ANGLE = auto()
     """Refers to constraints on the angle between two geometry elements."""
@@ -16,15 +21,15 @@ class SketchConstraint(StrEnum):
     COLLINEAR = auto()
     """Refers to constraints holding geometry elements to the same line."""
     DISTANCE = auto()
-    """Refers to constraints holding geometry elements to a set distance from 
+    """Refers to constraints holding geometry elements to a set distance from
     each other at an arbitrary orientation.
     """
     DISTANCE_HORIZONTAL = auto()
-    """Refers to constraints holding geometry elements to a set horizontal 
+    """Refers to constraints holding geometry elements to a set horizontal
     distance from each other.
     """
     DISTANCE_VERTICAL = auto()
-    """Refers to constraints holding geometry elements to a set vertical 
+    """Refers to constraints holding geometry elements to a set vertical
     distance from each other.
     """
     DISTANCE_RADIUS = auto()
@@ -35,32 +40,37 @@ class SketchConstraint(StrEnum):
     value.
     """
     EQUAL = auto()
-    """Refers to constraints holding contextual values of two geometry elements 
+    """Refers to constraints holding contextual values of two geometry elements
     to the same value. Example: 2 line segments to the same length.
     """
+    FIXED = auto()
+    """Refers to constraints that lock a geometry into its position, orientation,
+    and size. Example: A point can be fixed to its current location and an Axis
+    can be fixed to its current location and current direction.
+    """
     HORIZONTAL = auto()
-    """Refers to constraints holding a single geometry element (or multiple 
-    geometry elements relative to each) other parallel to a 2D coordinate 
+    """Refers to constraints holding a single geometry element (or multiple
+    geometry elements relative to each) other parallel to a 2D coordinate
     system's x axis.
     """
     PARALLEL = auto()
-    """Refers to constraints holding two geometry elements to be side by side 
+    """Refers to constraints holding two geometry elements to be side by side
     and have the same distance continuously between them.
     """
     PERPENDICULAR = auto()
-    """Refers to constraints holding two geometry elements to be angled 90 
+    """Refers to constraints holding two geometry elements to be angled 90
     degrees relative to each other.
     """
     SYMMETRIC = auto()
-    """Refers to constraints holding two geometry elements to the same position 
+    """Refers to constraints holding two geometry elements to the same position
     and orientation on opposite sides of a third geometry element.
     """
     TANGENT = auto()
-    """Refers to constraints holding a geometry element to touch a curve at a 
+    """Refers to constraints holding a geometry element to touch a curve at a
     point while not also crossing the curve at that point.
     """
     VERTICAL = auto()
-    """Refers to constraints holding a single geometry element (or multiple 
-    geometry elements relative to each other) parallel to a 2D coordinate 
+    """Refers to constraints holding a single geometry element (or multiple
+    geometry elements relative to each other) parallel to a 2D coordinate
     system's y axis.
     """

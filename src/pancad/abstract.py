@@ -235,6 +235,11 @@ class AbstractGeometrySystem(AbstractGeometry):
         the system.
         """
 
+    @property
+    @abstractmethod
+    def constraints(self) -> Sequence[AbstractConstraint]:
+        """The constraints on the elements inside the system's context."""
+
 class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint
     Elements.

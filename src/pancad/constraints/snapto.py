@@ -15,6 +15,21 @@ if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
+class Fixed(AbstractConstraint):
+    """A class of constraint that can be applied to a single element of geometry
+    to lock down its location, orientation, and any size parameters.
+    """
+
+    type_name = SketchConstraint.FIXED
+
+    def __init__(self, *geometry: AbstractGeometry,
+                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
+        self.uid = uid
+        super().__init__(system)
+        if len(geometry) != 1:
+            raise ValueError(f"Expected 1 geometry, got: {geometry}")
+        self._geometry = geometry
+
 class AbstractSnapTo(AbstractConstraint):
     """An abstract class of constraints that can be applied to a set of **one 
     or two** geometries without any further definition.
