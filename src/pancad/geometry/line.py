@@ -324,7 +324,7 @@ class Line(AbstractGeometry):
         return (*self.reference_point.cartesian, *self.direction)
 
     def move_to_point(self,
-                      point: Point,
+                      point: Point | SpaceVector,
                       phi: Real=None,
                       theta: Real=None) -> Self:
         """Moves the line to go through a point and changes the line's
@@ -338,6 +338,8 @@ class Line(AbstractGeometry):
         :returns: The line with an updated reference_point that goes through the
             point.
         """
+        if not isinstance(point, Point):
+            point = Point(point)
         if theta is not None and len(self) == 2:
             raise ValueError("Theta can only be set on 3D Lines")
         if phi is not None or theta is not None:
@@ -523,8 +525,6 @@ class Axis(AbstractGeometry):
             leaving the direction constant.
         :returns: The updated Axis to enable chaining.
         """
-        if not isinstance(point, Point):
-            point = Point(point)
         self._line.move_to_point(point)
         if direction is not None:
             self.direction = direction
