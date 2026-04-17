@@ -13,16 +13,15 @@ from functools import singledispatch, singledispatchmethod
 import numpy as np
 from scipy.optimize import root as find_root
 
-from pancad.abstract import AbstractGeometry, AbstractConstraint
-from pancad.constants import (ConstraintVariableName as CVN,
-                              ConstraintEquationName as CEN)
+from pancad.abstract import AbstractGeometry
+from pancad.constants import ConstraintVariableName as CVN, ConstraintEquationName as CEN
 
 from pancad.constraints.state_constraint import Coincident
 from pancad.constraints.snapto import Fixed
 from pancad.geometry.line_segment import LineSegment
-from pancad.geometry.line import Axis
+from pancad.geometry.line import Axis, Line
 from pancad.geometry.point import Point
-from pancad.utils.pancad_types import FitBox2D, SpaceVector
+from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
@@ -32,7 +31,8 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
-    from pancad.abstract import AbstractGeometrySystem, PancadThing
+    from pancad.abstract import AbstractGeometrySystem, AbstractConstraint, PancadThing
+    from pancad.utils.pancad_types import SpaceVector
 
 def get_length(segment: LineSegment,
                along: Literal["x", "y", "z"]=None) -> float:
@@ -266,6 +266,11 @@ class SystemSolver:
         """
         return find_root(self.fun, self._x0, method=method, **kwargs)
 
+    def update(self, new_x: npt.NDArray) -> None:
+        """Updates all the variables in the system to a new vector value."""
+        for v in self._variables:
+            update_variable(v, new_x)
+
     def label_x(self, x: npt.NDArray) -> str:
         """Returns a string table with each vector variable value labeled and indexed."""
         column_map = {
@@ -482,3 +487,28 @@ class SystemSolver:
         strings.append("Initial Values".center(max(map(len, init_vals.splitlines()))))
         strings.append(init_vals)
         return "\n".join(strings)
+
+def update_variable(var: ConstraintVariable, new_x: npt.NDArray) -> None:
+    """Updates the source of a variable using a new system vector value.
+
+    :param var: A variable used in a constraint. Can represent a geometry or constraint property.
+    :param new_x: The new vector value to update the variable with. The vector must be the
+        same length as the system's initial vector.
+    """
+    updaters = {
+        CVN.DIRECTION: _update_direction,
+        CVN.LOCATION: _update_location,
+        CVN.REF_POINT: _update_ref_point,
+        CVN.PARAMETER: lambda element, x: None, # No update needed, ignore.
+    }
+    new_value = new_x[slice(*var.get_slicer())]
+    updaters[var.name](var.element, new_value)
+
+def _update_location(geometry: Point, value: npt.NDArray) -> None:
+    geometry.cartesian = value
+
+def _update_direction(geometry: Axis | Line,  value: npt.NDArray) -> None:
+    geometry.direction = value
+
+def _update_ref_point(geometry: Axis | Line, value: npt.NDArray) -> None:
+    geometry.move_to_point(value)
