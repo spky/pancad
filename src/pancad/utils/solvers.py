@@ -20,6 +20,7 @@ from pancad.constraints.state_constraint import Coincident
 from pancad.constraints.snapto import Fixed
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.line import Axis, Line
+from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
@@ -153,6 +154,15 @@ def line_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     point, direction = [x[slice(*p.get_slicer())] for p in eq.params]
     return np.array([np.dot(direction, point)])
 
+def plane_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close a plane's reference point is to being the
+    closest to the origin point.
+    """
+    point, normal = [x[slice(*p.get_slicer())] for p in eq.params]
+    return np.array(
+        [np.linalg.norm(point) * np.linalg.norm(normal) - np.abs(np.dot(point, normal))]
+    )
+
 def unit_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     """Returns the residual for how close a vector is to being a unit vector."""
     vector = x[slice(*eq.params[0].get_slicer())]
@@ -174,6 +184,7 @@ def fixed_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
 RESIDUAL_FUNCS = {
     CEN.UNIT_VECTOR: unit_vector_res,
     CEN.LINE_REF_POINT: line_ref_point_res,
+    CEN.PLANE_REF_POINT: plane_ref_point_res,
     CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
     CEN.FIXED_POINT: fixed_point_res,
 }
@@ -422,6 +433,21 @@ class SystemSolver:
                                       self._x0)
             self._functions.append(func)
 
+    @_add_geometry_funcs.register
+    def _plane(self, geometry: Plane) -> None:
+        geo_vars = [v for v in self._variables if v.source == geometry.uid]
+        func_param_map = {
+            CEN.PLANE_REF_POINT: [CVN.NORMAL, CVN.REF_POINT],
+            CEN.UNIT_VECTOR: [CVN.NORMAL]
+        }
+        for name, params in func_param_map.items():
+            func = ConstraintEquation(geometry.uid,
+                                      name,
+                                      [v for v in geo_vars if v.name in params],
+                                      self._delim,
+                                      self._x0)
+            self._functions.append(func)
+
     @singledispatchmethod
     def _add_geometry_variables(self, geometry: AbstractGeometry) -> None:
         """Adds a geometry's internal variables to the variable list."""
@@ -447,6 +473,18 @@ class SystemSolver:
                                       len(self._x0), self._delim, geometry)
         self._x0.extend(variable.initial)
         self._variables.append(variable)
+
+    @_add_geometry_variables.register
+    def _plane_vars(self, geometry: Plane) -> None:
+        values = {
+            CVN.NORMAL: geometry.normal,
+            CVN.REF_POINT: geometry.reference_point.cartesian,
+        }
+        for name, vector in values.items():
+            variable = ConstraintVariable(geometry.uid, name, vector,
+                                          len(self._x0), self._delim, geometry)
+            self._x0.extend(variable.initial)
+            self._variables.append(variable)
 
     @staticmethod
     def _var_data(var: ConstraintVariable) -> dict[str, str | SpaceVector | Real]:
@@ -510,5 +548,5 @@ def _update_location(geometry: Point, value: npt.NDArray) -> None:
 def _update_direction(geometry: Axis | Line,  value: npt.NDArray) -> None:
     geometry.direction = value
 
-def _update_ref_point(geometry: Axis | Line, value: npt.NDArray) -> None:
+def _update_ref_point(geometry: Axis | Line | Plane, value: npt.NDArray) -> None:
     geometry.move_to_point(value)

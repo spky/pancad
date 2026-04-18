@@ -35,3 +35,7 @@ class ConstraintEquationName(StrEnum):
     """
     UNIT_VECTOR = auto()
     """This vector must be a unit vector."""
+    PLANE_REF_POINT = auto()
+    """Plane Reference Point position vector must be aligned or anti-aligned
+    with the plane's normal vector to be the point closest to the origin.
+    """
