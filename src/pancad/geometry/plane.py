@@ -30,8 +30,8 @@ class Plane(AbstractGeometry):
         if not isinstance(point, Point):
             point = Point(point)
         self._axis = Axis(point, normal)
-        self._point_closest_to_origin = Plane._closest_to_origin(point,
-                                                                 self.normal)
+        self._point_closest_to_origin = Plane._closest_to_origin(point, self.normal)
+        self._axis.move_to_point(self._point_closest_to_origin)
         super().__init__({ConstraintReference.CORE: self})
 
     # Getters #

@@ -27,6 +27,8 @@ class ConstraintEquationName(StrEnum):
     """Point to Point coincident."""
     POINT_LINE_COINCIDENT = auto()
     """Point to Axis or Axis to Point coincident."""
+    POINT_PLANE_COINCIDENT = auto()
+    """Point to Plane or Plane to Point coincident."""
     FIXED_POINT = auto()
     """A point that must be placed at a constant location."""
     LINE_REF_POINT = auto()
@@ -35,6 +37,8 @@ class ConstraintEquationName(StrEnum):
     """
     UNIT_VECTOR = auto()
     """This vector must be a unit vector."""
+    CODIRECTIONAL = auto()
+    """These two vectors must be codirectional."""
     PLANE_REF_POINT = auto()
     """Plane Reference Point position vector must be aligned or anti-aligned
     with the plane's normal vector to be the point closest to the origin.
