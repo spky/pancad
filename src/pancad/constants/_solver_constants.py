@@ -29,8 +29,8 @@ class ConstraintEquationName(StrEnum):
     """Point to Axis or Axis to Point coincident."""
     POINT_PLANE_COINCIDENT = auto()
     """Point to Plane or Plane to Point coincident."""
-    FIXED_POINT = auto()
-    """A point that must be placed at a constant location."""
+    FIXED_VECTOR = auto()
+    """A vector that must be held in a constant direction."""
     LINE_REF_POINT = auto()
     """Axis/Line Reference Point position vector must be perpendicular to the
     Axis/Line direction to be the point closest to the origin.
