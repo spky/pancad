@@ -20,6 +20,7 @@ from pancad.constraints.state_constraint import Coincident
 from pancad.constraints.snapto import Fixed
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.line import Axis, Line
+from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
@@ -153,6 +154,15 @@ def line_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     point, direction = [x[slice(*p.get_slicer())] for p in eq.params]
     return np.array([np.dot(direction, point)])
 
+def plane_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close a plane's reference point is to being the
+    closest to the origin point.
+    """
+    point, normal = [x[slice(*p.get_slicer())] for p in eq.params]
+    return np.array(
+        [np.linalg.norm(point) * np.linalg.norm(normal) - np.abs(np.dot(point, normal))]
+    )
+
 def unit_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     """Returns the residual for how close a vector is to being a unit vector."""
     vector = x[slice(*eq.params[0].get_slicer())]
@@ -166,6 +176,17 @@ def point_line_coincident_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDA
     t_param = t_param[0]
     return np.array(direction) * t_param + np.array(ref_point) - np.array(point)
 
+def point_plane_coincident_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close a point is to being coincident on a Plane."""
+    ref_point, normal, point = [x[slice(*p.get_slicer())] for p in eq.params]
+    return np.array([np.dot(normal, np.array(point) - np.array(ref_point))])
+
+def codirectional_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close two vectors are to being codirectional."""
+    vector_1, vector_2 = [x[slice(*p.get_slicer())] for p in eq.params]
+    dot_product = np.dot(vector_1, vector_2)
+    return np.array([dot_product - abs(dot_product)])
+
 def fixed_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     """Returns the residual for how close a fixed point is to its required location."""
     position_slice = slice(*eq.params[0].get_slicer())
@@ -174,8 +195,11 @@ def fixed_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
 RESIDUAL_FUNCS = {
     CEN.UNIT_VECTOR: unit_vector_res,
     CEN.LINE_REF_POINT: line_ref_point_res,
+    CEN.PLANE_REF_POINT: plane_ref_point_res,
     CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
+    CEN.POINT_PLANE_COINCIDENT: point_plane_coincident_res,
     CEN.FIXED_POINT: fixed_point_res,
+    CEN.CODIRECTIONAL: codirectional_res,
 }
 
 @dataclasses.dataclass
@@ -217,7 +241,7 @@ class ConstraintEquation:
     name: CEN
     params: list[ConstraintVariable] = dataclasses.field(repr=False)
     delim: str = dataclasses.field(repr=False)
-    x0: list[Real]
+    x0: list[Real] = dataclasses.field(repr=False)
 
     @property
     def key(self) -> str:
@@ -265,6 +289,10 @@ class SystemSolver:
             Levenberg-Marquardt (lm). See scipy.optimize.root for other options.
         """
         return find_root(self.fun, self._x0, method=method, **kwargs)
+
+    def get_initial(self) -> list[Real]:
+        """Returns the initial input vector to feed to the non-linear solver."""
+        return self._x0
 
     def update(self, new_x: npt.NDArray) -> None:
         """Updates all the variables in the system to a new vector value."""
@@ -378,6 +406,16 @@ class SystemSolver:
             ]
             func = ConstraintEquation(constraint.uid, CEN.POINT_LINE_COINCIDENT,
                                       params, self._delim, self._x0)
+        elif geo_types == {Plane, Point}:
+            plane = next(g for g in constraint.get_geometry() if isinstance(g, Plane))
+            point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
+            params = [
+                self._get_var(plane, CVN.REF_POINT),
+                self._get_var(plane, CVN.NORMAL),
+                self._get_var(point, CVN.LOCATION),
+            ]
+            func = ConstraintEquation(constraint.uid, CEN.POINT_PLANE_COINCIDENT,
+                                      params, self._delim, self._x0)
         elif geo_types == {Point}:
             # Both are points
             raise NotImplementedError("Point to point not completed yet")
@@ -422,6 +460,22 @@ class SystemSolver:
                                       self._x0)
             self._functions.append(func)
 
+    @_add_geometry_funcs.register
+    def _plane(self, geometry: Plane) -> None:
+        geo_vars = [v for v in self._variables if v.source == geometry.uid]
+        func_param_map = {
+            CEN.PLANE_REF_POINT: [CVN.REF_POINT, CVN.NORMAL],
+            CEN.UNIT_VECTOR: [CVN.NORMAL],
+            CEN.CODIRECTIONAL: [CVN.REF_POINT, CVN.NORMAL],
+        }
+        for name, params in func_param_map.items():
+            func = ConstraintEquation(geometry.uid,
+                                      name,
+                                      [v for v in geo_vars if v.name in params],
+                                      self._delim,
+                                      self._x0)
+            self._functions.append(func)
+
     @singledispatchmethod
     def _add_geometry_variables(self, geometry: AbstractGeometry) -> None:
         """Adds a geometry's internal variables to the variable list."""
@@ -447,6 +501,18 @@ class SystemSolver:
                                       len(self._x0), self._delim, geometry)
         self._x0.extend(variable.initial)
         self._variables.append(variable)
+
+    @_add_geometry_variables.register
+    def _plane_vars(self, geometry: Plane) -> None:
+        values = {
+            CVN.NORMAL: geometry.normal,
+            CVN.REF_POINT: geometry.reference_point.cartesian,
+        }
+        for name, vector in values.items():
+            variable = ConstraintVariable(geometry.uid, name, vector,
+                                          len(self._x0), self._delim, geometry)
+            self._x0.extend(variable.initial)
+            self._variables.append(variable)
 
     @staticmethod
     def _var_data(var: ConstraintVariable) -> dict[str, str | SpaceVector | Real]:
@@ -499,6 +565,7 @@ def update_variable(var: ConstraintVariable, new_x: npt.NDArray) -> None:
         CVN.DIRECTION: _update_direction,
         CVN.LOCATION: _update_location,
         CVN.REF_POINT: _update_ref_point,
+        CVN.NORMAL: _update_normal,
         CVN.PARAMETER: lambda element, x: None, # No update needed, ignore.
     }
     new_value = new_x[slice(*var.get_slicer())]
@@ -510,5 +577,8 @@ def _update_location(geometry: Point, value: npt.NDArray) -> None:
 def _update_direction(geometry: Axis | Line,  value: npt.NDArray) -> None:
     geometry.direction = value
 
-def _update_ref_point(geometry: Axis | Line, value: npt.NDArray) -> None:
+def _update_normal(geometry: Plane, value: npt.NDArray) -> None:
+    geometry.normal = value
+
+def _update_ref_point(geometry: Axis | Line | Plane, value: npt.NDArray) -> None:
     geometry.move_to_point(value)
