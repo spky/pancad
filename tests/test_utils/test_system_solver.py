@@ -75,6 +75,8 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
                      id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z"),
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((2,0,0), (0,2,0), (0,0,2))),
                      id="3-pt-coincident-Plane-XY-to-all-2-away"),
+        pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
+                     id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem):
@@ -90,4 +92,6 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
     solver.update(solution.x)
     print("Solution Vector")
     print(solver.label_x(solution.x))
+    print("System Geometry")
+    print(initial.geometry)
     assert initial.is_equal(expected)
