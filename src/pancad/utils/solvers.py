@@ -422,14 +422,20 @@ class SystemSolver:
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
         geo = constraint.get_geometry()[0]
-        if isinstance(geo, Point):
-            params = [self._get_var(geo, CVN.LOCATION)]
-            func = ConstraintEquation(constraint.uid, CEN.FIXED_VECTOR,
-                                      params, self._delim, self._x0)
-        else:
+        vector_name_map = {
+            Point: [CVN.LOCATION],
+            Axis: [CVN.REF_POINT, CVN.DIRECTION],
+            Plane: [CVN.REF_POINT, CVN.NORMAL],
+        }
+        try:
+            vector_names = vector_name_map[type(geo)]
+        except KeyError as exc:
             msg = f"Fixed relation for {geo} is not supported and/or may be invalid"
-            raise NotImplementedError(msg)
-        self._functions.append(func)
+            raise NotImplementedError(msg) from exc
+
+        for v in [self._get_var(geo, n) for n in vector_names]:
+            eq = ConstraintEquation(constraint.uid, CEN.FIXED_VECTOR, [v], self._delim, self._x0)
+            self._functions.append(eq)
 
     @singledispatchmethod
     def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:

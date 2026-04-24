@@ -64,6 +64,20 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
         )
     return ThreeDSketchSystem(initial, constraints[0]), ThreeDSketchSystem(solved, constraints[1])
 
+def _fixed_3d_system() -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
+    """Generates a fixed system containing at least one of each geometry that can be fixed."""
+    initial = [
+        Point(1, 1, 1),
+        Axis((0, 0, 0), (1, 1, 1)),
+        Plane((0, 0, 0), (0, 0, 1)),
+    ]
+    solved = [g.copy() for g in initial]
+    systems = []
+    for geometry in [initial, solved]:
+        constraints = [make_constraint(SC.FIXED, g) for g in geometry]
+        systems.append(ThreeDSketchSystem(geometry, constraints))
+    return tuple(systems)
+
 @pytest.mark.parametrize(
     "initial, expected",
     [
@@ -77,6 +91,7 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
                      id="3-pt-coincident-Plane-XY-to-all-2-away"),
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
                      id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
+        pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem):
