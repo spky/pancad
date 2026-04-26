@@ -187,8 +187,8 @@ def codirectional_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     dot_product = np.dot(vector_1, vector_2)
     return np.array([dot_product - abs(dot_product)])
 
-def fixed_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a fixed point is to its required location."""
+def fixed_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
+    """Returns the residual for how close a fixed vector is to its required direction."""
     position_slice = slice(*eq.params[0].get_slicer())
     return np.array(x[position_slice]) - np.array(eq.x0[position_slice])
 
@@ -198,7 +198,7 @@ RESIDUAL_FUNCS = {
     CEN.PLANE_REF_POINT: plane_ref_point_res,
     CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
     CEN.POINT_PLANE_COINCIDENT: point_plane_coincident_res,
-    CEN.FIXED_POINT: fixed_point_res,
+    CEN.FIXED_VECTOR: fixed_vector_res,
     CEN.CODIRECTIONAL: codirectional_res,
 }
 
@@ -257,12 +257,6 @@ class SystemSolver:
     and updates its geometry to meet them.
     """
     _delim = "_"
-    _func_map = {
-        CEN.UNIT_VECTOR: unit_vector_res,
-        CEN.LINE_REF_POINT: line_ref_point_res,
-        CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
-        CEN.FIXED_POINT: fixed_point_res,
-    }
 
     def __init__(self, system: AbstractGeometrySystem) -> None:
         self._system = system
@@ -428,14 +422,20 @@ class SystemSolver:
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
         geo = constraint.get_geometry()[0]
-        if isinstance(geo, Point):
-            params = [self._get_var(geo, CVN.LOCATION)]
-            func = ConstraintEquation(constraint.uid, CEN.FIXED_POINT,
-                                      params, self._delim, self._x0)
-        else:
+        vector_name_map = {
+            Point: [CVN.LOCATION],
+            Axis: [CVN.REF_POINT, CVN.DIRECTION],
+            Plane: [CVN.REF_POINT, CVN.NORMAL],
+        }
+        try:
+            vector_names = vector_name_map[type(geo)]
+        except KeyError as exc:
             msg = f"Fixed relation for {geo} is not supported and/or may be invalid"
-            raise NotImplementedError(msg)
-        self._functions.append(func)
+            raise NotImplementedError(msg) from exc
+
+        for v in [self._get_var(geo, n) for n in vector_names]:
+            eq = ConstraintEquation(constraint.uid, CEN.FIXED_VECTOR, [v], self._delim, self._x0)
+            self._functions.append(eq)
 
     @singledispatchmethod
     def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:
