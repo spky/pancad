@@ -74,9 +74,16 @@ class AlignAxes(AbstractStateConstraint):
 
     type_name = SketchConstraint.ALIGN_AXES
 
-class AntiAlignAxes(AbstractStateConstraint):
-    """A constraint that forces two axes to share anti-parallel axis directions. 
-    The two axes' locations may be different.
+class Codirectional(AbstractStateConstraint):
+    """A constraint the forces two axes to point in the same direction.
+    The axes' locations may be different.
     """
 
-    type_name = SketchConstraint.ANTI_ALIGN_AXES
+    type_name = SketchConstraint.CODIRECTIONAL
+
+class Antiparallel(AbstractStateConstraint):
+    """A constraint that forces two axes to point in antiparallel directions. The axes' locations 
+    may be different. The opposite of Antiparallel is Codirectional, not Parallel.
+    """
+
+    type_name = SketchConstraint.ANTIPARALLEL

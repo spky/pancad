@@ -600,5 +600,12 @@ class Axis(AbstractGeometry):
                 direction_strs.append("0")
             else:
                 direction_strs.append(f"{component:g}")
+        pt_strs = []
+        for component in self.reference_point:
+            if np.isclose(component, 0):
+                pt_strs.append("0")
+            else:
+                pt_strs.append(f"{component:g}")
         direction_str = ",".join(direction_strs)
-        return super().__repr__().format(details=f"({direction_str})")
+        pt_str = ",".join(pt_strs)
+        return super().__repr__().format(details=f"({pt_str})({direction_str})")
