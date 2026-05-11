@@ -17,6 +17,8 @@ from pancad.geometry.line import Line, Axis
 
 ROUNDING_PLACES = 10
 
+EPS_64 = np.finfo(np.float64).eps
+
 # id abbreviations: uv=unit vector
 @pytest.mark.parametrize(
     "direction, expected",
@@ -50,6 +52,13 @@ ROUNDING_PLACES = 10
         # 3 Direction Positive and Negative
         pytest.param((1, 1, 1), trig.get_unit_vector(np.array((1,1,1))), id="1,1,1uv"),
         pytest.param((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1])), id="-1,-1,-1uv"),
+
+        # Near Zero Tests
+        pytest.param((0.1, -EPS_64, -EPS_64), (1,0,0), id="0.1,-eps,-epsTO1,0,0"),
+        pytest.param((0.1, -EPS_64, EPS_64), (1,0,0), id="0.1,-eps,epsTO1,0,0"),
+        pytest.param((0.1, EPS_64, -EPS_64), (1,0,0), id="0.1,eps,-epsTO1,0,0"),
+        pytest.param((0.1, EPS_64, EPS_64), (1,0,0), id="0.1,eps,epsTO1,0,0"),
+        pytest.param((-1, EPS_64, -EPS_64), (1, 0, 0), id="-1,eps,-epsTO1,-eps,eps"),
     ]
 )
 def test_line_unique_direction(direction, expected):
