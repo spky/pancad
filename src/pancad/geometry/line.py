@@ -441,7 +441,7 @@ class Line(AbstractGeometry):
         point_str = ",".join(pt_strs)
         direction_str = ",".join(direction_strs)
         return super().__repr__().format(
-            details=f"({point_str})({direction_str})"
+            details=f"({point_str})d({direction_str})"
         )
 
 class Axis(AbstractGeometry):

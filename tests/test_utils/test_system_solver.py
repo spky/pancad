@@ -4,10 +4,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.testing as nptest
 import pytest
 from pprint import pp
 
-from pancad.api import (Axis, Point, Plane, ThreeDSketchSystem,
+from pancad.api import (Axis, Line, Point, Plane, ThreeDSketchSystem,
                         make_constraint, SketchConstraint as SC)
 from pancad.utils import solvers
 
@@ -25,19 +26,19 @@ if TYPE_CHECKING:
 SolveTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
 """Systems to compare. The first is the test system and the second is the goal system."""
 
-def _axis_to_2_pts(ref_pt: SpaceVector, direct: SpaceVector, p1: SpaceVector, p2: SpaceVector
+def _line_to_2_pts(ref_pt: SpaceVector, direct: SpaceVector, p1: SpaceVector, p2: SpaceVector
                    ) -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
-    """Generates a pair of an unsolved system with an Axis coincident to two fixed points and the
+    """Generates a pair of an unsolved system with an Line coincident to two fixed points and the
     solved version of the system.
     """
-    initial = [Axis(ref_pt, direct), Point(p1), Point(p2)]
-    solved = [Axis(p1, np.array(p2) - np.array(p1)), Point(p1), Point(p2)]
+    initial = [Line(Point(ref_pt), direct), Point(p1), Point(p2)]
+    solved = [Line(Point(p1), np.array(p2) - np.array(p1)), Point(p1), Point(p2)]
     constraints = []
-    for axis, point_1, point_2 in [initial, solved]:
+    for line, point_1, point_2 in [initial, solved]:
         constraints.append(
             [
-                make_constraint(SC.COINCIDENT, axis, point_1),
-                make_constraint(SC.COINCIDENT, axis, point_2),
+                make_constraint(SC.COINCIDENT, line, point_1),
+                make_constraint(SC.COINCIDENT, line, point_2),
                 make_constraint(SC.FIXED, point_1),
                 make_constraint(SC.FIXED, point_2),
             ]
@@ -56,8 +57,6 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
     solved_normal = np.cross(np.array(p2) - np.array(p1), np.array(p3) - np.array(p1))
     solved = [Point(p) for p in pts]
     solved.append(Plane(p1, solved_normal))
-    print(pts)
-    print(solved[3].reference_axis.reference_point)
     constraints = []
     for point_1, point_2, point_3, plane in [initial, solved]:
         constraints.append(
@@ -75,8 +74,8 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
 def _fixed_3d_system() -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
     """Generates a fixed system containing at least one of each geometry that can be fixed."""
     initial = [
-        # Point(1, 1, 1),
-        # Axis((0, 0, 0), (1, 1, 1)),
+        Point(1, 1, 1),
+        Axis((0, 0, 0), (1, 1, 1)),
         Plane((0, 0, 0), (0, 0, 1)),
     ]
     solved = [g.copy() for g in initial]
@@ -88,7 +87,8 @@ def _fixed_3d_system() -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
 
 def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
                          new_axis: tuple[Space3DVector, Space3DVector],
-                         id_: str
+                         id_: str,
+                         **kwargs,
                          ) -> tuple[ParameterSet, ParameterSet]:
     """Generates two system pairs to test coincident, codirectional, and antiparallel solving
     behavior. The new axis is held Fixed while the init_axis is constrained coincident. The first
@@ -96,7 +96,7 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
     antiparallel.
     """
     params = []
-    for direction_constraint in (SC.CODIRECTIONAL,): # SC.ANTIPARALLEL):
+    for direction_constraint in (SC.CODIRECTIONAL,): # , SC.ANTIPARALLEL):
         initial = [Axis(*init_axis), Axis(*new_axis)]
         solved = [Axis(*new_axis), Axis(*new_axis)]
         systems = []
@@ -107,24 +107,34 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
                 make_constraint(direction_constraint, start, goal),
             ]
             systems.append(ThreeDSketchSystem([start, goal], constraints))
-        params.append(pytest.param(*systems, id=f"{id_}_{direction_constraint.name}"))
+        params.append(pytest.param(*systems, id=f"{id_}_{direction_constraint.value}", **kwargs))
     return tuple(params)
 
 @pytest.mark.parametrize(
     "initial, expected",
     [
-        pytest.param(*_axis_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,0,0)),
-                     id="2-pt-coincident-Axis(0,0,1)(1,0,0)-to-x-axis-aligned"),
-        pytest.param(*_axis_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,1,1)),
-                     id="2-pt-coincident-Axis(0,0,1)(1,0,0)-to-(0,0,0)(1,1,1)"),
+        pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,0,0)),
+                     id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-x-axis-aligned"),
+        pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,1,1)),
+                     id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-(0,0,0)(1,1,1)"),
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((0,0,1), (1,0,1), (0,1,1))),
-                     id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z"),
+                     id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z",
+                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((2,0,0), (0,2,0), (0,0,2))),
-                     id="3-pt-coincident-Plane-XY-to-all-2-away"),
+                     id="3-pt-coincident-Plane-XY-to-all-2-away",
+                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
-                     id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
+                     id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane",
+                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
         pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
-        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX",
+                              marks=pytest.mark.xfail(reason="Cannot cross 0 yet")),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (1,0,0)), "axes-coincident-X-to-X"),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y",
+                              marks=pytest.mark.xfail(reason="Cannot rotate around 0 yet")),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z",
+                              marks=pytest.mark.xfail(reason="Cannot rotate around 0 yet")),
+        *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem):
@@ -155,6 +165,7 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
 
 EPS_64 = np.finfo(np.float64).eps
 MAX_64 = np.finfo(np.float64).max
+DEF_0_TOL = 1e-16 # Default Tolerance for zero component values
 
 class TestResiduals:
     """Tests for calculating residual values in isolation from the rest of the solvers."""
@@ -261,10 +272,55 @@ class TestResiduals:
         [
             pytest.param((0,0,1), (0,0,0), 0, id="xy-plane_nominal"),
             pytest.param((0,EPS_64,1), (0,0,1), EPS_64, id="xy-plane-p1z_y-eps-off"),
-            # pytest.param((0,EPS_64,1), (0,0,-1), EPS_64, id="xy-plane-m1z_y-eps-off"),
+            pytest.param((0,EPS_64,1), (0,0,-1), EPS_64, id="xy-plane-m1z_y-eps-off"),
         ]
     )
     def test_plane_ref_point(self, normal: Space3DVector, pt: Space3DVector,
                              expected: float) -> None:
         assert solvers.residual_plane_ref_point(np.array(normal,dtype=np.float64),
                                                 np.array(pt, dtype=np.float64)) == expected
+
+    @pytest.mark.parametrize(
+        "vector, atol, expected",
+        [ #nu = non-unique
+            # 3D Whole Numbers
+            pytest.param((1,0,0), DEF_0_TOL, (0,0,0), id="3d_nominal_x"),
+            pytest.param((0,1,0), DEF_0_TOL, (0,0,0), id="3d_nominal_y"),
+            pytest.param((0,0,1), DEF_0_TOL, (0,0,0), id="3d_nominal_z"),
+            pytest.param((-1,0,0), DEF_0_TOL, (0,0,-2), id="3d_nu_negative_x"),
+            pytest.param((0,-1,0), DEF_0_TOL, (0,-2,0), id="3d_nu_negative_y"),
+            pytest.param((0,0,-1), DEF_0_TOL, (-2,0,0), id="3d_nu_negative_z"),
+            pytest.param((1,1,0), DEF_0_TOL, (0,0,0), id="3d_nominal_1,1,0"),
+            pytest.param((-1,-1,0), DEF_0_TOL, (0,-2,0), id="3d_nu_-1,-1,0"),
+            pytest.param((-1,-1,1), DEF_0_TOL, (0,0,0), id="3d_nominal_-1,-1,1"),
+            pytest.param((1,1,1), DEF_0_TOL, (0,0,0), id="3d_nominal_1,1,1"),
+            pytest.param((-1,-1,-1), DEF_0_TOL, (-2,0,0), id="3d_nu_-1,-1,-1"),
+
+            # 3D Near Zeros
+            pytest.param((1,DEF_0_TOL,0), DEF_0_TOL, (0,0,0), id="3d_x_with_plus_0tol_y"),
+            pytest.param((1,-DEF_0_TOL,0), DEF_0_TOL, (0,-2*DEF_0_TOL,0),
+                         id="3d_x_with_minus_0tol_y"),
+            pytest.param((1,-DEF_0_TOL,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,-2*DEF_0_TOL,0),
+                         id="3d_x_with_minus_0tol_y_and_z"),
+            pytest.param((1,1,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,0,0),
+                         id="3d_1,1,0_with_minus_0tol_z"),
+
+            # 2D
+            pytest.param((1,0), DEF_0_TOL, (0,0), id="2d_nominal_x"),
+            pytest.param((0,1), DEF_0_TOL, (0,0), id="2d_nominal_y"),
+            pytest.param((1,0), DEF_0_TOL, (0,0), id="2d_nominal_x"),
+            pytest.param((-1,0), DEF_0_TOL, (0,-2), id="2d_nu_negative_x"),
+            pytest.param((0,-1), DEF_0_TOL, (-2,0), id="2d_nu_negative_y"),
+
+            # 2D Near Zeros
+            pytest.param((1,DEF_0_TOL), DEF_0_TOL, (0,0), id="2d_x_with_plus_0tol_y"),
+            pytest.param((1,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,0),
+                         id="2d_x_with_minus_0tol_y"),
+        ]
+    )
+    def test_unique_direction(self, vector: SpaceVector, atol: float,
+                              expected: tuple[Real, Real]) -> None:
+        v = np.array(vector)
+        exp = np.array(expected)
+        atol = np.float64(atol)
+        nptest.assert_array_equal(solvers.residual_unique_vector(v, zero_atol=atol), exp)

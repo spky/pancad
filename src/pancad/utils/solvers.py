@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 import textwrap
 from itertools import repeat
 from functools import singledispatch, singledispatchmethod, partial
-import warnings
 
 import numpy as np
 from scipy.optimize import root as find_root
@@ -207,7 +206,7 @@ residual_antiparallel.__doc__ = """
 """.strip()
 
 residual_parallel = partial(_residual_direction, comparison=SC.PARALLEL)
-residual_antiparallel.__doc__ = """
+residual_parallel.__doc__ = """
     Calculates how close two vectors are to pointing in the same or opposite directions.
 
     :raises ValueError: When provided a zero vector for v1 or v2.
@@ -219,8 +218,12 @@ def residual_equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
     """
     return v1 - v2
 
-def residual_perpendicular(v1: npt.NDArray, v2: npt.NDArray) -> np.float64:
+def residual_perpendicular(v1: npt.NDArray, v2: npt.NDArray,
+                           zero_atol: np.float64=np.float64(1e-16)) -> np.float64:
     """Calculates how close two vectors are to being perpendicular to each other."""
+    norm1, norm2 = map(np.linalg.norm, (v1, v2))
+    if any(np.isclose(n, 0, atol=zero_atol) for n in (norm1, norm2)):
+        raise ValueError("Cannot check whether a zero vector is perpendicular")
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
 def residual_point_line_distance(ref_pt: npt.NDArray, direction: npt.NDArray,
@@ -241,7 +244,27 @@ residual_point_line_coincident.__doc__ = """
     :param ref_pt: The line's closest to the origin reference point position vector.
     :param direction: The line's direction vector.
     :param pt: The point's position vector.
-"""
+""".strip()
+
+def residual_point_plane_distance(ref_pt: npt.NDArray, normal: npt.NDArray,
+                                  pt: npt.NDArray, distance: np.float64) -> np.float64:
+    """Calculates how close a point is to being a specified closest distance from a plane.
+
+    :param ref_pt: The plane's closest to the origin reference point position vector.
+    :param normal: The plane's normal vector.
+    :param pt: The point's position vector.
+    :param distance: The distance the point should be from the plane.
+    """
+    return abs(np.dot(normal, ref_pt - pt) / np.linalg.norm(normal) - distance)
+
+residual_point_plane_coincident = partial(residual_point_plane_distance, distance=np.float64(0))
+residual_point_plane_coincident.__doc__ = """
+    Calculates how close a point is to being on a plane.
+
+    :param ref_pt: The plane's closest to the origin reference point position vector.
+    :param normal: The plane's normal vector.
+    :param pt: The point's position vector.
+""".strip()
 
 def residual_plane_ref_point(normal: npt.NDArray, pt: npt.NDArray) -> np.float64:
     """Calculates how close a Plane's reference point is to being the closest to origin point.
@@ -253,6 +276,57 @@ def residual_plane_ref_point(normal: npt.NDArray, pt: npt.NDArray) -> np.float64
     except ValueError:
         # Should only execute when the point is a zero vector.
         return np.linalg.norm(pt)
+
+def residual_line_ref_point(ref_pt: npt.NDArray, direction: npt.NDArray) -> np.float64:
+    """Calculates how close a Line or Axis' reference point is to being the closest to origin
+    point. This is the same as the vectors being perpendicular except when the reference point is
+    a zero vector.
+    """
+    try:
+        return residual_perpendicular(ref_pt, direction)
+    except ValueError:
+        # Should only execute when the point is a zero vector.
+        return np.linalg.norm(ref_pt)
+
+def residual_unique_vector(vector: npt.NDArray,
+                           zero_atol: np.float64=np.float64(1e-16)) -> npt.NDArray:
+    """Calculates how far a vector is into the non-unique set of vectors. All pancad
+    non-unique vectors are opposites of a unique vector.
+
+    Unique pancad vectors must meet these conditions:
+
+    1. If 3D, the z component must be nonnegative.
+    2. If 2D or z is 0, the y component must be nonnegative.
+    3. If both y and z is 0, the x component must be nonnegative.
+
+    :param vector: A vector that must be unique.
+    :param zero_atol: The absolute tolerance to use when checking whether components are 0.
+    :returns: A numpy array of the residuals for z (if 3D), y, and x.
+    """
+    residuals = []
+    if len(vector) == 3:
+        x, y, z = vector
+        # If z is the negative zero_atol, this function should treat z as 0 and move to 2D case.
+        # If z is positive zero_atol, this function should treat z as 0 and move to 2D case.
+        # If z is less than negative zero_atol, this function should return the z residual and 0.
+        # If z is a nonzero positive number, this function should return np.array([0, 0]).
+        residuals.append(z - abs(z))
+        if abs(residuals[0]) >= 0 and not np.isclose(z, 0, atol=zero_atol):
+            # z is either positive or is a negative number that is not close to 0.
+            # Should return z residual and 0.
+            residuals.extend([0, 0])
+            return np.array(residuals)
+        # Z must be zero at this point, so the 3D problem reduces to 2D.
+    else:
+        x, y = vector
+    # Direction is 2D or z is 0.
+    if np.isclose(y, 0, atol=zero_atol):
+        # Y is close to 0, so return x residual.
+        residuals.extend([y - abs(y), x - abs(x)])
+    else:
+        # Y is not close to 0, so return y residual.
+        residuals.extend([y - abs(y), 0])
+    return np.array(residuals)
 
 ################################################################################
 # Constraint Residuals
@@ -323,16 +397,19 @@ def equal_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
     return np.array(vector_1) - np.array(vector_2)
 
 RESIDUAL_FUNCS = {
-    CEN.UNIT_VECTOR: unit_vector_res,
-    CEN.EQUAL_VECTOR: equal_vector_res,
-    CEN.LINE_REF_POINT: line_ref_point_res,
-    CEN.PLANE_REF_POINT: plane_ref_point_res,
-    CEN.POINT_LINE_COINCIDENT: point_line_coincident_res,
-    CEN.POINT_PLANE_COINCIDENT: point_plane_coincident_res,
-    CEN.FIXED_VECTOR: fixed_vector_res,
-    CEN.CODIRECTIONAL: codirectional_res,
-    CEN.ANTIPARALLEL: antiparallel_res,
-    CEN.PARALLEL: parallel_res,
+    CEN.UNIT_VECTOR: residual_unit_vector,
+    CEN.EQUAL_VECTOR: residual_equal_vector,
+    CEN.LINE_REF_POINT: residual_line_ref_point,
+    # Line Reference Point Vector and Direction Perpendicularity
+    CEN.PLANE_REF_POINT: residual_plane_ref_point,
+    CEN.POINT_LINE_COINCIDENT: residual_point_line_coincident,
+    CEN.POINT_PLANE_COINCIDENT: residual_point_plane_coincident,
+    CEN.FIXED_VECTOR: residual_equal_vector,
+    # First vector must be held constant to a supplied initial vector
+    CEN.CODIRECTIONAL: residual_codirectional,
+    CEN.ANTIPARALLEL: residual_antiparallel,
+    CEN.PARALLEL: residual_parallel,
+    CEN.UNIQUE_VECTOR: residual_unique_vector,
 }
 
 @dataclasses.dataclass
@@ -382,10 +459,26 @@ class ConstraintEquation:
         """The identifying unique key of the constraint function."""
         return self.delim.join(map(str, [self.source, self.name]))
 
-    def calc(self, x: npt.NDArray) -> npt.NDArray:
+    def calc(self, x: npt.NDArray | list[Real]) -> npt.NDArray:
         """Calculates the equation's residual for a given vector value."""
+        param_values = self._get_values(np.array(x, dtype=np.float64))
+        if self.name == CEN.FIXED_VECTOR:
+            param_values.extend(self._get_values(np.array(self.x0, dtype=np.float64)))
+        result = RESIDUAL_FUNCS[self.name](*param_values)
+        if isinstance(result, np.ndarray):
+            return result
+        return np.array([result])
 
-        return RESIDUAL_FUNCS[self.name](self, x)
+    def _get_values(self, x: npt.NDArray) -> list[npt.NDArray | npt.float64]:
+        """Return the equation's parameter values from a vector."""
+        values = []
+        for param in self.params:
+            start, end = param.get_slicer()
+            if end - start == 1:
+                values.append(x[start])
+            else:
+                values.append(x[start:end])
+        return values
 
 class SystemSolver:
     """A class that solves a geometry system's internal and imposed constraints
@@ -413,6 +506,7 @@ class SystemSolver:
     def fun(self, x: npt.NDArray) -> npt.NDArray:
         """Returns the residuals of the system for a given vector value."""
         result = np.concatenate([f.calc(x) for f in self._functions])
+        print(result)
         return result
 
     def solve(self, method: str="lm", **kwargs) -> npt.NDArray:
@@ -424,7 +518,7 @@ class SystemSolver:
         if "tol" not in kwargs:
             kwargs["tol"] = self.absolute_tol
         if "options" not in kwargs:
-            kwargs["options"] = {"ftol": 0,}
+            kwargs["options"] = {"ftol": np.finfo(np.float64).eps,}
         solution = find_root(self.fun, self._x0, method=method, **kwargs)
         return solution
 
@@ -539,24 +633,31 @@ class SystemSolver:
         self._functions.append(func)
 
     @_add_constraint.register
+    def _antiparallel(self, constraint: Antiparallel) -> None:
+        geo_types = {type(g) for g in constraint.get_geometry()}
+        if geo_types == {Axis}:
+            params = [self._get_var(g, CVN.DIRECTION) for g in constraint.get_geometry()]
+            func = ConstraintEquation(constraint.uid, CEN.ANTIPARALLEL, params, constraint,
+                                      self._delim, self._x0)
+        else:
+            msg = (f"Antiparallel combo {constraint.get_geometry()} is not supported and/or"
+                   " may be invalid")
+            raise NotImplementedError(msg)
+        self._functions.append(func)
+
+    @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
         geo_types = {type(g) for g in constraint.get_geometry()}
         # Add coincident constraint equation based on geometry combo.
         funcs = []
-        if geo_types == {Axis, Point}:
+        if geo_types in ({Axis, Point}, {Line, Point}):
             # # Point and Axis
-            axis = next(g for g in constraint.get_geometry() if isinstance(g, Axis))
+            axis = next(g for g in constraint.get_geometry() if isinstance(g, (Axis, Line)))
             point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
-            t_param = ConstraintVariable(constraint.uid, CVN.PARAMETER, 0,
-                                         len(self._x0), self._delim,
-                                         constraint)
-            self._variables.append(t_param)
-            self._x0.append(t_param.initial)
             params = [
                 self._get_var(axis, CVN.REF_POINT),
                 self._get_var(axis, CVN.DIRECTION),
                 self._get_var(point, CVN.LOCATION),
-                t_param,
             ]
             funcs.append(ConstraintEquation(constraint.uid, CEN.POINT_LINE_COINCIDENT,
                                             params, constraint, self._delim, self._x0))
@@ -631,12 +732,28 @@ class SystemSolver:
             self._functions.append(func)
 
     @_add_geometry_funcs.register
+    def _line(self, geometry: Line) -> None:
+        geo_vars = [v for v in self._variables if v.source == geometry.uid]
+        func_param_map = {
+            CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
+            CEN.UNIT_VECTOR: [CVN.DIRECTION],
+            CEN.UNIQUE_VECTOR: [CVN.DIRECTION],
+        }
+        for name, params in func_param_map.items():
+            func = ConstraintEquation(geometry.uid,
+                                      name,
+                                      [v for v in geo_vars if v.name in params],
+                                      geometry,
+                                      self._delim,
+                                      self._x0)
+            self._functions.append(func)
+
+    @_add_geometry_funcs.register
     def _plane(self, geometry: Plane) -> None:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
         func_param_map = {
             CEN.PLANE_REF_POINT: [CVN.REF_POINT, CVN.NORMAL],
             CEN.UNIT_VECTOR: [CVN.NORMAL],
-            CEN.CODIRECTIONAL: [CVN.REF_POINT, CVN.NORMAL],
         }
         for name, params in func_param_map.items():
             func = ConstraintEquation(geometry.uid,
@@ -655,7 +772,7 @@ class SystemSolver:
         raise NotImplementedError(msg)
 
     @_add_geometry_variables.register
-    def _axis_vars(self, geometry: Axis) -> None:
+    def _line_and_axis_vars(self, geometry: Axis | Line) -> None:
         values = {
             CVN.REF_POINT: geometry.reference_point.cartesian,
             CVN.DIRECTION: geometry.direction,
@@ -737,7 +854,6 @@ def update_variable(var: ConstraintVariable, new_x: npt.NDArray) -> None:
         CVN.LOCATION: _update_location,
         CVN.REF_POINT: _update_ref_point,
         CVN.NORMAL: _update_normal,
-        CVN.PARAMETER: lambda element, x: None, # No update needed, ignore.
     }
     new_value = new_x[slice(*var.get_slicer())]
     updaters[var.name](var.element, new_value)

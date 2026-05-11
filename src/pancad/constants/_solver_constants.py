@@ -63,3 +63,6 @@ class ConstraintEquationName(StrEnum):
     """Plane Reference Point position vector must be aligned or anti-aligned
     with the plane's normal vector to be the point closest to the origin.
     """
+
+    UNIQUE_VECTOR = auto()
+    """This vector must be uniquely representable in pancad. Used for Line definition."""
