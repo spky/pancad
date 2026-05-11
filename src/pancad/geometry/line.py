@@ -42,6 +42,10 @@ class Line(AbstractGeometry):
     :param direction: A vector in the direction of the line.
     :param uid: The unique ID of the line.
     """
+
+    zero_tol = np.sqrt(np.finfo(np.float64).eps)
+    """Any Line direction vector component smaller than this number will be set to 0."""
+
     def __init__(self, point: Point, direction: VectorLike,
                  uid: str=None) -> None:
         self.uid = uid
@@ -183,7 +187,7 @@ class Line(AbstractGeometry):
         if not np.any(vector):
             msg = f"Direction vector cannot be zero vector: {vector}"
             raise ValueError(msg)
-        self._direction = Line._unique_direction(vector)
+        self._direction = self._unique_direction(vector)
 
     @property
     def direction_polar(self) -> Space2DVector:
@@ -370,8 +374,7 @@ class Line(AbstractGeometry):
         """Returns the Point on the Line closest to the origin."""
         return Point(closest_to_origin(point, vector))
 
-    @staticmethod
-    def _unique_direction(vector: np.ndarray) -> np.ndarray:
+    def _unique_direction(self, vector: np.ndarray) -> np.ndarray:
         """Returns a unit vector that can uniquely identify the direction of
         the given vector. Does so flipping the unit vector if necessary to
         ensure there can only ever be one vector for every direction.
@@ -380,20 +383,26 @@ class Line(AbstractGeometry):
         :returns: The unique unit vector to represent the vector's direction.
         """
         unit_vector = trig.get_unit_vector(vector)
+        for i, component in enumerate(unit_vector):
+            # Replace any near-zeros with zero to eliminate ambiguity.
+            if np.isclose(component, 0, atol=self.zero_tol):
+                unit_vector[i] = 0
+        # Ensure the vector is still a unit vector after zeroes are removed
+        unit_vector = trig.get_unit_vector(unit_vector)
         if len(unit_vector) == 3:
             x, y, z = unit_vector
-            if x < 0 and np.isclose(y, 0) and np.isclose(z, 0):
+            if x < 0 and y == 0 and z == 0:
                 unit_vector = -unit_vector
-            elif y < 0 and np.isclose(z, 0):
+            elif y < 0 and z == 0:
                 unit_vector = -unit_vector
             elif z < 0:
                 unit_vector = -unit_vector
 
         elif len(unit_vector) == 2:
             x, y = unit_vector
-            if x < 0 and np.isclose(y, 0):
+            if x < 0 and y == 0:
                 unit_vector = -unit_vector
-            elif not np.isclose(y, 0) and y < 0:
+            elif not y == 0 and y < 0:
                 unit_vector = -unit_vector
         # Add 0 to ensure negative zero representations are eliminated
         return trig.to_1d_tuple(unit_vector + 0)
