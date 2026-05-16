@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import csv
 import numpy as np
 import numpy.testing as nptest
 import pytest
@@ -26,24 +27,24 @@ if TYPE_CHECKING:
 SolveTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
 """Systems to compare. The first is the test system and the second is the goal system."""
 
+def _sys_line_co_2_fixed_pts(ref_pt: Space3DVector, direction: SpaceVector,
+                             p1: SpaceVector, p2: SpaceVector) -> ThreeDSketchSystem:
+    geo = [Line(Point(ref_pt), direction), Point(p1), Point(p2)]
+    constraints = [
+        make_constraint(SC.COINCIDENT, geo[0], geo[1]),
+        make_constraint(SC.COINCIDENT, geo[0], geo[2]),
+        make_constraint(SC.FIXED, geo[1]),
+        make_constraint(SC.FIXED, geo[2]),
+    ]
+    return ThreeDSketchSystem(geo, constraints)
+
 def _line_to_2_pts(ref_pt: SpaceVector, direct: SpaceVector, p1: SpaceVector, p2: SpaceVector
                    ) -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
     """Generates a pair of an unsolved system with an Line coincident to two fixed points and the
     solved version of the system.
     """
-    initial = [Line(Point(ref_pt), direct), Point(p1), Point(p2)]
-    solved = [Line(Point(p1), np.array(p2) - np.array(p1)), Point(p1), Point(p2)]
-    constraints = []
-    for line, point_1, point_2 in [initial, solved]:
-        constraints.append(
-            [
-                make_constraint(SC.COINCIDENT, line, point_1),
-                make_constraint(SC.COINCIDENT, line, point_2),
-                make_constraint(SC.FIXED, point_1),
-                make_constraint(SC.FIXED, point_2),
-            ]
-        )
-    return ThreeDSketchSystem(initial, constraints[0]), ThreeDSketchSystem(solved, constraints[1])
+    return (_sys_line_co_2_fixed_pts(ref_pt, direct, p1, p2),
+            _sys_line_co_2_fixed_pts(p1, np.array(p2) - np.array(p1), p1, p2))
 
 def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
                     pts: tuple[Space3DVector, Space3DVector, Space3DVector]
@@ -137,13 +138,31 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
     ]
 )
-def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem):
+def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
+                      tmp_path):
     """Tests that SystemSolver can solve the constraints in the initial system and output the
     expected system.
     """
     solver = solvers.SystemSolver(initial)
-    print()
-    solution = solver.solve()
+    run_data = []
+    titles = []
+    for var in solver.get_variables():
+        prefix = f"variable_{var.element}_{var.name.value}"
+        titles.extend([f"{prefix}_{i}" for i in range(len(var))])
+    for eq in solver.get_equations():
+        prefix = f"residual_{eq.element}_{eq.name.value}"
+        titles.extend([f"{prefix}_{i}" for i in range(len(eq.calc()))])
+    run_data.append(titles)
+    def fun_log(f: Callable[[npt.NDArray], npt.NDArray]) -> Callable[[npt.NDArray], npt.NDArray]:
+        def wrap(x: npt.NDArray) -> npt.NDArray:
+            result = f(x)
+            run_data.append([*x, *result])
+            return result
+        return wrap
+    solution = solver.solve(fun_wrap=fun_log)
+    with open(tmp_path / "convergence_data.csv", "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(run_data)
     debugs = {
         "Initial Input Vector": solver.label_x(solver.get_initial()),
         "Initial Residuals": solver.label_fun(solver.fun(solver.get_initial())),
@@ -166,6 +185,37 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
 EPS_64 = np.finfo(np.float64).eps
 MAX_64 = np.finfo(np.float64).max
 DEF_0_TOL = 1e-16 # Default Tolerance for zero component values
+
+class TestSolverSetUp:
+    """Tests for the ability to set up solving scenarios."""
+
+    @pytest.mark.parametrize(
+        "system, include_fixed, expected",
+        [
+            pytest.param(_sys_line_co_2_fixed_pts((0,0,0), (1,0,0), (0,0,0), (1,0,0)), False,
+                         [0,0,0,1,0,0], id="2pt-co-line"),
+            pytest.param(_sys_line_co_2_fixed_pts((0,0,0), (1,0,0), (0,0,0), (1,0,0)), True,
+                         [0,0,0,1,0,0,0,0,0,1,0,0], id="2pt-co-line_with_fixed"),
+        ]
+    )
+    def test_get_initial(self, system: AbstractGeometrySystem, include_fixed: bool,
+                         expected: list[float]):
+        solver = solvers.SystemSolver(system)
+        np.testing.assert_array_equal(solver.get_initial(include_fixed),
+                                      np.array(expected, dtype=np.float64))
+
+    @pytest.mark.parametrize(
+        "system, new_x",
+        [
+            pytest.param(_sys_line_co_2_fixed_pts((0,0,0), (1,0,0), (0,0,0), (1,0,0)),
+                         [1,2,3,4,5,6], id="2pt-co-line-1to6"),
+        ]
+    )
+    def test_x_setter(self, system: ThreeDSketchSystem, new_x: list[float]):
+        solver = solvers.SystemSolver(system)
+        new_x_array = np.array(new_x, dtype=np.float64)
+        solver.x = new_x_array
+        np.testing.assert_array_equal(solver.x, new_x_array)
 
 class TestResiduals:
     """Tests for calculating residual values in isolation from the rest of the solvers."""

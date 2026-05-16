@@ -28,6 +28,7 @@ from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from numbers import Real
     from typing import Literal
     from uuid import UUID
@@ -328,74 +329,6 @@ def residual_unique_vector(vector: npt.NDArray,
         residuals.extend([y - abs(y), 0])
     return np.array(residuals)
 
-################################################################################
-# Constraint Residuals
-################################################################################
-
-def line_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close an axis or line's reference point is to
-    being the closest to origin point.
-    """
-    point, direction = [x[slice(*p.get_slicer())] for p in eq.params]
-    return np.array([np.dot(direction, point)])
-
-def plane_ref_point_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a Plane's reference point is to being the closest to
-    origin point. This is the same as the normal and point vectors being parallel except when the
-    point vector is already the origin point.
-    """
-    _, point = [x[slice(*p.get_slicer())] for p in eq.params]
-    if np.allclose(point, 0, rtol=1e-10, atol=1e-10):
-        return np.array([0])
-    return parallel_res(eq, x)
-
-def unit_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a vector is to being a unit vector."""
-    vector = x[slice(*eq.params[0].get_slicer())]
-    return np.array([np.sum(np.array(vector)**2) - 1])
-
-def point_line_coincident_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a point is to being coincident on an
-    axis or line.
-    """
-    ref_point, direction, point, t_param = [x[slice(*p.get_slicer())] for p in eq.params]
-    t_param = t_param[0]
-    return np.array(direction) * t_param + np.array(ref_point) - np.array(point)
-
-def point_plane_coincident_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a point is to being coincident on a Plane."""
-    ref_point, normal, point = [x[slice(*p.get_slicer())] for p in eq.params]
-    return np.array([np.dot(normal, np.array(point) - np.array(ref_point))])
-
-def codirectional_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close two vectors are to being codirectional."""
-    vector_1, vector_2 = map(_norm_with_zero, [x[slice(*p.get_slicer())] for p in eq.params])
-    return np.array([np.linalg.norm(vector_1 - vector_2)])
-
-def antiparallel_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close two vectors are to being antiparallel."""
-    vector_1, vector_2 = map(_norm_with_zero, [x[slice(*p.get_slicer())] for p in eq.params])
-    return np.array([np.linalg.norm(vector_1 + vector_2)])
-
-def parallel_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close two vectors are to being parallel. Codirectional and
-    antiparallel vectors are considered parallel by this residual function.
-    """
-    vector_1, vector_2 = map(_norm_with_zero, [x[slice(*p.get_slicer())] for p in eq.params])
-    # Account for the sign of the dot product without using it directly to avoid additional error
-    residual = np.linalg.norm(vector_1 - np.copysign(vector_2, np.dot(vector_1, vector_2)))
-    return np.array([residual])
-
-def fixed_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close a fixed vector is to its required direction."""
-    position_slice = slice(*eq.params[0].get_slicer())
-    return np.array(x[position_slice]) - np.array(eq.x0[position_slice])
-
-def equal_vector_res(eq: ConstraintEquation, x: npt.NDArray) -> npt.NDArray:
-    """Returns the residual for how close two vectors are to being equal."""
-    vector_1, vector_2 = [x[slice(*p.get_slicer())] for p in eq.params]
-    return np.array(vector_1) - np.array(vector_2)
-
 RESIDUAL_FUNCS = {
     CEN.UNIT_VECTOR: residual_unit_vector,
     CEN.EQUAL_VECTOR: residual_equal_vector,
@@ -412,79 +345,91 @@ RESIDUAL_FUNCS = {
     CEN.UNIQUE_VECTOR: residual_unique_vector,
 }
 
-@dataclasses.dataclass
 class ConstraintVariable:
-    """A dataclass for tracking the names of variables used by constraint functions.
+    """A class for tracking variables used by constraint functions.
 
-    :param source: The unique id of the source.
+    :param element: The geometry or constraint source for the variable.
     :param name: The ConstraintVariableName that defines what part of the source
         element the variable is referring to.
     :param initial: The initial value of the variable.
-    :param start: The start index for the variable.
+    :param fixed: Whether the variable is a fixed value inside the system.
     """
-    source: str | UUID
-    name: CVN
-    initial: Real | SpaceVector
-    start: int
-    delim: str = dataclasses.field(repr=False)
-    element: AbstractGeometry | AbstractConstraint
+
+    def __init__(self,
+                 element: AbstractGeometry | AbstractConstraint,
+                 name: CVN,
+                 initial: npt.NDArray,
+                 solver: SystemSolver):
+        self.element = element
+        self.name = name
+        self.initial = initial
+        self.fixed = False
+        self._solver = solver
+        self.value = np.copy(initial) # Initialize value
 
     @property
-    def key(self) -> str:
-        """The identifying unique key of the constraint variable."""
-        return self.delim.join(map(str, [self.source, self.name]))
+    def source(self) -> str | UUID:
+        """The unique id of the source element."""
+        return self.element.uid
 
-    def get_slicer(self) -> tuple[int, int]:
-        """Returns first variable index and last index + 1 of the variable vector
-        representing this value.
+    @property
+    def value(self) -> npt.NDArray:
+        """The variable's current value.
+
+        :raises ValueError: When a new value's length does not match the current value length.
+        :raises RuntimeError: When attempting to update a fixed variable value.
         """
-        if isinstance(self.initial, tuple):
-            return (self.start, self.start + len(self.initial))
-        return (self.start, self.start + 1)
+        return self._value
+
+    @value.setter
+    def value(self, new_value: npt.NDArray):
+        if self.fixed:
+            raise RuntimeError("Cannot update variable value, variable is fixed")
+        if len(new_value) != len(self):
+            raise ValueError(f"Expected {len(self)} long vector, got: {new_value}")
+        self._value = new_value
+
+    def __len__(self) -> int:
+        return len(self.initial)
 
 @dataclasses.dataclass
 class ConstraintEquation:
     """A dataclass for tracking imposed and internal constraint equation function
     names and parameter names.
     """
-    source: str
+    element: AbstractGeometry | AbstractConstraint
     name: CEN
     params: list[ConstraintVariable] = dataclasses.field(repr=False)
-    element: AbstractGeometry | AbstractConstraint
-    delim: str = dataclasses.field(repr=False)
-    x0: list[Real] = dataclasses.field(repr=False)
 
     @property
-    def key(self) -> str:
-        """The identifying unique key of the constraint function."""
-        return self.delim.join(map(str, [self.source, self.name]))
+    def source(self) -> str | UUID:
+        """The unique id of the source element."""
+        return self.element.uid
 
-    def calc(self, x: npt.NDArray | list[Real]) -> npt.NDArray:
-        """Calculates the equation's residual for a given vector value."""
-        param_values = self._get_values(np.array(x, dtype=np.float64))
+    def calc(self) -> npt.NDArray:
+        """Calculates the equation's residual based on the current parameter values."""
+        param_values = []
+        for p in self.params:
+            if len(p) == 1:
+                param_values.append(p.value[0])
+            else:
+                param_values.append(p.value)
         if self.name == CEN.FIXED_VECTOR:
-            param_values.extend(self._get_values(np.array(self.x0, dtype=np.float64)))
+            for p in self.params:
+                if len(p) == 1:
+                    param_values.append(p.initial[0])
+                else:
+                    param_values.append(p.initial)
         result = RESIDUAL_FUNCS[self.name](*param_values)
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
 
-    def _get_values(self, x: npt.NDArray) -> list[npt.NDArray | npt.float64]:
-        """Return the equation's parameter values from a vector."""
-        values = []
-        for param in self.params:
-            start, end = param.get_slicer()
-            if end - start == 1:
-                values.append(x[start])
-            else:
-                values.append(x[start:end])
-        return values
-
 class SystemSolver:
     """A class that solves a geometry system's internal and imposed constraints
     and updates its geometry to meet them.
     """
-    _delim = "_"
+
     absolute_tol = np.finfo(np.float64).eps
     """The absolute tolerance to pass the solver by default. Scipy defaults to
     1.49012e-8 (2^-26), which is the square root of the numpy.float64 eps.
@@ -492,9 +437,9 @@ class SystemSolver:
 
     def __init__(self, system: AbstractGeometrySystem) -> None:
         self._system = system
-        self._functions = []
+        self._equations = []
         self._variables = []
-        self._x0 = []
+        self.run_data = []
         for c in self._system.constraints:
             for geo in c.get_parents():
                 # Make sure the geometry variables/constraints have been added
@@ -503,36 +448,129 @@ class SystemSolver:
                     self._add_geometry_funcs(geo)
             self._add_constraint(c)
 
+    @property
+    def x(self) -> npt.NDArray:
+        """The current non-fixed system variable values.
+
+        :raises ValueError: When a new x vector is not the same length as the old one.
+        """
+        x = []
+        for var in self._variables:
+            if var.fixed:
+                continue
+            x.extend(var.value)
+        return np.array(x)
+
+    @x.setter
+    def x(self, new_x: npt.NDArray):
+        if len(new_x) != len(self.x):
+            raise ValueError(f"Expected {len(self.x)} long vector, got: {new_x}")
+        start = 0
+        for var in self._variables:
+            if var.fixed:
+                continue
+            end = start + len(var)
+            var.value = new_x[start:end]
+            start = end
+
     def fun(self, x: npt.NDArray) -> npt.NDArray:
-        """Returns the residuals of the system for a given vector value."""
-        result = np.concatenate([f.calc(x) for f in self._functions])
-        print(result)
+        """Returns the residuals of the system for a given non-fixed vector value and updates
+        the current x vector.
+        """
+        self.x = x
+        result = np.concatenate([f.calc() for f in self._equations])
         return result
 
-    def solve(self, method: str="lm", **kwargs) -> npt.NDArray:
+    def solve(self, method: str="lm",
+              fun_wrap: Callable[[Callable[[npt.NDArray], npt.NDArray]],
+                                 Callable[[npt.NDArray], npt.NDArray]]=None,
+              **kwargs) -> npt.NDArray:
         """Returns the roots of the system's functions as a 1D numpy array.
 
         :param method: The type of solver that should be used. Defaults to
             Levenberg-Marquardt (lm). See scipy.optimize.root for other options.
+        :param fun_wrap: A wrapper function to wrap around each residual function call. Must
+            take the input vector x and output the residual function value vector.
         """
         if "tol" not in kwargs:
             kwargs["tol"] = self.absolute_tol
         if "options" not in kwargs:
             kwargs["options"] = {"ftol": np.finfo(np.float64).eps,}
-        solution = find_root(self.fun, self._x0, method=method, **kwargs)
+        func = self.fun
+        if fun_wrap is not None:
+            func = fun_wrap(func)
+        solution = find_root(func, self.get_initial(), method=method, **kwargs)
         return solution
 
-    def get_initial(self) -> list[Real]:
-        """Returns the initial input vector to feed to the non-linear solver."""
-        return self._x0
+    def get_initial(self, include_fixed: bool=False) -> npt.NDArray:
+        """Returns the initial input vector to feed to the non-linear solver.
+
+        :param include_fixed: Whether to include the values of the fixed system variables.
+        """
+        x0 = []
+        for var in self._variables:
+            if var.fixed and not include_fixed:
+                continue
+            x0.extend(var.initial)
+        return np.array(x0)
+
+    def get_var_slice(self, var: ConstraintVariable) -> tuple[int, int]:
+        """Returns the start and end indicies of a variable in the x input vector."""
+        start = 0
+        for system_var in self._variables:
+            if system_var.fixed:
+                continue
+            end = start + len(system_var)
+            if system_var == var:
+                return start, end
+            start = end
+        raise LookupError(f"Could not find variable {var} in system's variables")
+
+    def get_eq_slice(self, eq: ConstraintEquation) -> tuple[int, int]:
+        """Returns the start and end indicies of a equation in the fun output vector."""
+        start = 0
+        for system_eq in self._equations:
+            end = start + len(system_eq.calc())
+            if system_eq == eq:
+                return start, end
+            start = end
+        raise LookupError(f"Could not find equation {eq} in system's equations")
+
+    def get_variables(self, include_fixed: bool=False) -> list[ConstraintVariable]:
+        """Returns the system's variables.
+
+        :param include_fixed: Whether to include the fixed system variables.
+        """
+        if include_fixed:
+            return self._variables
+        return [v for v in self._variables if not v.fixed]
+
+    def get_equations(self) -> list[ConstraintEquation]:
+        """Returns the system's equations."""
+        return self._equations
 
     def update(self, new_x: npt.NDArray) -> None:
-        """Updates all the variables in the system to a new vector value."""
+        """Updates all the elements in the system to a new vector value."""
+        updaters = {
+            CVN.DIRECTION: _update_direction,
+            CVN.LOCATION: _update_location,
+            CVN.REF_POINT: _update_ref_point,
+            CVN.NORMAL: _update_normal,
+        }
         for v in self._variables:
-            update_variable(v, new_x)
+            if v.fixed:
+                continue
+            start, end = self.get_var_slice(v)
+            new_value = new_x[start:end]
+            updaters[v.name](v.element, new_value)
 
     def label_x(self, x: npt.NDArray) -> str:
-        """Returns a string table with each vector variable value labeled and indexed."""
+        """Returns a string table with each vector variable value labeled and indexed.
+
+        :raises ValueError: When the x vector is not the same length as the current x.
+        """
+        if len(x) != len(self.x):
+            raise ValueError(f"Expected {len(self.x)} long vector, got: {new_x}")
         column_map = {
             "#": "#",
             "Value": "value",
@@ -541,10 +579,14 @@ class SystemSolver:
             "Source": "source",
         }
         data = []
-        index = 0
+        start = 0
         i = 0
         for var in self._variables:
-            for i, value in enumerate(x[slice(*var.get_slicer())], index):
+            if var.fixed:
+                continue
+            end = start + len(var)
+            x_var_values = x[start:end]
+            for i, value in enumerate(x_var_values, start):
                 data.append(
                     {
                         "#": i,
@@ -554,7 +596,7 @@ class SystemSolver:
                         "source": var.source,
                     }
                 )
-            index = i + 1
+            start = i + 1
         return get_table_string(data, column_map)
 
     def label_fun(self, results: npt.NDArray) -> str:
@@ -573,9 +615,9 @@ class SystemSolver:
         data = []
         start = 0
         i = 0
-        for f in self._functions:
+        for f in self._equations:
             try:
-                end = start + len(f.calc(self._x0))
+                end = start + len(f.calc())
             except TypeError:
                 end = start + 1
             for i, value in enumerate(results[slice(start, end)], start):
@@ -624,26 +666,24 @@ class SystemSolver:
         geo_types = {type(g) for g in constraint.get_geometry()}
         if geo_types == {Axis}:
             params = [self._get_var(g, CVN.DIRECTION) for g in constraint.get_geometry()]
-            func = ConstraintEquation(constraint.uid, CEN.CODIRECTIONAL, params, constraint,
-                                      self._delim, self._x0)
+            func = ConstraintEquation(constraint, CEN.CODIRECTIONAL, params)
         else:
             msg = (f"Codirectional combo {constraint.get_geometry()} is not supported and/or"
                    " may be invalid")
             raise NotImplementedError(msg)
-        self._functions.append(func)
+        self._equations.append(func)
 
     @_add_constraint.register
     def _antiparallel(self, constraint: Antiparallel) -> None:
         geo_types = {type(g) for g in constraint.get_geometry()}
         if geo_types == {Axis}:
             params = [self._get_var(g, CVN.DIRECTION) for g in constraint.get_geometry()]
-            func = ConstraintEquation(constraint.uid, CEN.ANTIPARALLEL, params, constraint,
-                                      self._delim, self._x0)
+            func = ConstraintEquation(constraint, CEN.ANTIPARALLEL, params)
         else:
             msg = (f"Antiparallel combo {constraint.get_geometry()} is not supported and/or"
                    " may be invalid")
             raise NotImplementedError(msg)
-        self._functions.append(func)
+        self._equations.append(func)
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
@@ -659,8 +699,7 @@ class SystemSolver:
                 self._get_var(axis, CVN.DIRECTION),
                 self._get_var(point, CVN.LOCATION),
             ]
-            funcs.append(ConstraintEquation(constraint.uid, CEN.POINT_LINE_COINCIDENT,
-                                            params, constraint, self._delim, self._x0))
+            funcs.append(ConstraintEquation(constraint, CEN.POINT_LINE_COINCIDENT, params))
         elif geo_types == {Plane, Point}:
             plane = next(g for g in constraint.get_geometry() if isinstance(g, Plane))
             point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
@@ -669,16 +708,12 @@ class SystemSolver:
                 self._get_var(plane, CVN.NORMAL),
                 self._get_var(point, CVN.LOCATION),
             ]
-            funcs.append(ConstraintEquation(constraint.uid, CEN.POINT_PLANE_COINCIDENT,
-                                            params, constraint, self._delim, self._x0))
+            funcs.append(ConstraintEquation(constraint, CEN.POINT_PLANE_COINCIDENT, params))
         elif geo_types == {Axis}:
             param_map = {CEN.PARALLEL: CVN.DIRECTION, CEN.EQUAL_VECTOR: CVN.REF_POINT}
             for eq, var in param_map.items():
                 params = [self._get_var(g, var) for g in constraint.get_geometry()]
-                funcs.append(
-                    ConstraintEquation(constraint.uid, eq, params,
-                                       constraint, self._delim, self._x0)
-                )
+                funcs.append(ConstraintEquation(constraint, eq, params))
         elif geo_types == {Point}:
             # Both are points
             raise NotImplementedError("Point to point not completed yet")
@@ -686,7 +721,7 @@ class SystemSolver:
             msg = (f"Coincident combo {constraint.get_geometry()} is not"
                    " supported and/or may be invalid")
             raise NotImplementedError(msg)
-        self._functions.extend(funcs)
+        self._equations.extend(funcs)
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
@@ -703,9 +738,7 @@ class SystemSolver:
             raise NotImplementedError(msg) from exc
 
         for v in [self._get_var(geo, n) for n in vector_names]:
-            eq = ConstraintEquation(constraint.uid, CEN.FIXED_VECTOR, [v],
-                                    constraint, self._delim, self._x0)
-            self._functions.append(eq)
+            v.fixed = True
 
     @singledispatchmethod
     def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:
@@ -723,30 +756,19 @@ class SystemSolver:
             CEN.UNIT_VECTOR: [CVN.DIRECTION]
         }
         for name, params in func_param_map.items():
-            func = ConstraintEquation(geometry.uid,
-                                      name,
-                                      [v for v in geo_vars if v.name in params],
-                                      geometry,
-                                      self._delim,
-                                      self._x0)
-            self._functions.append(func)
+            func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])
+            self._equations.append(func)
 
     @_add_geometry_funcs.register
     def _line(self, geometry: Line) -> None:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
         func_param_map = {
             CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
-            CEN.UNIT_VECTOR: [CVN.DIRECTION],
             CEN.UNIQUE_VECTOR: [CVN.DIRECTION],
         }
         for name, params in func_param_map.items():
-            func = ConstraintEquation(geometry.uid,
-                                      name,
-                                      [v for v in geo_vars if v.name in params],
-                                      geometry,
-                                      self._delim,
-                                      self._x0)
-            self._functions.append(func)
+            func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])
+            self._equations.append(func)
 
     @_add_geometry_funcs.register
     def _plane(self, geometry: Plane) -> None:
@@ -756,13 +778,8 @@ class SystemSolver:
             CEN.UNIT_VECTOR: [CVN.NORMAL],
         }
         for name, params in func_param_map.items():
-            func = ConstraintEquation(geometry.uid,
-                                      name,
-                                      [v for v in geo_vars if v.name in params],
-                                      geometry,
-                                      self._delim,
-                                      self._x0)
-            self._functions.append(func)
+            func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])
+            self._equations.append(func)
 
     @singledispatchmethod
     def _add_geometry_variables(self, geometry: AbstractGeometry) -> None:
@@ -773,34 +790,24 @@ class SystemSolver:
 
     @_add_geometry_variables.register
     def _line_and_axis_vars(self, geometry: Axis | Line) -> None:
-        values = {
-            CVN.REF_POINT: geometry.reference_point.cartesian,
-            CVN.DIRECTION: geometry.direction,
-        }
+        values = {CVN.REF_POINT: geometry.reference_point.cartesian,
+                  CVN.DIRECTION: geometry.direction}
         for name, vector in values.items():
-            variable = ConstraintVariable(geometry.uid, name, vector,
-                                          len(self._x0), self._delim, geometry)
-            self._x0.extend(variable.initial)
-            self._variables.append(variable)
+            var = ConstraintVariable(geometry, name, np.array(vector), self)
+            self._variables.append(var)
 
     @_add_geometry_variables.register
     def _point_vars(self, geometry: Point) -> None:
-        variable = ConstraintVariable(geometry.uid, CVN.LOCATION, geometry.cartesian,
-                                      len(self._x0), self._delim, geometry)
-        self._x0.extend(variable.initial)
-        self._variables.append(variable)
+        var = ConstraintVariable(geometry, CVN.LOCATION, np.array(geometry.cartesian), self)
+        self._variables.append(var)
 
     @_add_geometry_variables.register
     def _plane_vars(self, geometry: Plane) -> None:
-        values = {
-            CVN.NORMAL: geometry.normal,
-            CVN.REF_POINT: geometry.reference_point.cartesian,
-        }
+        values = {CVN.NORMAL: geometry.normal,
+                  CVN.REF_POINT: geometry.reference_point.cartesian}
         for name, vector in values.items():
-            variable = ConstraintVariable(geometry.uid, name, vector,
-                                          len(self._x0), self._delim, geometry)
-            self._x0.extend(variable.initial)
-            self._variables.append(variable)
+            var = ConstraintVariable(geometry, name, np.array(vector), self)
+            self._variables.append(var)
 
     @staticmethod
     def _var_data(var: ConstraintVariable) -> dict[str, str | SpaceVector | Real]:
@@ -829,7 +836,7 @@ class SystemSolver:
         strings.append("Solver Variables".center(max(map(len, table.splitlines()))))
         strings.append(table)
         func_strings = []
-        for i, f in enumerate(self._functions):
+        for i, f in enumerate(self._equations):
             func_var_data = [self._var_data(v) for v in f.params]
             table = get_table_string(func_var_data, var_column_map)
             func_strings.append(f"{i} Name: {f.name} Source: {f.source}")
@@ -837,26 +844,12 @@ class SystemSolver:
         func_table = "\n".join(map(textwrap.indent, func_strings, repeat("  ")))
         strings.append("Solver Equations".center(max(map(len, func_table.splitlines()))))
         strings.append(func_table)
-        init_vals = self.label_x(self._x0)
+        init_vals = self.label_x(self.get_initial())
         strings.append("Initial Values".center(max(map(len, init_vals.splitlines()))))
         strings.append(init_vals)
         return "\n".join(strings)
 
-def update_variable(var: ConstraintVariable, new_x: npt.NDArray) -> None:
-    """Updates the source of a variable using a new system vector value.
 
-    :param var: A variable used in a constraint. Can represent a geometry or constraint property.
-    :param new_x: The new vector value to update the variable with. The vector must be the
-        same length as the system's initial vector.
-    """
-    updaters = {
-        CVN.DIRECTION: _update_direction,
-        CVN.LOCATION: _update_location,
-        CVN.REF_POINT: _update_ref_point,
-        CVN.NORMAL: _update_normal,
-    }
-    new_value = new_x[slice(*var.get_slicer())]
-    updaters[var.name](var.element, new_value)
 
 def _update_location(geometry: Point, value: npt.NDArray) -> None:
     geometry.cartesian = value
