@@ -36,20 +36,21 @@ dependencies = [
     "pylint",
 ]
 
+[tool.hatch.envs.dev]
+dependencies = [
+  "matplotlib",
+  "jupyterlab",
+  "ipywidgets",
+  "pytest",
+]
+
 [tool.hatch.envs.lint.scripts]
 check = [
     "pylint {args:.}",
 ]
 
-[tool.hatch.envs.hatch-test]
-extra-dependencies = [
-  "matplotlib",
-]
-
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
-
-
 
 [tool.hatch.envs.docs]
 python = "3.11"

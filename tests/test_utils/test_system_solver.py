@@ -131,10 +131,8 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX",
                               marks=pytest.mark.xfail(reason="Cannot cross 0 yet")),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (1,0,0)), "axes-coincident-X-to-X"),
-        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y",
-                              marks=pytest.mark.xfail(reason="Cannot rotate around 0 yet")),
-        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z",
-                              marks=pytest.mark.xfail(reason="Cannot rotate around 0 yet")),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
     ]
 )
@@ -159,10 +157,12 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
             run_data.append([*x, *result])
             return result
         return wrap
-    solution = solver.solve(fun_wrap=fun_log)
-    with open(tmp_path / "convergence_data.csv", "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerows(run_data)
+    try:
+        solution = solver.solve(fun_wrap=fun_log)
+    finally:
+        with open(tmp_path / "convergence_data.csv", "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerows(run_data)
     debugs = {
         "Initial Input Vector": solver.label_x(solver.get_initial()),
         "Initial Residuals": solver.label_fun(solver.fun(solver.get_initial())),

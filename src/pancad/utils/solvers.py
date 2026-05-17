@@ -160,10 +160,17 @@ def residual_unit_vector(vector: npt.NDArray) -> np.float64:
     """Calculates how far a vector is from being a unit vector."""
     return np.linalg.norm(vector) - 1
 
+def residual_non_zero_vector(vector: npt.NDArray,
+                             zero_atol: np.float64=np.float64(1e-15)) -> np.float64:
+    """Produces a residual to constrain a vector to being non-zero."""
+    if np.isclose(np.linalg.norm(vector), 0, atol=zero_atol):
+        return 1
+    return 0
+
 def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
                         comparison: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL],
                         zero_atol: np.float64=np.float64(1e-16),
-                        ) -> np.float64:
+                        ) -> npt.NDArray:
     """Calculates how close a second vector is to pointing in the same direction (codirectional),
     opposite directions (antiparallel), or in the generically parallel direction as the first
     vector.
@@ -178,19 +185,20 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
     norm1, norm2 = map(np.linalg.norm, (v1, v2))
     if any(np.isclose(n, 0, atol=zero_atol) for n in (norm1, norm2)):
         raise ValueError(f"Cannot check whether a zero vector is {comparison.value}")
-    scaled_v2 = norm1 / norm2 * v2
+    nv1 = v1 / norm1
+    nv2 = v2 / norm2
     match comparison:
         case SC.CODIRECTIONAL:
-            component_residuals = v1 - scaled_v2
+            component_residuals = nv1 - nv2
         case SC.ANTIPARALLEL:
-            component_residuals = v1 + scaled_v2
+            component_residuals = nv1 + nv2
         case SC.PARALLEL:
-            component_residuals = v1 - np.copysign(1, np.dot(v1, v2)) * scaled_v2
+            component_residuals = nv1 - np.copysign(1, np.dot(v1, v2)) * nv2
         case _:
             msg = (f"Unexpected comparison {comparison}."
                    f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
             raise TypeError(msg)
-    return component_residuals[np.argmax(np.abs(component_residuals))]
+    return np.abs(component_residuals)
 
 residual_codirectional = partial(_residual_direction, comparison=SC.CODIRECTIONAL)
 residual_codirectional.__doc__ = """
@@ -227,16 +235,18 @@ def residual_perpendicular(v1: npt.NDArray, v2: npt.NDArray,
         raise ValueError("Cannot check whether a zero vector is perpendicular")
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
-def residual_point_line_distance(ref_pt: npt.NDArray, direction: npt.NDArray,
+def residual_point_line_distance(line_pt: npt.NDArray, direction: npt.NDArray,
                                  pt: npt.NDArray, distance: np.float64) -> np.float64:
     """Calculates how close a point is to being a specified closest distance from a line.
 
-    :param ref_pt: The line's closest to the origin reference point position vector.
-    :param direction: The line's direction vector.
+    :param line_pt: A point on the line.
+    :param direction: A vector in the direction of the line.
     :param pt: The point's position vector.
     :param distance: The distance the point should be from the line.
     """
-    return np.linalg.norm(ref_pt - pt - np.dot(ref_pt - pt, direction) * direction) - distance
+    unit_d = direction / np.linalg.norm(direction)
+    line_pt_sub_pt = line_pt - pt
+    return np.linalg.norm(line_pt_sub_pt - np.dot(line_pt_sub_pt, unit_d) * unit_d) - distance
 
 residual_point_line_coincident = partial(residual_point_line_distance, distance=np.float64(0))
 residual_point_line_coincident.__doc__ = """
@@ -266,6 +276,13 @@ residual_point_plane_coincident.__doc__ = """
     :param normal: The plane's normal vector.
     :param pt: The point's position vector.
 """.strip()
+
+def residual_line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
+                                  p2: npt.NDArray, d2: npt.NDArray) -> npt.NDArray:
+    """Calculates how close two lines are to being coincident with each other."""
+    offset_p = p2 + d2 / np.linalg.norm(d2)
+    return np.array([residual_point_line_coincident(p1, d1, point) for point in (p2, offset_p)])
+
 
 def residual_plane_ref_point(normal: npt.NDArray, pt: npt.NDArray) -> np.float64:
     """Calculates how close a Plane's reference point is to being the closest to origin point.
@@ -337,12 +354,14 @@ RESIDUAL_FUNCS = {
     CEN.PLANE_REF_POINT: residual_plane_ref_point,
     CEN.POINT_LINE_COINCIDENT: residual_point_line_coincident,
     CEN.POINT_PLANE_COINCIDENT: residual_point_plane_coincident,
+    CEN.LINE_LINE_COINCIDENT: residual_line_line_coincident,
     CEN.FIXED_VECTOR: residual_equal_vector,
     # First vector must be held constant to a supplied initial vector
     CEN.CODIRECTIONAL: residual_codirectional,
     CEN.ANTIPARALLEL: residual_antiparallel,
     CEN.PARALLEL: residual_parallel,
     CEN.UNIQUE_VECTOR: residual_unique_vector,
+    CEN.NON_ZERO: residual_non_zero_vector,
 }
 
 class ConstraintVariable:
@@ -478,7 +497,12 @@ class SystemSolver:
         the current x vector.
         """
         self.x = x
-        result = np.concatenate([f.calc() for f in self._equations])
+        try:
+            result = np.concatenate([f.calc() for f in self._equations])
+        except ValueError:
+            if self.x.size == 0:
+                return np.array([])
+            raise
         return result
 
     def solve(self, method: str="lm",
@@ -499,7 +523,8 @@ class SystemSolver:
         func = self.fun
         if fun_wrap is not None:
             func = fun_wrap(func)
-        solution = find_root(func, self.get_initial(), method=method, **kwargs)
+        x0 = self.get_initial()
+        solution = find_root(func, x0, method=method, **kwargs)
         return solution
 
     def get_initial(self, include_fixed: bool=False) -> npt.NDArray:
@@ -570,7 +595,7 @@ class SystemSolver:
         :raises ValueError: When the x vector is not the same length as the current x.
         """
         if len(x) != len(self.x):
-            raise ValueError(f"Expected {len(self.x)} long vector, got: {new_x}")
+            raise ValueError(f"Expected {len(self.x)} long vector, got: {x}")
         column_map = {
             "#": "#",
             "Value": "value",
@@ -710,10 +735,10 @@ class SystemSolver:
             ]
             funcs.append(ConstraintEquation(constraint, CEN.POINT_PLANE_COINCIDENT, params))
         elif geo_types == {Axis}:
-            param_map = {CEN.PARALLEL: CVN.DIRECTION, CEN.EQUAL_VECTOR: CVN.REF_POINT}
-            for eq, var in param_map.items():
-                params = [self._get_var(g, var) for g in constraint.get_geometry()]
-                funcs.append(ConstraintEquation(constraint, eq, params))
+            params = []
+            for axis in constraint.get_geometry():
+                params.extend([self._get_var(axis, v) for v in (CVN.REF_POINT, CVN.DIRECTION)])
+            funcs.append(ConstraintEquation(constraint, CEN.LINE_LINE_COINCIDENT, params))
         elif geo_types == {Point}:
             # Both are points
             raise NotImplementedError("Point to point not completed yet")
@@ -737,8 +762,10 @@ class SystemSolver:
             msg = f"Fixed relation for {geo} is not supported and/or may be invalid"
             raise NotImplementedError(msg) from exc
 
+        # Fix all geometry variables and remove equations sourced from the geometry.
         for v in [self._get_var(geo, n) for n in vector_names]:
             v.fixed = True
+        self._equations = [e for e in self._equations if e.element != geo]
 
     @singledispatchmethod
     def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:
@@ -753,7 +780,8 @@ class SystemSolver:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
         func_param_map = {
             CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
-            CEN.UNIT_VECTOR: [CVN.DIRECTION]
+            CEN.NON_ZERO: [CVN.DIRECTION],
+            # CEN.UNIT_VECTOR: [CVN.DIRECTION]
         }
         for name, params in func_param_map.items():
             func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])

@@ -36,6 +36,9 @@ class ConstraintEquationName(StrEnum):
     POINT_PLANE_COINCIDENT = auto()
     """Point to Plane or Plane to Point coincident."""
 
+    LINE_LINE_COINCIDENT = auto()
+    """Line to Line Coincident."""
+
     FIXED_VECTOR = auto()
     """A vector that must be held in a constant direction."""
 
@@ -66,3 +69,6 @@ class ConstraintEquationName(StrEnum):
 
     UNIQUE_VECTOR = auto()
     """This vector must be uniquely representable in pancad. Used for Line definition."""
+
+    NON_ZERO = auto()
+    """This vector must be non zero."""
