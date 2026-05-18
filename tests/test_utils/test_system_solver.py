@@ -244,38 +244,40 @@ class TestResiduals:
     @pytest.mark.parametrize(
         "func, v1, v2, expected",
         [
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,0,0), 0.0,
+            pytest.param(solvers.residual_codirectional, (1,0,0), (1,0,0), (0,0,0),
                          id="cd_both_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (-1,0,0), 2.0,
+            pytest.param(solvers.residual_codirectional, (1,0,0), (-1,0,0), (2,0,0),
                          id="cd_opposite_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (1,0,0), 2.0,
+            pytest.param(solvers.residual_antiparallel, (1,0,0), (1,0,0), (2,0,0),
                          id="ap_both_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (-1,0,0), 0.0,
+            pytest.param(solvers.residual_antiparallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="ap_opposite_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (1,0,0), 0.0,
+            pytest.param(solvers.residual_parallel, (1,0,0), (1,0,0), (0,0,0),
                          id="pa_both_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (-1,0,0), 0.0,
+            pytest.param(solvers.residual_parallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="pa_opposite_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,EPS_64,0), (1,0,0), EPS_64,
+            pytest.param(solvers.residual_codirectional, (1,EPS_64,0), (1,0,0), (0,EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,EPS_64,0), -EPS_64,
+            pytest.param(solvers.residual_codirectional, (1,0,0), (1,EPS_64,0), (0,-EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (2,0,0), 0,
+            pytest.param(solvers.residual_codirectional, (2,0,0), (2,0,0), (0,0,0),
                          id="cd_2x_vectors"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (4,0,0), 0,
+            pytest.param(solvers.residual_codirectional, (2,0,0), (4,0,0), (0,0,0),
                          id="cd_2xand4x_vectors"),
-            pytest.param(solvers.residual_codirectional, (-2,0,0), (-4,0,0), 0,
+            pytest.param(solvers.residual_codirectional, (-2,0,0), (-4,0,0), (0,0,0),
                          id="cd_-2xand-4x_vectors"),
         ]
     )
     def test_direction_residual(self,
                                 func: Callable[npt.NDArray, npt.NDArray],
                                 v1: SpaceVector, v2: SpaceVector,
-                                expected: float) -> None:
+                                expected: SpaceVector) -> None:
         """Test for calculating the residual of two vectors that must be codirectional,
         antiparallel, or parallel.
         """
-        assert func(np.array(v1, dtype=np.float64), np.array(v2, dtype=np.float64)) == expected
+        np.testing.assert_array_equal(func(np.array(v1, dtype=np.float64),
+                                           np.array(v2, dtype=np.float64)),
+                                      expected)
 
     @pytest.mark.parametrize(
         "func, v1, v2, atol",
@@ -320,15 +322,18 @@ class TestResiduals:
     @pytest.mark.parametrize(
         "normal, pt, expected",
         [
-            pytest.param((0,0,1), (0,0,0), 0, id="xy-plane_nominal"),
-            pytest.param((0,EPS_64,1), (0,0,1), EPS_64, id="xy-plane-p1z_y-eps-off"),
-            pytest.param((0,EPS_64,1), (0,0,-1), EPS_64, id="xy-plane-m1z_y-eps-off"),
+            pytest.param((0,0,1), (0,0,0), (0,0,0), id="xy-plane_nominal"),
+            pytest.param((0,EPS_64,1), (0,0,1), (0,EPS_64,0), id="xy-plane-p1z_y-eps-off"),
+            pytest.param((0,EPS_64,1), (0,0,-1), (0,EPS_64,0), id="xy-plane-m1z_y-eps-off"),
         ]
     )
     def test_plane_ref_point(self, normal: Space3DVector, pt: Space3DVector,
                              expected: float) -> None:
-        assert solvers.residual_plane_ref_point(np.array(normal,dtype=np.float64),
-                                                np.array(pt, dtype=np.float64)) == expected
+        np.testing.assert_array_equal(solvers.residual_plane_ref_point(
+                                          np.array(normal, dtype=np.float64),
+                                          np.array(pt, dtype=np.float64)
+                                      ),
+                                      expected)
 
     @pytest.mark.parametrize(
         "vector, atol, expected",

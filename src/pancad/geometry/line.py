@@ -49,6 +49,7 @@ class Line(AbstractGeometry):
     def __init__(self, point: Point, direction: VectorLike,
                  uid: str=None) -> None:
         self.uid = uid
+        self._point_closest_to_origin = Point([0] * len(point)) # Initialize closest point
         self.direction = direction
         if isinstance(point, tuple):
             msg = ("point cannot be a tuple for Line's init function."
@@ -181,6 +182,7 @@ class Line(AbstractGeometry):
             closest to the origin.
         """
         return self._direction
+
     @direction.setter
     def direction(self, vector: VectorLike) -> None:
         vector = trig.to_1d_np(vector)
@@ -188,6 +190,9 @@ class Line(AbstractGeometry):
             msg = f"Direction vector cannot be zero vector: {vector}"
             raise ValueError(msg)
         self._direction = self._unique_direction(vector)
+        new_closest = self._closest_to_origin(self._point_closest_to_origin.cartesian,
+                                              self.direction)
+        self._point_closest_to_origin.update(new_closest)
 
     @property
     def direction_polar(self) -> Space2DVector:

@@ -5,6 +5,7 @@ import itertools
 import math
 from math import cos, sin, radians
 import unittest
+from typing import TYPE_CHECKING
 
 import numpy as np
 import quaternion # pylint: disable=unused-import
@@ -14,6 +15,10 @@ from pancad.utils import trigonometry as trig
 from pancad.geometry import spatial_relations
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
+
+if TYPE_CHECKING:
+    from pancad.utils.pancad_types import SpaceVector as SVec
+
 
 ROUNDING_PLACES = 10
 
@@ -66,6 +71,38 @@ def test_line_unique_direction(direction, expected):
     point = Point([0] * len(direction))
     line = Line(point, direction)
     np.testing.assert_array_almost_equal(line.direction, expected)
+
+@pytest.mark.parametrize(
+    "cls_func, initial, point, expected",
+    [
+        pytest.param(Line, ((0,0,0), (1,0,0)), (1,0,0), ((0,0,0), (1,0,0)), id="L-x-mv-to-1,0,0"),
+        pytest.param(Axis, ((0,0,0), (1,0,0)), (1,0,0), ((0,0,0), (1,0,0)), id="A-x-mv-to-1,0,0"),
+    ]
+)
+def test_move_to_point(cls_func, initial: tuple[SVec, SVec], point: SVec,
+                       expected: tuple[SVec, SVec]):
+    geo = Line(Point(initial[0]), initial[1])
+    geo.move_to_point(point)
+    np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
+                                  [*expected[0], *expected[1]])
+
+@pytest.mark.parametrize(
+    "cls_func, initial, direct, expected",
+    [
+        pytest.param(Line, ((0,0,0), (1,0,0)), (0,0,1), ((0,0,0), (0,0,1)), id="L-x-to-z"),
+        pytest.param(Axis, ((0,0,0), (1,0,0)), (0,0,1), ((0,0,0), (0,0,1)), id="L-x-to-z"),
+        pytest.param(Line, ((0,1,0), (1,0,0)), (0,1,0), ((0,0,0), (0,1,0)),
+                     id="L-r0,1,0x-to-r0,0,0y"), # Checks that reference_point is updated
+        pytest.param(Axis, ((0,1,0), (1,0,0)), (0,1,0), ((0,0,0), (0,1,0)),
+                     id="A-r0,1,0x-to-r0,0,0y"), # Checks that reference_point is updated
+    ]
+)
+def test_direction_setter(cls_func, initial: tuple[SVec, SVec], direct: SVec,
+                          expected: tuple[SVec, SVec]):
+    geo = cls_func(Point(initial[0]), initial[1])
+    geo.direction = direct
+    np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
+                                  [*expected[0], *expected[1]])
 
 class TestLineInit(unittest.TestCase):
 

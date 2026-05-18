@@ -198,7 +198,7 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
             msg = (f"Unexpected comparison {comparison}."
                    f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
             raise TypeError(msg)
-    return np.abs(component_residuals)
+    return component_residuals
 
 residual_codirectional = partial(_residual_direction, comparison=SC.CODIRECTIONAL)
 residual_codirectional.__doc__ = """
@@ -779,7 +779,7 @@ class SystemSolver:
     def _axis(self, geometry: Axis) -> None:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
         func_param_map = {
-            CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
+            # CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
             CEN.NON_ZERO: [CVN.DIRECTION],
             # CEN.UNIT_VECTOR: [CVN.DIRECTION]
         }
