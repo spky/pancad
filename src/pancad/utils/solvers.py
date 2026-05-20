@@ -19,7 +19,7 @@ from pancad.constants import (
 )
 
 from pancad.constraints.state_constraint import Coincident, Codirectional, Antiparallel
-from pancad.constraints.snapto import Fixed
+from pancad.constraints.snapto import Fixed, Unique
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.line import Axis, Line
 from pancad.geometry.plane import Plane
@@ -193,7 +193,7 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
         case SC.ANTIPARALLEL:
             component_residuals = nv1 + nv2
         case SC.PARALLEL:
-            component_residuals = nv1 - np.copysign(1, np.dot(v1, v2)) * nv2
+            component_residuals = nv1 - np.copysign(1, np.dot(nv1, nv2)) * nv2
         case _:
             msg = (f"Unexpected comparison {comparison}."
                    f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
@@ -284,17 +284,6 @@ def residual_line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
     return np.array([residual_point_line_coincident(p1, d1, point) for point in (p2, offset_p)])
 
 
-def residual_plane_ref_point(normal: npt.NDArray, pt: npt.NDArray) -> np.float64:
-    """Calculates how close a Plane's reference point is to being the closest to origin point.
-    This is the same as the normal and point position vectors being parallel except when the
-    point's vector is nearly a zero vector.
-    """
-    try:
-        return residual_parallel(normal, pt)
-    except ValueError:
-        # Should only execute when the point is a zero vector.
-        return np.linalg.norm(pt)
-
 def residual_line_ref_point(ref_pt: npt.NDArray, direction: npt.NDArray) -> np.float64:
     """Calculates how close a Line or Axis' reference point is to being the closest to origin
     point. This is the same as the vectors being perpendicular except when the reference point is
@@ -351,7 +340,6 @@ RESIDUAL_FUNCS = {
     CEN.EQUAL_VECTOR: residual_equal_vector,
     CEN.LINE_REF_POINT: residual_line_ref_point,
     # Line Reference Point Vector and Direction Perpendicularity
-    CEN.PLANE_REF_POINT: residual_plane_ref_point,
     CEN.POINT_LINE_COINCIDENT: residual_point_line_coincident,
     CEN.POINT_PLANE_COINCIDENT: residual_point_plane_coincident,
     CEN.LINE_LINE_COINCIDENT: residual_line_line_coincident,
@@ -711,6 +699,19 @@ class SystemSolver:
         self._equations.append(func)
 
     @_add_constraint.register
+    def _unique(self, constraint: Unique):
+        geo = constraint.get_geometry()[0] # Unique must have only one geometry element
+        param_name_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL],}
+        try:
+            param_names = param_name_map[type(geo)]
+        except KeyError as exc:
+            msg = f"Unique relation for {geo} is not supported and/or may be invalid"
+            raise NotImplementedError(msg) from exc
+        params = [self._get_var(geo, name) for name in param_names]
+        func = ConstraintEquation(constraint, CEN.UNIQUE_VECTOR, params)
+        self._equations.append(func)
+
+    @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
         geo_types = {type(g) for g in constraint.get_geometry()}
         # Add coincident constraint equation based on geometry combo.
@@ -750,7 +751,7 @@ class SystemSolver:
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
-        geo = constraint.get_geometry()[0]
+        geo = constraint.get_geometry()[0] # Fixed must have only one geometry element
         vector_name_map = {
             Point: [CVN.LOCATION],
             Axis: [CVN.REF_POINT, CVN.DIRECTION],
@@ -778,11 +779,7 @@ class SystemSolver:
     @_add_geometry_funcs.register
     def _axis(self, geometry: Axis) -> None:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
-        func_param_map = {
-            # CEN.LINE_REF_POINT: [CVN.DIRECTION, CVN.REF_POINT],
-            CEN.NON_ZERO: [CVN.DIRECTION],
-            # CEN.UNIT_VECTOR: [CVN.DIRECTION]
-        }
+        func_param_map = {CEN.NON_ZERO: [CVN.DIRECTION],}
         for name, params in func_param_map.items():
             func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])
             self._equations.append(func)
@@ -801,10 +798,7 @@ class SystemSolver:
     @_add_geometry_funcs.register
     def _plane(self, geometry: Plane) -> None:
         geo_vars = [v for v in self._variables if v.source == geometry.uid]
-        func_param_map = {
-            CEN.PLANE_REF_POINT: [CVN.REF_POINT, CVN.NORMAL],
-            CEN.UNIT_VECTOR: [CVN.NORMAL],
-        }
+        func_param_map = {CEN.NON_ZERO: [CVN.NORMAL],}
         for name, params in func_param_map.items():
             func = ConstraintEquation(geometry, name, [v for v in geo_vars if v.name in params])
             self._equations.append(func)
@@ -878,15 +872,18 @@ class SystemSolver:
         return "\n".join(strings)
 
 
-
 def _update_location(geometry: Point, value: npt.NDArray) -> None:
+    """Updates a Point's location."""
     geometry.cartesian = value
 
 def _update_direction(geometry: Axis | Line,  value: npt.NDArray) -> None:
+    """Updates a Line or Axis direction."""
     geometry.direction = value
 
 def _update_normal(geometry: Plane, value: npt.NDArray) -> None:
+    """Updates a Plane's normal vector."""
     geometry.normal = value
 
 def _update_ref_point(geometry: Axis | Line | Plane, value: npt.NDArray) -> None:
+    """Updates a Line or Axis reference point closest to the origin."""
     geometry.move_to_point(value)

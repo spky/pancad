@@ -9,7 +9,7 @@ from pancad.constants import SketchConstraint
 from pancad.constraints.distance import (
     Angle, Diameter, Distance, HorizontalDistance, Radius, VerticalDistance
 )
-from pancad.constraints.snapto import Horizontal, Vertical, Fixed
+from pancad.constraints.snapto import Horizontal, Vertical, Fixed, Unique
 from pancad.constraints.state_constraint import (
     Coincident, Equal, Parallel, Perpendicular, AlignAxes, Antiparallel, Codirectional
 )
@@ -40,6 +40,7 @@ SKETCH_CONSTRAINT_TO_CLASS = {
     SketchConstraint.FIXED: Fixed,
     SketchConstraint.PARALLEL: Parallel,
     SketchConstraint.PERPENDICULAR: Perpendicular,
+    SketchConstraint.UNIQUE: Unique,
     SketchConstraint.VERTICAL: Vertical,
 }
 

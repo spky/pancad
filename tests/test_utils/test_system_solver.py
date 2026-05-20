@@ -29,6 +29,7 @@ SolveTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
 
 def _sys_line_co_2_fixed_pts(ref_pt: Space3DVector, direction: SpaceVector,
                              p1: SpaceVector, p2: SpaceVector) -> ThreeDSketchSystem:
+    """Generates an system of a line and two fixed points."""
     geo = [Line(Point(ref_pt), direction), Point(p1), Point(p2)]
     constraints = [
         make_constraint(SC.COINCIDENT, geo[0], geo[1]),
@@ -68,6 +69,7 @@ def _plane_to_3_pts(ref_pt: Space3DVector, normal: Space3DVector,
                 make_constraint(SC.COINCIDENT, plane, point_1),
                 make_constraint(SC.COINCIDENT, plane, point_2),
                 make_constraint(SC.COINCIDENT, plane, point_3),
+                make_constraint(SC.UNIQUE, plane),
             ]
         )
     return ThreeDSketchSystem(initial, constraints[0]), ThreeDSketchSystem(solved, constraints[1])
@@ -119,14 +121,11 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,1,1)),
                      id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-(0,0,0)(1,1,1)"),
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((0,0,1), (1,0,1), (0,1,1))),
-                     id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z",
-                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
+                     id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z"),
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((2,0,0), (0,2,0), (0,0,2))),
-                     id="3-pt-coincident-Plane-XY-to-all-2-away",
-                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
+                     id="3-pt-coincident-Plane-XY-to-all-2-away"),
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
-                     id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane",
-                     marks=pytest.mark.xfail(reason="Plane Equations not yet added")),
+                     id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
         pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX",
                               marks=pytest.mark.xfail(reason="Cannot cross 0 yet")),
@@ -200,6 +199,7 @@ class TestSolverSetUp:
     )
     def test_get_initial(self, system: AbstractGeometrySystem, include_fixed: bool,
                          expected: list[float]):
+        """Tests getting the initial x vector for solving."""
         solver = solvers.SystemSolver(system)
         np.testing.assert_array_equal(solver.get_initial(include_fixed),
                                       np.array(expected, dtype=np.float64))
@@ -212,6 +212,7 @@ class TestSolverSetUp:
         ]
     )
     def test_x_setter(self, system: ThreeDSketchSystem, new_x: list[float]):
+        """Tests the ability to update the input x vector during the solving operation."""
         solver = solvers.SystemSolver(system)
         new_x_array = np.array(new_x, dtype=np.float64)
         solver.x = new_x_array
@@ -318,22 +319,6 @@ class TestResiduals:
         """Test for calculating the residual of two vectors that must be perpendicular."""
         assert solvers.residual_perpendicular(np.array(v1, dtype=np.float64),
                                               np.array(v2, dtype=np.float64)) == expected
-
-    @pytest.mark.parametrize(
-        "normal, pt, expected",
-        [
-            pytest.param((0,0,1), (0,0,0), (0,0,0), id="xy-plane_nominal"),
-            pytest.param((0,EPS_64,1), (0,0,1), (0,EPS_64,0), id="xy-plane-p1z_y-eps-off"),
-            pytest.param((0,EPS_64,1), (0,0,-1), (0,EPS_64,0), id="xy-plane-m1z_y-eps-off"),
-        ]
-    )
-    def test_plane_ref_point(self, normal: Space3DVector, pt: Space3DVector,
-                             expected: float) -> None:
-        np.testing.assert_array_equal(solvers.residual_plane_ref_point(
-                                          np.array(normal, dtype=np.float64),
-                                          np.array(pt, dtype=np.float64)
-                                      ),
-                                      expected)
 
     @pytest.mark.parametrize(
         "vector, atol, expected",

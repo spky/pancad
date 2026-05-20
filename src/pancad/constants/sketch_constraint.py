@@ -68,6 +68,8 @@ class SketchConstraint(StrEnum):
     """Refers to constraints holding a geometry element to touch a curve at a
     point while not also crossing the curve at that point.
     """
+    UNIQUE = auto()
+    """Refers to constraints making a geometry element's vectors in unique diections."""
     VERTICAL = auto()
     """Refers to constraints holding a single geometry element (or multiple
     geometry elements relative to each other) parallel to a 2D coordinate
