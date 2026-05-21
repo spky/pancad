@@ -35,13 +35,24 @@ def get_test_opts(run: str) -> list[str]:
     return [t.stem for t in get_subdirs(BASE_TEST_DIR / run)]
 
 def get_file_opts(run: str, test: str, ext: str) -> list[str]:
-    """Returns the file options for the run's test's outputs with a given extension."""
+    """Returns the file options for the run's test's outputs with a given extension.
+
+    :param run: The name of the unittest run folder
+    :param test: The name of the test data folder
+    :param ext: The file extension to filter for. Ex: '.csv'
+    """
     return [f.name for f in get_file_type(BASE_TEST_DIR / run / test, ext)]
 
 def get_series_opts(run: str, test: str, filename: str) -> list[str]:
-    """Returns the options for the series names at the top of a test output csv file."""
+    """Returns the options for the series names at the top of a test output csv file.
+
+    :param run: The name of the unittest run folder
+    :param test: The name of the test data folder
+    :param filename: The name of the csv file to read series data names from. The first row is
+        assumed to have the names of the data series columns.
+    """
     try:
-        path = BASE_TEST_DIR / run / test / filename 
+        path = BASE_TEST_DIR / run / test / filename
     except TypeError:
         return []
     with open(path, newline="") as file:
@@ -49,9 +60,15 @@ def get_series_opts(run: str, test: str, filename: str) -> list[str]:
         return list(next(reader))
 
 def get_series_data(run: str, test: str, filename: str, series: list[str]) -> dict[str, float]:
-    """Returns the data inside a test csv file output."""
+    """Returns the data inside a test csv file output.
+
+    :param run: The name of the unittest run folder
+    :param test: The name of the test data folder
+    :param filename: The name of the csv file to read series data names from.
+    :param series: A list of a subset of the column names in the file.
+    """
     try:
-        path = BASE_TEST_DIR / run / test / filename 
+        path = BASE_TEST_DIR / run / test / filename
     except TypeError:
         return {}
     with open(path, newline="") as file:
@@ -64,21 +81,43 @@ def get_series_data(run: str, test: str, filename: str, series: list[str]) -> di
 
 # Event Handlers
 def on_run_change(change, selector):
-    """Updates the test selector options when the run selection changes."""
+    """Updates the test selector options when the run selection changes.
+
+    :param change: A dictionary produced by the widget change.
+    :param selector: The test selector needing an option update.
+    """
     selector.options = get_test_opts(change["new"])
 
 def on_test_change(change, run, selector):
-    """Updates the csv file selector options when the test selection changes."""
+    """Updates the csv file selector options when the test selection changes.
+
+    :param change: A dictionary produced by the widget change.
+    :param run: The widget that selects a run folder name.
+    :param selector: The file selector needing an option update.
+    """
+    
     selector.options = get_file_opts(run.value, change["new"], ".csv")
     selector.index = 0
 
 def on_file_change(change, run, test, selector):
-    """Updates the series selector options when the file selection changes."""
+    """Updates the series selector options when the file selection changes.
+
+    :param change: A dictionary produced by the widget change.
+    :param run: The widget that selects a run folder name.
+    :param test: The widget that selects a test folder name.
+    :param selector: The series selector needing an option update.
+    """
     opts = get_series_opts(run.value, test.value, change["new"])
     selector.options = get_series_opts(run.value, test.value, change["new"])
 
 def on_series_change(change, run, test, filename: str, plot_output):
-    """Updates the displayed plot when the series selection changes."""
+    """Updates the displayed plot when the series selection changes.
+
+    :param change: A dictionary produced by the widget change.
+    :param run: The widget that selects a run folder name.
+    :param test: The widget that selects a test folder name.
+    :param plot_output: The output widget to print a plot to.
+    """
     data = get_series_data(run.value, test.value, filename.value, change["new"])
     plot_output.clear_output()
     with plot_output:

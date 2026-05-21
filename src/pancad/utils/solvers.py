@@ -181,6 +181,7 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
     :param zero_atol: The absolute tolerance to use when checking whether either of the vectors
         are zero vectors.
     :raises ValueError: When provided a zero vector for v1 or v2.
+    :raises TypeError: When provided an unexpected comparison value.
     """
     norm1, norm2 = map(np.linalg.norm, (v1, v2))
     if any(np.isclose(n, 0, atol=zero_atol) for n in (norm1, norm2)):
