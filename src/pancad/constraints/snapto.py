@@ -1,6 +1,6 @@
-"""A module providing a constraint classes for snapto constraints in 2D 
-geometry contexts. pancad defines a snapto constraint as one that can be applied 
-to geometry with no additional arguments but still meaningfully constrain the 
+"""A module providing a constraint classes for snapto constraints in 2D
+geometry contexts. pancad defines a snapto constraint as one that can be applied
+to geometry with no additional arguments but still meaningfully constrain the
 geometry.
 """
 
@@ -15,13 +15,10 @@ if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
-class Fixed(AbstractConstraint):
-    """A class of constraint that can be applied to a single element of geometry
-    to lock down its location, orientation, and any size parameters.
+class AbstractSingleSnapTo(AbstractConstraint):
+    """An abstract class of constraints that can be applied to a single geometry element without
+    any further definition.
     """
-
-    type_name = SketchConstraint.FIXED
-
     def __init__(self, *geometry: AbstractGeometry,
                  uid: str=None, system: AbstractGeometrySystem=None) -> None:
         self.uid = uid
@@ -30,12 +27,27 @@ class Fixed(AbstractConstraint):
             raise ValueError(f"Expected 1 geometry, got: {geometry}")
         self._geometry = geometry
 
+class Fixed(AbstractSingleSnapTo):
+    """A class of constraint that can be applied to geometry to lock down its location,
+    orientation, and any size parameters.
+    """
+
+    type_name = SketchConstraint.FIXED
+
+class Unique(AbstractSingleSnapTo):
+    """A class of constraint that can be applied to geometry to enforce unique vector constraints
+    on element direction vectors. For example: An Axis direction would be held unique by setting
+    its direction to the same as its reference Line. A Plane would be held unique by using the
+    same rules as Line.
+    """
+
+    type_name = SketchConstraint.UNIQUE
+
 class AbstractSnapTo(AbstractConstraint):
-    """An abstract class of constraints that can be applied to a set of **one 
+    """An abstract class of constraints that can be applied to a set of **one
     or two** geometries without any further definition.
-    
-    :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
-        the geometry to be constrained.
+
+    :param geometry: The a single or pair of geometry element(s) to constrain.
     :param uid: The unique id of the constraint.
     """
     def __init__(self, *geometry: AbstractGeometry,
@@ -50,16 +62,16 @@ class AbstractSnapTo(AbstractConstraint):
         self._geometry = geometry
 
 class Horizontal(AbstractSnapTo):
-    """A constraint that sets either a single geometry horizontal or a pair of 
-    geometries horizontal relative to each other in a 2D coordinate system. Can 
+    """A constraint that sets either a single geometry horizontal or a pair of
+    geometries horizontal relative to each other in a 2D coordinate system. Can
     constrain:
     """
 
     type_name = SketchConstraint.HORIZONTAL
 
 class Vertical(AbstractSnapTo):
-    """A constraint that sets either a single geometry vertical or a pair of 
-    geometries vertical relative to each other in a 2D coordinate system. Can 
+    """A constraint that sets either a single geometry vertical or a pair of
+    geometries vertical relative to each other in a 2D coordinate system. Can
     constrain:
     """
 

@@ -6,15 +6,14 @@ from enum import StrEnum, auto
 class SketchConstraint(StrEnum):
     """An enumeration used to refer to a type of sketch constraint."""
     ALIGN_AXES = auto()
-    """Refers to constraints aligning all axes between two coordinate systems or
-    aligning the axis directions of two Axis elements.
+    """Refers to constraints aligning all axes between two coordinate systems.
     """
-    ANTI_ALIGN_AXES = auto()
-    """Refers to constraints to force two Axis elements to share anti-parallel
-    axis directions.
-    """
+    ANTIPARALLEL = auto()
+    """Refers to constraints that force two Axis elements to point in antiparallel directions."""
     ANGLE = auto()
     """Refers to constraints on the angle between two geometry elements."""
+    CODIRECTIONAL = auto()
+    """Refers to constraints that force two Axis elements to point in the same direction."""
     COINCIDENT = auto()
     """Refers to constraints holding two geometry elements to the same location.
     """
@@ -69,6 +68,8 @@ class SketchConstraint(StrEnum):
     """Refers to constraints holding a geometry element to touch a curve at a
     point while not also crossing the curve at that point.
     """
+    UNIQUE = auto()
+    """Refers to constraints making a geometry element's vectors in unique diections."""
     VERTICAL = auto()
     """Refers to constraints holding a single geometry element (or multiple
     geometry elements relative to each other) parallel to a 2D coordinate
