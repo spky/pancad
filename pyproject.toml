@@ -43,6 +43,7 @@ dependencies = [
   "ipywidgets",
   "pytest",
   "plotly",
+  "pandas",
 ]
 
 [tool.hatch.envs.lint.scripts]
