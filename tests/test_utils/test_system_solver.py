@@ -127,8 +127,7 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
                      id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
         pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
-        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX",
-                              marks=pytest.mark.xfail(reason="Cannot cross 0 yet")),
+        *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (1,0,0)), "axes-coincident-X-to-X"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
@@ -279,29 +278,6 @@ class TestResiduals:
         np.testing.assert_array_equal(func(np.array(v1, dtype=np.float64),
                                            np.array(v2, dtype=np.float64)),
                                       expected)
-
-    @pytest.mark.parametrize(
-        "func, v1, v2, atol",
-        [
-            pytest.param(solvers.residual_codirectional, (0,0,0), (1,0,0), 1e-8,
-                         id="cd_v1-0_atol-1e-8"),
-            pytest.param(solvers.residual_codirectional, (1e-16,0,0), (1,0,0), 1e-16,
-                         id="cd_v1-1e-16_atol-1e-16"),
-            pytest.param(solvers.residual_codirectional, (-1e-16,0,0), (1,0,0), 1e-16,
-                         id="cd_v1-neg1e-16_atol-1e-16"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (0,0,0), 1e-8,
-                         id="cd_v2-0_atol-1e-8"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1e-16,0,0), 1e-16,
-                         id="cd_v2-1e-16_atol-1e-16"),
-        ]
-    )
-    def test_direction_residual_excs(self, func: Callable[npt.NDArray, npt.NDArray],
-                                     v1: npt.NDArray, v2: npt.NDArray,
-                                     atol: np.float64) -> None:
-        """Tests for whether the residual error checking detects zero vectors"""
-        with pytest.raises(ValueError, match="^Cannot check whether a zero vector"):
-            func(np.array(v1, dtype=np.float64), np.array(v2, dtype=np.float64),
-                 zero_atol=np.float64(atol))
 
     @pytest.mark.parametrize(
         "v1, v2, expected",

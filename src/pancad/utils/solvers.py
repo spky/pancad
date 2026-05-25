@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import textwrap
 from itertools import repeat
 from functools import singledispatch, singledispatchmethod, partial
+import warnings
 
 import numpy as np
 from scipy.optimize import root as find_root
@@ -168,8 +169,7 @@ def residual_non_zero_vector(vector: npt.NDArray,
     return 0
 
 def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
-                        comparison: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL],
-                        zero_atol: np.float64=np.float64(1e-16),
+                        comp: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL],
                         ) -> npt.NDArray:
     """Calculates how close a second vector is to pointing in the same direction (codirectional),
     opposite directions (antiparallel), or in the generically parallel direction as the first
@@ -177,49 +177,48 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
 
     :param v1: An n-dimensional vector.
     :param v2: Another n-dimensional vector.
-    :param comparison: Which direction constraint to calculate residuals for.
-    :param zero_atol: The absolute tolerance to use when checking whether either of the vectors
-        are zero vectors.
-    :raises ValueError: When provided a zero vector for v1 or v2.
-    :raises TypeError: When provided an unexpected comparison value.
+    :param comp: Which direction constraint to calculate residuals for.
+    :raises TypeError: When provided an unexpected comp(arison) value.
     """
     norm1, norm2 = map(np.linalg.norm, (v1, v2))
-    if any(np.isclose(n, 0, atol=zero_atol) for n in (norm1, norm2)):
-        raise ValueError(f"Cannot check whether a zero vector is {comparison.value}")
-    nv1 = v1 / norm1
-    nv2 = v2 / norm2
-    match comparison:
-        case SC.CODIRECTIONAL:
-            component_residuals = nv1 - nv2
-        case SC.ANTIPARALLEL:
-            component_residuals = nv1 + nv2
-        case SC.PARALLEL:
-            component_residuals = nv1 - np.copysign(1, np.dot(nv1, nv2)) * nv2
-        case _:
-            msg = (f"Unexpected comparison {comparison}."
-                   f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
-            raise TypeError(msg)
-    return component_residuals
+    dot = np.dot(v1, v2)
+    comp_signs = {SC.CODIRECTIONAL: 1, SC.ANTIPARALLEL: -1, SC.PARALLEL: np.copysign(1, dot)}
+    try:
+        # Get the sign for the respective comparison difference equation.
+        sign = comp_signs[comp]
+    except KeyError as exc:
+        msg = (f"Unexpected comparison {comp}."
+               f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
+        raise TypeError(msg) from exc
+    if sign * dot > 0:
+        with warnings.catch_warnings():
+            # numpy will raise a warning from division by zero (inf) or zero divided by zero (NaN)
+            # Normalization cannot occur, so it's treated as an error rather than a warning.
+            warnings.filterwarnings("error")
+            try:
+                return v1 / norm1 - sign * v2 / norm2
+            except RuntimeWarning as warn:
+                if not any(s in str(warn) for s in ("invalid value", "divide by zero")):
+                    # Ensure unexpected warnings are still raised.
+                    raise
+    # sign * dot being less than or equal to 0 indicates the vectors are pointing in opposite
+    # directions to the goal of being codirection or antiparallel. Return the difference to get
+    # the solver to switch them.
+    return v1 - sign * v2
 
-residual_codirectional = partial(_residual_direction, comparison=SC.CODIRECTIONAL)
+residual_codirectional = partial(_residual_direction, comp=SC.CODIRECTIONAL)
 residual_codirectional.__doc__ = """
     Calculates how close two vectors are to pointing in the same direction.
-
-    :raises ValueError: When provided a zero vector for v1 or v2.
 """.strip()
 
-residual_antiparallel = partial(_residual_direction, comparison=SC.ANTIPARALLEL)
+residual_antiparallel = partial(_residual_direction, comp=SC.ANTIPARALLEL)
 residual_antiparallel.__doc__ = """
     Calculates how close two vectors are to pointing in opposite directions.
-
-    :raises ValueError: When provided a zero vector for v1 or v2.
 """.strip()
 
-residual_parallel = partial(_residual_direction, comparison=SC.PARALLEL)
+residual_parallel = partial(_residual_direction, comp=SC.PARALLEL)
 residual_parallel.__doc__ = """
     Calculates how close two vectors are to pointing in the same or opposite directions.
-
-    :raises ValueError: When provided a zero vector for v1 or v2.
 """.strip()
 
 def residual_equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
