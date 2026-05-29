@@ -340,3 +340,36 @@ class TestResiduals:
         exp = np.array(expected)
         atol = np.float64(atol)
         nptest.assert_array_equal(solvers.residual_unique_vector(v, zero_atol=atol), exp)
+
+
+class TestResidualHelpers:
+    """Tests for functions that are broken down steps of a residual function."""
+
+    @pytest.mark.parametrize(
+        "point, normal",
+        [
+            pytest.param((0,0,0), (1,0,0), id="yz"),
+            pytest.param((0,0,0), (0,1,0), id="xz"),
+            pytest.param((0,0,0), (0,0,1), id="xy"),
+            pytest.param((1,1,1), (0,0,1), id="xy-pln-z-p1-offset"),
+            pytest.param((0,0,0), (1,1,1), id="111-norm-pln"),
+            pytest.param((1,1,1), (1,1,1), id="111-norm-111-mv-pln"),
+            pytest.param((-1,-1,-1), (-1,-1,-1), id="n1n1n1-norm-n1n1n1-mv-pln"),
+        ]
+    )
+    def test_get_3_plane_points(self, point: Space3DVector, normal: Space3DVector):
+        result = solvers.get_3_plane_points(np.array(point), np.array(normal))
+        print("Points:", result)
+        for result_pt in result:
+            # Check that all 3 points are on the plane
+            try:
+                assert np.dot(normal, result_pt) == pytest.approx(np.dot(normal, point))
+            except AssertionError as exc:
+                exc.add_note(f"Point {result_pt} is not on the plane")
+                raise
+        # Check matrix rank greater than 1 to check that the points are not collinear.
+        try:
+            assert np.linalg.matrix_rank(result) > 1
+        except AssertionError as exc:
+            exc.add_note(f"The result points are all collinear: {result}")
+            raise

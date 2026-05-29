@@ -153,6 +153,42 @@ def _norm_with_zero(vector: npt.NDArray | SpaceVector) -> npt.NDArray:
         return np.array(vector)
     return np.array(vector) / norm
 
+def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
+                       ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    """Returns three non-collinear points on the same plane as a point. The first returned point
+    will be the closest point on the origin, the 2nd is arbitrarily offset from the first, and the
+    3rd is placed away from the first point at the cross product of the vector from the first
+    point to the second point and the plane's normal vector.
+
+    :raises ValueError: When provided a zero vector for the normal vector or when either the
+        normal or point vector is 2D.
+    """
+    points = []
+    # Point closest to origin first.
+    with np.errstate(divide="raise", invalid="raise"):
+        try:
+            points.append(normal * np.dot(point, normal) / sum(normal**2))
+        except FloatingPointError as exc:
+            msg = f"Expected nonzero normal, got point: {point} and normal: {normal}"
+            raise ValueError(msg) from exc
+        except ValueError as exc:
+            if any(len(v) != 3 for v in (point, normal)):
+                exc.add_note(f"Expected 3D vectors, got: {point} and {normal}")
+            raise
+    vec = np.ones(3)
+    normal_zero_indices = []
+    with np.errstate(divide="raise", invalid="raise"):
+        for i in range(3):
+            try:
+                vec[i] = -(sum(n * v for j, (n, v) in enumerate(zip(normal, vec)) if j != i)
+                           / normal[i])
+            except FloatingPointError as exc:
+                normal_zero_indices.append(i)
+                if len(normal_zero_indices) > 2:
+                    raise ValueError("Normal vector cannot be zero vector") from exc
+    points.extend([points[0] + vec, points[0] + np.cross(normal, vec)])
+    return points
+
 ################################################################################
 # Residual Calculators
 ################################################################################
@@ -257,25 +293,30 @@ residual_point_line_coincident.__doc__ = """
     :param pt: The point's position vector.
 """.strip()
 
-def residual_point_plane_distance(ref_pt: npt.NDArray, normal: npt.NDArray,
+def residual_point_plane_distance(pln_pt: npt.NDArray, normal: npt.NDArray,
                                   pt: npt.NDArray, distance: np.float64) -> np.float64:
     """Calculates how close a point is to being a specified closest distance from a plane.
 
-    :param ref_pt: The plane's closest to the origin reference point position vector.
+    :param pln_pt: A point on the plane.
     :param normal: The plane's normal vector.
     :param pt: The point's position vector.
     :param distance: The distance the point should be from the plane.
     """
-    return abs(np.dot(normal, ref_pt - pt) / np.linalg.norm(normal) - distance)
+    return abs(np.dot(normal, pln_pt - pt) / np.linalg.norm(normal) - distance)
 
 residual_point_plane_coincident = partial(residual_point_plane_distance, distance=np.float64(0))
 residual_point_plane_coincident.__doc__ = """
     Calculates how close a point is to being on a plane.
 
-    :param ref_pt: The plane's closest to the origin reference point position vector.
+    :param pln_pt: The plane's closest to the origin reference point position vector.
     :param normal: The plane's normal vector.
     :param pt: The point's position vector.
 """.strip()
+
+def residual_plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray,
+                                  p2: npt.NDArray, n2: npt.NDArray,
+                                  distance: np.float64) -> np.float64:
+    """Calculates how close two planes are to being a specified distance from each other."""
 
 def residual_line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
                                   p2: npt.NDArray, d2: npt.NDArray) -> npt.NDArray:
