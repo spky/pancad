@@ -19,7 +19,7 @@ from pancad.constants import (
     ConstraintVariableName as CVN, ConstraintEquationName as CEN, SketchConstraint as SC
 )
 
-from pancad.constraints.state_constraint import Coincident, Codirectional, Antiparallel
+from pancad.constraints.state_constraint import Coincident, Codirectional, Antiparallel, Parallel
 from pancad.constraints.snapto import Fixed, Unique
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.line import Axis, Line
@@ -31,13 +31,15 @@ from pancad.utils.text_formatting import get_table_string
 if TYPE_CHECKING:
     from collections.abc import Callable
     from numbers import Real
-    from typing import Literal
+    from typing import Literal, Type
     from uuid import UUID
 
     import numpy.typing as npt
 
     from pancad.abstract import AbstractGeometrySystem, AbstractConstraint, PancadThing
     from pancad.utils.pancad_types import SpaceVector
+
+    GeoCombo = frozenset[Type[AbstractGeometry]]
 
 def get_length(segment: LineSegment,
                along: Literal["x", "y", "z"]=None) -> float:
@@ -748,78 +750,70 @@ class SystemSolver:
 
     @_add_constraint.register
     def _codirectional(self, constraint: Codirectional) -> None:
-        geo_types = {type(g) for g in constraint.get_geometry()}
-        if geo_types == {Axis}:
-            params = [self._get_var(g, CVN.DIRECTION) for g in constraint.get_geometry()]
-            func = ConstraintEquation(constraint, CEN.CODIRECTIONAL, params)
-        else:
-            msg = (f"Codirectional combo {constraint.get_geometry()} is not supported and/or"
-                   " may be invalid")
-            raise NotImplementedError(msg)
-        self._equations.append(func)
+        var_map = {Axis: [CVN.DIRECTION]}
+        func = partial(self._new_constraint_eq, eq=CEN.CODIRECTIONAL, var_map=var_map)
+        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _antiparallel(self, constraint: Antiparallel) -> None:
-        geo_types = {type(g) for g in constraint.get_geometry()}
-        if geo_types == {Axis}:
-            params = [self._get_var(g, CVN.DIRECTION) for g in constraint.get_geometry()]
-            func = ConstraintEquation(constraint, CEN.ANTIPARALLEL, params)
-        else:
-            msg = (f"Antiparallel combo {constraint.get_geometry()} is not supported and/or"
-                   " may be invalid")
-            raise NotImplementedError(msg)
-        self._equations.append(func)
+        var_map = {Axis: [CVN.DIRECTION]}
+        func = partial(self._new_constraint_eq, eq=CEN.ANTIPARALLEL, var_map=var_map)
+        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+
+    @_add_constraint.register
+    def _parallel(self, constraint: Parallel) -> None:
+        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        func = partial(self._new_constraint_eq, eq=CEN.PARALLEL, var_map=var_map)
+        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _unique(self, constraint: Unique):
-        geo = constraint.get_geometry()[0] # Unique must have only one geometry element
-        param_name_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL],}
+        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        func = partial(self._new_constraint_eq, eq=CEN.UNIQUE_VECTOR, var_map=var_map)
+        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+
+    def _add_equations(self, constraint: AbstractConstraint,
+                       eq_map: dict[GeoCombo,
+                                    Callable[[AbstractConstraint], list[ConstraintEquation]]]
+                       ) -> None:
+        types = frozenset(type(g) for g in constraint.get_geometry())
         try:
-            param_names = param_name_map[type(geo)]
+            func = eq_map[types]
         except KeyError as exc:
-            msg = f"Unique relation for {geo} is not supported and/or may be invalid"
+            msg = f"{constraint.type_name} geometry combo {exc} is not supported or is invalid"
             raise NotImplementedError(msg) from exc
-        params = [self._get_var(geo, name) for name in param_names]
-        func = ConstraintEquation(constraint, CEN.UNIQUE_VECTOR, params)
-        self._equations.append(func)
+        self._equations.extend(func(constraint))
+
+    def _new_constraint_eq(self, constraint: AbstractConstraint,
+                           eq: CEN, var_map: dict[Type[AbstractGeometry], list[CVN]]
+                           ) -> list[ConstraintEquation]:
+        params = []
+        for geo in constraint.get_geometry():
+            try:
+                geo_vars = var_map[type(geo)]
+            except KeyError as exc:
+                msg = f"Got unsupported geometry type {geo} for constraint {constraint}"
+                raise NotImplementedError(msg) from exc
+            params.extend(self._get_var(geo, var) for var in geo_vars)
+        return [ConstraintEquation(constraint, eq, params)]
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
-        geo_types = {type(g) for g in constraint.get_geometry()}
-        # Add coincident constraint equation based on geometry combo.
-        funcs = []
-        if geo_types in ({Axis, Point}, {Line, Point}):
-            # # Point and Axis
-            axis = next(g for g in constraint.get_geometry() if isinstance(g, (Axis, Line)))
-            point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
-            params = [
-                self._get_var(axis, CVN.REF_POINT),
-                self._get_var(axis, CVN.DIRECTION),
-                self._get_var(point, CVN.LOCATION),
-            ]
-            funcs.append(ConstraintEquation(constraint, CEN.POINT_LINE_COINCIDENT, params))
-        elif geo_types == {Plane, Point}:
-            plane = next(g for g in constraint.get_geometry() if isinstance(g, Plane))
-            point = next(g for g in constraint.get_geometry() if isinstance(g, Point))
-            params = [
-                self._get_var(plane, CVN.REF_POINT),
-                self._get_var(plane, CVN.NORMAL),
-                self._get_var(point, CVN.LOCATION),
-            ]
-            funcs.append(ConstraintEquation(constraint, CEN.POINT_PLANE_COINCIDENT, params))
-        elif geo_types == {Axis}:
-            params = []
-            for axis in constraint.get_geometry():
-                params.extend([self._get_var(axis, v) for v in (CVN.REF_POINT, CVN.DIRECTION)])
-            funcs.append(ConstraintEquation(constraint, CEN.LINE_LINE_COINCIDENT, params))
-        elif geo_types == {Point}:
-            # Both are points
-            raise NotImplementedError("Point to point not completed yet")
-        else:
-            msg = (f"Coincident combo {constraint.get_geometry()} is not"
-                   " supported and/or may be invalid")
-            raise NotImplementedError(msg)
-        self._equations.extend(funcs)
+        var_map = {
+            Axis: [CVN.REF_POINT, CVN.DIRECTION],
+            Line: [CVN.REF_POINT, CVN.DIRECTION],
+            Plane: [CVN.REF_POINT, CVN.NORMAL],
+            Point: [CVN.LOCATION],
+        }
+        combos = [
+            ({Axis, Point}, CEN.POINT_LINE_COINCIDENT),
+            ({Line, Point}, CEN.POINT_LINE_COINCIDENT),
+            ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
+            ({Axis}, CEN.LINE_LINE_COINCIDENT),
+        ]
+        eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
+                  for c, e in combos}
+        self._add_equations(constraint, eq_map)
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
@@ -834,7 +828,6 @@ class SystemSolver:
         except KeyError as exc:
             msg = f"Fixed relation for {geo} is not supported and/or may be invalid"
             raise NotImplementedError(msg) from exc
-
         # Fix all geometry variables and remove equations sourced from the geometry.
         for v in [self._get_var(geo, n) for n in vector_names]:
             v.fixed = True
