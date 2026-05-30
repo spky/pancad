@@ -186,8 +186,27 @@ def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
                 normal_zero_indices.append(i)
                 if len(normal_zero_indices) > 2:
                     raise ValueError("Normal vector cannot be zero vector") from exc
+    vec = vec / np.linalg.norm(vec)
     points.extend([points[0] + vec, points[0] + np.cross(normal, vec)])
     return points
+
+def get_unique_vector(vector: npt.NDArray) -> npt.NDArray:
+    """Checks the vector against unique direction rules and inverts it if any are violated.
+
+    Example of the algorithm using 3D vectors:
+    1. The z component must be nonnegative.
+    2. If z is exactly 0 or the vector is 2D, y must be nonnegative.
+    3. If both y and z are exactly 0 or the vector is 2D, x must be nonnegative.
+    4. Zero vectors are considered already unique and returned as is.
+
+    :param vector: An n-dimensional vector.
+    """
+    for component in vector[::-1]:
+        if component < 0:
+            return -vector
+        if component > 0:
+            return vector
+    return vector
 
 ################################################################################
 # Residual Calculators
@@ -317,6 +336,18 @@ def residual_plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray,
                                   p2: npt.NDArray, n2: npt.NDArray,
                                   distance: np.float64) -> np.float64:
     """Calculates how close two planes are to being a specified distance from each other."""
+    distances = []
+    # Enforce normal uniqueness since distance is independent of normal vector direction
+    un1, un2 = map(get_unique_vector, (n1, n2))
+    for pt in get_3_plane_points(p1, un1):
+        try:
+            with np.errstate(divide="raise", invalid="raise"):
+                proj_pt = pt + un1 * np.dot(un2, p2 - pt) / np.dot(un1, un2)
+        except FloatingPointError:
+            # The normal vectors are perpendicular, so the effective distance is infinity.
+            return np.inf
+        distances.append(np.linalg.norm(pt - proj_pt))
+    return np.abs(max(distances) - distance)
 
 def residual_line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
                                   p2: npt.NDArray, d2: npt.NDArray) -> npt.NDArray:

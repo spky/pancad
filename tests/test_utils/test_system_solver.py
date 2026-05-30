@@ -341,6 +341,40 @@ class TestResiduals:
         atol = np.float64(atol)
         nptest.assert_array_equal(solvers.residual_unique_vector(v, zero_atol=atol), exp)
 
+    @pytest.mark.parametrize(
+        "point1, normal1, point2, normal2, distance, expected",
+        [
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (0,0,1), 0, 0, id="xy-xy-0d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,1), (0,0,1), 1, 0, id="xy-xy-p1z-1d-0r"),
+            pytest.param((0,0,1), (0,0,1), (0,0,0), (0,0,1), 1, 0, id="xy-p1z-xy-1d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,1), (0,0,1), 0, 1, id="xy-xy-p1z-0d-n1r"),
+            pytest.param((0,0,1), (0,0,1), (0,0,0), (0,0,1), 0, 1, id="xy-p1z-xy-0d-n1r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,-1), (0,0,1), 0, 1, id="xy-xy-m1z-0d-n1r"),
+            pytest.param((0,0,-1), (0,0,1), (0,0,0), (0,0,1), 0, 1, id="xy-m1z-xy-0d-n1r"),
+            pytest.param((0,0,0), (1,1,1), (1,1,1), (1,1,1), np.linalg.norm((1,1,1)), 0,
+                         id="111pln-111pln-p111-1d-0r"),
+            pytest.param((1,1,1), (1,1,1), (0,0,0), (1,1,1), np.linalg.norm((1,1,1)), 0,
+                         id="111pln-p111-111pln-1d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (1,1,1), 0, np.sqrt(2),
+                         id="xy-111pln-0d-rt2r"),
+            pytest.param((0,0,0), (1,1,1), (0,0,0), (0,0,1), 0, 2.121320343559643,
+                         id="111pln-xy-0d-rt2r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (0,1,0), 0, np.inf, id="xy-xz-0d-infr"),
+            pytest.param((0,0,0), (0,1,0), (0,0,0), (0,0,1), 0, np.inf, id="xz-xy-0d-infr"),
+        ]
+    )
+    def test_plane_plane_distance(self,
+                                  point1: Space3DVector, normal1: Space3DVector,
+                                  point2: Space3DVector, normal2: Space3DVector,
+                                  distance: float | np.float64,
+                                  expected: float | np.float64) -> None:
+        print("Points:",
+              solvers.get_3_plane_points(np.array(point1),
+                                         solvers.get_unique_vector(np.array(normal1))))
+        assert solvers.residual_plane_plane_distance(np.array(point1), np.array(normal1),
+                                                     np.array(point2), np.array(normal2),
+                                                     np.float64(distance)
+                                                     ) == pytest.approx(expected)
 
 class TestResidualHelpers:
     """Tests for functions that are broken down steps of a residual function."""
@@ -373,3 +407,32 @@ class TestResidualHelpers:
         except AssertionError as exc:
             exc.add_note(f"The result points are all collinear: {result}")
             raise
+
+    @pytest.mark.parametrize(
+        "vector, expected",
+        [
+            # 0D
+            pytest.param(tuple(), tuple(), id="0d"),
+            
+            # 1D
+            pytest.param((0,), (0,), id="zero_vector_1d"),
+            pytest.param((1,), (1,), id="1_1d"),
+            pytest.param((-1,), (1,), id="-1_1d"),
+            # 2D
+            pytest.param((0,0), (0,0), id="zero_vector_2d"),
+            # 3D
+            pytest.param((0,0,0), (0,0,0), id="zero_vector_3d"),
+            pytest.param((1,0,0), (1,0,0), id="x_3d"),
+            pytest.param((-1,0,0), (1,0,0), id="-x_3d"),
+            pytest.param((0,1,0), (0,1,0), id="y_3d"),
+            pytest.param((0,-1,0), (0,1,0), id="-y_3d"),
+            pytest.param((0,0,1), (0,0,1), id="z_3d"),
+            pytest.param((0,0,-1), (0,0,1), id="-z_3d"),
+            pytest.param((-1,-1,-1), (1,1,1), id="-1-1-1_3d"),
+            pytest.param((-1,-1,EPS_64), (-1,-1,EPS_64), id="-1-1eps_3d"),
+            pytest.param((-1,-1,-EPS_64), (1,1,EPS_64), id="-1-1-eps_3d"),
+        ]
+    )
+    def test_get_unique_vector(self, vector: tuple[float, ...], expected: tuple[float, ...]):
+        result = solvers.get_unique_vector(np.array(vector))
+        np.testing.assert_array_equal(result, expected)
