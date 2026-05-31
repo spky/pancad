@@ -20,6 +20,7 @@ from pancad.constants import (
 )
 
 from pancad.constraints.state_constraint import Coincident, Codirectional, Antiparallel, Parallel
+from pancad.constraints.distance import Distance
 from pancad.constraints.snapto import Fixed, Unique
 from pancad.geometry.line_segment import LineSegment
 from pancad.geometry.line import Axis, Line
@@ -31,7 +32,7 @@ from pancad.utils.text_formatting import get_table_string
 if TYPE_CHECKING:
     from collections.abc import Callable
     from numbers import Real
-    from typing import Literal, Type
+    from typing import Literal, Type, Optional
     from uuid import UUID
 
     import numpy.typing as npt
@@ -337,7 +338,14 @@ residual_point_plane_coincident.__doc__ = """
 def residual_plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray,
                                   p2: npt.NDArray, n2: npt.NDArray,
                                   distance: np.float64) -> np.float64:
-    """Calculates how close two planes are to being a specified distance from each other."""
+    """Calculates how close two planes are to being a specified distance from each other.
+
+    :param p1: A point on the first Plane.
+    :param n1: The normal vector of the first Plane.
+    :param p2: A point on the second Plane.
+    :param n2: The normal vector of the second Plane.
+    :param distance: The required distance between the two planes.
+    """
     distances = []
     # Enforce normal uniqueness since distance is independent of normal vector direction
     un1, un2 = map(get_unique_vector, (n1, n2))
@@ -350,6 +358,16 @@ def residual_plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray,
             return np.inf
         distances.append(np.linalg.norm(pt - proj_pt))
     return np.abs(max(distances) - distance)
+
+residual_plane_plane_coincident = partial(residual_plane_plane_distance, distance=np.float64(0))
+residual_plane_plane_coincident.__doc__ = """
+    Calculates how close two planes are to being coincident with each other.
+
+    :param p1: A point on the first Plane.
+    :param n1: The normal vector of the first Plane.
+    :param p2: A point on the second Plane.
+    :param n2: The normal vector of the second Plane.
+""".strip()
 
 def residual_line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
                                   p2: npt.NDArray, d2: npt.NDArray) -> npt.NDArray:
@@ -417,6 +435,8 @@ RESIDUAL_FUNCS = {
     CEN.POINT_LINE_COINCIDENT: residual_point_line_coincident,
     CEN.POINT_PLANE_COINCIDENT: residual_point_plane_coincident,
     CEN.LINE_LINE_COINCIDENT: residual_line_line_coincident,
+    CEN.PLANE_PLANE_COINCIDENT: residual_plane_plane_coincident,
+    CEN.PLANE_PLANE_DISTANCE: residual_plane_plane_distance,
     CEN.FIXED_VECTOR: residual_equal_vector,
     # First vector must be held constant to a supplied initial vector
     CEN.CODIRECTIONAL: residual_codirectional,
@@ -477,10 +497,17 @@ class ConstraintVariable:
 class ConstraintEquation:
     """A dataclass for tracking imposed and internal constraint equation function
     names and parameter names.
+
+    :param element: The geometry or constraint requiring the equation.
+    :param name: The constraint equation name enumeration value.
+    :param params: A list of constraint variables to reference during calculations.
+    :param constants: A mapping of variable names to constant values used in each calculation.
+        Ex: A Distance constraint may have its value set in here.
     """
     element: AbstractGeometry | AbstractConstraint
     name: CEN
     params: list[ConstraintVariable] = dataclasses.field(repr=False)
+    constants: dict[str, np.float64] = dataclasses.field(default_factory=dict)
 
     @property
     def source(self) -> str | UUID:
@@ -501,7 +528,7 @@ class ConstraintEquation:
                     param_values.append(p.initial[0])
                 else:
                     param_values.append(p.initial)
-        result = RESIDUAL_FUNCS[self.name](*param_values)
+        result = RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
@@ -586,7 +613,10 @@ class SystemSolver:
         if fun_wrap is not None:
             func = fun_wrap(func)
         x0 = self.get_initial()
-        solution = find_root(func, x0, method=method, **kwargs)
+        try:
+            solution = find_root(func, x0, method=method, **kwargs)
+        except:
+            breakpoint()
         return solution
 
     def get_initial(self, include_fixed: bool=False) -> npt.NDArray:
@@ -750,52 +780,38 @@ class SystemSolver:
 
     @_add_constraint.register
     def _codirectional(self, constraint: Codirectional) -> None:
-        var_map = {Axis: [CVN.DIRECTION]}
+        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.CODIRECTIONAL, var_map=var_map)
-        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+        self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _antiparallel(self, constraint: Antiparallel) -> None:
-        var_map = {Axis: [CVN.DIRECTION]}
+        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.ANTIPARALLEL, var_map=var_map)
-        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+        self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _parallel(self, constraint: Parallel) -> None:
         var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.PARALLEL, var_map=var_map)
-        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+        self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
-    def _unique(self, constraint: Unique):
+    def _unique(self, constraint: Unique) -> None:
         var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.UNIQUE_VECTOR, var_map=var_map)
-        self._add_equations(constraint, {frozenset({c}): func for c in var_map})
+        self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
-    def _add_equations(self, constraint: AbstractConstraint,
-                       eq_map: dict[GeoCombo,
-                                    Callable[[AbstractConstraint], list[ConstraintEquation]]]
-                       ) -> None:
-        types = frozenset(type(g) for g in constraint.get_geometry())
-        try:
-            func = eq_map[types]
-        except KeyError as exc:
-            msg = f"{constraint.type_name} geometry combo {exc} is not supported or is invalid"
-            raise NotImplementedError(msg) from exc
-        self._equations.extend(func(constraint))
-
-    def _new_constraint_eq(self, constraint: AbstractConstraint,
-                           eq: CEN, var_map: dict[Type[AbstractGeometry], list[CVN]]
-                           ) -> list[ConstraintEquation]:
-        params = []
-        for geo in constraint.get_geometry():
-            try:
-                geo_vars = var_map[type(geo)]
-            except KeyError as exc:
-                msg = f"Got unsupported geometry type {geo} for constraint {constraint}"
-                raise NotImplementedError(msg) from exc
-            params.extend(self._get_var(geo, var) for var in geo_vars)
-        return [ConstraintEquation(constraint, eq, params)]
+    @_add_constraint.register
+    def _distance(self, constraint: Distance) -> None:
+        var_map = {Plane: [CVN.REF_POINT, CVN.NORMAL]}
+        combos = [
+            ({Plane}, CEN.PLANE_PLANE_DISTANCE),
+        ]
+        eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map,
+                                        constants={"distance": constraint.value})
+                  for c, e in combos}
+        self._add_equation(constraint, eq_map)
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
@@ -813,7 +829,7 @@ class SystemSolver:
         ]
         eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
                   for c, e in combos}
-        self._add_equations(constraint, eq_map)
+        self._add_equation(constraint, eq_map)
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
@@ -832,6 +848,37 @@ class SystemSolver:
         for v in [self._get_var(geo, n) for n in vector_names]:
             v.fixed = True
         self._equations = [e for e in self._equations if e.element != geo]
+
+    def _add_equation(self, constraint: AbstractConstraint,
+                           eq_map: dict[GeoCombo,
+                                        Callable[[AbstractConstraint], list[ConstraintEquation]]]
+                           ) -> None:
+        types = frozenset(type(g) for g in constraint.get_geometry())
+        try:
+            func = eq_map[types]
+        except KeyError as exc:
+            geo = constraint.get_geometry()
+            msg = f"{constraint.type_name} geometry combo of {geo} is not supported or is invalid"
+            raise NotImplementedError(msg) from exc
+        self._equations.append(func(constraint))
+
+    def _new_constraint_eq(self,
+                           constraint: AbstractConstraint,
+                           eq: CEN,
+                           var_map: dict[Type[AbstractGeometry], list[CVN]],
+                           constants: Optional[dict[str, np.float64]]=None,
+                           ) -> ConstraintEquation:
+        if constants is None:
+            constants = {}
+        params = []
+        for geo in constraint.get_geometry():
+            try:
+                geo_vars = var_map[type(geo)]
+            except KeyError as exc:
+                msg = f"Got unsupported geometry type {geo} for constraint {constraint}"
+                raise NotImplementedError(msg) from exc
+            params.extend(self._get_var(geo, var) for var in geo_vars)
+        return ConstraintEquation(constraint, eq, params, constants)
 
     @singledispatchmethod
     def _add_geometry_funcs(self, geometry: AbstractGeometry) -> None:

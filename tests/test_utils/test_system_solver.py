@@ -113,6 +113,21 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         params.append(pytest.param(*systems, id=f"{id_}_{direction_constraint.value}", **kwargs))
     return tuple(params)
 
+def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
+                       ini_pln_vecs: tuple[Space3DVector, Space3DVector],
+                       distance: float) -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
+    fix = Plane(*fix_pln_vecs)
+    new_pt = np.array(fix.reference_point) + distance * np.array(fix.normal)
+    systems = []
+    for geometry in [(fix, Plane(*ini_pln_vecs)), (fix.copy(), Plane(new_pt, fix.normal))]:
+        constraints = [
+            make_constraint(SC.FIXED, geometry[0]),
+            make_constraint(SC.DISTANCE, geometry[0], geometry[1], value=distance),
+            make_constraint(SC.CODIRECTIONAL, geometry[0], geometry[1]),
+        ]
+        systems.append(ThreeDSketchSystem(geometry, constraints))
+    return tuple(systems)
+
 @pytest.mark.parametrize(
     "initial, expected",
     [
@@ -132,6 +147,8 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
+        # pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (0,0,1)), 10),
+                     # id="plane-dist-xy-xy-10"),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
