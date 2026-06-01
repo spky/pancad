@@ -1,7 +1,7 @@
-"""A module providing classes for horizontal, vertical, and direct distance 
-constraints. Distance can be used to force geometry elements to be at set 
-distances from specified portions of each other. The horizontal and vertical 
-variants can only be applied to 2D geometry and allow the distance 
+"""A module providing classes for horizontal, vertical, and direct distance
+constraints. Distance can be used to force geometry elements to be at set
+distances from specified portions of each other. The horizontal and vertical
+variants can only be applied to 2D geometry and allow the distance
 to be limited to the x or y direction respectively.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pancad.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
-    """An abstract class of constraints that can be applied to one or more 
+    """An abstract class of constraints that can be applied to one or more
     geometries that has a value associated with it.
     """
     VALUE_STR_FORMAT = "{value}{unit}"
@@ -31,7 +31,7 @@ class AbstractValue(AbstractConstraint):
     @property
     def unit(self) -> str:
         """The unit of the constraint's value.
-        
+
         :getter: Returns the constraint's unit.
         :setter: Sets the constraints unit.
         """
@@ -42,11 +42,11 @@ class AbstractValue(AbstractConstraint):
     # Shared Public Methods #
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the constraint.
-        
-        :param include_unit: Whether to include the unit in the output. Defaults 
+
+        :param include_unit: Whether to include the unit in the output. Defaults
             to 'True'.
-        :returns: A string with the value of the constraint. Includes the unit 
-            in the string if include_unit is 'True'. 
+        :returns: A string with the value of the constraint. Includes the unit
+            in the string if include_unit is 'True'.
         """
         if include_unit:
             return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
@@ -57,22 +57,22 @@ class AbstractValue(AbstractConstraint):
         return f"{super_str}[{self.value}{self.unit}]>"
 
 class Angle(AbstractValue):
-    """A class representing angle value constraints between lines. Stores and 
-    returns angles in degrees by default since nearly all CAD programs take user 
+    """A class representing angle value constraints between lines. Stores and
+    returns angles in degrees by default since nearly all CAD programs take user
     angle inputs in degrees. Can constrain:
-    
+
     - :class:`~pancad.geometry.CoordinateSystem`
     - :class:`~pancad.geometry.Line`
     - :class:`~pancad.geometry.LineSegment`
     - :class:`~pancad.geometry.Ellipse`
-    
+
     :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
         the geometry to be constrained.
     :param value: Angle value in degrees or radians.
     :param quadrant: Quadrant selection between 1 (+, +), 2 (-, +), 3 (-, -)
         and 4 (+, -). Initial selection is only dependent on the first element.
-        Example: the first quadrant is the one immediately clockwise of the 
-        direction vector of the firest element. The clockwise selection method is 
+        Example: the first quadrant is the one immediately clockwise of the
+        direction vector of the firest element. The clockwise selection method is
         to simulate how users pick quadrants visually.
     :param uid: Unique identifier of the constraint.
     :param is_radians: Whether provided value is in radians. Defaults to False.
@@ -111,7 +111,7 @@ class Angle(AbstractValue):
     @property
     def quadrant(self) -> int:
         """The quadrant that the angle constraint is applied to.
-        
+
         :raises ValueError: If the quadrant is not 1, 2, 3, or 4.
         """
         return self._quadrant
@@ -124,7 +124,7 @@ class Angle(AbstractValue):
     @property
     def value(self) -> Real:
         """Value of the angle constraint in degrees.
-        
+
         :raises TypeError: When the value is not a Real number.
         """
         return self._value
@@ -135,10 +135,10 @@ class Angle(AbstractValue):
     # Public Methods #
     def get_value(self, in_radians: bool=False) -> Real:
         """Returns the value of the angle constraint.
-        
-        :param in_radians: Whether to return the value in radians or degrees. 
+
+        :param in_radians: Whether to return the value in radians or degrees.
             Defaults to 'False'.
-        :returns: The angle value in degrees if in_radians is 'False', in 
+        :returns: The angle value in degrees if in_radians is 'False', in
             radians if 'True'.
         """
         if in_radians:
@@ -146,13 +146,13 @@ class Angle(AbstractValue):
         return self.value
 
 class AbstractDistance(AbstractValue):
-    """An abstract class of constraints that can be applied to one or more 
+    """An abstract class of constraints that can be applied to one or more
     geometries that has a distance associated with it.
     """
     @property
     def value(self) -> Real:
         """The distance the constraint enforces.
-        
+
         :raises ValueError: When the distance is a negative number.
         """
         return self._value
@@ -163,16 +163,16 @@ class AbstractDistance(AbstractValue):
         self._value = value
 
 class Abstract2GeometryDistance(AbstractDistance):
-    """An abstract class of constraints that can be applied **exactly two** 
-    geometries that has a distance associated with it. Distances cannot be 
+    """An abstract class of constraints that can be applied **exactly two**
+    geometries that has a distance associated with it. Distances cannot be
     negative.
-    
+
     :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
         the geometry to be constrained.
     :param value: Distance value, must be positive.
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
-    :raises ValueError: When not provided 2 pairs or when the subgeometries are 
+    :raises ValueError: When not provided 2 pairs or when the subgeometries are
         not the same dimension.
     """
     def __init__(self, *geometry: AbstractGeometry,
@@ -189,10 +189,10 @@ class Abstract2GeometryDistance(AbstractDistance):
         self.value = value
 
 class Abstract1GeometryDistance(AbstractDistance):
-    """An abstract class of constraints that can be applied **exactly one** 
-    geometry that has a distance associated with it. Distances cannot be 
+    """An abstract class of constraints that can be applied **exactly one**
+    geometry that has a distance associated with it. Distances cannot be
     negative.
-    
+
     :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
         the geometry to be constrained.
     :param value: Distance value, must be positive.
@@ -212,7 +212,7 @@ class Abstract1GeometryDistance(AbstractDistance):
 ################################################################################
 
 class Distance(Abstract2GeometryDistance):
-    """A constraint that defines the direct distance between two elements in 2D 
+    """A constraint that defines the direct distance between two elements in 2D
     or 3D.
     """
     type_name = SketchConstraint.DISTANCE
