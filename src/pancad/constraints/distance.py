@@ -151,15 +151,14 @@ class AbstractDistance(AbstractValue):
     """
     @property
     def value(self) -> Real:
-        """The distance the constraint enforces.
-
-        :raises ValueError: When the distance is a negative number.
+        """The distance the constraint enforces. When distance direction can be well-defined, the
+        first direction-dependent geometry defines how positive distance is defined. Ex: The
+        first plane's normal vector of two constrained planes is the direction of positive
+        distance. Distance should be nonnegative when distance direction cannot be well-defined.
         """
         return self._value
     @value.setter
     def value(self, value: Real) -> None:
-        if value < 0:
-            raise ValueError(f"Negative length not allowed: {value}")
         self._value = value
 
 class Abstract2GeometryDistance(AbstractDistance):
@@ -169,7 +168,7 @@ class Abstract2GeometryDistance(AbstractDistance):
 
     :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
         the geometry to be constrained.
-    :param value: Distance value, must be positive.
+    :param value: Distance value.
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     :raises ValueError: When not provided 2 pairs or when the subgeometries are
@@ -195,7 +194,7 @@ class Abstract1GeometryDistance(AbstractDistance):
 
     :param reference_pairs: The (AbstractGeometry, ConstraintReference) pairs of
         the geometry to be constrained.
-    :param value: Distance value, must be positive.
+    :param value: Distance value.
     :param uid: Unique identifier of the constraint. Defaults to None.
     :param unit: The unit of the distance value. Defaults to None.
     """

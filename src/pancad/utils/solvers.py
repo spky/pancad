@@ -353,20 +353,23 @@ def residual_plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray,
     :param n1: The normal vector of the first Plane.
     :param p2: A point on the second Plane.
     :param n2: The normal vector of the second Plane.
-    :param distance: The required distance between the two planes.
+    :param distance: The required distance between the two planes. Positive in the direction of
+        the first plane's normal vector.
     """
     distances = []
     # Enforce normal uniqueness since distance is independent of normal vector direction
     un1, un2 = map(get_unique_vector, (n1, n2))
-    for pt in get_3_plane_points(p1, un1):
+    distances = np.empty(3)
+    for i, pt in enumerate(get_3_plane_points(p1, un1)):
         try:
             with np.errstate(divide="raise", invalid="raise"):
                 proj_pt = pt + un1 * np.dot(un2, p2 - pt) / np.dot(un1, un2)
         except FloatingPointError:
             # The normal vectors are perpendicular, so the effective distance is infinity.
             return np.inf
-        distances.append(np.linalg.norm(pt - proj_pt))
-    return np.abs(max(distances) - distance)
+        pt_to_proj = proj_pt - pt
+        distances[i] = np.copysign(np.linalg.norm(pt_to_proj), np.dot(un1, pt_to_proj))
+    return distances[np.argmax(abs(distances))] - distance
 
 residual_plane_plane_coincident = partial(residual_plane_plane_distance, distance=np.float64(0))
 residual_plane_plane_coincident.__doc__ = """
