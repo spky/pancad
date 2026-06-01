@@ -267,16 +267,25 @@ def _residual_direction(v1: npt.NDArray, v2: npt.NDArray,
 residual_codirectional = partial(_residual_direction, comp=SC.CODIRECTIONAL)
 residual_codirectional.__doc__ = """
     Calculates how close two vectors are to pointing in the same direction.
+
+    :param v1: An n-dimensional vector.
+    :param v2: Another n-dimensional vector.
 """.strip()
 
 residual_antiparallel = partial(_residual_direction, comp=SC.ANTIPARALLEL)
 residual_antiparallel.__doc__ = """
     Calculates how close two vectors are to pointing in opposite directions.
+
+    :param v1: An n-dimensional vector.
+    :param v2: Another n-dimensional vector.
 """.strip()
 
 residual_parallel = partial(_residual_direction, comp=SC.PARALLEL)
 residual_parallel.__doc__ = """
     Calculates how close two vectors are to pointing in the same or opposite directions.
+
+    :param v1: An n-dimensional vector.
+    :param v2: Another n-dimensional vector.
 """.strip()
 
 def residual_equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
@@ -808,10 +817,16 @@ class SystemSolver:
         combos = [
             ({Plane}, CEN.PLANE_PLANE_DISTANCE),
         ]
+        # Add distance equation.
         eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map,
                                         constants={"distance": constraint.value})
                   for c, e in combos}
         self._add_equation(constraint, eq_map)
+        if {type(g) for g in constraint.get_geometry()} == {Plane}:
+            # Special Case: Planes must be parallel to have a meaningful distance between them.
+            func = partial(self._new_constraint_eq,
+                           eq=CEN.PARALLEL, var_map={Plane: [CVN.NORMAL]})
+            self._add_equation(constraint, {frozenset({Plane}): func})
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
