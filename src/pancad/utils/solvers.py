@@ -622,10 +622,7 @@ class SystemSolver:
         if fun_wrap is not None:
             func = fun_wrap(func)
         x0 = self.get_initial()
-        try:
-            solution = find_root(func, x0, method=method, **kwargs)
-        except:
-            breakpoint()
+        solution = find_root(func, x0, method=method, **kwargs)
         return solution
 
     def get_initial(self, include_fixed: bool=False) -> npt.NDArray:
