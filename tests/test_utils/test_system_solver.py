@@ -11,7 +11,7 @@ from pprint import pp
 
 from pancad.api import (Axis, Line, Point, Plane, ThreeDSketchSystem,
                         make_constraint, SketchConstraint as SC)
-from pancad.utils import solvers
+from pancad.utils import solvers, solver_residuals as pcres
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -263,32 +263,32 @@ class TestResiduals:
     )
     def test_unit_vector(self, v: SpaceVector, expected: float) -> None:
         """Test for calculating the residual of a vector that must be a unit vector."""
-        assert solvers.residual_unit_vector(np.array(v)) == expected
+        assert pcres.unit_vector(np.array(v)) == expected
 
     @pytest.mark.parametrize(
         "func, v1, v2, expected",
         [
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (1,0,0), (0,0,0),
                          id="cd_both_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (-1,0,0), (2,0,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (-1,0,0), (2,0,0),
                          id="cd_opposite_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (1,0,0), (2,0,0),
+            pytest.param(solvers.pcres.antiparallel, (1,0,0), (1,0,0), (2,0,0),
                          id="ap_both_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (-1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.antiparallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="ap_opposite_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.parallel, (1,0,0), (1,0,0), (0,0,0),
                          id="pa_both_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (-1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.parallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="pa_opposite_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,EPS_64,0), (1,0,0), (0,EPS_64,0),
+            pytest.param(solvers.pcres.codirectional, (1,EPS_64,0), (1,0,0), (0,EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,EPS_64,0), (0,-EPS_64,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (1,EPS_64,0), (0,-EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (2,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (2,0,0), (2,0,0), (0,0,0),
                          id="cd_2x_vectors"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (4,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (2,0,0), (4,0,0), (0,0,0),
                          id="cd_2xand4x_vectors"),
-            pytest.param(solvers.residual_codirectional, (-2,0,0), (-4,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (-2,0,0), (-4,0,0), (0,0,0),
                          id="cd_-2xand-4x_vectors"),
         ]
     )
@@ -317,8 +317,8 @@ class TestResiduals:
     )
     def test_perpendicular(self, v1: SpaceVector, v2: SpaceVector, expected: float) -> None:
         """Test for calculating the residual of two vectors that must be perpendicular."""
-        assert solvers.residual_perpendicular(np.array(v1, dtype=np.float64),
-                                              np.array(v2, dtype=np.float64)) == expected
+        assert pcres.perpendicular(np.array(v1, dtype=np.float64),
+                                  np.array(v2, dtype=np.float64)) == expected
 
     @pytest.mark.parametrize(
         "vector, atol, expected",
@@ -363,7 +363,7 @@ class TestResiduals:
         v = np.array(vector)
         exp = np.array(expected)
         atol = np.float64(atol)
-        nptest.assert_array_equal(solvers.residual_unique_vector(v, zero_atol=atol), exp)
+        nptest.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
 
     @pytest.mark.parametrize(
         "point1, normal1, point2, normal2, distance, expected",
@@ -393,12 +393,12 @@ class TestResiduals:
                                   distance: float | np.float64,
                                   expected: float | np.float64) -> None:
         print("Points:",
-              solvers.get_3_plane_points(np.array(point1),
-                                         solvers.get_unique_vector(np.array(normal1))))
-        assert solvers.residual_plane_plane_distance(np.array(point1), np.array(normal1),
-                                                     np.array(point2), np.array(normal2),
-                                                     np.float64(distance)
-                                                     ) == pytest.approx(expected)
+              pcres.get_3_plane_points(np.array(point1),
+                                       pcres.get_unique_vector(np.array(normal1))))
+        assert pcres.plane_plane_distance(np.array(point1), np.array(normal1),
+                                          np.array(point2), np.array(normal2),
+                                          np.float64(distance)
+                                          ) == pytest.approx(expected)
 
 class TestResidualHelpers:
     """Tests for functions that are broken down steps of a residual function."""
@@ -416,7 +416,7 @@ class TestResidualHelpers:
         ]
     )
     def test_get_3_plane_points(self, point: Space3DVector, normal: Space3DVector):
-        result = solvers.get_3_plane_points(np.array(point), np.array(normal))
+        result = pcres.get_3_plane_points(np.array(point), np.array(normal))
         print("Points:", result)
         for result_pt in result:
             # Check that all 3 points are on the plane
@@ -458,5 +458,5 @@ class TestResidualHelpers:
         ]
     )
     def test_get_unique_vector(self, vector: tuple[float, ...], expected: tuple[float, ...]):
-        result = solvers.get_unique_vector(np.array(vector))
+        result = pcres.get_unique_vector(np.array(vector))
         np.testing.assert_array_equal(result, expected)
