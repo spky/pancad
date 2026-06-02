@@ -11,7 +11,7 @@ from pprint import pp
 
 from pancad.api import (Axis, Line, Point, Plane, ThreeDSketchSystem,
                         make_constraint, SketchConstraint as SC)
-from pancad.utils import solvers
+from pancad.utils import solvers, solver_residuals as pcres
 
 if TYPE_CHECKING:
     from numbers import Real
@@ -113,6 +113,21 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         params.append(pytest.param(*systems, id=f"{id_}_{direction_constraint.value}", **kwargs))
     return tuple(params)
 
+def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
+                       ini_pln_vecs: tuple[Space3DVector, Space3DVector],
+                       distance: float) -> tuple[ThreeDSketchSystem, ThreeDSketchSystem]:
+    fix = Plane(*fix_pln_vecs)
+    new_pt = np.array(fix.reference_point) + distance * np.array(fix.normal)
+    systems = []
+    for geometry in [(fix, Plane(*ini_pln_vecs)), (fix.copy(), Plane(new_pt, fix.normal))]:
+        constraints = [
+            make_constraint(SC.FIXED, geometry[0]),
+            make_constraint(SC.DISTANCE, geometry[0], geometry[1], value=distance),
+            make_constraint(SC.CODIRECTIONAL, geometry[0], geometry[1]),
+        ]
+        systems.append(ThreeDSketchSystem(geometry, constraints))
+    return tuple(systems)
+
 @pytest.mark.parametrize(
     "initial, expected",
     [
@@ -132,6 +147,15 @@ def _coincident_axis_duo(init_axis: tuple[Space3DVector, Space3DVector],
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
+        pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (0,0,1)), 10),
+                     id="plane-dist-xy-xy-10"),
+        pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((1,1,1), (1,1,1)), 10),
+                     id="plane-dist-xy-111-111pln-10"),
+        pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,1,1)), 10),
+                     id="plane-dist-xy-000-111pln-10"),
+        pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,0,0)), 10),
+                     id="plane-dist-xy-yz-10",
+                     marks=pytest.mark.xfail(reason="Starting from perp planes not yet defined")),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
@@ -239,32 +263,32 @@ class TestResiduals:
     )
     def test_unit_vector(self, v: SpaceVector, expected: float) -> None:
         """Test for calculating the residual of a vector that must be a unit vector."""
-        assert solvers.residual_unit_vector(np.array(v)) == expected
+        assert pcres.unit_vector(np.array(v)) == expected
 
     @pytest.mark.parametrize(
         "func, v1, v2, expected",
         [
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (1,0,0), (0,0,0),
                          id="cd_both_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (-1,0,0), (2,0,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (-1,0,0), (2,0,0),
                          id="cd_opposite_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (1,0,0), (2,0,0),
+            pytest.param(solvers.pcres.antiparallel, (1,0,0), (1,0,0), (2,0,0),
                          id="ap_both_x_vectors"),
-            pytest.param(solvers.residual_antiparallel, (1,0,0), (-1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.antiparallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="ap_opposite_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.parallel, (1,0,0), (1,0,0), (0,0,0),
                          id="pa_both_x_vectors"),
-            pytest.param(solvers.residual_parallel, (1,0,0), (-1,0,0), (0,0,0),
+            pytest.param(solvers.pcres.parallel, (1,0,0), (-1,0,0), (0,0,0),
                          id="pa_opposite_x_vectors"),
-            pytest.param(solvers.residual_codirectional, (1,EPS_64,0), (1,0,0), (0,EPS_64,0),
+            pytest.param(solvers.pcres.codirectional, (1,EPS_64,0), (1,0,0), (0,EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (1,0,0), (1,EPS_64,0), (0,-EPS_64,0),
+            pytest.param(solvers.pcres.codirectional, (1,0,0), (1,EPS_64,0), (0,-EPS_64,0),
                          id="cd_x_vector_off_eps_in_y"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (2,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (2,0,0), (2,0,0), (0,0,0),
                          id="cd_2x_vectors"),
-            pytest.param(solvers.residual_codirectional, (2,0,0), (4,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (2,0,0), (4,0,0), (0,0,0),
                          id="cd_2xand4x_vectors"),
-            pytest.param(solvers.residual_codirectional, (-2,0,0), (-4,0,0), (0,0,0),
+            pytest.param(solvers.pcres.codirectional, (-2,0,0), (-4,0,0), (0,0,0),
                          id="cd_-2xand-4x_vectors"),
         ]
     )
@@ -293,8 +317,8 @@ class TestResiduals:
     )
     def test_perpendicular(self, v1: SpaceVector, v2: SpaceVector, expected: float) -> None:
         """Test for calculating the residual of two vectors that must be perpendicular."""
-        assert solvers.residual_perpendicular(np.array(v1, dtype=np.float64),
-                                              np.array(v2, dtype=np.float64)) == expected
+        assert pcres.perpendicular(np.array(v1, dtype=np.float64),
+                                  np.array(v2, dtype=np.float64)) == expected
 
     @pytest.mark.parametrize(
         "vector, atol, expected",
@@ -339,4 +363,100 @@ class TestResiduals:
         v = np.array(vector)
         exp = np.array(expected)
         atol = np.float64(atol)
-        nptest.assert_array_equal(solvers.residual_unique_vector(v, zero_atol=atol), exp)
+        nptest.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
+
+    @pytest.mark.parametrize(
+        "point1, normal1, point2, normal2, distance, expected",
+        [
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (0,0,1), 0, 0, id="xy-xy-0d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,1), (0,0,1), 1, 0, id="xy-xy-p1z-1d-0r"),
+            pytest.param((0,0,1), (0,0,1), (0,0,0), (0,0,1), -1, 0, id="xy-p1z-xy-1d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,1), (0,0,1), 0, 1, id="xy-xy-p1z-0d-n1r"),
+            pytest.param((0,0,1), (0,0,1), (0,0,0), (0,0,1), 0, -1, id="xy-p1z-xy-0d-n1r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,-1), (0,0,1), 0, -1, id="xy-xy-m1z-0d-n1r"),
+            pytest.param((0,0,-1), (0,0,1), (0,0,0), (0,0,1), 0, 1, id="xy-m1z-xy-0d-n1r"),
+            pytest.param((0,0,0), (1,1,1), (1,1,1), (1,1,1), np.linalg.norm((1,1,1)), 0,
+                         id="111pln-111pln-p111-1d-0r"),
+            pytest.param((1,1,1), (1,1,1), (0,0,0), (1,1,1), -np.linalg.norm((1,1,1)), 0,
+                         id="111pln-p111-111pln-1d-0r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (1,1,1), 0, -np.sqrt(2),
+                         id="xy-111pln-0d-rt2r"),
+            pytest.param((0,0,0), (1,1,1), (0,0,0), (0,0,1), 0, -2.121320343559643,
+                         id="111pln-xy-0d-rt2r"),
+            pytest.param((0,0,0), (0,0,1), (0,0,0), (0,1,0), 0, np.inf, id="xy-xz-0d-infr"),
+            pytest.param((0,0,0), (0,1,0), (0,0,0), (0,0,1), 0, np.inf, id="xz-xy-0d-infr"),
+        ]
+    )
+    def test_plane_plane_distance(self,
+                                  point1: Space3DVector, normal1: Space3DVector,
+                                  point2: Space3DVector, normal2: Space3DVector,
+                                  distance: float | np.float64,
+                                  expected: float | np.float64) -> None:
+        print("Points:",
+              pcres.get_3_plane_points(np.array(point1),
+                                       pcres.get_unique_vector(np.array(normal1))))
+        assert pcres.plane_plane_distance(np.array(point1), np.array(normal1),
+                                          np.array(point2), np.array(normal2),
+                                          np.float64(distance)
+                                          ) == pytest.approx(expected)
+
+class TestResidualHelpers:
+    """Tests for functions that are broken down steps of a residual function."""
+
+    @pytest.mark.parametrize(
+        "point, normal",
+        [
+            pytest.param((0,0,0), (1,0,0), id="yz"),
+            pytest.param((0,0,0), (0,1,0), id="xz"),
+            pytest.param((0,0,0), (0,0,1), id="xy"),
+            pytest.param((1,1,1), (0,0,1), id="xy-pln-z-p1-offset"),
+            pytest.param((0,0,0), (1,1,1), id="111-norm-pln"),
+            pytest.param((1,1,1), (1,1,1), id="111-norm-111-mv-pln"),
+            pytest.param((-1,-1,-1), (-1,-1,-1), id="n1n1n1-norm-n1n1n1-mv-pln"),
+        ]
+    )
+    def test_get_3_plane_points(self, point: Space3DVector, normal: Space3DVector):
+        result = pcres.get_3_plane_points(np.array(point), np.array(normal))
+        print("Points:", result)
+        for result_pt in result:
+            # Check that all 3 points are on the plane
+            try:
+                assert np.dot(normal, result_pt) == pytest.approx(np.dot(normal, point))
+            except AssertionError as exc:
+                exc.add_note(f"Point {result_pt} is not on the plane")
+                raise
+        # Check matrix rank greater than 1 to check that the points are not collinear.
+        try:
+            assert np.linalg.matrix_rank(result) > 1
+        except AssertionError as exc:
+            exc.add_note(f"The result points are all collinear: {result}")
+            raise
+
+    @pytest.mark.parametrize(
+        "vector, expected",
+        [
+            # 0D
+            pytest.param(tuple(), tuple(), id="0d"),
+            
+            # 1D
+            pytest.param((0,), (0,), id="zero_vector_1d"),
+            pytest.param((1,), (1,), id="1_1d"),
+            pytest.param((-1,), (1,), id="-1_1d"),
+            # 2D
+            pytest.param((0,0), (0,0), id="zero_vector_2d"),
+            # 3D
+            pytest.param((0,0,0), (0,0,0), id="zero_vector_3d"),
+            pytest.param((1,0,0), (1,0,0), id="x_3d"),
+            pytest.param((-1,0,0), (1,0,0), id="-x_3d"),
+            pytest.param((0,1,0), (0,1,0), id="y_3d"),
+            pytest.param((0,-1,0), (0,1,0), id="-y_3d"),
+            pytest.param((0,0,1), (0,0,1), id="z_3d"),
+            pytest.param((0,0,-1), (0,0,1), id="-z_3d"),
+            pytest.param((-1,-1,-1), (1,1,1), id="-1-1-1_3d"),
+            pytest.param((-1,-1,EPS_64), (-1,-1,EPS_64), id="-1-1eps_3d"),
+            pytest.param((-1,-1,-EPS_64), (1,1,EPS_64), id="-1-1-eps_3d"),
+        ]
+    )
+    def test_get_unique_vector(self, vector: tuple[float, ...], expected: tuple[float, ...]):
+        result = pcres.get_unique_vector(np.array(vector))
+        np.testing.assert_array_equal(result, expected)

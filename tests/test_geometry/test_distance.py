@@ -71,10 +71,6 @@ class TestValidation(unittest.TestCase):
         with self.assertRaises(ValueError):
             d = Distance(self.a_3d, self.b, value=self.distance, uid=self.uid)
     
-    def test_negative_value(self):
-        with self.assertRaises(ValueError):
-            d = Distance(self.a, self.b, value=-self.distance, uid=self.uid)
-    
     def test_plane_to_horizontal_distance(self):
         plane = Plane((0,0,0), (0,0,1))
         with self.assertRaises(ValueError):

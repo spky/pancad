@@ -36,6 +36,14 @@ class ConstraintEquationName(StrEnum):
     POINT_PLANE_COINCIDENT = auto()
     """Point to Plane or Plane to Point coincident."""
 
+    PLANE_PLANE_COINCIDENT = auto()
+    """Plane to Plane coincident."""
+
+    PLANE_PLANE_DISTANCE = auto()
+    """The distance from one Plane to another Plane. Causes the Planes to have
+    an implied parallel constraint so that the distance can be well defined.
+    """
+
     LINE_LINE_COINCIDENT = auto()
     """Line to Line Coincident."""
 
