@@ -57,6 +57,28 @@ def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
     points.extend([points[0] + vec, points[0] + np.cross(normal, vec)])
     return points
 
+def get_plane_to_point_distance(plane_point: npt.NDArray, normal: npt.NDArray,
+                                point: npt.NDArray) -> np.float64:
+    """Returns the distance from the plane to the point.
+
+    :param plane_point: A point position vector on the plane.
+    :param normal: The plane's normal vector.
+    :param point: An arbitrary point position vector.
+    :returns: The distance from the point to the plane. Negative when the point is opposite of the
+        plane's normal vector.
+    :raises ValueError: When the normal vector is a zero vector.
+    """
+    try:
+        with np.errstate(divide="raise", invalid="raise"):
+            unit_normal = normal / np.linalg.norm(normal) # Will error when normal vector is zero.
+    except FloatingPointError as exc:
+        raise ValueError("Plane's normal vector cannot be a zero vector") from exc
+    # Find the vector from plane's point to the point and take the portion of it aligned with the
+    # plane's normal vector.
+    distance_vector = unit_normal * np.dot(unit_normal, point - plane_point)
+    # Make the norm positive if it's in the direction of the normal using dot product sign.
+    return np.copysign(np.linalg.norm(distance_vector), np.dot(distance_vector, unit_normal))
+
 def get_unique_vector(vector: npt.NDArray) -> npt.NDArray:
     """Checks the vector against unique direction rules and inverts it if any are violated.
 
@@ -156,13 +178,17 @@ def equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
     """
     return v1 - v2
 
-def perpendicular(v1: npt.NDArray, v2: npt.NDArray,
-                  zero_atol: np.float64=np.float64(1e-16)) -> np.float64:
+def perpendicular(v1: npt.NDArray, v2: npt.NDArray) -> np.float64:
     """Calculates how close two vectors are to being perpendicular to each other."""
-    norm1, norm2 = map(np.linalg.norm, (v1, v2))
-    if any(np.isclose(n, 0, atol=zero_atol) for n in (norm1, norm2)):
-        raise ValueError("Cannot check whether a zero vector is perpendicular")
-    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    n1, n2 = map(np.linalg.norm, (v1, v2))
+    try:
+        with np.errstate(divide="raise", invalid="raise"):
+            # Normalize to reduce round-off by making sure vectors are the same magnitude.
+            # nv1, nv2 = map(lambda v: v / np.linalg.norm(v), (v1, v2))
+            return np.dot(v1, v2) / (n1 * n2)
+    except FloatingPointError as exc:
+        msg = f"Cannot normalize, one of the vectors is likely a zero vector: {v1}, {v2}"
+        raise ValueError(msg) from exc
 
 def point_line_distance(line_pt: npt.NDArray, direction: npt.NDArray,
                         pt: npt.NDArray, distance: np.float64) -> np.float64:
@@ -181,21 +207,22 @@ point_line_coincident = partial(point_line_distance, distance=np.float64(0))
 point_line_coincident.__doc__ = """
     Calculates how close a point is to being on a line.
 
-    :param ref_pt: The line's closest to the origin reference point position vector.
-    :param direction: The line's direction vector.
+    :param line_pt: A point on the line.
+    :param direction: A vector in the direction of the line.
     :param pt: The point's position vector.
 """.strip()
 
-def point_plane_distance(pln_pt: npt.NDArray, normal: npt.NDArray,
-                         pt: npt.NDArray, distance: np.float64) -> np.float64:
+def point_plane_distance(plane_point: npt.NDArray, normal: npt.NDArray,
+                         point: npt.NDArray, distance: np.float64) -> np.float64:
     """Calculates how close a point is to being a specified closest distance from a plane.
 
-    :param pln_pt: A point on the plane.
+    :param plane_point: A point on the plane.
     :param normal: The plane's normal vector.
-    :param pt: The point's position vector.
+    :param point: The point's position vector.
     :param distance: The distance the point should be from the plane.
+    :raises ValueError: When the normal vector is a zero vector.
     """
-    return abs(np.dot(normal, pln_pt - pt) / np.linalg.norm(normal) - distance)
+    return get_plane_to_point_distance(plane_point, normal, point) - distance
 
 point_plane_coincident = partial(point_plane_distance, distance=np.float64(0))
 point_plane_coincident.__doc__ = """
@@ -206,31 +233,62 @@ point_plane_coincident.__doc__ = """
     :param pt: The point's position vector.
 """.strip()
 
-def plane_plane_distance(p1: npt.NDArray, n1: npt.NDArray, p2: npt.NDArray, n2: npt.NDArray,
+def plane_line_distance(plane_point: npt.NDArray, normal: npt.NDArray,
+                        line_point: npt.NDArray, direction: npt.NDArray,
+                        distance: np.float64) -> np.float64:
+    """Calculates how close a line is to being a specified distance from a plane. Also works on
+    axes.
+
+    :param plane_point: A point on the plane.
+    :param normal: The plane's normal vector.
+    :param line_point: A point on the line.
+    :param direction: A vector in the direction of the line.
+    :param distance: The distance the line should be from the plane.
+    :raises ValueError: When the normal vector is a zero vector.
+    """
+    distance_residuals = np.empty(2)
+    for i, point in enumerate((line_point, line_point + direction / np.linalg.norm(direction))):
+        distance_residuals[i] = point_plane_distance(plane_point, normal, point, distance)
+    return distance_residuals[np.argmax(abs(distance_residuals))]
+
+plane_line_coincident = partial(plane_line_distance, distance=np.float64(0))
+plane_line_coincident.__doc__ = """
+    Calculates how close a line or axis is to being on a plane.
+
+    :param pln_pt: The plane's closest to the origin reference point position vector.
+    :param normal: The plane's normal vector.
+    :param pt: The point's position vector.
+""".strip()
+
+def plane_plane_distance(point_1: npt.NDArray, normal_1: npt.NDArray,
+                         point_2: npt.NDArray, normal_2: npt.NDArray,
                          distance: np.float64) -> np.float64:
     """Calculates how close two planes are to being a specified distance from each other.
 
-    :param p1: A point on the first Plane.
-    :param n1: The normal vector of the first Plane.
-    :param p2: A point on the second Plane.
-    :param n2: The normal vector of the second Plane.
+    :param point_1: A point on the first Plane.
+    :param normal_1: The normal vector of the first Plane.
+    :param point_2: A point on the second Plane.
+    :param normal_2: The normal vector of the second Plane.
     :param distance: The required distance between the two planes. Positive in the direction of
         the first plane's normal vector.
     """
-    distances = []
-    # Enforce normal uniqueness since distance is independent of normal vector direction
-    un1, un2 = map(get_unique_vector, (n1, n2))
-    distances = np.empty(3)
-    for i, pt in enumerate(get_3_plane_points(p1, un1)):
+    # Enforce normal uniqueness to make the choice of plane points independent of normal direction
+    unique_normal_1, unique_normal_2 = map(get_unique_vector, (normal_1, normal_2))
+    distance_residuals = np.empty(3)
+    for i, arbitrary_plane_1_point in enumerate(get_3_plane_points(point_1, unique_normal_1)):
         try:
             with np.errstate(divide="raise", invalid="raise"):
-                proj_pt = pt + un1 * np.dot(un2, p2 - pt) / np.dot(un1, un2)
+                projected_point = (
+                    arbitrary_plane_1_point
+                    + unique_normal_1
+                    * np.dot(unique_normal_2, point_2 - arbitrary_plane_1_point)
+                    / np.dot(unique_normal_1, unique_normal_2)
+                )
         except FloatingPointError:
             # The normal vectors are perpendicular, so the effective distance is infinity.
             return np.inf
-        pt_to_proj = proj_pt - pt
-        distances[i] = np.copysign(np.linalg.norm(pt_to_proj), np.dot(un1, pt_to_proj))
-    return distances[np.argmax(abs(distances))] - distance
+        distance_residuals[i] = point_plane_distance(point_1, normal_1, projected_point, distance)
+    return distance_residuals[np.argmax(abs(distance_residuals))]
 
 plane_plane_coincident = partial(plane_plane_distance, distance=np.float64(0))
 plane_plane_coincident.__doc__ = """

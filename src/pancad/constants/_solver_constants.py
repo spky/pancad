@@ -39,6 +39,12 @@ class ConstraintEquationName(StrEnum):
     PLANE_PLANE_COINCIDENT = auto()
     """Plane to Plane coincident."""
 
+    POINT_PLANE_DISTANCE = auto()
+    """Distance from a plane to a point."""
+
+    PLANE_LINE_DISTANCE = auto()
+    """Distance from a plane to a line. Causes the plane and the point """
+
     PLANE_PLANE_DISTANCE = auto()
     """The distance from one Plane to another Plane. Causes the Planes to have
     an implied parallel constraint so that the distance can be well defined.
@@ -68,7 +74,10 @@ class ConstraintEquationName(StrEnum):
     """These two vectors must be antiparallel."""
 
     PARALLEL = auto()
-    """These two vectors must be either parallel (i.e., codirectional OR antiparallel)."""
+    """These two vectors must be parallel (i.e., codirectional OR antiparallel)."""
+
+    PERPENDICULAR = auto()
+    """These two vectors must be perpendicular."""
 
     PLANE_REF_POINT = auto()
     """Plane Reference Point position vector must be aligned or anti-aligned
