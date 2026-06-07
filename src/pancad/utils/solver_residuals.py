@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from functools import partial
 from typing import TYPE_CHECKING
-import warnings
 
 import numpy as np
 
@@ -133,16 +132,13 @@ def _direction(v1: npt.NDArray, v2: npt.NDArray,
                f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
         raise TypeError(msg) from exc
     if sign * dot > 0:
-        with warnings.catch_warnings():
-            # numpy will raise a warning from division by zero (inf) or zero divided by zero (NaN)
-            # Normalization cannot occur, so it's treated as an error rather than a warning.
-            warnings.filterwarnings("error")
-            try:
+        try:
+            with np.errstate(divide="raise", invalid="raise"):
                 return v1 / norm1 - sign * v2 / norm2
-            except RuntimeWarning as warn:
-                if not any(s in str(warn) for s in ("invalid value", "divide by zero")):
-                    # Ensure unexpected warnings are still raised.
-                    raise
+        except FloatingPointError as exc:
+            if not any(s in str(exc) for s in ("invalid value", "divide by zero")):
+                # Ensure unexpected warnings are still raised.
+                raise
     # sign * dot being less than or equal to 0 indicates the vectors are pointing in opposite
     # directions to the goal of being codirection or antiparallel. Return the difference to get
     # the solver to switch them.
