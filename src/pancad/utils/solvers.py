@@ -587,13 +587,25 @@ class SystemSolver:
         combos = [
             ({Axis, Point}, CEN.POINT_LINE_COINCIDENT),
             ({Line, Point}, CEN.POINT_LINE_COINCIDENT),
-            ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
             ({Axis}, CEN.LINE_LINE_COINCIDENT),
+            ({Line}, CEN.LINE_LINE_COINCIDENT),
+            ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
+            ({Plane}, CEN.PLANE_PLANE_COINCIDENT),
         ]
         eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
                   for c, e in combos}
         self._add_equation(constraint, eq_map)
-        # TODO: Add plane and line implied parallel constraints and tests for coincident.
+
+        # Handle cases where the combo elements are implied to be parallel and can't be solved
+        # without that extra constraint.
+        parallel_combos = [
+            # Normal and direction must be perpendicular for axis/line to plane parallism.
+            ({Axis, Plane}, CEN.PERPENDICULAR),
+            ({Line, Plane}, CEN.PERPENDICULAR),
+            ({Plane}, CEN.PARALLEL),
+        ]
+        implied_var_map = {Plane: [CVN.NORMAL], Line: [CVN.DIRECTION], Axis: [CVN.DIRECTION]}
+        self._add_conditional_equation(constraint, parallel_combos, implied_var_map)
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:

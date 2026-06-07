@@ -62,6 +62,24 @@ def _perpendicular_planes(pln1: PlaneInputs, pln2: PlaneInputs,
     expected = _generate_system([Plane(*exppln), Plane(*pln2), Point(fix_pt)], cons)
     return initial, expected
 
+def _coincident_planes(plane_1: PlaneInputs, plane_2: PlaneInputs,
+                       expected_plane: PlaneInputs) -> SystemTestPair:
+    """Generates a pair of systems for 1 fixed plane and a plane that is coincident to the fixed
+    plane.
+
+    :param plane_1: Movable plane's point and normal vectors.
+    :param plane_2: Fixed plane's point and normal vectors.
+    :param expected_plane: Expected result plane's point and normal vectors.
+    """
+    cons = [
+        (SC.COINCIDENT, (0, 1)),
+        (SC.UNIQUE, (0,)),
+        (SC.FIXED, (1,)),
+    ]
+    initial = _generate_system([Plane(*plane_1), Plane(*plane_2)], cons)
+    expected = _generate_system([Plane(*expected_plane), Plane(*plane_2)], cons)
+    return initial, expected
+
 def _sys_line_co_2_fixed_pts(ref_pt: Space3DVector, direction: SpaceVector,
                              p1: SpaceVector, p2: SpaceVector) -> ThreeDSketchSystem:
     """Generates an system of a line and two fixed points."""
@@ -191,6 +209,10 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,0,0)), 10),
                      id="plane-dist-xy-yz-10",
                      marks=pytest.mark.xfail(reason="Starting from perp planes not yet defined")),
+        pytest.param(
+            *_coincident_planes(((0,0,1), (0,0,1)), ((0,0,0), (0,0,1)), ((0,0,0), (0,0,1))),
+            id="planes-coincident-xyp1z-to-xy"
+        ),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
@@ -504,7 +526,7 @@ class TestResidualHelpers:
         [
             # 0D
             pytest.param(tuple(), tuple(), id="0d"),
-            
+
             # 1D
             pytest.param((0,), (0,), id="zero_vector_1d"),
             pytest.param((1,), (1,), id="1_1d"),
