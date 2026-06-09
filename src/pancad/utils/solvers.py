@@ -574,6 +574,8 @@ class SystemSolver:
         # without that extra constraint.
         parallel_combos = [
             # Normal and direction must be perpendicular for axis/line to plane parallism.
+            ({Axis, Plane}, CEN.PERPENDICULAR),
+            ({Line, Plane}, CEN.PERPENDICULAR),
             ({Plane}, CEN.PARALLEL),
         ]
         implied_var_map = {Plane: [CVN.NORMAL], Line: [CVN.DIRECTION], Axis: [CVN.DIRECTION]}

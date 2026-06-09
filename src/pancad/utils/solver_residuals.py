@@ -278,7 +278,7 @@ plane_line_coincident.__doc__ = """
 """.strip()
 
 _param_order_map[CEN.PLANE_LINE_DISTANCE] = (Plane, Axis, Line)
-_param_order_map[CEN.PLANE_LINE_DISTANCE] = _param_order_map[CEN.PLANE_LINE_DISTANCE]
+_param_order_map[CEN.PLANE_LINE_COINCIDENT] = _param_order_map[CEN.PLANE_LINE_DISTANCE]
 
 def plane_plane_distance(point_1: npt.NDArray, normal_1: npt.NDArray,
                          point_2: npt.NDArray, normal_2: npt.NDArray,
@@ -412,6 +412,7 @@ RESIDUAL_FUNCS = {
     CEN.CODIRECTIONAL: codirectional,
     CEN.ANTIPARALLEL: antiparallel,
     CEN.PARALLEL: parallel,
+    CEN.PERPENDICULAR: perpendicular,
     CEN.UNIQUE_VECTOR: unique_vector,
     CEN.NON_ZERO: non_zero_vector,
 }

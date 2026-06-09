@@ -62,6 +62,23 @@ def _perpendicular_planes(pln1: PlaneInputs, pln2: PlaneInputs,
     expected = _generate_system([Plane(*exppln), Plane(*pln2), Point(fix_pt)], cons)
     return initial, expected
 
+def _plane_intersection_line(line: LineInputs, plane_1: PlaneInputs, plane_2: PlaneInputs,
+                             expected_line: LineInputs) -> SystemTestPair:
+    """Generates a pair systems of 2 fixed planes and a line coincident to both of them."""
+    cons = [
+        (SC.COINCIDENT, (0, 1)),
+        (SC.COINCIDENT, (0, 2)),
+        (SC.FIXED, (1,)),
+        (SC.FIXED, (2,)),
+    ]
+    point, direction = line
+    initial = _generate_system([Line(Point(point), direction), Plane(*plane_1), Plane(*plane_2)],
+                               cons)
+    point, direction = expected_line
+    expected = _generate_system([Line(Point(point), direction), Plane(*plane_1), Plane(*plane_2)],
+                                cons)
+    return initial, expected
+
 def _coincident_planes(plane_1: PlaneInputs, plane_2: PlaneInputs,
                        expected_plane: PlaneInputs) -> SystemTestPair:
     """Generates a pair of systems for 1 fixed plane and a plane that is coincident to the fixed
@@ -184,34 +201,77 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
 @pytest.mark.parametrize(
     "initial, expected",
     [
+        ### Point-Line Coincident Tests
+        # Line starting with ref point (0,0,1) and in the x direction coincident with two fixed
+        # points at (0,0,0) and (1,0,0).
         pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,0,0)),
                      id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-x-axis-aligned"),
+        # Line starting with ref point (0,0,1) and in the x direction coincident with two fixed
+        # points at (0,0,0) and (1,1,1).
         pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,1,1)),
                      id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-(0,0,0)(1,1,1)"),
+
+        ### Plane-Point Coincident Tests
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (0,0,1), (1,0,1), and (0,1,1).
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((0,0,1), (1,0,1), (0,1,1))),
                      id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z"),
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (2,0,0), (0,2,0), and (0,0,2).
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((2,0,0), (0,2,0), (0,0,2))),
                      id="3-pt-coincident-Plane-XY-to-all-2-away"),
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (0,0,0), (0,1,0), and (0,0,1).
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
                      id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
+
+        ### Fixed System Tests
+        # A system with one of each geometry fixed into place.
         pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
+
+        ### Axis-Axis Coincident with Codirectional Tests
+        # X Axis coincident to negative x axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX"),
+        # X Axis coincident to another X axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (1,0,0)), "axes-coincident-X-to-X"),
+        # X Axis coincident to Y axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
+        # X Axis coincident to Z axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
+        # An Axis with ref point (1,1,1) and direction in the x direction coincident to Y axis.
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
+
+        ### Plane-Plane Distance Tests
+        # XY plane +10 units away from a fixed XY plane. (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (0,0,1)), 10),
                      id="plane-dist-xy-xy-10"),
+        # Plane at ref point (1,1,1) and direction (1,1,1) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((1,1,1), (1,1,1)), 10),
                      id="plane-dist-xy-111-111pln-10"),
+        # Plane at ref point (0,0,0) and direction (1,1,1) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,1,1)), 10),
                      id="plane-dist-xy-000-111pln-10"),
+        # Plane at ref point (0,0,0) and direction (1,0,0) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg). In other words: The planes start perpendicular.
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,0,0)), 10),
                      id="plane-dist-xy-yz-10",
                      marks=pytest.mark.xfail(reason="Starting from perp planes not yet defined")),
+        # Plane at ref point (0,0,1) and direction in z direction coincident with XY plane.
         pytest.param(
             *_coincident_planes(((0,0,1), (0,0,1)), ((0,0,0), (0,0,1)), ((0,0,0), (0,0,1))),
             id="planes-coincident-xyp1z-to-xy"
+        ),
+        # Line starting with ref point (1,0,0) and in the z direction coincident with fixed YZ and
+        # XZ planes.
+        pytest.param(
+            *_plane_intersection_line(
+                ((1,0,0), (0,0,1)), # Line
+                ((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), # Planes
+                ((0,0,0), (0,0,1)) # Expected Line
+            ),
+            id="line-coincident-xz-and-yz-planes"
         ),
     ]
 )
