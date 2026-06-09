@@ -6,14 +6,22 @@ from __future__ import annotations
 from functools import partial
 from typing import TYPE_CHECKING
 
+import math
 import numpy as np
 
-from pancad.constants import SketchConstraint as SC
+from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
+
+from pancad.geometry.line import Axis, Line
+from pancad.geometry.plane import Plane
+from pancad.geometry.point import Point
 
 if TYPE_CHECKING:
-    from typing import Literal
+    from typing import Literal, Type
 
     import numpy.typing as npt
+
+    from pancad.abstract import PancadThing
+
 
 ################################################################################
 # Helpers
@@ -96,9 +104,16 @@ def get_unique_vector(vector: npt.NDArray) -> npt.NDArray:
             return vector
     return vector
 
+
+
 ################################################################################
 # Residuals
 ################################################################################
+
+_param_order_map = {}
+"""Mapping for ordering parameters by their geometry type for cases where the order matters.
+Any residual function where ordering does matter are omitted from the mapping.
+"""
 
 def unit_vector(vector: npt.NDArray) -> np.float64:
     """Calculates how far a vector is from being a unit vector."""
@@ -208,6 +223,9 @@ point_line_coincident.__doc__ = """
     :param pt: The point's position vector.
 """.strip()
 
+_param_order_map[CEN.POINT_LINE_DISTANCE] = (Axis, Line, Point)
+_param_order_map[CEN.POINT_LINE_COINCIDENT] = _param_order_map[CEN.POINT_LINE_DISTANCE]
+
 def point_plane_distance(plane_point: npt.NDArray, normal: npt.NDArray,
                          point: npt.NDArray, distance: np.float64) -> np.float64:
     """Calculates how close a point is to being a specified closest distance from a plane.
@@ -228,6 +246,9 @@ point_plane_coincident.__doc__ = """
     :param normal: The plane's normal vector.
     :param pt: The point's position vector.
 """.strip()
+
+_param_order_map[CEN.POINT_PLANE_DISTANCE] = (Plane, Point)
+_param_order_map[CEN.POINT_PLANE_COINCIDENT] = _param_order_map[CEN.POINT_PLANE_DISTANCE]
 
 def plane_line_distance(plane_point: npt.NDArray, normal: npt.NDArray,
                         line_point: npt.NDArray, direction: npt.NDArray,
@@ -255,6 +276,9 @@ plane_line_coincident.__doc__ = """
     :param normal: The plane's normal vector.
     :param pt: The point's position vector.
 """.strip()
+
+_param_order_map[CEN.PLANE_LINE_DISTANCE] = (Plane, Axis, Line)
+_param_order_map[CEN.PLANE_LINE_DISTANCE] = _param_order_map[CEN.PLANE_LINE_DISTANCE]
 
 def plane_plane_distance(point_1: npt.NDArray, normal_1: npt.NDArray,
                          point_2: npt.NDArray, normal_2: npt.NDArray,
@@ -352,3 +376,42 @@ def unique_vector(vector: npt.NDArray, zero_atol: np.float64=np.float64(1e-16)) 
         # Y is not close to 0, so return y residual.
         residuals.extend([y - abs(y), 0])
     return np.array(residuals)
+
+def get_param_sort_key(type_: Type[PancadThing],
+                   equation_name: CEN) -> float:
+    """Returns the parameter sorting key of the type for the named equation.
+
+    :param type_: The parameter's source type.
+    :param equation_name: The name of the equation to sort parameters for.
+    :raises ValueError: When provided a geometry type not in the equation's ordering list.
+    :returns: The index of the type in the ordering map's equation list. Returns infinity when the
+        equation is not in the ordering map.
+    """
+    try:
+        order = _param_order_map[equation_name]
+    except KeyError:
+        # Equation name not being in the ordering map indicates the parameters can be unordered.
+        return math.inf
+    try:
+        return order.index(type_)
+    except ValueError as exc:
+        exc.add_note(f"Type {type_} is not in the {equation_name} ordering list")
+        raise
+
+
+RESIDUAL_FUNCS = {
+    CEN.UNIT_VECTOR: unit_vector,
+    CEN.EQUAL_VECTOR: equal_vector,
+    CEN.LINE_REF_POINT: line_ref_point, # Line Ref Point Vector and Direction Perpendicularity
+    CEN.POINT_LINE_COINCIDENT: point_line_coincident,
+    CEN.POINT_PLANE_COINCIDENT: point_plane_coincident,
+    CEN.LINE_LINE_COINCIDENT: line_line_coincident,
+    CEN.PLANE_PLANE_COINCIDENT: plane_plane_coincident,
+    CEN.PLANE_LINE_COINCIDENT: plane_line_coincident,
+    CEN.PLANE_PLANE_DISTANCE: plane_plane_distance,
+    CEN.CODIRECTIONAL: codirectional,
+    CEN.ANTIPARALLEL: antiparallel,
+    CEN.PARALLEL: parallel,
+    CEN.UNIQUE_VECTOR: unique_vector,
+    CEN.NON_ZERO: non_zero_vector,
+}

@@ -162,30 +162,9 @@ def _norm_with_zero(vector: npt.NDArray | SpaceVector) -> npt.NDArray:
     return np.array(vector) / norm
 
 
-
 ################################################################################
 # Residual Calculators
 ################################################################################
-
-
-RESIDUAL_FUNCS = {
-    CEN.UNIT_VECTOR: pcres.unit_vector,
-    CEN.EQUAL_VECTOR: pcres.equal_vector,
-    CEN.LINE_REF_POINT: pcres.line_ref_point,
-    # Line Reference Point Vector and Direction Perpendicularity
-    CEN.POINT_LINE_COINCIDENT: pcres.point_line_coincident,
-    CEN.POINT_PLANE_COINCIDENT: pcres.point_plane_coincident,
-    CEN.LINE_LINE_COINCIDENT: pcres.line_line_coincident,
-    CEN.PLANE_PLANE_COINCIDENT: pcres.plane_plane_coincident,
-    CEN.PLANE_PLANE_DISTANCE: pcres.plane_plane_distance,
-    CEN.FIXED_VECTOR: pcres.equal_vector,
-    # First vector must be held constant to a supplied initial vector
-    CEN.CODIRECTIONAL: pcres.codirectional,
-    CEN.ANTIPARALLEL: pcres.antiparallel,
-    CEN.PARALLEL: pcres.parallel,
-    CEN.UNIQUE_VECTOR: pcres.unique_vector,
-    CEN.NON_ZERO: pcres.non_zero_vector,
-}
 
 class ConstraintVariable:
     """A class for tracking variables used by constraint functions.
@@ -263,13 +242,7 @@ class ConstraintEquation:
                 param_values.append(p.value[0])
             else:
                 param_values.append(p.value)
-        if self.name == CEN.FIXED_VECTOR:
-            for p in self.params:
-                if len(p) == 1:
-                    param_values.append(p.initial[0])
-                else:
-                    param_values.append(p.initial)
-        result = RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
+        result = pcres.RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
@@ -590,6 +563,7 @@ class SystemSolver:
             ({Axis}, CEN.LINE_LINE_COINCIDENT),
             ({Line}, CEN.LINE_LINE_COINCIDENT),
             ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
+            ({Plane, Line}, CEN.PLANE_LINE_COINCIDENT),
             ({Plane}, CEN.PLANE_PLANE_COINCIDENT),
         ]
         eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
@@ -600,8 +574,6 @@ class SystemSolver:
         # without that extra constraint.
         parallel_combos = [
             # Normal and direction must be perpendicular for axis/line to plane parallism.
-            ({Axis, Plane}, CEN.PERPENDICULAR),
-            ({Line, Plane}, CEN.PERPENDICULAR),
             ({Plane}, CEN.PARALLEL),
         ]
         implied_var_map = {Plane: [CVN.NORMAL], Line: [CVN.DIRECTION], Axis: [CVN.DIRECTION]}
@@ -672,6 +644,7 @@ class SystemSolver:
                 msg = f"Got unsupported geometry type {geo} for constraint {constraint}"
                 raise NotImplementedError(msg) from exc
             params.extend(self._get_var(geo, var) for var in geo_vars)
+        params.sort(key=lambda p: pcres.get_param_sort_key(type(p.element), eq))
         return ConstraintEquation(constraint, eq, params, constants)
 
     @singledispatchmethod
