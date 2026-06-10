@@ -21,11 +21,81 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
-    from pancad.abstract import AbstractGeometrySystem
+    from pancad.abstract import AbstractGeometrySystem, AbstractGeometry
     from pancad.utils.pancad_types import SpaceVector, Space3DVector
+
+    # Constraints in a system defined here by listing the SketchConstraint and geometry indices.
+    ConstraintDef = tuple[SC, tuple[int, ...]]
+    SystemTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
+    PlaneInputs = tuple[Space3DVector, Space3DVector]
+    LineInputs = tuple[Space3DVector, Space3DVector]
 
 SolveTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
 """Systems to compare. The first is the test system and the second is the goal system."""
+
+def _generate_system(geo: list[AbstractGeometry],
+                     cons_def: list[ConstraintDef]) -> ThreeDSketchSystem:
+    """Generates a new 3D geometry system."""
+    constraints = []
+    for sketch_con, indices in cons_def:
+        constraints.append(make_constraint(sketch_con, *[geo[i] for i in indices]))
+    return ThreeDSketchSystem(geo, constraints)
+
+def _perpendicular_planes(pln1: PlaneInputs, pln2: PlaneInputs,
+                          exppln: PlaneInputs, fix_pt: Space3DVector) -> SystemTestPair:
+    """Generates a system of 1 fixed plane, 1 fixed point, and a plane that is perpendicular to
+    the fixed plane as well as coincident to the fixed point.
+
+    :param pln1: Movable plane's point and normal vectors.
+    :param pln2: Fixed plane's point and normal vectors.
+    :param exppln: Expected result plane's point and normal vectors.
+    :param fix_pt: Fixed point position vector.
+    """
+    cons = [
+        (SC.PERPENDICULAR, (0, 1)),
+        (SC.COINCIDENT, (0, 2)),
+        (SC.UNIQUE, (0,)),
+        (SC.FIXED, (1,)),
+        (SC.FIXED, (2,)),
+    ]
+    initial = _generate_system([Plane(*pln1), Plane(*pln2), Point(fix_pt)], cons)
+    expected = _generate_system([Plane(*exppln), Plane(*pln2), Point(fix_pt)], cons)
+    return initial, expected
+
+def _plane_intersection_line(line: LineInputs, plane_1: PlaneInputs, plane_2: PlaneInputs,
+                             expected_line: LineInputs) -> SystemTestPair:
+    """Generates a pair systems of 2 fixed planes and a line coincident to both of them."""
+    cons = [
+        (SC.COINCIDENT, (0, 1)),
+        (SC.COINCIDENT, (0, 2)),
+        (SC.FIXED, (1,)),
+        (SC.FIXED, (2,)),
+    ]
+    point, direction = line
+    initial = _generate_system([Line(Point(point), direction), Plane(*plane_1), Plane(*plane_2)],
+                               cons)
+    point, direction = expected_line
+    expected = _generate_system([Line(Point(point), direction), Plane(*plane_1), Plane(*plane_2)],
+                                cons)
+    return initial, expected
+
+def _coincident_planes(plane_1: PlaneInputs, plane_2: PlaneInputs,
+                       expected_plane: PlaneInputs) -> SystemTestPair:
+    """Generates a pair of systems for 1 fixed plane and a plane that is coincident to the fixed
+    plane.
+
+    :param plane_1: Movable plane's point and normal vectors.
+    :param plane_2: Fixed plane's point and normal vectors.
+    :param expected_plane: Expected result plane's point and normal vectors.
+    """
+    cons = [
+        (SC.COINCIDENT, (0, 1)),
+        (SC.UNIQUE, (0,)),
+        (SC.FIXED, (1,)),
+    ]
+    initial = _generate_system([Plane(*plane_1), Plane(*plane_2)], cons)
+    expected = _generate_system([Plane(*expected_plane), Plane(*plane_2)], cons)
+    return initial, expected
 
 def _sys_line_co_2_fixed_pts(ref_pt: Space3DVector, direction: SpaceVector,
                              p1: SpaceVector, p2: SpaceVector) -> ThreeDSketchSystem:
@@ -131,31 +201,78 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
 @pytest.mark.parametrize(
     "initial, expected",
     [
+        ### Point-Line Coincident Tests
+        # Line starting with ref point (0,0,1) and in the x direction coincident with two fixed
+        # points at (0,0,0) and (1,0,0).
         pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,0,0)),
                      id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-x-axis-aligned"),
+        # Line starting with ref point (0,0,1) and in the x direction coincident with two fixed
+        # points at (0,0,0) and (1,1,1).
         pytest.param(*_line_to_2_pts((0,0,1), (1,0,0), (0,0,0), (1,1,1)),
                      id="2-pt-coincident-Line(0,0,1)(1,0,0)-to-(0,0,0)(1,1,1)"),
+
+        ### Plane-Point Coincident Tests
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (0,0,1), (1,0,1), and (0,1,1).
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((0,0,1), (1,0,1), (0,1,1))),
                      id="3-pt-coincident-Plane-XY-to-Plane-XY-plus-1-z"),
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (2,0,0), (0,2,0), and (0,0,2).
         pytest.param(*_plane_to_3_pts((0,0,0), (0,0,1), ((2,0,0), (0,2,0), (0,0,2))),
                      id="3-pt-coincident-Plane-XY-to-all-2-away"),
+        # Plane starting at ref point (0,0,0) with normal in the z direction coincident with 3
+        # points (0,0,0), (0,1,0), and (0,0,1).
         pytest.param(*_plane_to_3_pts((0,0,1), (0,0,1), ((0,0,0), (0,1,0), (0,0,1))),
                      id="3-pt-coincident-Plane-XY-plus-1-z-to-YZ-Plane"),
+
+        ### Fixed System Tests
+        # A system with one of each geometry fixed into place.
         pytest.param(*_fixed_3d_system(), id="fixed-3d-system"),
+
+        ### Axis-Axis Coincident with Codirectional Tests
+        # X Axis coincident to negative x axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (-1,0,0)), "axes-coincident-X-to-negX"),
+        # X Axis coincident to another X axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (1,0,0)), "axes-coincident-X-to-X"),
+        # X Axis coincident to Y axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-X-to-Y"),
+        # X Axis coincident to Z axis.
         *_coincident_axis_duo(((0,0,0), (1,0,0)), ((0,0,0), (0,0,1)), "axes-coincident-X-to-Z"),
+        # An Axis with ref point (1,1,1) and direction in the x direction coincident to Y axis.
         *_coincident_axis_duo(((1,1,1), (1,0,0)), ((0,0,0), (0,1,0)), "axes-coincident-111-to-Y"),
+
+        ### Plane-Plane Distance Tests
+        # XY plane +10 units away from a fixed XY plane. (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (0,0,1)), 10),
                      id="plane-dist-xy-xy-10"),
+        # Plane at ref point (1,1,1) and direction (1,1,1) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((1,1,1), (1,1,1)), 10),
                      id="plane-dist-xy-111-111pln-10"),
+        # Plane at ref point (0,0,0) and direction (1,1,1) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg)
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,1,1)), 10),
                      id="plane-dist-xy-000-111pln-10"),
+        # Plane at ref point (0,0,0) and direction (1,0,0) +10 units away from a fixed XY plane.
+        # (Fixed plane first arg). In other words: The planes start perpendicular.
         pytest.param(*_2_planes_distance(((0,0,0), (0,0,1)), ((0,0,0), (1,0,0)), 10),
                      id="plane-dist-xy-yz-10",
                      marks=pytest.mark.xfail(reason="Starting from perp planes not yet defined")),
+        # Plane at ref point (0,0,1) and direction in z direction coincident with XY plane.
+        pytest.param(
+            *_coincident_planes(((0,0,1), (0,0,1)), ((0,0,0), (0,0,1)), ((0,0,0), (0,0,1))),
+            id="planes-coincident-xyp1z-to-xy"
+        ),
+        # Line starting with ref point (1,0,0) and in the z direction coincident with fixed YZ and
+        # XZ planes.
+        pytest.param(
+            *_plane_intersection_line(
+                ((1,0,0), (0,0,1)), # Line
+                ((0,0,0), (1,0,0)), ((0,0,0), (0,1,0)), # Planes
+                ((0,0,0), (0,0,1)) # Expected Line
+            ),
+            id="line-coincident-xz-and-yz-planes"
+        ),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
@@ -318,7 +435,7 @@ class TestResiduals:
     def test_perpendicular(self, v1: SpaceVector, v2: SpaceVector, expected: float) -> None:
         """Test for calculating the residual of two vectors that must be perpendicular."""
         assert pcres.perpendicular(np.array(v1, dtype=np.float64),
-                                  np.array(v2, dtype=np.float64)) == expected
+                                   np.array(v2, dtype=np.float64)) == expected
 
     @pytest.mark.parametrize(
         "vector, atol, expected",
@@ -364,6 +481,38 @@ class TestResiduals:
         exp = np.array(expected)
         atol = np.float64(atol)
         nptest.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
+
+    @pytest.mark.parametrize(
+        "plane, point, distance, expected",
+        [
+            pytest.param(((0,0,0),(0,0,1)), (0,0,0), 0, 0, id="000-0d-xy"),
+            pytest.param(((0,0,0),(0,0,1)), (0,0,1), 1, 0, id="00n1-1d-xy"),
+            pytest.param(((0,0,0),(0,0,1)), (0,0,-1), -1, 0, id="00n1-n1d-xy"),
+        ]
+    )
+    def test_point_plane_distance(self, plane: PlaneInputs, point: Space3DVector, distance: float,
+                                  expected: float) -> None:
+        """Test for calculating the distance residual of a point-plane distance constraint."""
+        pln_pt, normal = map(np.array, plane)
+        result = pcres.point_plane_distance(pln_pt, normal, np.array(point), np.float64(distance))
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "plane, line, distance, expected",
+        [
+            pytest.param(((0,0,0),(0,0,1)), ((0,0,0),(1,0,0)), 0, 0, id="xy-0d-xline"),
+            pytest.param(((0,0,0),(0,0,1)), ((0,0,1),(1,0,0)), 0, 1, id="xy-0d-1r-001L100"),
+            pytest.param(((0,0,0),(0,0,1)), ((0,0,-1),(1,0,0)), 0, -1, id="xy-0d-n1r-00n1L100"),
+        ]
+    )
+    def test_plane_line_distance(self, plane: PlaneInputs, line: LineInputs,
+                                 distance: float, expected: float) -> None:
+        """Test for calculating the distance residual of a line/axis-plane distance constraint."""
+        pln_pt, normal = map(np.array, plane)
+        line_pt, direction = map(np.array, line)
+        result = pcres.plane_line_distance(pln_pt, normal, line_pt, direction,
+                                           np.float64(distance))
+        assert result == expected
 
     @pytest.mark.parametrize(
         "point1, normal1, point2, normal2, distance, expected",
@@ -437,7 +586,7 @@ class TestResidualHelpers:
         [
             # 0D
             pytest.param(tuple(), tuple(), id="0d"),
-            
+
             # 1D
             pytest.param((0,), (0,), id="zero_vector_1d"),
             pytest.param((1,), (1,), id="1_1d"),
@@ -460,3 +609,76 @@ class TestResidualHelpers:
     def test_get_unique_vector(self, vector: tuple[float, ...], expected: tuple[float, ...]):
         result = pcres.get_unique_vector(np.array(vector))
         np.testing.assert_array_equal(result, expected)
+
+    @pytest.mark.parametrize(
+        "plane, point, expected",
+        [
+            ### Moving Point around the XY plane.
+            # Origin Point on the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (0,0,0), 0, id="000-to-xy"),
+            # Point 1 unit above the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (0,0,1), 1, id="001-to-xy"),
+            # Point 5 units above the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (0,0,10), 10, id="005-to-xy"),
+            # Point 1 unit below the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (0,0,-1), -1, id="00n1-to-xy"),
+            # Point at 5,5,0 on the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (5,5,0), 0, id="550-to-xy"),
+            # Point at 5,5,5 above the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (5,5,5), 5, id="555-to-xy"),
+            # Point at 5,5,-5 below the XY plane.
+            pytest.param(((0,0,0), (0,0,1)), (5,5,-5), -5, id="55n5-to-xy"),
+
+            ### Moving Point around an XY plane with its normal vector reversed.
+            # Point 1 unit above the plane.
+            pytest.param(((0,0,0), (0,0,-1)), (0,0,1), -1, id="001-to-000pt-00n1norm"),
+            # Point 1 unit below the plane.
+            pytest.param(((0,0,0), (0,0,-1)), (0,0,-1), 1, id="00n1-to-000pt-00n1norm"),
+
+            ### Moving Point around a plane positioned 1 unit above the XY plane.
+            # Point on the plane.
+            pytest.param(((0,0,1), (0,0,1)), (0,0,1), 0, id="001-to-001pt-001norm"),
+            # Point 1 unit above the plane.
+            pytest.param(((0,0,1), (0,0,1)), (0,0,2), 1, id="002-to-001pt-001norm"),
+            # Point 1 unit below the plane.
+            pytest.param(((0,0,1), (0,0,1)), (0,0,0), -1, id="000-to-001pt-001norm"),
+
+            ### Moving point around a 0,0,5 normal vector XY plane. Should have no effect.
+            # Point on the XY Plane.
+            pytest.param(((0,0,0), (0,0,5)), (0,0,0), 0, id="000-to-5normxy"),
+            # Point 1 unit above the XY plane.
+            pytest.param(((0,0,0), (0,0,5)), (0,0,1), 1, id="001-to-5normxy"),
+            # Point 5 units above the XY plane.
+            pytest.param(((0,0,0), (0,0,5)), (0,0,10), 10, id="005-to-5normxy"),
+            # Point 1 unit below the XY plane.
+            pytest.param(((0,0,0), (0,0,5)), (0,0,-1), -1, id="00n1-to-5normxy"),
+
+            ### Moving point around a 0,0,-5 normal vector XY plane. Should have no effect.
+            # Point 1 unit above the plane.
+            pytest.param(((0,0,0), (0,0,-5)), (0,0,1), -1, id="001-to-000pt-00n5norm"),
+            # Point 1 unit below the plane.
+            pytest.param(((0,0,0), (0,0,-5)), (0,0,-1), 1, id="00n1-to-000pt-00n5norm"),
+
+            ### Moving point around a 0,0,0 point, 1,1,1 normal vector plane.
+            # Origin Point on the plane.
+            pytest.param(((0,0,0), (1,1,1)), (0,0,0), 0, id="000-to-000pt-111norm"),
+            # Point 1,1,1 above the plane.
+            pytest.param(((0,0,0), (1,1,1)), (1,1,1), np.linalg.norm((1,1,1)),
+                         id="000-to-111pt-111norm"),
+            # Point -1,-1,-1 below the plane.
+            pytest.param(((0,0,0), (1,1,1)), (-1,-1,-1), -np.linalg.norm((1,1,1)),
+                         id="000-to-n1n1n1pt-111norm"),
+
+        ]
+    )
+    def test_get_plane_to_point_distance(self, plane: PlaneInputs, point: Space3DVector,
+                                         expected: float | np.float64) -> None:
+        """Test that plane to point distance is the correct magnitude and sign."""
+        plane_point, normal = map(np.array, plane)
+        result = pcres.get_plane_to_point_distance(plane_point, normal, np.array(point))
+        assert result == pytest.approx(expected)
+
+    def test_get_plane_to_point_distance_zero_normal_exc(self) -> None:
+        plane_point, normal, point = map(np.array, ((1,1,1), (0,0,0), (1,1,1)))
+        with pytest.raises(ValueError):
+            pcres.get_plane_to_point_distance(plane_point, normal, point)

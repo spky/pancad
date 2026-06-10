@@ -16,7 +16,13 @@ from scipy.optimize import root as find_root
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintVariableName as CVN, ConstraintEquationName as CEN
 
-from pancad.constraints.state_constraint import Coincident, Codirectional, Antiparallel, Parallel
+from pancad.constraints.state_constraint import (
+    Antiparallel,
+    Coincident,
+    Codirectional,
+    Parallel,
+    Perpendicular,
+)
 from pancad.constraints.distance import Distance
 from pancad.constraints.snapto import Fixed, Unique
 from pancad.geometry.line_segment import LineSegment
@@ -39,6 +45,7 @@ if TYPE_CHECKING:
     from pancad.utils.pancad_types import SpaceVector
 
     GeoCombo = frozenset[Type[AbstractGeometry]]
+    VariableMap = dict[Type[AbstractGeometry], list[CVN]]
 
 def get_length(segment: LineSegment,
                along: Literal["x", "y", "z"]=None) -> float:
@@ -155,30 +162,9 @@ def _norm_with_zero(vector: npt.NDArray | SpaceVector) -> npt.NDArray:
     return np.array(vector) / norm
 
 
-
 ################################################################################
 # Residual Calculators
 ################################################################################
-
-
-RESIDUAL_FUNCS = {
-    CEN.UNIT_VECTOR: pcres.unit_vector,
-    CEN.EQUAL_VECTOR: pcres.equal_vector,
-    CEN.LINE_REF_POINT: pcres.line_ref_point,
-    # Line Reference Point Vector and Direction Perpendicularity
-    CEN.POINT_LINE_COINCIDENT: pcres.point_line_coincident,
-    CEN.POINT_PLANE_COINCIDENT: pcres.point_plane_coincident,
-    CEN.LINE_LINE_COINCIDENT: pcres.line_line_coincident,
-    CEN.PLANE_PLANE_COINCIDENT: pcres.plane_plane_coincident,
-    CEN.PLANE_PLANE_DISTANCE: pcres.plane_plane_distance,
-    CEN.FIXED_VECTOR: pcres.equal_vector,
-    # First vector must be held constant to a supplied initial vector
-    CEN.CODIRECTIONAL: pcres.codirectional,
-    CEN.ANTIPARALLEL: pcres.antiparallel,
-    CEN.PARALLEL: pcres.parallel,
-    CEN.UNIQUE_VECTOR: pcres.unique_vector,
-    CEN.NON_ZERO: pcres.non_zero_vector,
-}
 
 class ConstraintVariable:
     """A class for tracking variables used by constraint functions.
@@ -256,13 +242,7 @@ class ConstraintEquation:
                 param_values.append(p.value[0])
             else:
                 param_values.append(p.value)
-        if self.name == CEN.FIXED_VECTOR:
-            for p in self.params:
-                if len(p) == 1:
-                    param_values.append(p.initial[0])
-                else:
-                    param_values.append(p.initial)
-        result = RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
+        result = pcres.RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
@@ -528,6 +508,18 @@ class SystemSolver:
         self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
+    def _perpendicular(self, constraint: Perpendicular) -> None:
+        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        combos = [
+            ({Axis}, CEN.PERPENDICULAR),
+            ({Axis, Plane}, CEN.PARALLEL),
+            ({Plane}, CEN.PERPENDICULAR),
+        ]
+        eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
+                  for c, e in combos}
+        self._add_equation(constraint, eq_map)
+
+    @_add_constraint.register
     def _unique(self, constraint: Unique) -> None:
         var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.UNIQUE_VECTOR, var_map=var_map)
@@ -537,6 +529,8 @@ class SystemSolver:
     def _distance(self, constraint: Distance) -> None:
         var_map = {Plane: [CVN.REF_POINT, CVN.NORMAL]}
         combos = [
+            ({Axis, Plane}, CEN.PLANE_LINE_DISTANCE),
+            ({Line, Plane}, CEN.PLANE_LINE_DISTANCE),
             ({Plane}, CEN.PLANE_PLANE_DISTANCE),
         ]
         # Add distance equation.
@@ -544,11 +538,16 @@ class SystemSolver:
                                         constants={"distance": constraint.value})
                   for c, e in combos}
         self._add_equation(constraint, eq_map)
-        if {type(g) for g in constraint.get_geometry()} == {Plane}:
-            # Special Case: Planes must be parallel to have a meaningful distance between them.
-            func = partial(self._new_constraint_eq,
-                           eq=CEN.PARALLEL, var_map={Plane: [CVN.NORMAL]})
-            self._add_equation(constraint, {frozenset({Plane}): func})
+
+        # Handle cases where the combo elements are implied to be parallel.
+        parallel_combos = [
+            # Normal and direction must be perpendicular for axis/line to plane parallism.
+            ({Axis, Plane}, CEN.PERPENDICULAR),
+            ({Line, Plane}, CEN.PERPENDICULAR),
+            ({Plane}, CEN.PARALLEL),
+        ]
+        implied_var_map = {Plane: [CVN.NORMAL], Line: [CVN.DIRECTION], Axis: [CVN.DIRECTION]}
+        self._add_conditional_equation(constraint, parallel_combos, implied_var_map)
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
@@ -561,12 +560,26 @@ class SystemSolver:
         combos = [
             ({Axis, Point}, CEN.POINT_LINE_COINCIDENT),
             ({Line, Point}, CEN.POINT_LINE_COINCIDENT),
-            ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
             ({Axis}, CEN.LINE_LINE_COINCIDENT),
+            ({Line}, CEN.LINE_LINE_COINCIDENT),
+            ({Plane, Point}, CEN.POINT_PLANE_COINCIDENT),
+            ({Plane, Line}, CEN.PLANE_LINE_COINCIDENT),
+            ({Plane}, CEN.PLANE_PLANE_COINCIDENT),
         ]
         eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
                   for c, e in combos}
         self._add_equation(constraint, eq_map)
+
+        # Handle cases where the combo elements are implied to be parallel and can't be solved
+        # without that extra constraint.
+        parallel_combos = [
+            # Normal and direction must be perpendicular for axis/line to plane parallism.
+            ({Axis, Plane}, CEN.PERPENDICULAR),
+            ({Line, Plane}, CEN.PERPENDICULAR),
+            ({Plane}, CEN.PARALLEL),
+        ]
+        implied_var_map = {Plane: [CVN.NORMAL], Line: [CVN.DIRECTION], Axis: [CVN.DIRECTION]}
+        self._add_conditional_equation(constraint, parallel_combos, implied_var_map)
 
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
@@ -587,9 +600,13 @@ class SystemSolver:
         self._equations = [e for e in self._equations if e.element != geo]
 
     def _add_equation(self, constraint: AbstractConstraint,
-                           eq_map: dict[GeoCombo,
-                                        Callable[[AbstractConstraint], list[ConstraintEquation]]]
-                           ) -> None:
+                      eq_map: dict[GeoCombo,
+                                   Callable[[AbstractConstraint], list[ConstraintEquation]]]
+                      ) -> None:
+        """Adds an equation to the solver.
+
+        :raises NotImplementedError: When the constraint's geometry combo types are unsupported.
+        """
         types = frozenset(type(g) for g in constraint.get_geometry())
         try:
             func = eq_map[types]
@@ -599,10 +616,24 @@ class SystemSolver:
             raise NotImplementedError(msg) from exc
         self._equations.append(func(constraint))
 
+    def _add_conditional_equation(self, constraint: AbstractConstraint,
+                                  combos: list[tuple[set[AbstractGeometry], CEN]],
+                                  var_map: VariableMap) -> None:
+        """Adds an equation to the solver if the constraint's geometry combo is in the combo list.
+        Used to deal with implied constraints like when two planes need to be parallel to have a
+        distance between them.
+        """
+        types = frozenset(type(g) for g in constraint.get_geometry())
+        eq_map = {frozenset(c): partial(self._new_constraint_eq, eq=e, var_map=var_map)
+                  for c, e in combos}
+        if types in eq_map:
+            func = eq_map[types]
+            self._equations.append(func(constraint))
+
     def _new_constraint_eq(self,
                            constraint: AbstractConstraint,
                            eq: CEN,
-                           var_map: dict[Type[AbstractGeometry], list[CVN]],
+                           var_map: VariableMap,
                            constants: Optional[dict[str, np.float64]]=None,
                            ) -> ConstraintEquation:
         if constants is None:
@@ -615,6 +646,7 @@ class SystemSolver:
                 msg = f"Got unsupported geometry type {geo} for constraint {constraint}"
                 raise NotImplementedError(msg) from exc
             params.extend(self._get_var(geo, var) for var in geo_vars)
+        params.sort(key=lambda p: pcres.get_param_sort_key(type(p.element), eq))
         return ConstraintEquation(constraint, eq, params, constants)
 
     @singledispatchmethod
