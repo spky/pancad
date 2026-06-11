@@ -6,21 +6,22 @@ from __future__ import annotations
 from functools import partial
 import math
 from math import degrees
-from numbers import Real
 from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm
 
 from pancad.constants import AngleConvention
-from pancad.utils.pancad_types import (
-    VectorLike, PolarVector, SphericalVector
-)
+from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 if TYPE_CHECKING:
-    from pancad.utils.pancad_types import Space3DVector, Space2DVector
+    from typing import Literal
 
-def angle_mod(angle: Real) -> float:
+    import numpy.typing as npt
+
+    from pancad.utils.pancad_types import Space3DVector, Space2DVector, SpaceVector
+
+def angle_mod(angle: float) -> float:
     """Returns the angle bounded from -2pi to +2pi since python's modulo 
     operator by default always returns the divisor's sign, which is 
     different than other programming languages like C and C++.
@@ -32,7 +33,7 @@ def angle_mod(angle: Real) -> float:
         return angle % (2*np.pi)
     return angle % (-2*np.pi)
 
-def get_unit_vector(vector: VectorLike) -> np.ndarray:
+def get_unit_vector(vector: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Returns the unit vector of the given vector. If the vector is a zero 
     vector, returns the zero vector.
     """
@@ -52,8 +53,8 @@ def get_unit_vector(vector: VectorLike) -> np.ndarray:
                          f" vectors. Vector '{vector}' has shape {shape}")
     return unit_vector.reshape(shape)
 
-def get_vector_angle(vector1: VectorLike,
-                     vector2: VectorLike,
+def get_vector_angle(vector1: SpaceVector,
+                     vector2: SpaceVector,
                      *,
                      opposite: bool=False,
                      convention: AngleConvention=AngleConvention.PLUS_PI
@@ -68,13 +69,10 @@ def get_vector_angle(vector1: VectorLike,
     :param convention: The angle convention the output will follow. See 
         :class:`~pancad.constants.AngleConvention` for 
         available options.
+    :raises TypeError: When non 2D/3D vectors or vectors of different lengths are provided.
     :returns: The angle between vector1 and vector2.
     """
-    if (dimension := len(vector1)) != len(vector2):
-        raise ValueError("Vectors must be the same length")
-    if dimension not in [2, 3]:
-        raise ValueError("Vectors must be 2D or 3D")
-    if dimension == 2:
+    if len(vector1) == len(vector2) == 2:
         match convention:
             case AngleConvention.PLUS_PI | AngleConvention.PLUS_180:
                 angle = _get_angle_between_2d_vectors_pi(vector1, vector2,
@@ -87,15 +85,17 @@ def get_vector_angle(vector1: VectorLike,
                                                           opposite)
             case _:
                 raise ValueError(f"Convention {convention} not recognized")
-    else:
+    elif len(vector1) == len(vector2) == 3:
         angle = _get_angle_between_3d_vectors_pi(vector1, vector2, opposite)
+    else:
+        raise TypeError(f"Expected 2 2D/3D vectors of the same length, got {vector1}, {vector2}")
     if convention in (AngleConvention.PLUS_180,
                       AngleConvention.PLUS_360,
                       AngleConvention.SIGN_180):
         return degrees(angle)
     return angle
 
-def is_clockwise(vector1: VectorLike, vector2: VectorLike) -> bool:
+def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
     """Returns whether 2D vector2 is clockwise of 2D vector1.
     
     :param vector1: A 2D vector with cartesian components.
@@ -120,7 +120,7 @@ def is_iterable(value: Any) -> bool:
     """Returns whether a value is iterable."""
     return hasattr(value, "__iter__")
 
-def multi_rotation(permutation: str, *angles: Real) -> np.ndarray:
+def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
     """Returns a rotation matrix of multiple rotations around the x, y, and z 
     axes.
     
@@ -140,59 +140,43 @@ def multi_rotation(permutation: str, *angles: Real) -> np.ndarray:
         "z": rotation_z,
     }
     permutation = permutation.casefold()
-    matrix = np.identity(3)
+    matrix: npt.NDArray[np.floating] = np.identity(3)
     for angle, axis in zip(angles, list(permutation)):
         matrix = matrix @ rotation_funcs[axis](angle)
-    return matrix
+    return matrix.astype(np.float64)
 
-def rotation(angle: Real, around: str | tuple[Real, Real, Real]) -> np.ndarray:
-    """Returns a rotation matrix that rotates around the given axis/vector by the 
+def rotation(angle: float,
+             around: Literal["x", "y", "z", "2"] | Space3DVector) -> npt.NDArray[np.float64]:
+    """Returns a rotation matrix that rotates around the given axis/vector by the
     angle. Assumes a right-handed coordinate system.
-    
+
     :param angle: The counter-clockwise rotation angle in radians.
-    :param around: The axis to rotate around. Options x, y, z, 2, and a 
-        tuple. 2 produces a 2D rotation matrix. If given tuple of 3 Reals, the 
+    :param around: The axis to rotate around. Options x, y, z, 2, and a
+        tuple. 2 produces a 2D rotation matrix. If given tuple of 3 floats, the
         rotation matrix will be for rotating around that vector.
     :returns: A numpy rotation matrix.
     """
     cost = math.cos(angle)
     sint = math.sin(angle)
-    match around:
-        case "x" | (1, 0, 0):
-            matrix = [
-                [1, 0, 0],
-                [0, cost, -sint],
-                [0, sint, cost],
-            ]
-        case "y" | (0, 1, 0):
-            matrix = [
-                [cost, 0, sint],
-                [0, 1, 0],
-                [-sint, 0, cost],
-            ]
-        case "z" | (0, 0, 1):
-            matrix = [
-                [cost, -sint, 0],
-                [sint, cost, 0],
-                [0, 0, 1],
-            ]
-        case "2":
-            matrix = [
-                [cost, -sint],
-                [sint, cost],
-            ]
-        case _:
-            if len(around) != 3:
-                raise ValueError("Vector around must be 3 elements long,"
-                                 f" given {around}")
-            around = get_unit_vector(around)
-            x, y, z = around
-            mcost = 1 - cost
-            matrix = [
-                [x**2 * mcost + cost, x*y*mcost - z*sint, x*z*mcost + y*sint],
-                [x*y*mcost + z*sint, y**2 * mcost + cost, y*z*mcost - x*sint],
-                [x*z*mcost - y*sint, y*z*mcost + x*sint, z**2 * mcost + cost],
-            ]
+    around_axis: npt.NDArray[np.float64]
+
+    if around == "2":
+        return np.array([[cost, -sint], [sint, cost]])
+    canon_axis_map = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1)}
+    if isinstance(around, str):
+        around_axis = np.array(canon_axis_map[around])
+    else:
+        if len(around) != 3:
+            raise TypeError(f"Expected 3D vector axis or axis letter for around, got: {around}")
+        around_axis = get_unit_vector(around)
+
+    x, y, z = around_axis
+    mcost = 1 - cost
+    matrix = [
+        [x**2 * mcost + cost, x*y*mcost - z*sint, x*z*mcost + y*sint],
+        [x*y*mcost + z*sint, y**2 * mcost + cost, y*z*mcost - x*sint],
+        [x*z*mcost - y*sint, y*z*mcost + x*sint, z**2 * mcost + cost],
+    ]
     return np.array(matrix)
 
 # Special Case Rotation Matrices
@@ -218,7 +202,7 @@ yaw_pitch_roll = partial(multi_rotation, "zyx")
 finally the x axis. Requires 3 input angles.
 """
 
-def positive_angle(angle: Real) -> float:
+def positive_angle(angle: float) -> float:
     """Returns the positive representation of an angle in radians, bounded from 
     0 to 2pi.
     """
@@ -226,7 +210,7 @@ def positive_angle(angle: Real) -> float:
         return angle_mod(angle)
     return angle_mod(angle) + 2*np.pi
 
-def to_1d_tuple(value: VectorLike) -> tuple:
+def to_1d_tuple(value: SpaceVector | npt.NDArray[np.float64]) -> tuple:
     """Returns a 1D tuple from a given value."""
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
         return value
@@ -236,7 +220,7 @@ def to_1d_tuple(value: VectorLike) -> tuple:
         return tuple(float(coordinate.squeeze()) for coordinate in value)
     raise ValueError(f"Cannot convert {value} of class {value.__class__}")
 
-def to_1d_np(value: VectorLike) -> np.ndarray:
+def to_1d_np(value: SpaceVector | npt.NDArray[np.float64]) -> np.ndarray:
     """Returns a 1D numpy array from a given value."""
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
         return np.array(value)
@@ -247,7 +231,7 @@ def to_1d_np(value: VectorLike) -> np.ndarray:
     raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
                      "a 1D numpy.ndarray")
 
-def r_of_cartesian(cartesian: VectorLike) -> float:
+def r_of_cartesian(cartesian: SpaceVector) -> float:
     """Returns the r component of a polar or spherical vector from a 
     given cartesian vector.
     
@@ -258,7 +242,7 @@ def r_of_cartesian(cartesian: VectorLike) -> float:
         return math.hypot(*cartesian)
     raise ValueError("Can only return r if the cartesian vector is 2 or 3")
 
-def phi_of_cartesian(cartesian: VectorLike) -> float:
+def phi_of_cartesian(cartesian: SpaceVector) -> float:
     """Returns the polar/spherical azimuth component of the equivalent 
     polar/spherical vector in radians. Bounded from -pi to pi.
     
@@ -269,7 +253,7 @@ def phi_of_cartesian(cartesian: VectorLike) -> float:
         return math.nan
     return math.atan2(cartesian[1], cartesian[0])
 
-def theta_of_cartesian(cartesian: VectorLike) -> float:
+def theta_of_cartesian(cartesian: Space3DVector) -> float:
     """Returns the spherical inclination component of the equivalent spherical 
     vector in radians.
     
@@ -291,7 +275,7 @@ def theta_of_cartesian(cartesian: VectorLike) -> float:
         return math.pi + math.atan(math.hypot(x, y) / z)
     raise ValueError(f"Unhandled exception, cartesian: {cartesian}")
 
-def cartesian_to_polar(cartesian: VectorLike) -> PolarVector:
+def cartesian_to_polar(cartesian: Space2DVector) -> PolarVector:
     """Returns the polar version of the given cartesian vector.
     
     :param cartesian: A 2D vector with cartesian components x and y.
@@ -304,7 +288,7 @@ def cartesian_to_polar(cartesian: VectorLike) -> PolarVector:
         raise ValueError("2D, use cartesian_to_spherical for 3D points")
     raise ValueError("Invalid cartesian vector, must be 2 long to return")
 
-def polar_to_cartesian(polar: VectorLike) -> Space2DVector:
+def polar_to_cartesian(polar: Space2DVector) -> Space2DVector:
     """Returns the cartesian version of the given polar vector.
     
     :param polar: A 2D vector with polar components r (radial distance) and phi 
@@ -322,16 +306,13 @@ def polar_to_cartesian(polar: VectorLike) -> Space2DVector:
         raise ValueError("phi cannot be NaN if r is non-zero")
     return (r * math.cos(phi), r * math.sin(phi))
 
-def spherical_to_cartesian(spherical: VectorLike) -> Space3DVector:
+def spherical_to_cartesian(spherical: Space3DVector) -> Space3DVector:
     """Returns the cartesian version of the given spherical vector.
     
     :param spherical: A 3D vector with spherical components r (radial distance), 
         phi (azimuth in radians), and theta (inclination in radians).
     :returns: An equivalent 3D vector with cartesian components x, y, and z.
     """
-    if len(spherical) == 2:
-        msg = "Vector must be 3D to return a cartesian spherical equivalent."
-        raise ValueError(msg)
     r, phi, theta = spherical
     if r == 0 and math.isnan(phi) and math.isnan(theta):
         return (0, 0, 0)
@@ -358,7 +339,7 @@ def spherical_to_cartesian(spherical: VectorLike) -> Space3DVector:
         raise ValueError("If phi is NaN, theta must be pi/2")
     raise ValueError(f"Unhandled spherical case! Got: {spherical}")
 
-def cartesian_to_spherical(cartesian: VectorLike) -> SphericalVector:
+def cartesian_to_spherical(cartesian: Space3DVector) -> SphericalVector:
     """Returns the spherical version of the given cartesian vector.
     
     :param cartesian: A 3D vector with cartesian components x, y, z.
@@ -373,8 +354,8 @@ def cartesian_to_spherical(cartesian: VectorLike) -> SphericalVector:
         raise ValueError("2D, use cartesian_to_polar for 2D points")
     raise ValueError("Invalid cartesian vector, must be 3 long")
 
-def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
-                                      vector2: VectorLike,
+def _get_angle_between_2d_vectors_2pi(vector1: Space2DVector,
+                                      vector2: Space2DVector,
                                       explementary: bool=False) -> float:
     """Returns the counter-clockwise angle between vector1 and vector2 in radians 
     bounded between 0 and 2pi. Returns the clockwise angle if explementary is 
@@ -397,8 +378,8 @@ def _get_angle_between_2d_vectors_2pi(vector1: VectorLike,
         return math.tau - angle
     return angle
 
-def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
-                                     vector2: VectorLike,
+def _get_angle_between_2d_vectors_pi(vector1: Space2DVector,
+                                     vector2: Space2DVector,
                                      supplementary: bool=False,
                                      signed: bool=False) -> float:
     """Returns the angle between vector1 and vector2 in radians between 0 and pi.
@@ -422,8 +403,8 @@ def _get_angle_between_2d_vectors_pi(vector1: VectorLike,
         return -angle
     return angle
 
-def _get_angle_between_3d_vectors_pi(vector1: VectorLike,
-                                     vector2: VectorLike,
+def _get_angle_between_3d_vectors_pi(vector1: Space3DVector,
+                                     vector2: Space3DVector,
                                      supplementary: bool=False) -> float:
     """Returns the angle between vector1 and vector2 in radians between 0 and pi.
     
