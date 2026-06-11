@@ -4,22 +4,21 @@ import dataclasses
 from collections import namedtuple
 from collections.abc import Sequence
 from typing import Union
-from numbers import Real
 
 import numpy as np
 
 VectorLike = Union[Sequence, np.ndarray]
-Space2DVector = tuple[Real, Real]
-Space3DVector = tuple[Real, Real, Real]
+Space2DVector = tuple[float, float]
+Space3DVector = tuple[float, float, float]
 SpaceVector = Space2DVector | Space3DVector
 
 @dataclasses.dataclass(frozen=True, eq=True)
 class PolarVector:
     """Class for tracking polar vector components."""
-    r: Real
-    phi: Real
+    r: float
+    phi: float
 
-    def __getitem__(self, item: int) -> Real:
+    def __getitem__(self, item: int) -> float:
         match item:
             case 0:
                 return self.r
@@ -38,11 +37,11 @@ class PolarVector:
 @dataclasses.dataclass(frozen=True, eq=True)
 class SphericalVector:
     """Class for tracking spherical vector components."""
-    r: Real
-    phi: Real
-    theta: Real
+    r: float
+    phi: float
+    theta: float
 
-    def __getitem__(self, item: int) -> Real:
+    def __getitem__(self, item: int) -> float:
         match item:
             case 0:
                 return self.r
