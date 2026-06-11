@@ -1,4 +1,4 @@
-"""A module to provide trigonometric functions that translate geometry 
+"""A module to provide trigonometric functions that translate geometry
 between formats.
 """
 from __future__ import annotations
@@ -22,10 +22,10 @@ if TYPE_CHECKING:
     from pancad.utils.pancad_types import Space3DVector, Space2DVector, SpaceVector
 
 def angle_mod(angle: float) -> float:
-    """Returns the angle bounded from -2pi to +2pi since python's modulo 
-    operator by default always returns the divisor's sign, which is 
+    """Returns the angle bounded from -2pi to +2pi since python's modulo
+    operator by default always returns the divisor's sign, which is
     different than other programming languages like C and C++.
-    
+
     :param angle: The angle in radians.
     :returns: The equivalent angle bounded between -2pi and +2pi.
     """
@@ -34,7 +34,7 @@ def angle_mod(angle: float) -> float:
     return angle % (-2*np.pi)
 
 def get_unit_vector(vector: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """Returns the unit vector of the given vector. If the vector is a zero 
+    """Returns the unit vector of the given vector. If the vector is a zero
     vector, returns the zero vector.
     """
     if isinstance(vector, np.ndarray):
@@ -59,15 +59,15 @@ def get_vector_angle(vector1: SpaceVector,
                      opposite: bool=False,
                      convention: AngleConvention=AngleConvention.PLUS_PI
                      ) -> float:
-    """Returns the angle between vector1 and vector2 based on the given angle 
+    """Returns the angle between vector1 and vector2 based on the given angle
     convention.
-    
+
     :param vector1: A vector with cartesian components.
     :param vector2: Another vector with cartesian components.
-    :param opposite: Sets whether to return the supplement/explement of the angle 
+    :param opposite: Sets whether to return the supplement/explement of the angle
         between vector1 and vector2.
-    :param convention: The angle convention the output will follow. See 
-        :class:`~pancad.constants.AngleConvention` for 
+    :param convention: The angle convention the output will follow. See
+        :class:`~pancad.constants.AngleConvention` for
         available options.
     :raises TypeError: When non 2D/3D vectors or vectors of different lengths are provided.
     :returns: The angle between vector1 and vector2.
@@ -97,7 +97,7 @@ def get_vector_angle(vector1: SpaceVector,
 
 def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
     """Returns whether 2D vector2 is clockwise of 2D vector1.
-    
+
     :param vector1: A 2D vector with cartesian components.
     :param vector2: Another 2D vector with cartesian components.
     :returns: 'True' if vector2 is clockwise of vector1, otherwise 'False'.
@@ -110,7 +110,7 @@ def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
 
 def is_geometry_vector(vector: np.ndarray) -> bool:
     """Returns whether the NumPy vector is a valid 2D or 3D vector
-    
+
     :param vector: A NumPy vector to be checked
     :returns: True if the vector is a valid 2D or 3D vector
     """
@@ -121,13 +121,13 @@ def is_iterable(value: Any) -> bool:
     return hasattr(value, "__iter__")
 
 def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
-    """Returns a rotation matrix of multiple rotations around the x, y, and z 
+    """Returns a rotation matrix of multiple rotations around the x, y, and z
     axes.
-    
-    :param permutation: An arbitrary length string of letters x, y, and z in the 
+
+    :param permutation: An arbitrary length string of letters x, y, and z in the
         order the rotations should be performed. Example: 'xyzzyx'.
-    :param angles: The rotation angle corresponding to the rotation at the same 
-        index in permutation. The number of angles must be the same as the 
+    :param angles: The rotation angle corresponding to the rotation at the same
+        index in permutation. The number of angles must be the same as the
         number of permutations.
     :returns: A rotation matrix to perform the series of rotations.
     """
@@ -181,29 +181,29 @@ def rotation(angle: float,
 
 # Special Case Rotation Matrices
 rotation_x = partial(rotation, around="x")
-"""Returns a rotation matrix for rotation about the x axis. Requires only 1 
+"""Returns a rotation matrix for rotation about the x axis. Requires only 1
 angle argument.
 """
 rotation_y = partial(rotation, around="y")
-"""Returns a rotation matrix for rotation about the y axis. Requires only 1 
+"""Returns a rotation matrix for rotation about the y axis. Requires only 1
 angle.
 """
 rotation_z = partial(rotation, around="z")
-"""Returns a rotation matrix for rotation about the z axis. Requires only 1 
+"""Returns a rotation matrix for rotation about the z axis. Requires only 1
 angle argument.
 """
 rotation_2 = partial(rotation, around="2")
-"""Returns a rotation matrix for rotation in 2D. Requires only 1 angle 
+"""Returns a rotation matrix for rotation in 2D. Requires only 1 angle
 argument.
 """
 # Special Case Multi-Rotations
 yaw_pitch_roll = partial(multi_rotation, "zyx")
-"""Returns a rotation matrix for rotation about the z axis, then the y axis, and 
+"""Returns a rotation matrix for rotation about the z axis, then the y axis, and
 finally the x axis. Requires 3 input angles.
 """
 
 def positive_angle(angle: float) -> float:
-    """Returns the positive representation of an angle in radians, bounded from 
+    """Returns the positive representation of an angle in radians, bounded from
     0 to 2pi.
     """
     if angle >= 0:
@@ -232,9 +232,9 @@ def to_1d_np(value: SpaceVector | npt.NDArray[np.float64]) -> np.ndarray:
                      "a 1D numpy.ndarray")
 
 def r_of_cartesian(cartesian: SpaceVector) -> float:
-    """Returns the r component of a polar or spherical vector from a 
+    """Returns the r component of a polar or spherical vector from a
     given cartesian vector.
-    
+
     :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
     :returns: The radius component of the equivalent polar/spherical vector.
     """
@@ -243,9 +243,9 @@ def r_of_cartesian(cartesian: SpaceVector) -> float:
     raise ValueError("Can only return r if the cartesian vector is 2 or 3")
 
 def phi_of_cartesian(cartesian: SpaceVector) -> float:
-    """Returns the polar/spherical azimuth component of the equivalent 
+    """Returns the polar/spherical azimuth component of the equivalent
     polar/spherical vector in radians. Bounded from -pi to pi.
-    
+
     :param cartesian: A vector with cartesian components (x, y) or (x, y, z).
     :returns: The azimuth component of the equivalent polar/spherical vector.
     """
@@ -254,11 +254,11 @@ def phi_of_cartesian(cartesian: SpaceVector) -> float:
     return math.atan2(cartesian[1], cartesian[0])
 
 def theta_of_cartesian(cartesian: Space3DVector) -> float:
-    """Returns the spherical inclination component of the equivalent spherical 
+    """Returns the spherical inclination component of the equivalent spherical
     vector in radians.
-    
+
     :param cartesian: A 3D vector with cartesian components (x, y, z).
-    :returns: The inclination coordinate of the equivalent polar/spherical 
+    :returns: The inclination coordinate of the equivalent polar/spherical
         coordinate.
     """
     try:
@@ -277,9 +277,9 @@ def theta_of_cartesian(cartesian: Space3DVector) -> float:
 
 def cartesian_to_polar(cartesian: Space2DVector) -> PolarVector:
     """Returns the polar version of the given cartesian vector.
-    
+
     :param cartesian: A 2D vector with cartesian components x and y.
-    :returns: An equivalent 2D vector with polar components r (radial distance) 
+    :returns: An equivalent 2D vector with polar components r (radial distance)
               and phi (azimuth) in radians.
     """
     if len(cartesian) == 2:
@@ -290,8 +290,8 @@ def cartesian_to_polar(cartesian: Space2DVector) -> PolarVector:
 
 def polar_to_cartesian(polar: Space2DVector) -> Space2DVector:
     """Returns the cartesian version of the given polar vector.
-    
-    :param polar: A 2D vector with polar components r (radial distance) and phi 
+
+    :param polar: A 2D vector with polar components r (radial distance) and phi
         (azimuth angle) in radians.
     :returns: An equivalent 2D vector with cartesian components x and y.
     """
@@ -308,8 +308,8 @@ def polar_to_cartesian(polar: Space2DVector) -> Space2DVector:
 
 def spherical_to_cartesian(spherical: Space3DVector) -> Space3DVector:
     """Returns the cartesian version of the given spherical vector.
-    
-    :param spherical: A 3D vector with spherical components r (radial distance), 
+
+    :param spherical: A 3D vector with spherical components r (radial distance),
         phi (azimuth in radians), and theta (inclination in radians).
     :returns: An equivalent 3D vector with cartesian components x, y, and z.
     """
@@ -341,9 +341,9 @@ def spherical_to_cartesian(spherical: Space3DVector) -> Space3DVector:
 
 def cartesian_to_spherical(cartesian: Space3DVector) -> SphericalVector:
     """Returns the spherical version of the given cartesian vector.
-    
+
     :param cartesian: A 3D vector with cartesian components x, y, z.
-    :returns: A 3D vector with spherical components r (radial distance), phi 
+    :returns: A 3D vector with spherical components r (radial distance), phi
         (azimuth in radians), and theta (inclination in radians).
     """
     if len(cartesian) == 3:
@@ -357,13 +357,13 @@ def cartesian_to_spherical(cartesian: Space3DVector) -> SphericalVector:
 def _get_angle_between_2d_vectors_2pi(vector1: Space2DVector,
                                       vector2: Space2DVector,
                                       explementary: bool=False) -> float:
-    """Returns the counter-clockwise angle between vector1 and vector2 in radians 
-    bounded between 0 and 2pi. Returns the clockwise angle if explementary is 
+    """Returns the counter-clockwise angle between vector1 and vector2 in radians
+    bounded between 0 and 2pi. Returns the clockwise angle if explementary is
     set to True.
-    
+
     :param vector1: A 2D vector with cartesian components.
     :param vector2: Another 2D vector with cartesian components.
-    :param explementary: Sets whether to return the explement of the angle 
+    :param explementary: Sets whether to return the explement of the angle
         between vector1 and vector2.
     :returns: The angle between vector1 and vector2.
     """
@@ -383,12 +383,12 @@ def _get_angle_between_2d_vectors_pi(vector1: Space2DVector,
                                      supplementary: bool=False,
                                      signed: bool=False) -> float:
     """Returns the angle between vector1 and vector2 in radians between 0 and pi.
-    
+
     :param vector1: A 2D vector with cartesian components.
     :param vector2: Another 2D vector with cartesian components.
-    :param supplementary: Sets whether to return the supplement of the angle 
+    :param supplementary: Sets whether to return the supplement of the angle
         between vector1 and vector2.
-    :param signed: Sets whether to return a negative angle if the angle is 
+    :param signed: Sets whether to return a negative angle if the angle is
         oriented clockwise.
     :returns: The angle between vector1 and vector2.
     """
@@ -407,10 +407,10 @@ def _get_angle_between_3d_vectors_pi(vector1: Space3DVector,
                                      vector2: Space3DVector,
                                      supplementary: bool=False) -> float:
     """Returns the angle between vector1 and vector2 in radians between 0 and pi.
-    
+
     :param vector1: A 3D vector with cartesian components.
     :param vector2: Another 3D vector with cartesian components.
-    :param supplementary: Sets whether to return the supplement of the angle 
+    :param supplementary: Sets whether to return the supplement of the angle
         between vector1 and vector2.
     :returns: The angle between vector1 and vector2.
     """
