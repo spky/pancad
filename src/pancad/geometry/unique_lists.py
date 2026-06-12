@@ -11,7 +11,7 @@ from pancad.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from typing import Sequence, Optional
     from uuid import UUID
 
     from pancad.abstract import (
@@ -33,9 +33,9 @@ class UniqueCADList(MutableSequence):
 
     def __init__(self,
                  parent: PancadThing,
-                 values: Sequence[PancadThing]=None) -> None:
+                 values: Optional[Sequence[PancadThing]]=None) -> None:
         self._parent = parent
-        self._values = []
+        self._values: list[PancadThing] = []
         if values is not None:
             self.extend(values)
 

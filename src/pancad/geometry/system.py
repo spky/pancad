@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from pancad.abstract import AbstractGeometrySystem
+from pancad.abstract import AbstractGeometrySystem, AbstractFeatureSystem
 from pancad.constants import ConstraintReference
 from pancad.exceptions import SketchGeometryHasConstraintsError
 from pancad.geometry.coordinate_system import CoordinateSystem
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from pancad.geometry.plane import Plane
     from pancad.geometry.point import Point
 
-class FeatureSystem(AbstractGeometrySystem):
+class FeatureSystem(AbstractFeatureSystem):
     """A class managing the relationships between features, their internal
     geometry, and constraints between them.
 
