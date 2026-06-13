@@ -61,7 +61,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
                 f"No {self._type_name} with uid '{uid}' found."
             ) from exc
 
-    def get_contents(self) -> list[PancadThing]:
+    def _get_contents(self) -> list[PancadThing]:
         """Returns the full list of contents, including any items in specialized
         indices.
         """
@@ -130,7 +130,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
     def __contains__(self, value: Any) -> bool:
         if not isinstance(value, PancadThing):
             return False
-        return any(value.uid == element.uid for element in self.get_contents())
+        return any(value.uid == element.uid for element in self._get_contents())
 
     def __repr__(self) -> str:
         return str(self)
@@ -182,10 +182,10 @@ class SystemFeatureList(UniqueCADList):
             msg = f"No {self._type_name} with name '{name}' found."
             raise LookupError(msg) from exc
 
-    def get_contents(self) -> list[AbstractFeature]:
+    def _get_contents(self) -> list[PancadThing]:
         if self._parent.feature is not None:
-            return [self._parent.feature] + super().get_contents()
-        return super().get_contents()
+            return [self._parent.feature] + super()._get_contents()
+        return super()._get_contents()
 
     def missing_dependencies(self,
                              value: AbstractFeature) -> list[AbstractFeature]:
@@ -386,8 +386,8 @@ class SketchGeometryList(UniqueSketchElementList):
                  values: Sequence[AbstractGeometry]=None) -> None:
         super().__init__(parent, values)
 
-    def get_contents(self) -> list[AbstractGeometry]:
-        return [self._parent] + super().get_contents()
+    def _get_contents(self) -> list[PancadThing]:
+        return [self._parent] + super()._get_contents()
 
     def insert(self, index: int, value: AbstractGeometry) -> None:
         """Inserts the object into the list and assigns its system to the
