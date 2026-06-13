@@ -5,7 +5,7 @@ from abc import ABCMeta
 from collections.abc import MutableSequence
 from typing import TYPE_CHECKING, overload
 
-from pancad.abstract import PancadThing
+from pancad.abstract import PancadThing, AbstractConstraint
 from pancad.exceptions import (
     DupeUidError,
     HasDependentsError,
@@ -17,9 +17,7 @@ if TYPE_CHECKING:
     from typing import Sequence, Optional, Any
     from uuid import UUID
 
-    from pancad.abstract import (
-        AbstractFeature, AbstractGeometry, AbstractConstraint, AbstractGeometrySystem
-    )
+    from pancad.abstract import AbstractFeature, AbstractGeometry, AbstractGeometrySystem
     from pancad.geometry.system import SketchGeometrySystem, FeatureSystem
 
 
@@ -250,7 +248,7 @@ class FeatureConstraintList(UniqueCADList):
                              value: AbstractConstraint) -> list[AbstractFeature]:
         """Returns missing feature dependencies for a constraint."""
         return [geometry.feature for geometry in value.get_parents()
-                if geometry.feature not in self._parent]
+                if geometry.feature not in self._parent and geometry.feature]
 
     #Private Methods
     def _assign_system(self, value: AbstractConstraint) -> None:
@@ -262,6 +260,9 @@ class FeatureConstraintList(UniqueCADList):
             msg = (f"{self._type_name} '{value}' is already"
                    f" in another feature: '{value.feature}'")
             raise ValueError(msg)
+        if self._parent.feature is None:
+            msg = f"This list's parent is not in a feature, cannot assign the feature of {value}"
+            raise RuntimeError(msg)
         value.system = self._parent
         value.feature = self._parent.feature
 
@@ -302,8 +303,9 @@ class FeatureGeometryList(UniqueCADList):
     """
     __type_name = "Feature Geometry"
 
-    def __init__(self, parent: AbstractFeature,
+    def __init__(self, parent: FeatureSystem,
                  values: Sequence[AbstractGeometry]) -> None:
+        # TODO: Change Feature container to set the parent to the system rather than the feature.
         super().__init__(parent, values)
 
     def insert(self, index: int, value: AbstractGeometry) -> None:
@@ -363,6 +365,10 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
         if value.system is not None:
             raise ValueError(f"{self._type_name} '{value}' is already"
                              f" in another system: '{value.system}'")
+        # TODO: Put geometry systems into features for unit tests
+        # if self._parent.feature is None:
+            # msg = f"This list's parent is not in a feature, cannot assign feature of {value}"
+            # raise RuntimeError(msg)
         value.system = self._parent
         value.feature = self._parent.feature
 
@@ -393,7 +399,7 @@ class SketchGeometryList(UniqueSketchElementList):
 
     def __init__(self,
                  parent: SketchGeometrySystem,
-                 values: Sequence[AbstractGeometry]=None) -> None:
+                 values: Sequence[AbstractGeometry]) -> None:
         super().__init__(parent, values)
 
     def _get_contents(self) -> list[PancadThing]:
@@ -510,5 +516,7 @@ class SketchConstraintList(UniqueSketchElementList):
     def __len__(self) -> int:
         return len(self._values)
 
-    def __contains__(self, value: AbstractConstraint) -> bool:
-        return any(value.uid == element.uid for element in self)
+    def __contains__(self, value: object) -> bool:
+        if isinstance(value, AbstractConstraint):
+            return any(value.uid == element.uid for element in self)
+        return False

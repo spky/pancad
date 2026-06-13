@@ -11,7 +11,7 @@ from pancad.constants import ConstraintReference
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self, Optional
+    from typing import Self, Optional, Any
     from uuid import UUID
 
     from pancad.constants import SketchConstraint
