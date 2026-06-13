@@ -252,6 +252,10 @@ class AbstractGeometrySystem(AbstractGeometry):
     def constraints(self) -> Sequence[AbstractConstraint]:
         """The constraints on the elements inside the system's context."""
 
+    @abstractmethod
+    def __contains__(self, item: Any) -> bool:
+        """Checks whether the item is inside the geometry system."""
+
 class AbstractFeatureSystem(AbstractGeometrySystem):
     """A type of geometry system defining the interfaces provided by systems of topologically
     ordered pancad Feature elements. Should be used when the ordering of the elements inside the

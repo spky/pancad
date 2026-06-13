@@ -86,30 +86,12 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
 
     # Dunders
     @overload
-    def __getitem__(self, index: int) -> PancadThing: ...
+    def __getitem__(self, index: int) -> Any: ...
     @overload
     def __getitem__(self, index: slice[int | None, int | None, int | None]
-                    ) -> list[PancadThing]: ...
+                    ) -> list[Any]: ...
     def __getitem__(self, index):
         return self._values[index]
-
-    @overload
-    def __setitem__(self, index: int, value: PancadThing) -> None: ...
-    # TODO: Implement Second __setitem__ overload
-    @overload
-    def __setitem__(self, index: slice[int | None, int | None, int | None],
-                    value: Iterable[PancadThing]) -> None: ...
-    def __setitem__(self, index, value):
-        """Sets the index to the value.
-
-        :raises DupeUidError: When a duped uid value is added to the list.
-        :raises HasDependentsError: When trying to replace an element that still
-            has dependents.
-        """
-        if self[index].uid != value.uid:
-            self._raise_if_duped_uid(value)
-        self._raise_if_has_dependents(self[index])
-        self._values[index] = value
 
     # TODO: Implement second __delitem__ overload
     @overload
@@ -188,7 +170,7 @@ class SystemFeatureList(UniqueCADList):
         return super()._get_contents()
 
     def missing_dependencies(self,
-                             value: AbstractFeature) -> list[AbstractFeature]:
+                             value: AbstractFeature) -> list[PancadThing]:
         """Returns missing feature dependencies for a feature."""
         return [feature for feature in value.get_dependencies()
                 if feature not in self._parent]
@@ -209,17 +191,30 @@ class SystemFeatureList(UniqueCADList):
         value.system = self._parent
 
     # Dunders
-    def __getitem__(self, index: int) -> AbstractFeature:
+    @overload
+    def __getitem__(self, index: int) -> AbstractFeature: ...
+    @overload
+    def __getitem__(self, index: slice[int | None, int | None, int | None]
+                    ) -> list[AbstractFeature]: ...
+    def __getitem__(self, index):
         if index == -1:
             return self._parent.feature
         return super().__getitem__(index)
 
-    def __setitem__(self, index: int,
-                    value: AbstractConstraint | AbstractGeometry) -> None:
+    @overload
+    def __setitem__(self, index: int, value: AbstractFeature) -> None: ...
+    # TODO: Implement Second __setitem__ overload
+    @overload
+    def __setitem__(self, index: slice[int | None, int | None, int | None],
+                    value: Iterable[AbstractFeature]) -> None: ...
+    def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's system."""
         self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
-        super().__setitem__(index, value)
+        if self[index].uid != value.uid:
+            self._raise_if_duped_uid(value)
+        self._raise_if_has_dependents(self[index])
+        self._values[index] = value
         self._assign_system(value)
         # Remove the system from exiting element
         previous_value.system = None
@@ -279,13 +274,22 @@ class FeatureConstraintList(UniqueCADList):
             raise MissingCADDependencyError(msg)
 
     # Dunders
-    def __setitem__(self, index: int, value: AbstractConstraint) -> None:
+    @overload
+    def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
+    # TODO: Implement Second __setitem__ overload
+    @overload
+    def __setitem__(self, index: slice[int | None, int | None, int | None],
+                    value: Iterable[AbstractConstraint]) -> None: ...
+    def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's system and
         feature.
         """
         previous_value = self._values[index] # -1 is not allowed here
         self._raise_if_missing_dependencies(value)
-        super().__setitem__(index, value)
+        if self[index].uid != value.uid:
+            self._raise_if_duped_uid(value)
+        self._raise_if_has_dependents(self[index])
+        self._values[index] = value
         self._assign_system(value)
         # Remove the system from exiting element
         previous_value.system = None
@@ -319,18 +323,31 @@ class FeatureGeometryList(UniqueCADList):
                              f" in another feature: '{value.feature}'")
         value.feature = self._parent
 
-    def __delitem__(self, index: int) -> None:
+    # TODO: Implement second __delitem__ overload
+    @overload
+    def __delitem__(self, index: int) -> None: ...
+    @overload
+    def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
+    def __delitem__(self, index):
         """Deletes object from list and removes its feature."""
         previous_value = self._values[index]
         super().__delitem__(index)
         # Remove the feature from exiting geometry
         previous_value.feature = None
 
-    def __setitem__(self, index: int,
-                    value: AbstractConstraint | AbstractGeometry) -> None:
+    @overload
+    def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
+    # TODO: Implement Second __setitem__ overload
+    @overload
+    def __setitem__(self, index: slice[int | None, int | None, int | None],
+                    value: Iterable[AbstractGeometry]) -> None: ...
+    def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's feature."""
         previous_value = self._values[index]
-        super().__setitem__(index, value)
+        if self[index].uid != value.uid:
+            self._raise_if_duped_uid(value)
+        self._raise_if_has_dependents(self[index])
+        self._values[index] = value
         self._assign_feature(value)
         # Remove the feature from exiting geometry
         previous_value.feature = None
@@ -339,8 +356,7 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
     """A class managing the interfaces for CAD sketch lists."""
 
     # Private Methods
-    def _assign_system(self,
-                       value: AbstractConstraint | AbstractGeometry) -> None:
+    def _assign_system(self, value: AbstractConstraint | AbstractGeometry) -> None:
         """Assigns the system of the sketch element to the list's parent and the
         feature to the parent's feature.
         """
@@ -351,24 +367,18 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
         value.feature = self._parent.feature
 
     # Dunders
-    def __delitem__(self, index: int) -> None:
+    # TODO: Implement second __delitem__ overload
+    @overload
+    def __delitem__(self, index: int) -> None: ...
+    @overload
+    def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
+    def __delitem__(self, index):
         """Deletes object from list and removes its system."""
         previous_value = self._values[index] # -1 is not allowed here
         super().__delitem__(index)
         # Remove the system from exiting element
         previous_value.system = None
         previous_value.feature = None
-
-    def __setitem__(self, index: int,
-                    value: AbstractConstraint | AbstractGeometry) -> None:
-        """Replaces object in list and removes the old object's system."""
-        previous_value = self._values[index] # -1 is not allowed here
-        super().__setitem__(index, value)
-        self._assign_system(value)
-        # Remove the system from exiting element
-        previous_value.system = None
-        previous_value.feature = None
-
 
 class SketchGeometryList(UniqueSketchElementList):
     """A class managing a mutable list of geometry. The list's parent does not
@@ -399,10 +409,33 @@ class SketchGeometryList(UniqueSketchElementList):
         self._values.insert(index, value)
         self._assign_system(value)
 
-    def __getitem__(self, index: int) -> AbstractGeometry:
+    @overload
+    def __getitem__(self, index: int) -> AbstractGeometry: ...
+    @overload
+    def __getitem__(self, index: slice[int | None, int | None, int | None]
+                    ) -> list[AbstractGeometry]: ...
+    def __getitem__(self, index):
         if index == -1:
             return self._parent
         return super().__getitem__(index)
+
+    @overload
+    def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
+    # TODO: Implement Second __setitem__ overload
+    @overload
+    def __setitem__(self, index: slice[int | None, int | None, int | None],
+                    value: Iterable[AbstractGeometry]) -> None: ...
+    def __setitem__(self, index, value):
+        """Replaces object in list and removes the old object's system."""
+        previous_value = self._values[index] # -1 is not allowed here
+        if self[index].uid != value.uid:
+            self._raise_if_duped_uid(value)
+        self._raise_if_has_dependents(self[index])
+        self._values[index] = value
+        self._assign_system(value)
+        # Remove the system from exiting element
+        previous_value.system = None
+        previous_value.feature = None
 
 
 class SketchConstraintList(UniqueSketchElementList):
@@ -451,14 +484,28 @@ class SketchConstraintList(UniqueSketchElementList):
             raise MissingCADDependencyError(f"'{value}' missing: {missing}")
 
     # Dunders
-    def __setitem__(self, index: int, value: AbstractConstraint) -> None:
+    @overload
+    def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
+    # TODO: Implement Second __setitem__ overload
+    @overload
+    def __setitem__(self, index: slice[int | None, int | None, int | None],
+                    value: Iterable[AbstractConstraint]) -> None: ...
+    def __setitem__(self, index, value) -> None:
         """Sets the index to the constraint.
 
         :raises MissingCADDependencyError: When not all constraint
             dependencies are in the constraint lists's parent.
         """
         self._raise_if_missing_dependencies(value)
-        super().__setitem__(index, value)
+        previous_value = self._values[index] # -1 is not allowed here
+        if self[index].uid != value.uid:
+            self._raise_if_duped_uid(value)
+        self._raise_if_has_dependents(self[index])
+        self._values[index] = value
+        self._assign_system(value)
+        # Remove the system from exiting element
+        previous_value.system = None
+        previous_value.feature = None
 
     def __len__(self) -> int:
         return len(self._values)
