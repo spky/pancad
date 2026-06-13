@@ -91,7 +91,6 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
     def __getitem__(self, index):
         return self._values[index]
 
-    # TODO: Implement second __delitem__ overload
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
@@ -101,6 +100,8 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
 
         :raises HasDependentsError: Raised if the feature still has dependents.
         """
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with delitem yet, see #281")
         self._raise_if_has_dependents(self[index])
         del self._values[index]
 
@@ -201,12 +202,13 @@ class SystemFeatureList(UniqueCADList):
 
     @overload
     def __setitem__(self, index: int, value: AbstractFeature) -> None: ...
-    # TODO: Implement Second __setitem__ overload
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractFeature]) -> None: ...
     def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's system."""
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:
@@ -277,7 +279,6 @@ class FeatureConstraintList(UniqueCADList):
     # Dunders
     @overload
     def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
-    # TODO: Implement Second __setitem__ overload
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractConstraint]) -> None: ...
@@ -285,6 +286,8 @@ class FeatureConstraintList(UniqueCADList):
         """Replaces object in list and removes the old object's system and
         feature.
         """
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         previous_value = self._values[index] # -1 is not allowed here
         self._raise_if_missing_dependencies(value)
         if self[index].uid != value.uid:
@@ -325,13 +328,14 @@ class FeatureGeometryList(UniqueCADList):
                              f" in another feature: '{value.feature}'")
         value.feature = self._parent
 
-    # TODO: Implement second __delitem__ overload
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
     def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
     def __delitem__(self, index):
         """Deletes object from list and removes its feature."""
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         previous_value = self._values[index]
         super().__delitem__(index)
         # Remove the feature from exiting geometry
@@ -339,12 +343,13 @@ class FeatureGeometryList(UniqueCADList):
 
     @overload
     def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
-    # TODO: Implement Second __setitem__ overload
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractGeometry]) -> None: ...
     def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's feature."""
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         previous_value = self._values[index]
         if self[index].uid != value.uid:
             self._raise_if_duped_uid(value)
@@ -373,13 +378,14 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
         value.feature = self._parent.feature
 
     # Dunders
-    # TODO: Implement second __delitem__ overload
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
     def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
     def __delitem__(self, index):
         """Deletes object from list and removes its system."""
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with delitem yet, see #281")
         previous_value = self._values[index] # -1 is not allowed here
         super().__delitem__(index)
         # Remove the system from exiting element
@@ -427,12 +433,13 @@ class SketchGeometryList(UniqueSketchElementList):
 
     @overload
     def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
-    # TODO: Implement Second __setitem__ overload
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractGeometry]) -> None: ...
     def __setitem__(self, index, value):
         """Replaces object in list and removes the old object's system."""
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:
             self._raise_if_duped_uid(value)
@@ -492,7 +499,6 @@ class SketchConstraintList(UniqueSketchElementList):
     # Dunders
     @overload
     def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
-    # TODO: Implement Second __setitem__ overload
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractConstraint]) -> None: ...
@@ -502,6 +508,8 @@ class SketchConstraintList(UniqueSketchElementList):
         :raises MissingCADDependencyError: When not all constraint
             dependencies are in the constraint lists's parent.
         """
+        if isinstance(index, slice):
+            raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:
