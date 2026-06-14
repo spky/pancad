@@ -411,12 +411,9 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
         if value.system is not None:
             raise ValueError(f"{self._type_name} '{value}' is already"
                              f" in another system: '{value.system}'")
-        # TODO: Put geometry systems into features for unit tests
-        # if self._parent.feature is None:
-            # msg = f"This list's parent is not in a feature, cannot assign feature of {value}"
-            # raise RuntimeError(msg)
         value.system = self._parent
-        value.feature = self._parent.feature
+        if self._parent.feature is not None:
+            value.feature = self._parent.feature
 
     # Dunders
     @overload
