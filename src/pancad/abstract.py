@@ -11,7 +11,7 @@ from pancad.constants import ConstraintReference
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self
+    from typing import Self, Optional, Any
     from uuid import UUID
 
     from pancad.constants import SketchConstraint
@@ -21,8 +21,11 @@ class PancadThing(ABC):
     """An abstract class defining the properties and methods that all pancad
     elements, constraints, or whatever must have with no exceptions.
     """
-    def __init__(self, system: PancadThing=None):
-        self.system = system
+    def __init__(self, system: Optional[AbstractGeometrySystem]=None):
+        self._system: Optional[AbstractGeometrySystem] = None
+        if system is not None:
+            self.system = system
+        self._uid: UUID | str
 
     STR_VERBOSE = False
     """A flag allowing pancad objects to print detailed strings and reprs."""
@@ -37,21 +40,22 @@ class PancadThing(ABC):
         """
         return self._uid
     @uid.setter
-    def uid(self, value: str | UUID | None) -> None:
+    def uid(self, value: Optional[str | UUID]) -> None:
         if value is None:
             self._uid = uuid4()
         else:
             self._uid = value
 
     @property
-    def system(self) -> PancadThing | None:
+    def system(self) -> Optional[AbstractGeometrySystem]:
         """The system that defines the object's location and dependencies. Some
         objects like files representing parts or assemblies can exist by
         themselves, which is indicated by those objects' system being None.
         """
         return self._system
+
     @system.setter
-    def system(self, value: PancadThing | None) -> None:
+    def system(self, value: AbstractGeometrySystem) -> None:
         self._system = value
 
     @abstractmethod
@@ -75,7 +79,7 @@ class PancadThing(ABC):
 class AbstractFeature(PancadThing):
     """A class defining the interfaces provided by pancad Feature elements."""
 
-    def __init__(self, system: PancadThing=None, name: str="") -> None:
+    def __init__(self, system: Optional[AbstractGeometrySystem]=None, name: str="") -> None:
         super().__init__(system)
         self._name = name
 
@@ -87,17 +91,20 @@ class AbstractFeature(PancadThing):
         """
         return self._name
     @name.setter
-    def name(self, value: str) -> str | None:
+    def name(self, value: str) -> None:
         self._name = value
 
-    def get_dependencies(self) -> list[AbstractFeature]:
+    def get_dependencies(self) -> list[PancadThing]:
         """Returns the feature's external feature dependencies."""
-        if self.system is not None and self is not self.system:
-            dependencies = set()
-            dependencies.add(self.system.feature)
+        if self.system is None:
+            return []
+        if self.system.feature is None:
+            return [self.system]
+        dependencies = set()
+        dependencies.add(self.system.feature)
+        if isinstance(self.system, AbstractFeatureSystem):
             dependencies.update(self.system.get_topo_dependencies(self))
-            return list(dependencies)
-        return []
+        return list(dependencies)
 
     @abstractmethod
     def is_equal(self, other: AbstractFeature) -> bool:
@@ -111,20 +118,23 @@ class AbstractGeometry(PancadThing):
     """A class defining interfaces common to all pancad Geometry Elements."""
     def __init__(self, references: dict[ConstraintReference, AbstractGeometry],
                  *,
-                 system: AbstractGeometrySystem=None,
-                 feature: AbstractFeature=None,
+                 system: Optional[AbstractGeometrySystem]=None,
+                 feature: Optional[AbstractFeature]=None,
                  ) -> None:
+        self._feature: Optional[AbstractFeature] = None
         self._references = references
         super().__init__(system)
-        self.feature = feature
+        if feature is not None:
+            self.feature = feature
         for _, child in self.children.items():
             if child.uid != self.uid:
                 child.parent = self
 
     @property
-    def feature(self) -> AbstractFeature:
+    def feature(self) -> Optional[AbstractFeature]:
         """The feature that owns this geometry element."""
         return self._feature
+
     @feature.setter
     def feature(self, value: AbstractFeature) -> None:
         self._feature = value
@@ -133,17 +143,18 @@ class AbstractGeometry(PancadThing):
                 child.feature = value
 
     @property
-    def system(self) -> PancadThing | None:
+    def system(self) -> Optional[AbstractGeometrySystem]:
         return self._system
+
     @system.setter
-    def system(self, value: PancadThing | None) -> None:
+    def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
         for _, child in self.children.items():
             if child.uid != self.uid:
                 child.system = value
 
     @property
-    def parent(self) -> AbstractGeometry | None:
+    def parent(self) -> Optional[AbstractGeometry]:
         """The parent of the geometry.
 
         Example: A circle center point's parent would be the circle, but if the
@@ -182,9 +193,9 @@ class AbstractGeometry(PancadThing):
                 for reference in self.get_all_references()}
 
     # Public Methods
-    def get_dependencies(self) -> list[AbstractFeature]:
+    def get_dependencies(self) -> list[PancadThing]:
         """Returns the features that this geometry element depends on."""
-        dependencies = []
+        dependencies: list[PancadThing] = []
         if self.feature:
             dependencies.append(self.feature)
         return dependencies
@@ -193,7 +204,7 @@ class AbstractGeometry(PancadThing):
         """Returns the subgeometry associated with the reference."""
         return self._references[reference]
 
-    def get_all_references(self) -> tuple[ConstraintReference]:
+    def get_all_references(self) -> list[ConstraintReference]:
         """Returns the constraint references available for the geometry."""
         return list(self._references.keys())
 
@@ -213,6 +224,7 @@ class AbstractGeometry(PancadThing):
         """
 
     # Python Dunders #
+    @abstractmethod
     def __len__(self) -> int:
         """Implements the Python len() function to return whether the geometry
         is 2D or 3D.
@@ -226,7 +238,7 @@ class AbstractGeometrySystem(AbstractGeometry):
     """
 
     @abstractmethod
-    def get_dependencies(self) -> list[AbstractFeature]:
+    def get_dependencies(self) -> list[PancadThing]:
         """Must return the features that the system depends on."""
 
     @abstractmethod
@@ -240,31 +252,56 @@ class AbstractGeometrySystem(AbstractGeometry):
     def constraints(self) -> Sequence[AbstractConstraint]:
         """The constraints on the elements inside the system's context."""
 
+    @abstractmethod
+    def __contains__(self, item: Any) -> bool:
+        """Checks whether the item is inside the geometry system."""
+
+class AbstractFeatureSystem(AbstractGeometrySystem):
+    """A type of geometry system defining the interfaces provided by systems of topologically
+    ordered pancad Feature elements. Should be used when the ordering of the elements inside the
+    system matters, like a sketch needing to come before an extrude.
+    """
+
+    @abstractmethod
+    def get_topo_index(self, value: AbstractFeature | AbstractConstraint) -> int:
+        """Returns the index of the value that defines its place in the system's
+        topological ordering.
+        """
+
+    @abstractmethod
+    def get_topo_dependencies(self, value: AbstractFeature | AbstractConstraint
+                              ) -> list[AbstractFeature]:
+        """Returns the dependencies of the value from its topological ordering
+        For example, a sketch inside the system would be dependent on the
+        features involved in constraining its pose.
+        """
+
 class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint
     Elements.
     """
     def __init__(self,
-                 system: AbstractGeometrySystem=None) -> None:
+                 system: Optional[AbstractGeometrySystem]=None) -> None:
         super().__init__(system)
-        if self.system:
+        self._feature: Optional[AbstractFeature] = None
+        if self.system and self.system.feature:
             self.feature = self.system.feature
-        else:
-            self.feature = None
 
     # Properties
     @property
-    def feature(self) -> AbstractFeature | None:
+    def feature(self) -> Optional[AbstractFeature]:
         """The feature that owns this constraint."""
         return self._feature
+
     @feature.setter
-    def feature(self, value: AbstractFeature):
+    def feature(self, value: AbstractFeature) -> None:
         self._feature = value
 
     @property
     def _geometry(self) -> list[AbstractGeometry]:
         """The geometry being constrained"""
         return self.__geometry
+
     @_geometry.setter
     def _geometry(self, values: Sequence[AbstractGeometry]) -> None:
         self.__geometry = list(values)
@@ -272,19 +309,21 @@ class AbstractConstraint(PancadThing):
     @property
     def _pairs(self) -> list[tuple[AbstractGeometry, ConstraintReference]]:
         return self.__pairs
+
     @_pairs.setter
     def _pairs(self, value: list[tuple[AbstractGeometry,
                                        ConstraintReference]]) -> None:
         self.__pairs = value
 
     @property
-    def system(self) -> AbstractGeometrySystem | None:
+    def system(self) -> Optional[AbstractGeometrySystem]:
         """The system the constraint is in. This defaults to None unless set by
         a higher level context like a SketchGeometrySystem object.
         """
         if not hasattr(self, "_system"):
             return None
         return self._system
+
     @system.setter
     def system(self, value: AbstractGeometrySystem) -> None:
         self._system = value
@@ -296,7 +335,7 @@ class AbstractConstraint(PancadThing):
         """Returns the SketchConstraint enum value for the constraint type."""
 
     # Public Methods
-    def get_dependencies(self) -> list[AbstractFeature]:
+    def get_dependencies(self) -> list[PancadThing]:
         """Returns the features that this constraint depends on."""
         geometry_deps = []
         for geometry in self.get_parents():
@@ -304,8 +343,10 @@ class AbstractConstraint(PancadThing):
                 raise ValueError(f"Geometry '{geometry}' cannot be constrained"
                                  " if its feature is None")
             geometry_deps.append(geometry.feature)
-        geometry_deps = [geometry.feature for geometry in self.get_parents()]
-        return list(set([self.system.feature] + geometry_deps))
+        geometry_deps = [geometry.feature for geometry in self.get_parents() if geometry.feature]
+        if self.system and self.system.feature:
+            geometry_deps.append(self.system.feature)
+        return list(set(geometry_deps))
 
     def get_parents(self) -> list[AbstractGeometry]:
         """Returns highest geometry scope being constrained for each geometry.
@@ -329,11 +370,11 @@ class AbstractConstraint(PancadThing):
         """
         return self._geometry
 
-    def get_references(self) -> tuple[ConstraintReference]:
+    def get_references(self) -> list[ConstraintReference]:
         """Returns a tuple of the constrained geometrys' ConstraintReferences in
         the same order as the tuple returned by :meth:`get_constrained`.
         """
-        return tuple(geometry.self_reference for geometry in self._geometry)
+        return [geometry.self_reference for geometry in self._geometry]
 
     # Dunders
     def __repr__(self) -> str:
@@ -351,7 +392,7 @@ class AbstractConstraint(PancadThing):
             geometry_strings.append(
                 repr(geometry).replace("<", "").replace(">", "")
             )
-            geometry_strings[-1] += reference.name
+            geometry_strings[-1] += str(reference.name)
         strings.append(",".join(geometry_strings))
         strings.append(">")
         return "".join(strings)

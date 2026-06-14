@@ -49,13 +49,13 @@ def test_add_extrude(init_system, iso_sketch, iso_extrude):
     init_system.features.append(iso_extrude)
     print("\nDirect Dependents")
     pp({feature: init_system.get_direct_dependents(feature)
-        for feature in init_system.features.get_contents()})
+        for feature in init_system.features})
     print("\nTopo Dependents")
     pp({feature: init_system.get_dependents(feature)
-         for feature in init_system.features.get_contents()})
+         for feature in init_system.features})
     print("\nDependencies")
     pp({feature: feature.get_dependencies()
-        for feature in init_system.features.get_contents()})
+        for feature in init_system.features})
 
 def test_add_constraint_without_sketch(init_system, iso_sketch):
     constraint = AlignAxes(init_system.coordinate_system,
