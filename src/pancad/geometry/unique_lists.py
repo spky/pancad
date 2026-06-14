@@ -22,10 +22,9 @@ if TYPE_CHECKING:
 
 
 class UniqueCADList(MutableSequence, metaclass=ABCMeta):
-    """A class managing a mutable list of CAD elements (geometry, constraints,
-    features).
+    """A class managing a mutable list of CAD geometry and constraints inside a system.
 
-    :param parent: The object containing this list.
+    :param parent: The geometry system containing this list.
     :param values: elements to initialize the list with.
     :raises DupeUidError: When trying to add multiple of elements with
         the same uid to the list.
@@ -299,17 +298,32 @@ class FeatureConstraintList(UniqueCADList):
         previous_value.system = None
         previous_value.feature = None
 
-class FeatureGeometryList(UniqueCADList):
-    """A class managing the list of geometry that a feature owns. Feature
-    geometry includes any geometry that would need to be deleted if the
-    feature was deleted.
+class FeatureGeometryList(MutableSequence):
+    """A class managing the list of geometry that a feature owns. Feature geometry includes any
+    geometry that would need to be deleted if the feature was deleted. This list differs from a
+    geometry or constraint list because it is directly owned by a feature rather than existing
+    inside a system.
     """
     __type_name = "Feature Geometry"
 
-    def __init__(self, parent: FeatureSystem,
-                 values: Sequence[AbstractGeometry]) -> None:
-        # TODO: Change Feature container to set the parent to the system rather than the feature.
-        super().__init__(parent, values)
+    def __init__(self, parent: AbstractFeature,
+                 values: Optional[Sequence[AbstractGeometry]]=None) -> None:
+        self._parent = parent
+        self._values: list[AbstractGeometry] = []
+        if values is not None:
+            self.extend(values)
+
+    def get_by_uid(self, uid: str | UUID) -> PancadThing:
+        """Returns a geometry element from the list with the matching uid.
+
+        :raises LookupError: When no matching uid is found.
+        """
+        try:
+            return next(value for value in self if value.uid == uid)
+        except StopIteration as exc:
+            raise LookupError(
+                f"No {self._type_name} with uid '{uid}' found."
+            ) from exc
 
     def insert(self, index: int, value: AbstractGeometry) -> None:
         """Inserts the object into the list and assigns its feature to the
@@ -317,16 +331,36 @@ class FeatureGeometryList(UniqueCADList):
 
         :raises DupeUidError: When a duped uid value is added to the list.
         """
-
         self._raise_if_duped_uid(value)
         self._values.insert(index, value)
         self._assign_feature(value)
+
+    @property
+    def _type_name(self) -> str:
+        """Name used in error messages for this list."""
+        return self.__type_name
+
+    def _raise_if_duped_uid(self, value: PancadThing) -> None:
+        """Raises a DupeUidError if the geometry's uid is already in the list. Used when trying to
+        add geometry to the list.
+        """
+        if value in self:
+            msg = f"{self._type_name} {value} uid: {value.uid} already in list."
+            raise DupeUidError(msg)
 
     def _assign_feature(self, value: AbstractGeometry) -> None:
         if value.feature is not None:
             raise ValueError(f"{self._type_name} '{value}' is already"
                              f" in another feature: '{value.feature}'")
         value.feature = self._parent
+
+    @overload
+    def __getitem__(self, index: int) -> AbstractGeometry: ...
+    @overload
+    def __getitem__(self, index: slice[int | None, int | None, int | None]
+                    ) -> list[AbstractGeometry]: ...
+    def __getitem__(self, index):
+        return self._values[index]
 
     @overload
     def __delitem__(self, index: int) -> None: ...
@@ -337,7 +371,7 @@ class FeatureGeometryList(UniqueCADList):
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
         previous_value = self._values[index]
-        super().__delitem__(index)
+        del self._values[index]
         # Remove the feature from exiting geometry
         previous_value.feature = None
 
@@ -353,11 +387,18 @@ class FeatureGeometryList(UniqueCADList):
         previous_value = self._values[index]
         if self[index].uid != value.uid:
             self._raise_if_duped_uid(value)
-        self._raise_if_has_dependents(self[index])
         self._values[index] = value
         self._assign_feature(value)
         # Remove the feature from exiting geometry
         previous_value.feature = None
+
+    def __contains__(self, value: Any) -> bool:
+        if not isinstance(value, PancadThing):
+            return False
+        return any(value.uid == element.uid for element in self._values)
+
+    def __len__(self) -> int:
+        return len(self._values)
 
 class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
     """A class managing the interfaces for CAD sketch lists."""
