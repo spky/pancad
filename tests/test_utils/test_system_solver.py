@@ -97,6 +97,21 @@ def _coincident_planes(plane_1: PlaneInputs, plane_2: PlaneInputs,
     expected = _generate_system([Plane(*expected_plane), Plane(*plane_2)], cons)
     return initial, expected
 
+def _coincident_points(point: SpaceVector, fixed_point: SpaceVector) -> SystemTestPair:
+    """Generates a pair of systems for 1 fixed point and a point that is constrained coincident to
+    the fixed point.
+
+    :param point: Movable point's location vector.
+    :param fixed_point: Fixed point's location vector.
+    """
+    cons = [
+        (SC.COINCIDENT, (0, 1)),
+        (SC.FIXED, (1,)),
+    ]
+    initial = _generate_system([Point(point), Point(fixed_point)], cons)
+    expected = _generate_system([Point(fixed_point), Point(fixed_point)], cons)
+    return initial, expected
+
 def _sys_line_co_2_fixed_pts(ref_pt: Space3DVector, direction: SpaceVector,
                              p1: SpaceVector, p2: SpaceVector) -> ThreeDSketchSystem:
     """Generates an system of a line and two fixed points."""
@@ -201,6 +216,20 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
 @pytest.mark.parametrize(
     "initial, expected",
     [
+        ### Point-Point Coincident Tests
+        # Both points starting at origin, already coincident. 3D
+        pytest.param(*_coincident_points((0,0,0), (0,0,0)), id="pt000-coin-fixpt000"),
+        # Both points starting at origin, already coincident. 2D
+        pytest.param(*_coincident_points((0,0), (0,0)), id="pt00-coin-fixpt00"),
+        # Point at (1,1,1), fixed point at origin. 3D.
+        pytest.param(*_coincident_points((1,1,1), (0,0,0)), id="pt111-coin-fixpt000"),
+        # Point at (1,1,1), fixed point at origin. 2D.
+        pytest.param(*_coincident_points((1,1), (0,0)), id="pt11-coin-fixpt00"),
+        # Point at (0,0,0), fixed point at (1,1,1). 3D.
+        pytest.param(*_coincident_points((0,0,0), (1,1,1)), id="pt000-coin-fixpt111"),
+        # Point at (0,0), fixed point at (1,1). 2D.
+        pytest.param(*_coincident_points((0,0), (1,1)), id="pt00-coin-fixpt11"),
+
         ### Point-Line Coincident Tests
         # Line starting with ref point (0,0,1) and in the x direction coincident with two fixed
         # points at (0,0,0) and (1,0,0).
