@@ -558,6 +558,7 @@ class SystemSolver:
             Point: [CVN.LOCATION],
         }
         combos = [
+            ({Point}, CEN.EQUAL_VECTOR),
             ({Axis, Point}, CEN.POINT_LINE_COINCIDENT),
             ({Line, Point}, CEN.POINT_LINE_COINCIDENT),
             ({Axis}, CEN.LINE_LINE_COINCIDENT),
