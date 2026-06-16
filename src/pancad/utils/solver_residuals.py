@@ -189,17 +189,40 @@ def equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
     """
     return v1 - v2
 
-def perpendicular(v1: npt.NDArray, v2: npt.NDArray) -> np.float64:
-    """Calculates how close two vectors are to being perpendicular to each other."""
-    n1, n2 = map(np.linalg.norm, (v1, v2))
+def perpendicular(vector_1: npt.NDArray[np.float64],
+                  vector_2: npt.NDArray[np.float64]) -> np.float64:
+    """Calculates how close the second vector is to being on the plane created by the first vector
+    and the origin for the 3D case and just the dot product for the 2D case. Performing a dot
+    product on the vectors squares the values.
+
+    :param vector_1: A 2D or 3D vector.
+    :param vector_2: Another 2D or 3D vector that is the same length as vector_1.
+    :returns: When 3D, the signed distance from the tip of the normalized vector_2 to the virtual
+        plane created by vector_1 and the origin point. When 2D, the value of the vector dot
+        product divided by the two vector norms multiplied together.
+    :raises ValueError: When provided a zero vector or differing length vectors.
+    """
+    if any(len(v) == 2 for v in (vector_1, vector_2)):
+        norm_1, norm_2 = map(np.linalg.norm, (vector_1, vector_2))
+        try:
+            with np.errstate(divide="raise", invalid="raise"):
+                return np.dot(vector_1, vector_2) / (norm_1 * norm_2)
+        except FloatingPointError as exc:
+            msg = f"Cannot normalize, one of the vectors a zero vector: {vector_1}, {vector_2}"
+            raise ValueError(msg) from exc
+        except ValueError as exc:
+            if len(vector_1) != len(vector_2):
+                exc.add_note(f"Expected both vectors to be 2D, got: {vector_1}, {vector_2}")
+            raise
     try:
         with np.errstate(divide="raise", invalid="raise"):
-            # Normalize to reduce round-off by making sure vectors are the same magnitude.
-            # nv1, nv2 = map(lambda v: v / np.linalg.norm(v), (v1, v2))
-            return np.dot(v1, v2) / (n1 * n2)
+            # Normalize the second vector to make perpendicularity independent of vector length.
+            unit_vector_2 = vector_2 / np.linalg.norm(vector_2)
     except FloatingPointError as exc:
-        msg = f"Cannot normalize, one of the vectors is likely a zero vector: {v1}, {v2}"
+        msg = f"Cannot normalize vector 2, likely a zero vector: {vector_2}"
         raise ValueError(msg) from exc
+    return point_plane_coincident(np.array([0,0,0], dtype=np.float64), vector_1, unit_vector_2)
+
 
 def point_line_distance(line_pt: npt.NDArray, direction: npt.NDArray,
                         pt: npt.NDArray, distance: np.float64) -> np.float64:
