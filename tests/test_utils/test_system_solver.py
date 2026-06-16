@@ -41,15 +41,17 @@ def _generate_system(geo: list[AbstractGeometry],
         constraints.append(make_constraint(sketch_con, *[geo[i] for i in indices]))
     return ThreeDSketchSystem(geo, constraints)
 
-def _perpendicular_planes(pln1: PlaneInputs, pln2: PlaneInputs,
-                          exppln: PlaneInputs, fix_pt: Space3DVector) -> SystemTestPair:
-    """Generates a system of 1 fixed plane, 1 fixed point, and a plane that is perpendicular to
-    the fixed plane as well as coincident to the fixed point.
+def _perpendicular_planes(plane: PlaneInputs, fixed_plane: PlaneInputs, fixed_line: LineInputs,
+                          expected_plane: PlaneInputs) -> SystemTestPair:
+    """Generates a system of 1 movable plane, 1 fixed plane, and 1 fixed line already coincident
+    to the fixed plane. The movable plane is coincident with the fixed line and perpendicular to
+    the fixed plane. The movable plane's normal vector is constrained unique to guarantee only one
+    solution is possible.
 
-    :param pln1: Movable plane's point and normal vectors.
-    :param pln2: Fixed plane's point and normal vectors.
-    :param exppln: Expected result plane's point and normal vectors.
-    :param fix_pt: Fixed point position vector.
+    :param plane: Movable plane's point and normal vectors.
+    :param fixed_plane: Fixed plane's point and normal vectors.
+    :param fixed_line: Fixed line's reference point and direction vectors.
+    :param expected_plane: Expected result plane's point and normal vectors.
     """
     cons = [
         (SC.PERPENDICULAR, (0, 1)),
@@ -58,8 +60,11 @@ def _perpendicular_planes(pln1: PlaneInputs, pln2: PlaneInputs,
         (SC.FIXED, (1,)),
         (SC.FIXED, (2,)),
     ]
-    initial = _generate_system([Plane(*pln1), Plane(*pln2), Point(fix_pt)], cons)
-    expected = _generate_system([Plane(*exppln), Plane(*pln2), Point(fix_pt)], cons)
+    fixed_line = Line(Point(fixed_line[0]), fixed_line[1])
+    initial = _generate_system(
+        [Plane(*plane), Plane(*fixed_plane), fixed_line.copy()], cons)
+    expected = _generate_system([Plane(*expected_plane), Plane(*fixed_plane), fixed_line.copy()],
+                                cons)
     return initial, expected
 
 def _plane_intersection_line(line: LineInputs, plane_1: PlaneInputs, plane_2: PlaneInputs,
@@ -302,6 +307,30 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
             ),
             id="line-coincident-xz-and-yz-planes"
         ),
+
+        ### Plane-Plane Perpendicular Tests
+        # plane starting at origin and normal pointing to (1,1,1) constrained perpendicular to the
+        # xy plane and coincident with a line on the X axis.
+        pytest.param(
+            *_perpendicular_planes(
+                ((0,0,0), (1,1,1)), # Initial Movable Plane
+                ((0,0,0), (0,0,1)), # Fixed Plane: XY Plane
+                ((0,0,0), (1,0,0)), # Fixed Line: X Axis Line
+                ((0,0,0), (0,1,0)), # Expected Plane: XZ Plane
+            ),
+            id="000-111pln-perp-xypln-coin-xline"
+        ),
+        # Plane starting at (1,1,1) and normal pointing to (1,1,1) constrained perpendicular to
+        # the XY plane and coincident with a line on the X axis.
+        pytest.param(
+            *_perpendicular_planes(
+                ((1,1,1), (1,1,1)), # Initial Movable Plane
+                ((0,0,0), (0,0,1)), # Fixed Plane: XY Plane
+                ((0,0,0), (1,0,0)), # Fixed Line: X Axis Line
+                ((0,0,0), (0,1,0)), # Expected Plane: XZ Plane
+            ),
+            id="111-111pln-perp-xypln-coin-xline"
+        ),
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
@@ -459,6 +488,7 @@ class TestResiduals:
                          id="3d-x-max-and-y-off-to-x-by-eps"),
             # Must use the square root of the max to avoid overflow during normalization squaring
             pytest.param((2,0,0), (EPS_64,2,0), EPS_64/2, id="3d-2x-and-2y-off-to-x-by-eps"),
+            pytest.param((1,0), (0,1), 0, id="2d-x-and-y"),
         ]
     )
     def test_perpendicular(self, v1: SpaceVector, v2: SpaceVector, expected: float) -> None:

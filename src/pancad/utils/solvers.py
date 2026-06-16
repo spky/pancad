@@ -256,6 +256,11 @@ class SystemSolver:
     """The absolute tolerance to pass the solver by default. Scipy defaults to
     1.49012e-8 (2^-26), which is the square root of the numpy.float64 eps.
     """
+    iter_per_input = 400
+    """The default maximum number of iterations per input variable. The maximum number of
+    iterations will be (iter_per_input)*(N+1) where N is the number of elements in the initial
+    input vector x0.
+    """
 
     def __init__(self, system: AbstractGeometrySystem) -> None:
         self._system = system
@@ -322,7 +327,10 @@ class SystemSolver:
         if "tol" not in kwargs:
             kwargs["tol"] = self.absolute_tol
         if "options" not in kwargs:
-            kwargs["options"] = {"ftol": np.finfo(np.float64).eps,}
+            kwargs["options"] = {
+                "ftol": np.finfo(np.float64).eps,
+                "maxiter": self.iter_per_input * (len(self.get_initial()) + 1),
+            }
         func = self.fun
         if fun_wrap is not None:
             func = fun_wrap(func)
@@ -588,6 +596,7 @@ class SystemSolver:
         vector_name_map = {
             Point: [CVN.LOCATION],
             Axis: [CVN.REF_POINT, CVN.DIRECTION],
+            Line: [CVN.REF_POINT, CVN.DIRECTION],
             Plane: [CVN.REF_POINT, CVN.NORMAL],
         }
         try:
