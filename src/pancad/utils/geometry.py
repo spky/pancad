@@ -16,6 +16,8 @@ from pancad.utils import trigonometry as trig
 if TYPE_CHECKING:
     from typing import Any
 
+    import numpy.typing as npt
+
     from pancad.utils.pancad_types import SpaceVector, Space3DVector
 
 ### Wrappers
@@ -96,8 +98,7 @@ def no_dimensional_mismatch(func):
     return wrapper
 
 ### Functions
-def parse_vector(*components: Real | Sequence[Real] | np.ndarray
-                 ) -> tuple[Real, Real] | tuple[Real, Real, Real]:
+def parse_vector(*components: float | Sequence[float] | np.NDArray[np.float64]) -> SpaceVector:
     """Batches structures of vector component inputs to a tuple of Reals.
     Usually used by pancad to parse position and direction information into the
     geometry classes.

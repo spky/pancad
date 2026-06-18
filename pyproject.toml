@@ -57,6 +57,7 @@ extra-dependencies = [
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:.}"
+strict = "mypy --install-types --non-interactive --strict {args:.}"
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
