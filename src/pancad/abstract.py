@@ -11,8 +11,10 @@ from pancad.constants import ConstraintReference
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self, Optional, Any
+    from typing import Self, Optional, Any, Type, TypeVar
     from uuid import UUID
+
+    T = TypeVar("T")
 
     from pancad.constants import SketchConstraint
 
@@ -55,7 +57,7 @@ class PancadThing(ABC):
         return self._system
 
     @system.setter
-    def system(self, value: AbstractGeometrySystem) -> None:
+    def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
 
     @abstractmethod
@@ -136,7 +138,7 @@ class AbstractGeometry(PancadThing):
         return self._feature
 
     @feature.setter
-    def feature(self, value: AbstractFeature) -> None:
+    def feature(self, value: Optional[AbstractFeature]) -> None:
         self._feature = value
         for _, child in self.children.items():
             if child.uid != self.uid:
@@ -210,14 +212,14 @@ class AbstractGeometry(PancadThing):
 
     # Abstract Methods
     @abstractmethod
-    def is_equal(self, other: AbstractGeometry) -> bool:
+    def is_equal(self: T, other: T) -> bool:
         """Returns whether the other geometry is geometrically equal. This is a
         separate check from whether a geometry element is 'python equal' to this
         geometry element since the uids would not be the same.
         """
 
     @abstractmethod
-    def update(self, other: AbstractGeometry) -> Self:
+    def update(self: T, other: T) -> T:
         """Takes geometry of the same type as the calling geometry and updates
         the calling geometry to match the new geometry while maintaining its
         uid. Should return itself afterwards.
@@ -294,7 +296,7 @@ class AbstractConstraint(PancadThing):
         return self._feature
 
     @feature.setter
-    def feature(self, value: AbstractFeature) -> None:
+    def feature(self, value: Optional[AbstractFeature]) -> None:
         self._feature = value
 
     @property
@@ -325,7 +327,7 @@ class AbstractConstraint(PancadThing):
         return self._system
 
     @system.setter
-    def system(self, value: AbstractGeometrySystem) -> None:
+    def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
 
     # Abstract Properties

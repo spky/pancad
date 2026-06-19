@@ -6,7 +6,7 @@ from __future__ import annotations
 from functools import partial
 import math
 from math import degrees
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.linalg import norm
@@ -37,6 +37,7 @@ def get_unit_vector(vector: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArra
     """Returns the unit vector of the given vector. If the vector is a zero
     vector, returns the zero vector.
     """
+    unit_vector: npt.NDArray[np.float64]
     if isinstance(vector, np.ndarray):
         shape = vector.shape
     else:
@@ -105,10 +106,11 @@ def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
     if len(vector1) == len(vector2) == 2:
         x1, y1 = vector1
         vector1_90_ccw = (-y1, x1)
-        return np.dot(vector1_90_ccw, vector2) < 0
+        # numpy can output an array from dot, so float is called on it here to guarantee the type
+        return float(np.dot(vector1_90_ccw, vector2)) < 0
     raise ValueError("Both vectors must be 2 long")
 
-def is_geometry_vector(vector: np.ndarray) -> bool:
+def is_geometry_vector(vector: npt.NDArray[np.float64]) -> bool:
     """Returns whether the NumPy vector is a valid 2D or 3D vector
 
     :param vector: A NumPy vector to be checked
@@ -116,7 +118,7 @@ def is_geometry_vector(vector: np.ndarray) -> bool:
     """
     return vector.shape in [(2,), (3,), (2,1), (3,1)]
 
-def is_iterable(value: Any) -> bool:
+def is_iterable(value: object) -> bool:
     """Returns whether a value is iterable."""
     return hasattr(value, "__iter__")
 
@@ -210,17 +212,26 @@ def positive_angle(angle: float) -> float:
         return angle_mod(angle)
     return angle_mod(angle) + 2*np.pi
 
-def to_1d_tuple(value: SpaceVector | npt.NDArray[np.float64]) -> tuple:
-    """Returns a 1D tuple from a given value."""
+def to_1d_tuple(value: SpaceVector | npt.NDArray[np.float64]) -> SpaceVector:
+    """Returns a 2D or 3D vector as a tuple from a given value."""
+    tuple_value: tuple[float, ...]
+    # Convert internal values based on the container type
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
-        return value
+        tuple_value = value
     if isinstance(value, list) and not all(map(is_iterable, value)):
-        return tuple(value)
+        tuple_value = tuple(value)
     if isinstance(value, np.ndarray) and is_geometry_vector(value):
-        return tuple(float(coordinate.squeeze()) for coordinate in value)
-    raise ValueError(f"Cannot convert {value} of class {value.__class__}")
+        tuple_value = tuple(float(coordinate.squeeze()) for coordinate in value)
+    # Unpack and return tuple to guarantee length
+    if len(tuple_value) == 2:
+        x, y = tuple_value
+        return (x, y)
+    if len(tuple_value) == 3:
+        x, y, z = tuple_value
+        return (x, y, z)
+    raise ValueError(f"Cannot convert {value} of class {value.__class__} to a 2 or 3 long tuple")
 
-def to_1d_np(value: SpaceVector | npt.NDArray[np.float64]) -> np.ndarray:
+def to_1d_np(value: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Returns a 1D numpy array from a given value."""
     if isinstance(value, tuple) and not all(map(is_iterable, value)):
         return np.array(value)

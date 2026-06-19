@@ -56,7 +56,12 @@ extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
+# Script to type check a given file
 check = "mypy --install-types --non-interactive {args:.}"
+# Script to strictly type check a given file
+strict = "mypy --install-types --non-interactive --strict {args:.}"
+# Script to strictly type check all the files in the tool.mypy section
+strictdefault = "mypy --install-types --non-interactive --strict"
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
@@ -97,4 +102,12 @@ build = [
 ]
 force-build = [
     "make -B docs",
+]
+
+[tool.mypy]
+files = [
+    "src/pancad/abstract.py",
+    "src/pancad/geometry/point.py",
+    "src/pancad/geometry/unique_lists.py",
+    "src/pancad/utils/trigonometry.py",
 ]
