@@ -3,25 +3,30 @@ from __future__ import annotations
 
 from abc import ABCMeta
 from collections.abc import MutableSequence
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, overload, Generic, TypeVar
 
-from pancad.abstract import PancadThing, AbstractConstraint
+from pancad.abstract import PancadThing, AbstractConstraint, AbstractFeature, AbstractGeometry
 from pancad.exceptions import (
     DupeUidError,
     HasDependentsError,
     MissingCADDependencyError,
 )
 
+T = TypeVar("T", bound=PancadThing)
+GC = TypeVar("GC", bound=AbstractGeometry | AbstractConstraint)
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Sequence, Optional, Any
+    from typing import Sequence, Optional
     from uuid import UUID
 
-    from pancad.abstract import AbstractFeature, AbstractGeometry, AbstractGeometrySystem
+    from pancad.abstract import AbstractGeometrySystem
     from pancad.geometry.system import SketchGeometrySystem, FeatureSystem
 
+    ListSlice = slice[int | None, int | None, int | None]
 
-class UniqueCADList(MutableSequence, metaclass=ABCMeta):
+
+class UniqueCADList(MutableSequence[T], Generic[T], metaclass=ABCMeta):
     """A class managing a mutable list of CAD geometry and constraints inside a system.
 
     :param parent: The geometry system containing this list.
@@ -33,9 +38,9 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
 
     def __init__(self,
                  parent: AbstractGeometrySystem,
-                 values: Optional[Sequence[PancadThing]]=None) -> None:
+                 values: Optional[Sequence[T]]=None) -> None:
         self._parent = parent
-        self._values: list[PancadThing] = []
+        self._values: list[T] = []
         if values is not None:
             self.extend(values)
 
@@ -46,7 +51,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
         return self.__type_name
 
     # Public Methods
-    def get_by_uid(self, uid: str | UUID) -> PancadThing:
+    def get_by_uid(self, uid: str | UUID) -> T:
         """Returns a feature with the matching uid.
 
         :raises LookupError: When no matching uid is found.
@@ -58,14 +63,14 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
                 f"No {self._type_name} with uid '{uid}' found."
             ) from exc
 
-    def _get_contents(self) -> list[PancadThing]:
+    def _get_contents(self) -> list[T]:
         """Returns the full list of contents, including any items in specialized
         indices.
         """
         return self._values
 
     # Private Methods
-    def _raise_if_duped_uid(self, value: PancadThing) -> None:
+    def _raise_if_duped_uid(self, value: T) -> None:
         """Raises a DupeUidError if the geometry's uid is already in the
         list. Used when trying to add geometry to the list.
         """
@@ -73,7 +78,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
             msg = f"{self._type_name} {value} uid: {value.uid} already in list."
             raise DupeUidError(msg)
 
-    def _raise_if_has_dependents(self, value: PancadThing) -> None:
+    def _raise_if_has_dependents(self, value: T) -> None:
         """Raises a HasDependentsError if geometry still has
         constraints. Used when trying to delete geometry from list.
         """
@@ -83,18 +88,17 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
 
     # Dunders
     @overload
-    def __getitem__(self, index: int) -> Any: ...
+    def __getitem__(self: UniqueCADList[T], index: int) -> T: ...
     @overload
-    def __getitem__(self, index: slice[int | None, int | None, int | None]
-                    ) -> list[Any]: ...
-    def __getitem__(self, index):
+    def __getitem__(self: UniqueCADList[T], index: ListSlice) -> list[T]: ...
+    def __getitem__(self: UniqueCADList[T], index: int | ListSlice) -> T | list[T]:
         return self._values[index]
 
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
-    def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
-    def __delitem__(self, index):
+    def __delitem__(self, index: ListSlice) -> None: ...
+    def __delitem__(self, index: int | ListSlice) -> None:
         """Deletes the value from the list after checking deletion validity.
 
         :raises HasDependentsError: Raised if the feature still has dependents.
@@ -107,7 +111,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
     def __len__(self) -> int:
         return len(self._values)
 
-    def __contains__(self, value: Any) -> bool:
+    def __contains__(self, value: object) -> bool:
         if not isinstance(value, PancadThing):
             return False
         return any(value.uid == element.uid for element in self._get_contents())
@@ -119,7 +123,7 @@ class UniqueCADList(MutableSequence, metaclass=ABCMeta):
         return str(self._values)
 
 
-class SystemFeatureList(UniqueCADList):
+class SystemFeatureList(UniqueCADList[AbstractFeature]):
     """A class managing a mutable list of CAD features inside of a
     FeatureSystem. The list's parent does not contribute to the lists's
     length, but is accessible at index -1.
@@ -162,18 +166,17 @@ class SystemFeatureList(UniqueCADList):
             msg = f"No {self._type_name} with name '{name}' found."
             raise LookupError(msg) from exc
 
-    def _get_contents(self) -> list[PancadThing]:
+    def _get_contents(self) -> list[AbstractFeature]:
         if self._parent.feature is not None:
             return [self._parent.feature] + super()._get_contents()
         return super()._get_contents()
 
-    def missing_dependencies(self,
-                             value: AbstractFeature) -> list[PancadThing]:
+    def missing_dependencies(self, value: AbstractFeature) -> list[PancadThing]:
         """Returns missing feature dependencies for a feature."""
         return [feature for feature in value.get_dependencies()
                 if feature not in self._parent]
 
-    def _raise_if_missing_dependencies(self, value: AbstractFeature):
+    def _raise_if_missing_dependencies(self, value: AbstractFeature) -> None:
         """Raises a MissingCADDependencyError when not all of a constraint's
         dependencies are in the list's system.
         """
@@ -192,11 +195,13 @@ class SystemFeatureList(UniqueCADList):
     @overload
     def __getitem__(self, index: int) -> AbstractFeature: ...
     @overload
-    def __getitem__(self, index: slice[int | None, int | None, int | None]
-                    ) -> list[AbstractFeature]: ...
-    def __getitem__(self, index):
+    def __getitem__(self, index: ListSlice) -> list[AbstractFeature]: ...
+    def __getitem__(self, index: int | ListSlice) -> AbstractFeature | list[AbstractFeature]:
         if index == -1:
-            return self._parent.feature
+            if self._parent.feature:
+                return self._parent.feature
+            msg = "Cannot get the parent system's feature: {self._parent} not in a feature."
+            raise RuntimeError(msg)
         return super().__getitem__(index)
 
     @overload
@@ -204,10 +209,13 @@ class SystemFeatureList(UniqueCADList):
     @overload
     def __setitem__(self, index: slice[int | None, int | None, int | None],
                     value: Iterable[AbstractFeature]) -> None: ...
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int | ListSlice,
+                    value: AbstractFeature | Iterable[AbstractFeature]) -> None:
         """Replaces object in list and removes the old object's system."""
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
+        if not isinstance(value, AbstractFeature):
+            raise NotImplementedError("Cannot set multiple values with setitem yet, see #281")
         self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:
@@ -218,7 +226,7 @@ class SystemFeatureList(UniqueCADList):
         # Remove the system from exiting element
         previous_value.system = None
 
-class FeatureConstraintList(UniqueCADList):
+class FeatureConstraintList(UniqueCADList[AbstractConstraint]):
     """A class managing the mutable list of constraints between features and
     their dependencies.
     """
@@ -267,7 +275,7 @@ class FeatureConstraintList(UniqueCADList):
         value.system = self._parent
         value.feature = self._parent.feature
 
-    def _raise_if_missing_dependencies(self, value: AbstractConstraint):
+    def _raise_if_missing_dependencies(self, value: AbstractConstraint) -> None:
         """Raises a MissingCADDependencyError when not all of a constraint's
         dependencies are in the list's system.
         """
@@ -279,14 +287,16 @@ class FeatureConstraintList(UniqueCADList):
     @overload
     def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
     @overload
-    def __setitem__(self, index: slice[int | None, int | None, int | None],
-                    value: Iterable[AbstractConstraint]) -> None: ...
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: ListSlice, value: Iterable[AbstractConstraint]) -> None: ...
+    def __setitem__(self, index: int | ListSlice,
+                    value: AbstractConstraint | Iterable[AbstractConstraint]) -> None:
         """Replaces object in list and removes the old object's system and
         feature.
         """
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
+        if not isinstance(value, AbstractConstraint):
+            raise NotImplementedError("Cannot set multiple values with setitem yet, see #281")
         previous_value = self._values[index] # -1 is not allowed here
         self._raise_if_missing_dependencies(value)
         if self[index].uid != value.uid:
@@ -298,7 +308,7 @@ class FeatureConstraintList(UniqueCADList):
         previous_value.system = None
         previous_value.feature = None
 
-class FeatureGeometryList(MutableSequence):
+class FeatureGeometryList(MutableSequence[AbstractGeometry]):
     """A class managing the list of geometry that a feature owns. Feature geometry includes any
     geometry that would need to be deleted if the feature was deleted. This list differs from a
     geometry or constraint list because it is directly owned by a feature rather than existing
@@ -357,16 +367,15 @@ class FeatureGeometryList(MutableSequence):
     @overload
     def __getitem__(self, index: int) -> AbstractGeometry: ...
     @overload
-    def __getitem__(self, index: slice[int | None, int | None, int | None]
-                    ) -> list[AbstractGeometry]: ...
-    def __getitem__(self, index):
+    def __getitem__(self, index: ListSlice) -> list[AbstractGeometry]: ...
+    def __getitem__(self, index: int | ListSlice) -> AbstractGeometry | list[AbstractGeometry]:
         return self._values[index]
 
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
-    def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
-    def __delitem__(self, index):
+    def __delitem__(self, index: ListSlice) -> None: ...
+    def __delitem__(self, index: int | ListSlice) -> None:
         """Deletes object from list and removes its feature."""
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
@@ -378,12 +387,14 @@ class FeatureGeometryList(MutableSequence):
     @overload
     def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
     @overload
-    def __setitem__(self, index: slice[int | None, int | None, int | None],
-                    value: Iterable[AbstractGeometry]) -> None: ...
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: ListSlice, value: Iterable[AbstractGeometry]) -> None: ...
+    def __setitem__(self, index: int | ListSlice,
+                    value: AbstractGeometry | Iterable[AbstractGeometry]) -> None:
         """Replaces object in list and removes the old object's feature."""
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
+        if not isinstance(value, AbstractGeometry):
+            raise NotImplementedError("Cannot set multiple values with setitem yet, see #281")
         previous_value = self._values[index]
         if self[index].uid != value.uid:
             self._raise_if_duped_uid(value)
@@ -392,7 +403,7 @@ class FeatureGeometryList(MutableSequence):
         # Remove the feature from exiting geometry
         previous_value.feature = None
 
-    def __contains__(self, value: Any) -> bool:
+    def __contains__(self, value: object) -> bool:
         if not isinstance(value, PancadThing):
             return False
         return any(value.uid == element.uid for element in self._values)
@@ -400,7 +411,7 @@ class FeatureGeometryList(MutableSequence):
     def __len__(self) -> int:
         return len(self._values)
 
-class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
+class UniqueSketchElementList(UniqueCADList[GC], Generic[GC], metaclass=ABCMeta):
     """A class managing the interfaces for CAD sketch lists."""
 
     # Private Methods
@@ -419,8 +430,8 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
     @overload
     def __delitem__(self, index: int) -> None: ...
     @overload
-    def __delitem__(self, index: slice[int | None, int | None, int | None]) -> None: ...
-    def __delitem__(self, index):
+    def __delitem__(self, index: ListSlice) -> None: ...
+    def __delitem__(self, index: int | ListSlice) -> None:
         """Deletes object from list and removes its system."""
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with delitem yet, see #281")
@@ -430,7 +441,7 @@ class UniqueSketchElementList(UniqueCADList, metaclass=ABCMeta):
         previous_value.system = None
         previous_value.feature = None
 
-class SketchGeometryList(UniqueSketchElementList):
+class SketchGeometryList(UniqueSketchElementList[AbstractGeometry]):
     """A class managing a mutable list of geometry. The list's parent does not
     contribute to the lists's length, but is accessible at index -1.
 
@@ -446,7 +457,7 @@ class SketchGeometryList(UniqueSketchElementList):
                  values: Sequence[AbstractGeometry]) -> None:
         super().__init__(parent, values)
 
-    def _get_contents(self) -> list[PancadThing]:
+    def _get_contents(self) -> list[AbstractGeometry]:
         return [self._parent] + super()._get_contents()
 
     def insert(self, index: int, value: AbstractGeometry) -> None:
@@ -462,9 +473,8 @@ class SketchGeometryList(UniqueSketchElementList):
     @overload
     def __getitem__(self, index: int) -> AbstractGeometry: ...
     @overload
-    def __getitem__(self, index: slice[int | None, int | None, int | None]
-                    ) -> list[AbstractGeometry]: ...
-    def __getitem__(self, index):
+    def __getitem__(self, index: ListSlice) -> list[AbstractGeometry]: ...
+    def __getitem__(self, index: int | ListSlice) -> AbstractGeometry | list[AbstractGeometry]:
         if index == -1:
             return self._parent
         return super().__getitem__(index)
@@ -472,12 +482,14 @@ class SketchGeometryList(UniqueSketchElementList):
     @overload
     def __setitem__(self, index: int, value: AbstractGeometry) -> None: ...
     @overload
-    def __setitem__(self, index: slice[int | None, int | None, int | None],
-                    value: Iterable[AbstractGeometry]) -> None: ...
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: ListSlice, value: Iterable[AbstractGeometry]) -> None: ...
+    def __setitem__(self, index: int | ListSlice,
+                    value: AbstractGeometry | Iterable[AbstractGeometry]) -> None:
         """Replaces object in list and removes the old object's system."""
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
+        if not isinstance(value, AbstractGeometry):
+            raise NotImplementedError("Cannot set multiple values with setitem yet, see #281")
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:
             self._raise_if_duped_uid(value)
@@ -489,7 +501,7 @@ class SketchGeometryList(UniqueSketchElementList):
         previous_value.feature = None
 
 
-class SketchConstraintList(UniqueSketchElementList):
+class SketchConstraintList(UniqueSketchElementList[AbstractConstraint]):
     """A class managing a mutable list of sketch constraints and their
     dependencies.
 
@@ -520,14 +532,13 @@ class SketchConstraintList(UniqueSketchElementList):
         self._values.insert(index, value)
         self._assign_system(value)
 
-    def missing_dependencies(self, value: AbstractConstraint
-                             ) -> list[AbstractGeometry]:
+    def missing_dependencies(self, value: AbstractConstraint) -> list[AbstractGeometry]:
         """Returns missing geometry dependencies for a constraint."""
         return [geometry for geometry in value.get_parents()
                 if geometry not in self._parent]
 
     # Private Methods
-    def _raise_if_missing_dependencies(self, value: AbstractConstraint):
+    def _raise_if_missing_dependencies(self, value: AbstractConstraint) -> None:
         """Raises a MissingCADDependencyError when not all of a constraint's
         dependencies are in the list's system.
         """
@@ -538,9 +549,9 @@ class SketchConstraintList(UniqueSketchElementList):
     @overload
     def __setitem__(self, index: int, value: AbstractConstraint) -> None: ...
     @overload
-    def __setitem__(self, index: slice[int | None, int | None, int | None],
-                    value: Iterable[AbstractConstraint]) -> None: ...
-    def __setitem__(self, index, value) -> None:
+    def __setitem__(self, index: ListSlice, value: Iterable[AbstractConstraint]) -> None: ...
+    def __setitem__(self, index: int | ListSlice,
+                    value: AbstractConstraint | Iterable[AbstractConstraint]) -> None:
         """Sets the index to the constraint.
 
         :raises MissingCADDependencyError: When not all constraint
@@ -548,6 +559,8 @@ class SketchConstraintList(UniqueSketchElementList):
         """
         if isinstance(index, slice):
             raise NotImplementedError("Cannot use slices with setitem yet, see #281")
+        if not isinstance(value, AbstractConstraint):
+            raise NotImplementedError("Cannot set multiple values with setitem yet, see #281")
         self._raise_if_missing_dependencies(value)
         previous_value = self._values[index] # -1 is not allowed here
         if self[index].uid != value.uid:

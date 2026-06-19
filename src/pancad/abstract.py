@@ -57,7 +57,7 @@ class PancadThing(ABC):
         return self._system
 
     @system.setter
-    def system(self, value: AbstractGeometrySystem) -> None:
+    def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
 
     @abstractmethod
@@ -138,7 +138,7 @@ class AbstractGeometry(PancadThing):
         return self._feature
 
     @feature.setter
-    def feature(self, value: AbstractFeature) -> None:
+    def feature(self, value: Optional[AbstractFeature]) -> None:
         self._feature = value
         for _, child in self.children.items():
             if child.uid != self.uid:
@@ -296,7 +296,7 @@ class AbstractConstraint(PancadThing):
         return self._feature
 
     @feature.setter
-    def feature(self, value: AbstractFeature) -> None:
+    def feature(self, value: Optional[AbstractFeature]) -> None:
         self._feature = value
 
     @property
@@ -327,7 +327,7 @@ class AbstractConstraint(PancadThing):
         return self._system
 
     @system.setter
-    def system(self, value: AbstractGeometrySystem) -> None:
+    def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
 
     # Abstract Properties
