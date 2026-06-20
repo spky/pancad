@@ -1,108 +1,91 @@
 """A file containing unit tests for the pancad.utils.trigonometry module."""
+from __future__ import annotations
 
 import unittest
 import math
 from math import radians
 
+from typing import TYPE_CHECKING
 import numpy as np
+import pytest
 
 from pancad.utils import trigonometry as trig
 from pancad.constants import AngleConvention as AC
 
-class TestVectors(unittest.TestCase):
+if TYPE_CHECKING:
+    from pancad.utils.pancad_types import SpaceVector
 
-    def test_get_unit_vector(self):
-        tests = [
-            (np.array((0, 0, 0)), np.array((0, 0, 0))),
-            (np.array((1, 0, 0)), np.array((1, 0, 0))),
-            (np.array((0, 1, 0)), np.array((0, 1, 0))),
-            (np.array((0, 0, 1)), np.array((0, 0, 1))),
-            (np.array((0, 0)), np.array((0, 0))),
-            (np.array((1, 0)), np.array((1, 0))),
-            (np.array((0, 1)), np.array((0, 1))),
-            (np.array((0, 0, 0)).reshape(3,1), np.array((0, 0, 0)).reshape(3,1)),
-            (np.array((1, 0, 0)).reshape(3,1), np.array((1, 0, 0)).reshape(3,1)),
-            (np.array((0, 1, 0)).reshape(3,1), np.array((0, 1, 0)).reshape(3,1)),
-            (np.array((0, 0, 1)).reshape(3,1), np.array((0, 0, 1)).reshape(3,1)),
-            (np.array((0, 0)).reshape(2,1), np.array((0, 0)).reshape(2,1)),
-            (np.array((1, 0)).reshape(2,1), np.array((1, 0)).reshape(2,1)),
-            (np.array((0, 1)).reshape(2,1), np.array((0, 1)).reshape(2,1)),
-        ]
-        for vector, unit_vector in tests:
-            with self.subTest(vector=vector, unit_vector=unit_vector):
-                result = trig.get_unit_vector(vector)
-                self.assertCountEqual(result, unit_vector)
-                self.assertCountEqual(result.shape, unit_vector.shape)
+class TestVectors:
+    """Tests for vector operation helpers"""
 
-    def test_get_unit_vector_exceptions(self):
-        tests = [
-            np.array([[1,1],[1,1]]),
+    @pytest.mark.parametrize(
+        "vector, expected",
+        [
+            ((0, 0, 0), (0, 0, 0)),
+            ((1, 0, 0), (1, 0, 0)),
+            ((0, 1, 0), (0, 1, 0)),
+            ((0, 0, 1), (0, 0, 1)),
+            ((0, 0, 3), (0, 0, 1)),
+            ((0, 0), (0, 0)),
+            ((1, 0), (1, 0)),
+            ((0, 1), (0, 1)),
+            ((0, 3), (0, 1)),
         ]
-        for vector in tests:
-            with self.subTest(vector=vector):
-                with self.assertRaises(ValueError):
-                    trig.get_unit_vector(vector)
+    )
+    def test_get_unit_vector(self, vector: SpaceVector, expected: SpaceVector) -> None:
+        """Test trigonometry.get_unit_vector can return the expected unit vector with the same
+        shape it was provided. Tests horizontal and vertical vectors.
+        """
+        length = int(len(vector))
+        for shape in [(length,), (length, 1)]:
+            result_vector = trig.get_unit_vector(np.array(vector, dtype=np.float64).reshape(shape))
+            expected_vector = np.array(expected).reshape(shape)
+            np.testing.assert_array_equal(result_vector, expected_vector)
+            assert result_vector.shape == expected_vector.shape
+
+    @pytest.mark.parametrize("vector", [[[1, 1], [1, 1]],])
+    def test_get_unit_vector_exceptions(self, vector: list[list[float]]) -> None:
+        """Test that get_unit_vector errors when provided an invalid shape."""
+        with pytest.raises(TypeError):
+            trig.get_unit_vector(vector) # type: ignore
 
 class TestVectorUtilities(unittest.TestCase):
+    """Tests for functions providing common vector information."""
 
-    def test_is_iterable(self):
-        tests = [
-            ([0, 1], True),
-            ((0, 1), True),
-            (1, False),
-            (1.0, False),
-            (True, False),
-            (ValueError, False),
-            ("fake", True),
-            (np.array([0, 1]), True),
-        ]
-        for value, expected_bool in tests:
-            with self.subTest(value=value, expected_bool=expected_bool):
-                self.assertEqual(trig.is_iterable(value), expected_bool)
+    def test_to_1d_tuple(self) -> None:
+        """Test the to_1d_tuple can take all the expected types and return a 1d tuple."""
+        expected = (0, 1, 2)
+        for vector in (expected, expected[0:2]):
+            results = [
+                trig.to_1d_tuple(list(vector)),
+                trig.to_1d_tuple(vector),
+                trig.to_1d_tuple(np.array(vector)),
+                trig.to_1d_tuple(np.array(vector).reshape(len(vector), 1)),
+            ]
+            for result in results:
+                assert result == vector
 
-    def test_to_1d_tuple(self):
-        tests = [
-            # 2D Tests #
-            ([0, 1], (0, 1)),
-            ((0, 1), (0, 1)),
-            (np.array([0, 1]), (0.0, 1.0)),
-            (np.array([0, 1]).reshape(2,1), (0.0, 1.0)),
-            # 3D Tests #
-            ([0, 1, 2], (0, 1, 2)),
-            ((0, 1, 2), (0, 1, 2)),
-            (np.array([0, 1, 2]), (0.0, 1.0, 2.0)),
-            (np.array([0, 1, 2]).reshape(3,1), (0.0, 1.0, 2.0)),
-        ]
-        for value, expected_tuple in tests:
-            with self.subTest(value=value, expected_tuple=expected_tuple):
-                self.assertCountEqual(trig.to_1d_tuple(value), expected_tuple)
-                self.assertEqual(str(trig.to_1d_tuple(value)), str(expected_tuple))
+    def test_to_1d_np(self) -> None:
+        """Test the to_1d_np can take all the expected types and return a 1d numpy array."""
+        original = (0, 1, 2)
+        for vector in (original, original[0:2]):
+            expected = np.array(vector, dtype=np.float64)
+            results = [
+                trig.to_1d_np(vector),
+                trig.to_1d_np(list(vector)),
+                trig.to_1d_np(np.array(vector)),
+                trig.to_1d_np(np.array(vector).reshape(len(vector), 1))
+            ]
+            for result in results:
+                np.testing.assert_array_equal(result, expected)
 
-    def test_to_1d_numpy(self):
-        tests = [
-            # 2D Tests #
-            ([0, 1], np.array((0, 1))),
-            ((0, 1), np.array((0, 1))),
-            (np.array([0, 1]), np.array((0, 1))),
-            (np.array([0, 1]).reshape(2,1), np.array((0, 1))),
-            # 3D Tests #
-            ([0, 1, 2], np.array((0, 1, 2))),
-            ((0, 1, 2), np.array((0, 1, 2))),
-            (np.array([0, 1, 2]), np.array((0, 1, 2))),
-            (np.array([0, 1, 2]).reshape(3,1), np.array((0, 1, 2))),
-        ]
-        for value, expected_tuple in tests:
-            with self.subTest(value=value, expected_tuple=expected_tuple):
-                self.assertCountEqual(trig.to_1d_np(value), expected_tuple)
-                self.assertEqual(str(trig.to_1d_np(value)), str(expected_tuple))
-
-    def test_is_clockwise_2d(self):
+    def test_is_clockwise_2d(self) -> None:
         v1 = (1, 0)
         v2 = (0, 1)
         self.assertFalse(trig.is_clockwise(v1, v2))
         self.assertTrue(trig.is_clockwise(v2, v1))
 
-    def test__get_angle_between_2d_vectors_tau(self):
+    def test__get_angle_between_2d_vectors_tau(self) -> None:
         v1 = (1, 0)
         for phi in range(0, 360, 45):
             v2 = trig.polar_to_cartesian((1, radians(phi)))
@@ -111,7 +94,7 @@ class TestVectorUtilities(unittest.TestCase):
                 angle = trig.get_vector_angle(v1, v2, convention=AC.PLUS_TAU)
                 self.assertAlmostEqual(angle, radians(phi))
 
-    def test__get_angle_between_2d_vectors_2pi_explementary(self):
+    def test__get_angle_between_2d_vectors_2pi_explementary(self) -> None:
         v1 = (1, 0)
         for phi in range(0, 360, 45):
             v2 = trig.polar_to_cartesian((1, radians(phi)))
@@ -122,7 +105,7 @@ class TestVectorUtilities(unittest.TestCase):
                 )
                 self.assertAlmostEqual(angle, math.tau-radians(phi))
 
-    def test__get_angle_between_3d_vectors_pi(self):
+    def test__get_angle_between_3d_vectors_pi(self) -> None:
         theta = 90
         v1 = trig.spherical_to_cartesian((1, 0, radians(theta)))
         for phi in range(0, 180+1, 45):
@@ -132,12 +115,12 @@ class TestVectorUtilities(unittest.TestCase):
 
 class TestRotation(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.t = radians(45)
         self.cost = math.cos(self.t)
         self.sint = math.sin(self.t)
 
-    def test_x(self):
+    def test_x(self) -> None:
         matrix = trig.rotation(self.t, (1, 0, 0))
         expected = [
             [1, 0, 0],
@@ -148,7 +131,7 @@ class TestRotation(unittest.TestCase):
             np.allclose(matrix, np.array(expected))
         )
 
-    def test_y(self):
+    def test_y(self) -> None:
         matrix = trig.rotation(self.t, (0, 1, 0))
         expected = [
             [self.cost, 0, self.sint],
@@ -159,7 +142,7 @@ class TestRotation(unittest.TestCase):
             np.allclose(matrix, np.array(expected))
         )
 
-    def test_z(self):
+    def test_z(self) -> None:
         matrix = trig.rotation(self.t, (0, 0, 1))
         expected = [
             [self.cost, -self.sint, 0],
@@ -170,7 +153,7 @@ class TestRotation(unittest.TestCase):
             np.allclose(matrix, np.array(expected))
         )
 
-    def test_2(self):
+    def test_2(self) -> None:
         matrix = trig.rotation(self.t, "2")
         expected = [
             [self.cost, -self.sint],
@@ -180,14 +163,14 @@ class TestRotation(unittest.TestCase):
             np.allclose(matrix, np.array(expected))
         )
 
-    def test_arbitrary_negative_z(self):
+    def test_arbitrary_negative_z(self) -> None:
         matrix = trig.rotation(self.t, (0, 0, -1))
         expected = trig.rotation(-self.t, (0, 0, 1))
         self.assertTrue(
             np.allclose(matrix, np.array(expected))
         )
 
-    def test_multi_rotation(self):
+    def test_multi_rotation(self) -> None:
         matrix = trig.multi_rotation("xyz", 0, 0, radians(90))
         expected = trig.rotation_z(radians(90))
         self.assertTrue(np.allclose(matrix, expected))

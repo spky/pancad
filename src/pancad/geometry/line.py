@@ -43,7 +43,7 @@ class Line(AbstractGeometry):
     :param uid: The unique ID of the line.
     """
 
-    zero_tol = np.sqrt(np.finfo(np.float64).eps)
+    zero_tol = np.sqrt(np.finfo(np.float64).eps) # pylint: disable=no-member
     """Any Line direction vector component smaller than this number will be set to 0."""
 
     def __init__(self, point: Point, direction: VectorLike,

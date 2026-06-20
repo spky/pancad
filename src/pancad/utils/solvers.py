@@ -252,7 +252,7 @@ class SystemSolver:
     and updates its geometry to meet them.
     """
 
-    absolute_tol = np.finfo(np.float64).eps
+    absolute_tol = np.finfo(np.float64).eps # pylint: disable=no-member
     """The absolute tolerance to pass the solver by default. Scipy defaults to
     1.49012e-8 (2^-26), which is the square root of the numpy.float64 eps.
     """
@@ -328,7 +328,7 @@ class SystemSolver:
             kwargs["tol"] = self.absolute_tol
         if "options" not in kwargs:
             kwargs["options"] = {
-                "ftol": np.finfo(np.float64).eps,
+                "ftol": np.finfo(np.float64).eps, # pylint: disable=no-member
                 "maxiter": self.iter_per_input * (len(self.get_initial()) + 1),
             }
         func = self.fun
