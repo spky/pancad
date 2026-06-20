@@ -23,7 +23,6 @@ ignore-paths=^docs/.*$,
              ^tests/test_svg_generators.py$,
              ^tests/test_svg_parsers.py$,
              ^tests/test_svg_validators.py$,
-             ^tests/test_trigonometry.py$,
 
 [DESIGN]
 
