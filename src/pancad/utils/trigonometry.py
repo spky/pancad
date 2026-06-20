@@ -17,8 +17,7 @@ from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 if TYPE_CHECKING:
     from typing import Literal
-
-    import numpy.typing as npt
+    from collections.abc import Callable
 
     from pancad.utils.pancad_types import (
         Space3DVector, Space2DVector, SpaceVector, Numpy1D, Numpy2D
@@ -125,15 +124,7 @@ def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
         return float(np.dot(vector1_90_ccw, vector2)) < 0
     raise ValueError("Both vectors must be 2 long")
 
-def is_geometry_vector(vector: npt.NDArray[np.float64]) -> bool:
-    """Returns whether the NumPy vector is a valid 2D or 3D vector
-
-    :param vector: A NumPy vector to be checked
-    :returns: True if the vector is a valid 2D or 3D vector
-    """
-    return vector.shape in [(2,), (3,), (2,1), (3,1)]
-
-def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
+def multi_rotation(permutation: str, *angles: float) -> Numpy2D:
     """Returns a rotation matrix of multiple rotations around the x, y, and z
     axes.
 
@@ -147,19 +138,19 @@ def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
     if len(angles) != len(permutation):
         raise ValueError("Length of permutation must be the same as the number"
                          f" of angles ({len(permutation)}!={len(angles)})")
-    rotation_funcs = {
+    rotation_funcs: dict[str, Callable[[float], Numpy2D]] = {
         "x": rotation_x,
         "y": rotation_y,
         "z": rotation_z,
     }
     permutation = permutation.casefold()
-    matrix: npt.NDArray[np.floating] = np.identity(3)
+    matrix = np.identity(3, dtype=np.float64)
     for angle, axis in zip(angles, list(permutation)):
         matrix = matrix @ rotation_funcs[axis](angle)
     return matrix.astype(np.float64)
 
 def rotation(angle: float,
-             around: Literal["x", "y", "z", "2"] | Space3DVector) -> npt.NDArray[np.float64]:
+             around: Literal["x", "y", "z", "2"] | Space3DVector) -> Numpy2D:
     """Returns a rotation matrix that rotates around the given axis/vector by the
     angle. Assumes a right-handed coordinate system.
 
@@ -171,7 +162,7 @@ def rotation(angle: float,
     """
     cost = math.cos(angle)
     sint = math.sin(angle)
-    around_axis: npt.NDArray[np.float64]
+    around_axis: Numpy1D
 
     if around == "2":
         return np.array([[cost, -sint], [sint, cost]])
@@ -193,19 +184,19 @@ def rotation(angle: float,
     return np.array(matrix)
 
 # Special Case Rotation Matrices
-rotation_x = partial(rotation, around="x")
+rotation_x: Callable[[float], Numpy2D] = partial(rotation, around="x")
 """Returns a rotation matrix for rotation about the x axis. Requires only 1
 angle argument.
 """
-rotation_y = partial(rotation, around="y")
+rotation_y: Callable[[float], Numpy2D] = partial(rotation, around="y")
 """Returns a rotation matrix for rotation about the y axis. Requires only 1
 angle.
 """
-rotation_z = partial(rotation, around="z")
+rotation_z: Callable[[float], Numpy2D] = partial(rotation, around="z")
 """Returns a rotation matrix for rotation about the z axis. Requires only 1
 angle argument.
 """
-rotation_2 = partial(rotation, around="2")
+rotation_2: Callable[[float], Numpy2D] = partial(rotation, around="2")
 """Returns a rotation matrix for rotation in 2D. Requires only 1 angle
 argument.
 """
