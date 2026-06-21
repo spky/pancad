@@ -1,11 +1,9 @@
 """A file containing unit tests for the pancad.utils.trigonometry module."""
 from __future__ import annotations
 
-import unittest
-import math
-from math import radians
-
+from math import radians, cos, sin, tau as TAU
 from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
@@ -57,7 +55,7 @@ class TestVectors:
         with pytest.raises(exception):
             trig.get_unit_vector(vector) # type: ignore
 
-class TestVectorUtilities(unittest.TestCase):
+class TestVectorUtilities:
     """Tests for functions providing common vector information."""
 
     def test_to_1d_tuple(self) -> None:
@@ -96,92 +94,74 @@ class TestVectorUtilities(unittest.TestCase):
         assert not trig.is_clockwise(v1, v2)
         assert trig.is_clockwise(v2, v1)
 
-    def test__get_angle_between_2d_vectors_tau(self) -> None:
+    @pytest.mark.parametrize("phi", list(range(0, 360, 45)))
+    def test_get_angle_between_2d_vectors_tau(self, phi: float) -> None:
+        """Tests the ability for get_vector_angle to get the angle between 2D vectors."""
         v1 = (1, 0)
-        for phi in range(0, 360, 45):
-            v2 = trig.polar_to_cartesian((1, radians(phi)))
-            with self.subTest(vector1=v1, vector2=v2,
-                              phi=f"R: {radians(phi)}, D: {phi}"):
-                angle = trig.get_vector_angle(v1, v2, convention=AC.PLUS_TAU)
-                self.assertAlmostEqual(angle, radians(phi))
+        v2 = trig.polar_to_cartesian((1, radians(phi)))
+        convention_results = [
+            # Convention, is_opposite, expected_angle
+            (AC.PLUS_TAU, False, radians(phi)),
+            (AC.PLUS_TAU, True, TAU - radians(phi)),
+        ]
+        for convention, is_opposite, expected_angle in convention_results:
+            angle = trig.get_vector_angle(v1, v2, opposite=is_opposite, convention=convention)
+            assert angle == pytest.approx(expected_angle)
 
-    def test__get_angle_between_2d_vectors_2pi_explementary(self) -> None:
-        v1 = (1, 0)
-        for phi in range(0, 360, 45):
-            v2 = trig.polar_to_cartesian((1, radians(phi)))
-            with self.subTest(vector1=v1, vector2=v2,
-                              phi=f"R: {radians(phi)}, D: {phi}"):
-                angle = trig.get_vector_angle(
-                    v1, v2, opposite=True, convention=AC.PLUS_TAU
-                )
-                self.assertAlmostEqual(angle, math.tau-radians(phi))
-
-    def test__get_angle_between_3d_vectors_pi(self) -> None:
+    @pytest.mark.parametrize("phi", list(range(0, 180+1, 45)))
+    def test_get_angle_between_3d_vectors_pi(self, phi: float) -> None:
+        """Tests the ability for get_vector_angle to get the angle between 3D vectors."""
         theta = 90
         v1 = trig.spherical_to_cartesian((1, 0, radians(theta)))
-        for phi in range(0, 180+1, 45):
-            v2 = trig.spherical_to_cartesian((1, radians(phi), radians(theta)))
-            angle = trig.get_vector_angle(v1, v2)
-            self.assertAlmostEqual(angle, radians(phi))
+        v2 = trig.spherical_to_cartesian((1, radians(phi), radians(theta)))
+        angle = trig.get_vector_angle(v1, v2)
+        assert angle == pytest.approx(radians(phi))
 
-class TestRotation(unittest.TestCase):
-
-    def setUp(self) -> None:
-        self.t = radians(45)
-        self.cost = math.cos(self.t)
-        self.sint = math.sin(self.t)
+class TestRotationMatrices:
+    """Tests for rotation matrices created by trigonometry."""
 
     def test_x(self) -> None:
-        matrix = trig.rotation(self.t, (1, 0, 0))
-        expected = [
-            [1, 0, 0],
-            [0, self.cost, -self.sint],
-            [0, self.sint, self.cost],
-        ]
-        self.assertTrue(
-            np.allclose(matrix, np.array(expected))
-        )
+        """Test rotating around the x axis."""
+        angle = radians(45)
+        cost, sint = cos(angle), sin(angle)
+        matrix = trig.rotation(angle, (1, 0, 0))
+        expected = [[1, 0, 0], [0, cost, -sint], [0, sint, cost]]
+        np.testing.assert_array_equal(matrix, expected)
 
     def test_y(self) -> None:
-        matrix = trig.rotation(self.t, (0, 1, 0))
-        expected = [
-            [self.cost, 0, self.sint],
-            [0, 1, 0],
-            [-self.sint, 0, self.cost],
-        ]
-        self.assertTrue(
-            np.allclose(matrix, np.array(expected))
-        )
+        """Test rotating around the y axis."""
+        angle = radians(45)
+        cost, sint = cos(angle), sin(angle)
+        matrix = trig.rotation(angle, (0, 1, 0))
+        expected = [[cost, 0, sint], [0, 1, 0], [-sint, 0, cost]]
+        np.testing.assert_array_equal(matrix, expected)
 
     def test_z(self) -> None:
-        matrix = trig.rotation(self.t, (0, 0, 1))
-        expected = [
-            [self.cost, -self.sint, 0],
-            [self.sint, self.cost, 0],
-            [0, 0, 1],
-        ]
-        self.assertTrue(
-            np.allclose(matrix, np.array(expected))
-        )
+        """Test rotating around the z axis."""
+        angle = radians(45)
+        cost, sint = cos(angle), sin(angle)
+        matrix = trig.rotation(angle, (0, 0, 1))
+        expected = [[cost, -sint, 0], [sint, cost, 0], [0, 0, 1]]
+        np.testing.assert_array_equal(matrix, expected)
 
     def test_2(self) -> None:
-        matrix = trig.rotation(self.t, "2")
-        expected = [
-            [self.cost, -self.sint],
-            [self.sint, self.cost],
-        ]
-        self.assertTrue(
-            np.allclose(matrix, np.array(expected))
-        )
+        """Test rotating around the origin in 2D."""
+        angle = radians(45)
+        cost, sint = cos(angle), sin(angle)
+        matrix = trig.rotation(angle, "2")
+        expected = [[cost, -sint], [sint, cost]]
+        np.testing.assert_array_equal(matrix, expected)
 
     def test_arbitrary_negative_z(self) -> None:
-        matrix = trig.rotation(self.t, (0, 0, -1))
-        expected = trig.rotation(-self.t, (0, 0, 1))
-        self.assertTrue(
-            np.allclose(matrix, np.array(expected))
-        )
+        """Test that axis direction changes the rotation direction."""
+        angle = radians(45)
+        matrix = trig.rotation(angle, (0, 0, -1))
+        expected = trig.rotation(-angle, (0, 0, 1))
+        np.testing.assert_array_equal(matrix, expected)
 
     def test_multi_rotation(self) -> None:
-        matrix = trig.multi_rotation("xyz", 0, 0, radians(90))
-        expected = trig.rotation_z(radians(90))
-        self.assertTrue(np.allclose(matrix, expected))
+        """Test that multi_rotation can create the same matrix as a normal z rotation."""
+        angle = radians(90)
+        matrix = trig.multi_rotation("xyz", 0, 0, angle)
+        expected = trig.rotation_z(angle)
+        np.testing.assert_array_equal(matrix, expected)

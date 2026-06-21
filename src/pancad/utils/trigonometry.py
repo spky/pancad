@@ -254,7 +254,7 @@ def to_1d_np(value: Sequence[float] | Numpy1D | Numpy2D) -> Numpy1D:
 
     :raises TypeError: When provided a sequence of values that cannot be coerced by numpy into a
         float.
-    :raises ValueError: When 
+    :raises ValueError: When pr
     """
     if isinstance(value, Sequence):
         try:
