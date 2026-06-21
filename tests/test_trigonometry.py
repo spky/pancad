@@ -13,6 +13,8 @@ from pancad.utils import trigonometry as trig
 from pancad.constants import AngleConvention as AC
 
 if TYPE_CHECKING:
+    from typing import Type
+
     from pancad.utils.pancad_types import SpaceVector
 
 class TestVectors:
@@ -21,12 +23,10 @@ class TestVectors:
     @pytest.mark.parametrize(
         "vector, expected",
         [
-            ((0, 0, 0), (0, 0, 0)),
             ((1, 0, 0), (1, 0, 0)),
             ((0, 1, 0), (0, 1, 0)),
             ((0, 0, 1), (0, 0, 1)),
             ((0, 0, 3), (0, 0, 1)),
-            ((0, 0), (0, 0)),
             ((1, 0), (1, 0)),
             ((0, 1), (0, 1)),
             ((0, 3), (0, 1)),
@@ -43,10 +43,18 @@ class TestVectors:
             np.testing.assert_array_equal(result_vector, expected_vector)
             assert result_vector.shape == expected_vector.shape
 
-    @pytest.mark.parametrize("vector", [[[1, 1], [1, 1]],])
-    def test_get_unit_vector_exceptions(self, vector: list[list[float]]) -> None:
+    @pytest.mark.parametrize(
+        "vector, exception",
+        [
+            ([[1, 1], [1, 1]], TypeError),
+            ((0,0), ValueError),
+            ((0,0,0), ValueError),
+        ]
+    )
+    def test_get_unit_vector_exceptions(self, vector: list[list[float]] | SpaceVector,
+                                        exception: Type[BaseException]) -> None:
         """Test that get_unit_vector errors when provided an invalid shape."""
-        with pytest.raises(TypeError):
+        with pytest.raises(exception):
             trig.get_unit_vector(vector) # type: ignore
 
 class TestVectorUtilities(unittest.TestCase):
@@ -80,10 +88,13 @@ class TestVectorUtilities(unittest.TestCase):
                 np.testing.assert_array_equal(result, expected)
 
     def test_is_clockwise_2d(self) -> None:
+        """Test that is_clockwise can read whether a vector is clockwise and counterclockwise by
+        switching two vectors.
+        """
         v1 = (1, 0)
         v2 = (0, 1)
-        self.assertFalse(trig.is_clockwise(v1, v2))
-        self.assertTrue(trig.is_clockwise(v2, v1))
+        assert not trig.is_clockwise(v1, v2)
+        assert trig.is_clockwise(v2, v1)
 
     def test__get_angle_between_2d_vectors_tau(self) -> None:
         v1 = (1, 0)

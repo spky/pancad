@@ -64,6 +64,7 @@ check = "mypy --install-types --non-interactive {args:.}"
 strict = "mypy --install-types --non-interactive --strict {args:.}"
 # Script to strictly type check all the files in the tool.mypy section
 strictdefault = "mypy --install-types --non-interactive --strict"
+strictdefaultnoany = "mypy --install-types --non-interactive --strict --disallow-any-expr"
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
