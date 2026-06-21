@@ -115,4 +115,5 @@ files = [
     "src/pancad/utils/trigonometry.py",
     "src/pancad/utils/pancad_types.py",
     "tests/test_trigonometry.py",
+    "tests/test_geometry/test_point.py",
 ]

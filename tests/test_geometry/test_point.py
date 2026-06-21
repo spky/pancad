@@ -1,117 +1,94 @@
+"""Tests for the pancad Point class."""
+from __future__ import annotations
+
 import unittest
 import math
+from math import radians, nan
+from typing import TYPE_CHECKING
 
 import numpy as np
+import pytest
 
 from pancad.geometry.point import Point
 from pancad.utils.pancad_types import PolarVector, SphericalVector
 
+if TYPE_CHECKING:
+    from pancad.utils.pancad_types import SpaceVector, Numpy1D, Space2DVector, Space3DVector
+
 ROUNDING_PLACES = 10
 
-class TestPointInit(unittest.TestCase):
-    """Tests whether Point successfully initializes when expected to"""
-    def setUp(self):
-        self.coordinate1 = (1, 1, 1)
-        self.coordinates = coordinates = [
-            (0, 0, 0),
-            (1, 1, 1),
-            (1, 1),
-        ]
-        self.np_coordinates = [(np.array(c), c) for c in self.coordinates]
-        self.np_coordinates.extend(
-            [(np.array(c).reshape(-1,1), c) for c in self.coordinates]
-        )
-        for i, (numpy_coordinate, expected) in enumerate(self.np_coordinates):
-            # Convert expected coordinates to float
-            self.np_coordinates[i] = (
-                numpy_coordinate, tuple([float(c) for c in expected])
-            )
-    
-    def test_point_init_tuple(self):
-        for coordinate in self.coordinates:
-            with self.subTest(coordinate=coordinate):
-                pt = Point(coordinate)
-                self.assertCountEqual(coordinate, pt.cartesian)
-    
-    def test_point_init_numpy(self):
-        for np_coordinate, expected_cartesian in self.np_coordinates:
-            with self.subTest(numpy_coordinate=np_coordinate,
-                              expected_cartesian=expected_cartesian):
-                pt = Point(np_coordinate)
-                self.assertCountEqual(pt.cartesian, expected_cartesian)
-                self.assertEqual(str(pt.cartesian), str(expected_cartesian))
-    
-    def test_point_init_xyz(self):
-        for coordinate in self.coordinates:
-            with self.subTest(coordinate=coordinate):
-                if len(coordinate) == 2:
-                    x, y = coordinate
-                    pt = Point(x, y)
-                else:
-                    x, y, z = coordinate
-                    pt = Point(x, y, z)
-                self.assertEqual(pt.cartesian, coordinate)
-    
-    def test_point_tuple_iter(self):
-        for coordinate in self.coordinates:
-            with self.subTest(coordinate=coordinate):
-                pt = Point(coordinate)
-                self.assertCountEqual(tuple(pt), pt.cartesian)
-    
-    def test_point_numpy_array(self):
-        pt = Point(self.coordinate1)
-        self.assertCountEqual(np.array(pt), np.array(self.coordinate1))
-    
-    def test_point_str_dunder(self):
-        pt = Point(self.coordinate1, uid="test")
-        self.assertEqual(str(pt), "<Point(1,1,1)>")
-    
-    def test_point_len_dunder(self):
-        tests = [
-            ((0, 0, 0), 3),
-            ((0, 0), 2),
-        ]
-        for coordinate, expected_length in tests:
-            with self.subTest(coordinate=coordinate,
-                              expected_length=expected_length):
-                pt = Point(coordinate)
-                self.assertEqual(len(pt), expected_length)
-    
-    def test_from_polar(self):
-        tests = [
-            (1, 0),
-            (1, 45),
-        ]
-        tests = [(r, math.radians(phi)) for r, phi in tests]
-        
-        for r, phi in tests:
-            with self.subTest(r=r, phi=(f"Degrees: {math.degrees(phi)} "
-                                        f"Radians: {phi}")):
-                np.testing.assert_allclose(Point.from_polar((r, phi)).polar, (r, phi))
-                np.testing.assert_allclose(Point.from_polar(r, phi).polar, (r, phi))
-    
-    def test_from_spherical(self):
-        tests = [
-            (1, math.nan, 0),
-            (1, 45, 90),
-        ]
-        tests = [(r, math.radians(phi), math.radians(theta))
-                 for r, phi, theta in tests]
-        for r, phi, theta in tests:
-            with self.subTest(r=r,
-                              phi=(f"Degrees: {math.degrees(phi)} "
-                                   f"Radians: {phi}"),
-                              theta=(f"Degrees: {math.degrees(theta)} "
-                                     f"Radians: {theta}")):
-                spherical = (r, phi, theta)
-                np.testing.assert_allclose(Point.from_spherical(spherical).spherical,
-                                           spherical)
-                np.testing.assert_allclose(Point.from_spherical(r, phi, theta).spherical,
-                                           spherical)
+@pytest.mark.parametrize("coordinate", [(0, 0, 0), (1, 1, 1), (1, 1)])
+class TestPointInitialization:
+    def test_point_tuple_init(self, coordinate: SpaceVector) -> None:
+        """Tests Point can initialize with a tuple."""
+        assert Point(coordinate).cartesian == coordinate
+
+    def test_point_list_init(self, coordinate: SpaceVector) -> None:
+        """Tests Point can initialize with a list."""
+        assert Point(list(coordinate)).cartesian == coordinate
+
+    def test_point_component_init(self, coordinate: SpaceVector) -> None:
+        """Tests Point can initialize with individual components."""
+        assert Point(*coordinate).cartesian == coordinate
+
+    def test_point_numpy_init(self, coordinate: SpaceVector) -> None:
+        """Tests Point can initialize with a numpy vector."""
+        assert Point(np.array(coordinate, dtype=np.float64)).cartesian == coordinate
+
+    def test_point_tuple_iter(self, coordinate: SpaceVector) -> None:
+        """Test Point can be turned into a tuple of its components."""
+        assert tuple(Point(coordinate)) == coordinate
+
+    def test_point_numpy_array(self, coordinate: SpaceVector) -> None:
+        """Test Point can be turned into a numpy array of its components."""
+        np.testing.assert_array_equal(np.array(Point(coordinate)), coordinate)
+
+    def test_point_len_dunder(self, coordinate: SpaceVector) -> None:
+        """Test Point length matches the length of the vector used to initialize it."""
+        assert len(Point(coordinate)) == len(coordinate)
+
+    def test_point_str_dunder(self, coordinate: SpaceVector) -> None:
+        """Test Point string dunder correctly reports the point location."""
+        coord_str = ",".join(map(str, coordinate))
+        assert str(Point(coordinate)) == f"<Point({coord_str})>"
+
+@pytest.mark.parametrize("polar_coordinate", [(1, 0), (1, 45)])
+class TestPolarPoint:
+    """Tests for how Point handles being initialized by a polar vector."""
+
+    def test_from_polar_tuple(self, polar_coordinate: Space2DVector) -> None:
+        """Test that a point can initialize from a polar vector as a tuple."""
+        radius, phi = polar_coordinate
+        coordinate_radians = (radius, radians(phi))
+        assert tuple(Point.from_polar(coordinate_radians).polar) == coordinate_radians
+
+    def test_from_polar_components(self, polar_coordinate: Space2DVector) -> None:
+        """Test that a point can initialize from a polar vector as individual components."""
+        radius, phi = polar_coordinate
+        coordinate_radians = (radius, radians(phi))
+        assert Point.from_polar(*coordinate_radians).polar == coordinate_radians
+
+@pytest.mark.parametrize("spherical_coordinate", [(1, nan, 0), (1, 45, 90)])
+class TestSphericalPoint:
+    """Tests for how Point handles being initialized by a spherical vector."""
+
+    def test_from_spherical_tuple(self, spherical_coordinate: Space3DVector) -> None:
+        """Test that a point can initialize from a spherical vector as a tuple."""
+        radius, phi, theta = spherical_coordinate
+        coordinate_radians = (radius, radians(phi), radians(theta))
+        np.testing.assert_array_equal(tuple(Point.from_spherical(coordinate_radians).spherical),
+                                      coordinate_radians)
+
+    def test_from_spherical_components(self, spherical_coordinate: Space3DVector) -> None:
+        """Test that a point can initialize from a spherical vector as individual components."""
+        radius, phi, theta = spherical_coordinate
+        coordinate_radians = (radius, radians(phi), radians(theta))
+        np.testing.assert_array_equal(Point.from_spherical(*coordinate_radians).spherical,
+                                      coordinate_radians)
 
 class TestPointUpdate(unittest.TestCase):
     
-    def test_update(self):
+    def test_update(self) -> None:
         pt = Point(0, 0, 0)
         new = Point(1, 1, 1)
         pt.update(new)
@@ -120,7 +97,7 @@ class TestPointUpdate(unittest.TestCase):
 class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
     """Tests the Point for whether it correctly converts cartesian coordinates to 
     and from polar/spherical coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -163,33 +140,33 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                 ((coordinate[1], coordinate[2], coordinate[3]), coordinate[0])
             )
         
-    def test_cartesian_setter(self):
+    def test_cartesian_setter(self) -> None:
         for coordinate, *_ in self.coordinates:
             with self.subTest(coordinate = coordinate):
                 self.pt.cartesian = coordinate
                 self.assertCountEqual(self.pt.cartesian, coordinate)
     
-    def test_2D_cartesian_getters(self):
+    def test_2D_cartesian_getters(self) -> None:
         for coordinate, *_ in self.coordinates2d:
             with self.subTest(coordinate = coordinate):
                 self.pt.cartesian = coordinate
                 xy = (self.pt.x, self.pt.y)
                 self.assertCountEqual(xy, coordinate)
     
-    def test_3D_cartesian_getters(self):
+    def test_3D_cartesian_getters(self) -> None:
         for coordinate, *_ in self.coordinates:
             with self.subTest(coordinate = coordinate):
                 self.pt.cartesian = coordinate
                 xyz = (self.pt.x, self.pt.y, self.pt.z)
                 self.assertCountEqual(xyz, coordinate)
     
-    def test_r_getter(self):
+    def test_r_getter(self) -> None:
         for coordinate, expected_r, *_ in self.coordinates:
             with self.subTest(test=[coordinate, expected_r]):
                 self.pt.cartesian = coordinate
                 self.assertEqual(self.pt.r, expected_r)
     
-    def test_phi_getter(self):
+    def test_phi_getter(self) -> None:
         for coordinate, _, expected_phi in self.coordinates2d:
             with self.subTest(test=[
                     coordinate,
@@ -201,7 +178,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                 else:
                     self.assertEqual(self.pt.phi, expected_phi)
     
-    def test_theta_getter(self):
+    def test_theta_getter(self) -> None:
         for coordinate, _, _, expected_theta in self.coordinates:
             with self.subTest(test=[
                     coordinate,
@@ -213,7 +190,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                 else:
                     self.assertEqual(self.pt.theta, expected_theta)
     
-    def test_polar_getter(self):
+    def test_polar_getter(self) -> None:
         for coordinate, expected_r, expected_phi, *_ in self.coordinates2d:
             with self.subTest(test=[
                     coordinate,
@@ -227,7 +204,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                 else:
                     self.assertEqual(self.pt.polar, PolarVector(expected_r, expected_phi))
     
-    def test_spherical_getter(self):
+    def test_spherical_getter(self) -> None:
         for (coordinate, expected_r,
              expected_phi, expected_theta) in self.coordinates:
             with self.subTest(test=[
@@ -253,13 +230,13 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                         SphericalVector(expected_r, expected_phi, expected_theta)
                     )
     
-    def test_2D_cartesian_setters(self):
+    def test_2D_cartesian_setters(self) -> None:
         new_coordinate = (1, 2)
         self.pt.cartesian = (0, 0)
         self.pt.x, self.pt.y = new_coordinate[0], new_coordinate[1]
         self.assertCountEqual(self.pt.cartesian, new_coordinate)
     
-    def test_3D_cartesian_setters(self):
+    def test_3D_cartesian_setters(self) -> None:
         new_coordinate = (1, 2, 3)
         self.pt.cartesian = (0, 0)
         self.pt.x = new_coordinate[0]
@@ -267,7 +244,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
         self.pt.z = new_coordinate[2]
         self.assertCountEqual(self.pt.cartesian, new_coordinate)
     
-    def test_vector(self):
+    def test_vector(self) -> None:
         tests = []
         HORIZONTAL, VERTICAL = False, True
         for coordinate, *_ in self.coordinates: 
@@ -289,13 +266,13 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
                     self.pt.vector(orientation).shape == expected.shape
                 )
     
-    def test_polar_setter(self):
+    def test_polar_setter(self) -> None:
         for polar_coordinate, xy_coordinate in self.coordinates_polar:
             with self.subTest(test=[polar_coordinate, xy_coordinate]):
                 self.pt.polar = polar_coordinate
                 np.testing.assert_allclose(self.pt.cartesian, xy_coordinate, atol=1e-15)
     
-    def test_spherical_setter(self):
+    def test_spherical_setter(self) -> None:
         for spherical_coordinate, xy_coordinate in self.coordinates_spherical:
             with self.subTest(test=[spherical_coordinate, xy_coordinate]):
                 self.pt.spherical = spherical_coordinate
@@ -304,7 +281,7 @@ class TestPointCartesianToPolarSphericalConversions(unittest.TestCase):
 class TestRSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the r setter in Point correctly updates the point's position 
     and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -336,7 +313,7 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
             ),
         ]
     
-    def test_nominal_r_setter(self):
+    def test_nominal_r_setter(self) -> None:
         for initial_spherical, r, expected_spherical in self.change_tests:
             if isinstance(expected_spherical, tuple):
                 with self.subTest(initial_spherical=initial_spherical, r=r,
@@ -345,7 +322,7 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
                     self.pt.r = r
                     np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
     
-    def test_exceptions_r_setter(self):
+    def test_exceptions_r_setter(self) -> None:
         for initial_spherical, r, expected_spherical in self.change_tests:
             if not isinstance(expected_spherical, tuple):
                 with self.subTest(initial_spherical=initial_spherical, r=r,
@@ -357,7 +334,7 @@ class TestRSetterSphericalEdgeCases(unittest.TestCase):
 class TestRSetterPolarEdgeCases(unittest.TestCase):
     """Tests whether the r setter in Point correctly updates the point's position 
     and identifies when it cannot with errors in polar coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -389,7 +366,7 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
             ),
         ]
     
-    def test_nominal_r_setter(self):
+    def test_nominal_r_setter(self) -> None:
         for initial_polar, r, expected_polar in self.change_tests:
             if isinstance(expected_polar, tuple):
                 with self.subTest(initial_polar=initial_polar, r=r,
@@ -398,7 +375,7 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
                     self.pt.r = r
                     np.testing.assert_allclose(self.pt.polar, expected_polar, atol=1e-15)
     
-    def test_exceptions_r_setter(self):
+    def test_exceptions_r_setter(self) -> None:
         for initial_polar, r, expected_polar in self.change_tests:
             if not isinstance(expected_polar, tuple):
                 with self.subTest(initial_polar=initial_polar, r=r,
@@ -410,7 +387,7 @@ class TestRSetterPolarEdgeCases(unittest.TestCase):
 class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the phi setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -438,7 +415,7 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
             ),
         ]
     
-    def test_nominal_phi_setter(self):
+    def test_nominal_phi_setter(self) -> None:
         for initial_spherical, phi, expected_spherical in self.change_tests:
             if isinstance(expected_spherical, tuple):
                 with self.subTest(initial_spherical=initial_spherical, phi=phi,
@@ -459,7 +436,7 @@ class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
 class TestPhiSetterPolarEdgeCases(unittest.TestCase):
     """Tests whether the phi setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in polar coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -487,7 +464,7 @@ class TestPhiSetterPolarEdgeCases(unittest.TestCase):
             ),
         ]
     
-    def test_nominal_phi_setter(self):
+    def test_nominal_phi_setter(self) -> None:
         for initial_polar, phi, expected_polar in self.change_tests:
             if isinstance(expected_polar, tuple):
                 with self.subTest(initial_polar=initial_polar, phi=phi,
@@ -508,7 +485,7 @@ class TestPhiSetterPolarEdgeCases(unittest.TestCase):
 class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
     """Tests whether the theta setter in Point correctly updates the point's 
     position and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self):
+    def setUp(self) -> None:
         self.pt = Point(-10, -10, -10)
         self.default_places = ROUNDING_PLACES
         
@@ -540,7 +517,7 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
             ),
         ]
     
-    def test_nominal_theta_setter(self):
+    def test_nominal_theta_setter(self) -> None:
         for initial_spherical, theta, expected_spherical in self.change_tests:
             if isinstance(expected_spherical, tuple):
                 with self.subTest(initial_spherical=initial_spherical, theta=theta,
@@ -549,7 +526,7 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                     self.pt.theta = theta
                     np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
     
-    def test_exceptions_theta_setter(self):
+    def test_exceptions_theta_setter(self) -> None:
         for initial_spherical, theta, expected_spherical in self.change_tests:
             if not isinstance(expected_spherical, tuple):
                 with self.subTest(initial_spherical=initial_spherical, theta=theta,
@@ -559,7 +536,7 @@ class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
                         self.pt.theta = theta
 
 class TestPointNumericDunders(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.coordinates = [
             [(0, 0), (0, 0)],
             [(1, 1), (0, 0)],
@@ -569,7 +546,7 @@ class TestPointNumericDunders(unittest.TestCase):
             [(0, 0, 0), (1.2, 2.3, 1.2)],
         ]
     
-    def test_add(self):
+    def test_add(self) -> None:
         coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
         results = map(
             lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) + np.array(x[1]))),
@@ -581,7 +558,7 @@ class TestPointNumericDunders(unittest.TestCase):
                 np.testing.assert_allclose(pt1 + pt2, result, atol=1e-15)
                 self.assertEqual(str(pt1+pt2), str(result))    
     
-    def test_sub(self):
+    def test_sub(self) -> None:
         coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
         results = map(
             lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) - np.array(x[1]))),

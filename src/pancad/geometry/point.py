@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 import math
 from sqlite3 import PrepareProtocol
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -16,13 +16,13 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
-    from typing import Optional, Type, Self
+    from typing import Optional, Type, Self, Literal
     from uuid import UUID
 
     import numpy.typing as npt
 
     from pancad.utils.pancad_types import (
-        PolarVector, SphericalVector, SpaceVector, Space2DVector, Space3DVector
+        Numpy1D, Numpy2D, PolarVector, SphericalVector, SpaceVector, Space2DVector, Space3DVector
     )
 
 
@@ -38,7 +38,7 @@ class Point(AbstractGeometry):
         arguments or as a single vector.
     :param uid: The unique ID of the point for interoperable CAD identification.
     """
-    def __init__(self, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def __init__(self, *components: float | Sequence[float] | Numpy1D,
                  uid: Optional[str | UUID]=None):
         self._cartesian: SpaceVector
         self._iter_index = 0 # Used for __iter__ counting
@@ -48,11 +48,11 @@ class Point(AbstractGeometry):
 
     # Class Methods #
     @classmethod
-    def from_polar(cls, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def from_polar(cls, *components: float | Sequence[float] | Numpy1D,
                    uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from polar coordinates.
 
-        :param components: The (Radius (r), Azimuth (phi)) individual number arguments or as a 
+        :param components: The (Radius (r), Azimuth (phi)) individual number arguments or as a
             single vector. Azimuth must be in radians.
         :param uid: The unique ID of the point for interoperable CAD
             identification.
@@ -64,7 +64,7 @@ class Point(AbstractGeometry):
         return cls(trig.polar_to_cartesian(vector), uid=uid)
 
     @classmethod
-    def from_spherical(cls, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def from_spherical(cls, *components: float | Sequence[float] | Numpy1D,
                        uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from spherical coordinates (Radius (r), Azimuth
         (phi), Elevation (theta)). Azimuth and Elevation angles must be in
@@ -294,16 +294,25 @@ class Point(AbstractGeometry):
         self.cartesian = other.cartesian
         return self
 
-    def vector(self, vertical: bool=True) -> npt.NDArray[np.float64]:
+    @overload
+    def vector(self) -> Numpy1D: ...
+    @overload
+    def vector(self, vertical: Literal[False]) -> Numpy1D: ...
+    @overload
+    def vector(self, vertical: Literal[True]) -> Numpy2D: ...
+    @overload
+    def vector(self, vertical: bool) -> Numpy1D | Numpy2D: ...
+    def vector(self, vertical: bool=True) -> Numpy1D | Numpy2D:
         """Returns a numpy vector of the point's cartesian.
 
         :param vertical: Sets whether to return a vertical vector. Defaults True.
         :returns: The cartesian position vector of the point.
         """
-        array = np.array(self)
         if vertical:
-            return array.reshape(len(self.cartesian), 1)
-        return array
+            array_2d: Numpy2D = np.array(self).reshape(len(self.cartesian), 1)
+            return array_2d
+        array_1d: Numpy1D = np.array(self)
+        return array_1d
 
     # Python Dunders #
     def __add__(self, other: Point | npt.NDArray[np.float64] | SpaceVector) -> SpaceVector:
@@ -380,11 +389,11 @@ class Point(AbstractGeometry):
         return super().__repr__().format(details=f"({point_str})")
 
     # NumPy Dunders #
-    def __array__(self, dtype: None=None, copy: None=None) -> npt.NDArray[np.float64]:
+    def __array__(self, dtype: None=None, copy: None=None) -> Numpy1D:
         """Array function to allow the point to be fed into a numpy array
         function and return a horizontal numpy array.
 
-        :raises TypeError: When copy is set to False. copy argument only included for numpy 
+        :raises TypeError: When copy is set to False. copy argument only included for numpy
             compatibility.
         """
         array = np.array(list(self))

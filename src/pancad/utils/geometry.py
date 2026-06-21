@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
-    from pancad.utils.pancad_types import SpaceVector, Space3DVector
+    from pancad.utils.pancad_types import SpaceVector, Space3DVector, Numpy1D
 
 ### Wrappers
 def three_dimensional_only(func):
@@ -98,7 +98,7 @@ def no_dimensional_mismatch(func):
     return wrapper
 
 ### Functions
-def parse_vector(*components: float | Sequence[float] | np.NDArray[np.float64]) -> SpaceVector:
+def parse_vector(*components: float | Sequence[float] | Numpy1D) -> SpaceVector:
     """Batches structures of vector component inputs to a tuple of Reals.
     Usually used by pancad to parse position and direction information into the
     geometry classes.
