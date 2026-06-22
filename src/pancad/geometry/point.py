@@ -22,7 +22,13 @@ if TYPE_CHECKING:
     import numpy.typing as npt
 
     from pancad.utils.pancad_types import (
-        Numpy1D, Numpy2D, PolarVector, SphericalVector, SpaceVector, Space2DVector, Space3DVector
+        Numpy1D,
+        Numpy2D,
+        PolarVector,
+        SphericalVector,
+        SpaceVector,
+        Space2DVector,
+        Space3DVector,
     )
 
 
@@ -92,15 +98,9 @@ class Point(AbstractGeometry):
         return self._cartesian
 
     @cartesian.setter
-    def cartesian(self, value: Sequence[float]) -> None:
-        if len(value) == 2:
-            x, y = value
-            self._cartesian = (x, y)
-        elif len(value) == 3:
-            x, y, z = value
-            self._cartesian = (x, y, z)
-        else:
-            raise ValueError(f"Expected 2 or 3 long vector, given {len(value)}")
+    def cartesian(self, value: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        vector = trig.to_1d_tuple(value)
+        self._cartesian = vector
 
     @property
     def x(self) -> float:

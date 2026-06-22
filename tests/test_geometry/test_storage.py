@@ -25,14 +25,14 @@ class MemoryDatabase(TestCase):
             self.types = tomllib.load(file)["conform_type"]
         
         geometry_and_values = [
-            (Point(0, 0), "0;0"),
-            (Point(0, 0, 0), "0;0;0"),
-            (Circle((0, 0), 1), "0;0;1"),
+            (Point(0, 0), "0.0;0.0"),
+            (Point(0, 0, 0), "0.0;0.0;0.0"),
+            (Circle((0, 0), 1), "0.0;0.0;1"),
             (Line.from_two_points((0, 0), (1, 0)), "0.0;0.0;1.0;0.0"),
             (Line.from_two_points((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
-            (LineSegment((0, 0), (1, 0)), "0;0;1;0"),
-            (LineSegment((0, 0, 0), (1, 0, 0)), "0;0;0;1;0;0"),
-            (CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0;0|1.0;0.0|0.0;1.0|0|1.0")
+            (LineSegment((0, 0), (1, 0)), "0.0;0.0;1.0;0.0"),
+            (LineSegment((0, 0, 0), (1, 0, 0)), "0.0;0.0;0.0;1.0;0.0;0.0"),
+            (CircularArc((0, 0), 1, (1, 0), (0, 1), False), "0.0;0.0|1.0;0.0|0.0;1.0|0|1.0")
         ]
         self.tests = []
         for geo, value in geometry_and_values:

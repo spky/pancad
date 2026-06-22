@@ -80,6 +80,9 @@ class PolarVector(Sequence[float]):
             return array.astype(dtype)
         return array
 
+    def __repr__(self) -> str:
+        return str(self._values)
+
 class SphericalVector(Sequence[float]):
     """Class for tracking spherical vector components."""
 
