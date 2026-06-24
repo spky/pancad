@@ -370,7 +370,7 @@ def spherical_to_cartesian(spherical: Space3DVector) -> Space3DVector:
     if math.isnan(theta):
         raise ValueError("Theta cannot be NaN if r is non-zero")
     if math.isnan(phi) and (theta != 0 or theta != math.pi):
-        raise ValueError("If phi is NaN, theta must be pi/2")
+        raise ValueError("If phi is NaN, theta must be pi/2 or NaN")
     raise ValueError(f"Unhandled spherical case! Got: {spherical}")
 
 def cartesian_to_spherical(cartesian: Space3DVector) -> SphericalVector:

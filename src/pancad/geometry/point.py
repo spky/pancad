@@ -220,13 +220,13 @@ class Point(AbstractGeometry):
             if self.polar.r != 0 and math.isnan(value):
                 raise ValueError("phi cannot be NaN if r is non-zero")
             if self.polar.r == 0 and not math.isnan(value):
-                raise ValueError("phi can only be NaN if r is zero")
+                raise ValueError("phi must be NaN if r is zero")
             self.polar = (self.polar.r, value)
         else:
             # Spherical (or invalid)
             if math.isnan(self.spherical.theta) and not math.isnan(value):
                 # r would need to be NaN
-                raise ValueError("Phi can only be NaN if theta is also NaN")
+                raise ValueError("phi can only be set to NaN if theta is already NaN")
             self.spherical = (self.r, value, self.theta)
 
     @property
@@ -240,7 +240,8 @@ class Point(AbstractGeometry):
 
     @theta.setter
     def theta(self, value: float) -> None:
-        if math.isnan(self.spherical.phi) and value not in [0, math.pi, math.nan]:
+        if (math.isnan(self.spherical.phi)
+                and (value not in [0, math.pi] and not math.isnan(value))):
             raise ValueError("theta must be NaN, 0, or pi if phi is NaN")
         self.spherical = (self.spherical.r, self.spherical.phi, value)
 
@@ -315,19 +316,27 @@ class Point(AbstractGeometry):
         return array_1d
 
     # Python Dunders #
-    def __add__(self, other: Point | npt.NDArray[np.float64] | SpaceVector) -> SpaceVector:
-        """Returns the addition of two point's cartesian position vectors."""
-        if isinstance(other, (np.ndarray, tuple)):
-            if len(self) == len(other):
-                numpy_array = np.array(self) + np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot add 2D elements to/from 3D elements")
-        if isinstance(other, Point):
-            if len(self) == len(other):
-                numpy_array = np.array(self) + np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot add 2D points to/from 3D points")
+    def __add__(self, other: Point | Sequence[float]) -> Numpy1D:
+        """Returns the addition of the point's cartesian position vector and another vector of
+        the same length as a numpy array. Points can also be added to numpy arrays, but numpy's
+        dunders handle those cases through the array dunder.
+
+        :raises ValueError: When vector lengths are unequal or the other is not 2D/3D.
+        """
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return np.array(self) + other_array
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
         return NotImplemented
+
+    def __radd__(self, other: Point | Sequence[float]) -> Numpy1D:
+        return self.__add__(other)
 
     def __conform__(self, protocol: Type[PrepareProtocol]) -> str:
         """Conforms the point's values for storage in sqlite."""
@@ -335,14 +344,31 @@ class Point(AbstractGeometry):
             return ";".join(map(str, self.cartesian))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
 
-    def __sub__(self, other: Point | npt.NDArray[np.float64] | SpaceVector) -> SpaceVector:
-        """Returns the subtraction of two point's cartesian position vectors as
-        a tuple"""
-        if isinstance(other, Point):
-            if len(self) == len(other):
-                numpy_array = np.array(self) - np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot subtract 2D points to/from 3D points")
+    def __sub__(self, other: Point | Sequence[float]) -> Numpy1D:
+        """Returns the subtraction of two point's cartesian position vectors as a numpy array."""
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return np.array(self) - other_array
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
+        return NotImplemented
+
+    def __rsub__(self, other: Point | Sequence[float]) -> Numpy1D:
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return other_array - np.array(self)
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
         return NotImplemented
 
     def __copy__(self) -> Point:

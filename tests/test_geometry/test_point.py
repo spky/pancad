@@ -1,8 +1,6 @@
 """Tests for the pancad Point class."""
 from __future__ import annotations
 
-import unittest
-import math
 from math import radians, nan, sqrt, pi, hypot, atan, degrees
 from typing import TYPE_CHECKING
 
@@ -13,6 +11,9 @@ from pancad.geometry.point import Point
 from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 if TYPE_CHECKING:
+    from typing import Type
+    from collections.abc import Sequence
+
     from pancad.utils.pancad_types import SpaceVector, Numpy1D, Space2DVector, Space3DVector
 
 @pytest.mark.parametrize("coordinate", [(0, 0, 0), (1, 1, 1), (1, 1)])
@@ -267,291 +268,242 @@ class TestPointCartesianToSphericalConversions:
         np.testing.assert_array_almost_equal(point.spherical, spherical_vector)
         np.testing.assert_array_almost_equal(point.cartesian, cartesian)
 
-class TestRSetterSphericalEdgeCases(unittest.TestCase):
-    """Tests whether the r setter in Point correctly updates the point's position
-    and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self) -> None:
-        self.pt = Point(-10, -10, -10)
+class TestPolarEdgeCases:
+    """Tests for polar coordinates where setting one of the parameters impacts the other
+    parameters.
+    """
 
-        # tests: initial spherical, new r, expected new spherical
-        self.change_tests = [
-            (
-                (0, math.nan, math.nan), 0,
-                (0, math.nan, math.nan)
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), 0,
-                (0, math.nan, math.nan)
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), 2,
-                (2, math.radians(45), math.radians(45)),
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), -1,
-                ValueError
-            ),
-            (
-                (0, math.nan, math.nan), 1,
-                ValueError
-            ),
-            (
-                (0, math.nan, math.nan), math.nan,
-                ValueError
-            ),
+    @pytest.mark.parametrize(
+        "initial, r, expected",
+        [ # Angles in degrees here
+            [(0, nan), 0, (0, nan)],
+            [(1, 45), 0, (0, nan)],
+            [(1, 45), 2, (2, 45)],
         ]
+    )
+    def test_r_nominal(self, initial: Space2DVector, r: float, expected: Space2DVector) -> None:
+        """Tests for setting the radial polar coordinate where Point should not raise an
+        exception but still changes (or could accidentally change) phi.
+        """
+        point = Point.from_polar(initial[0], radians(initial[1]))
+        point.r = r
+        np.testing.assert_array_almost_equal(point.polar, (expected[0], radians(expected[1])))
 
-    def test_nominal_r_setter(self) -> None:
-        for initial_spherical, r, expected_spherical in self.change_tests:
-            if isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, r=r,
-                                  expected_polar=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    self.pt.r = r
-                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
-
-    def test_exceptions_r_setter(self) -> None:
-        for initial_spherical, r, expected_spherical in self.change_tests:
-            if not isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, r=r,
-                                  expected_error_type=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    with self.assertRaises(expected_spherical):
-                        self.pt.r = r
-
-class TestRSetterPolarEdgeCases(unittest.TestCase):
-    """Tests whether the r setter in Point correctly updates the point's position
-    and identifies when it cannot with errors in polar coordinates"""
-    def setUp(self) -> None:
-        self.pt = Point(-10, -10, -10)
-
-        # tests: initial spherical, new r, expected new spherical
-        self.change_tests = [
-            (
-                (0, math.nan), 0,
-                (0, math.nan)
-            ),
-            (
-                (1, math.radians(45)), 0,
-                (0, math.nan)
-            ),
-            (
-                (1, math.radians(45)), 2,
-                (2, math.radians(45)),
-            ),
-            (
-                (1, math.radians(45)), -1,
-                ValueError
-            ),
-            (
-                (0, math.nan), 1,
-                ValueError
-            ),
-            (
-                (0, math.nan), math.nan,
-                ValueError
-            ),
+    @pytest.mark.parametrize(
+        "initial, r, exception, match",
+        [ # Angles in degrees here
+            [(1, 45), -1, ValueError, "r cannot be less than zero"],
+            [(0, nan), 1, ValueError, "r must be 0 if phi is NaN"],
+            [(0, nan), nan, ValueError, "r cannot be NaN"],
         ]
+    )
+    def test_r_exceptions(self, initial: Space2DVector, r: float,
+                          exception: Type[Exception], match: str) -> None:
+        """Tests for setting the radial polar coordinate to a value that should raise an
+        exception.
+        """
+        point = Point.from_polar(initial[0], radians(initial[1]))
+        with pytest.raises(exception, match=match):
+            point.r = r
 
-    def test_nominal_r_setter(self) -> None:
-        for initial_polar, r, expected_polar in self.change_tests:
-            if isinstance(expected_polar, tuple):
-                with self.subTest(initial_polar=initial_polar, r=r,
-                                  expected_polar=expected_polar):
-                    self.pt.polar = initial_polar
-                    self.pt.r = r
-                    np.testing.assert_allclose(self.pt.polar, expected_polar, atol=1e-15)
-
-    def test_exceptions_r_setter(self) -> None:
-        for initial_polar, r, expected_polar in self.change_tests:
-            if not isinstance(expected_polar, tuple):
-                with self.subTest(initial_polar=initial_polar, r=r,
-                                  expected_error_type=expected_polar):
-                    self.pt.polar = initial_polar
-                    with self.assertRaises(expected_polar):
-                        self.pt.r = r
-
-class TestPhiSetterSphericalEdgeCases(unittest.TestCase):
-    """Tests whether the phi setter in Point correctly updates the point's
-    position and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self) -> None:
-        self.pt = Point(-10, -10, -10)
-
-        # tests: initial spherical, new r, expected new spherical
-        self.change_tests = [
-            (
-                (0, math.nan, math.nan), math.nan,
-                (0, math.nan, math.nan)
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), math.nan,
-                ValueError
-            ),
-            (
-                (1, math.radians(45), math.radians(135)), math.nan,
-                ValueError
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), math.radians(0),
-                (1, math.radians(0), math.radians(45)),
-            ),
-            (
-                (0, math.nan, math.nan), 1,
-                ValueError
-            ),
+    @pytest.mark.parametrize(
+        "initial, phi, expected",
+        [ # Angles in degrees here
+            [(0, nan), nan, (0, nan)],
+            [(1, 45), 0, (1, 0)],
         ]
+    )
+    def test_phi_nominal(self, initial: Space2DVector, phi: float,
+                         expected: Space2DVector) -> None:
+        """Tests for setting the phi polar coordinate where Point should not raise an
+        exception but could accidentally change r.
+        """
+        point = Point.from_polar(initial[0], radians(initial[1]))
+        point.phi = radians(phi)
+        np.testing.assert_array_almost_equal(point.polar, (expected[0], radians(expected[1])))
 
-    def test_nominal_phi_setter(self) -> None:
-        for initial_spherical, phi, expected_spherical in self.change_tests:
-            if isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, phi=phi,
-                                  expected_spherical=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    self.pt.phi = phi
-                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
-
-    def test_exceptions_phi_setter(self) -> None:
-        for initial_spherical, phi, expected_spherical in self.change_tests:
-            if not isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, phi=phi,
-                                  expected_error_type=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    with self.assertRaises(expected_spherical):
-                        self.pt.phi = phi
-
-class TestPhiSetterPolarEdgeCases(unittest.TestCase):
-    """Tests whether the phi setter in Point correctly updates the point's
-    position and identifies when it cannot with errors in polar coordinates"""
-    def setUp(self) -> None:
-        self.pt = Point(-10, -10, -10)
-
-        # tests: initial polar, new r, expected new polar
-        self.change_tests = [
-            (
-                (0, math.nan), math.nan,
-                (0, math.nan)
-            ),
-            (
-                (1, math.radians(45)), math.nan,
-                ValueError
-            ),
-            (
-                (1, math.radians(45)), math.nan,
-                ValueError
-            ),
-            (
-                (1, math.radians(45)), math.radians(0),
-                (1, math.radians(0)),
-            ),
-            (
-                (0, math.nan), 1,
-                ValueError
-            ),
+    @pytest.mark.parametrize(
+        "initial, phi, exception, match",
+        [ # Angles in degrees here
+            [(1, 45), nan, ValueError, "phi cannot be NaN if r is non-zero"],
+            [(0, nan), 45, ValueError, "phi must be NaN if r is zero"],
         ]
+    )
+    def test_phi_exceptions(self, initial: Space2DVector, phi: float,
+                            exception: Type[Exception], match: str) -> None:
+        """Tests for setting the phi polar coordinate to a value that should raise an exception.
+        """
+        point = Point.from_polar(initial[0], radians(initial[1]))
+        with pytest.raises(exception, match=match):
+            point.phi = radians(phi)
 
-    def test_nominal_phi_setter(self) -> None:
-        for initial_polar, phi, expected_polar in self.change_tests:
-            if isinstance(expected_polar, tuple):
-                with self.subTest(initial_polar=initial_polar, phi=phi,
-                                  expected_polar=expected_polar):
-                    self.pt.polar = initial_polar
-                    self.pt.phi = phi
-                    np.testing.assert_allclose(self.pt.polar, expected_polar, atol=1e-15)
+class TestSphericalSetting:
+    """Tests for spherical coordinates where setting one of the parameters can impact the other
+    parameters.
+    """
 
-    def test_exceptions_phi_setter(self):
-        for initial_polar, phi, expected_polar in self.change_tests:
-            if not isinstance(expected_polar, tuple):
-                with self.subTest(initial_polar=initial_polar, phi=phi,
-                                  expected_error_type=expected_polar):
-                    self.pt.polar = initial_polar
-                    with self.assertRaises(expected_polar):
-                        self.pt.phi = phi
-
-class TestThetaSetterSphericalEdgeCases(unittest.TestCase):
-    """Tests whether the theta setter in Point correctly updates the point's
-    position and identifies when it cannot with errors in spherical coordinates"""
-    def setUp(self) -> None:
-        self.pt = Point(-10, -10, -10)
-
-        # tests: initial spherical, new r, expected new spherical
-        self.change_tests = [
-            (
-                (0, math.nan, math.nan), math.nan,
-                (0, math.nan, math.nan)
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), math.nan,
-                ValueError
-            ),
-            (
-                (1, math.nan, math.radians(0)), math.radians(0),
-                (1, math.nan, math.radians(0))
-            ),
-            (
-                (1, math.nan, math.pi), math.pi,
-                (1, math.nan, math.pi)
-            ),
-            (
-                (1, math.radians(45), math.radians(45)), math.radians(90),
-                (1, math.radians(45), math.radians(90)),
-            ),
-            (
-                (0, math.nan, math.nan), 1,
-                ValueError
-            ),
+    @pytest.mark.parametrize(
+        "initial, r, expected",
+        [ # Angles in degrees here
+            [(0, nan, nan), 0, (0, nan, nan)],
+            [(1, 45, 45), 0, (0, nan, nan)],
+            [(1, 45, 45), 2, (2, 45, 45)],
         ]
-
-    def test_nominal_theta_setter(self) -> None:
-        for initial_spherical, theta, expected_spherical in self.change_tests:
-            if isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, theta=theta,
-                                  expected_spherical=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    self.pt.theta = theta
-                    np.testing.assert_allclose(self.pt.spherical, expected_spherical, atol=1e-15)
-
-    def test_exceptions_theta_setter(self) -> None:
-        for initial_spherical, theta, expected_spherical in self.change_tests:
-            if not isinstance(expected_spherical, tuple):
-                with self.subTest(initial_spherical=initial_spherical, theta=theta,
-                                  expected_error_type=expected_spherical):
-                    self.pt.spherical = initial_spherical
-                    with self.assertRaises(expected_spherical):
-                        self.pt.theta = theta
-
-class TestPointNumericDunders(unittest.TestCase):
-    def setUp(self) -> None:
-        self.coordinates = [
-            [(0, 0), (0, 0)],
-            [(1, 1), (0, 0)],
-            [(0, 0, 0), (0, 0, 0)],
-            [(1, 1, 1), (0, 0, 0)],
-            [(0, 0, 0), (0, 0)],
-            [(0, 0, 0), (1.2, 2.3, 1.2)],
-        ]
-
-    def test_add(self) -> None:
-        coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
-        results = map(
-            lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) + np.array(x[1]))),
-            coords
+    )
+    def test_r_nominal(self, initial: Space3DVector, r: float, expected: Space3DVector) -> None:
+        """Tests for setting the radial spherical coordinate where Point should not raise an
+        exception but still changes (or could accidentally change) phi and theta.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        point.r = r
+        np.testing.assert_array_almost_equal(
+            point.spherical, (expected[0], radians(expected[1]), radians(expected[2]))
         )
-        pts = [[Point(a), Point(b)] for a, b in coords]
-        for (pt1, pt2), result in zip(pts, results):
-            with self.subTest(point1=pt1, point2=pt2, result=result):
-                np.testing.assert_allclose(pt1 + pt2, result, atol=1e-15)
 
-    def test_sub(self) -> None:
-        coords = list(filter(lambda x: len(x[0]) == len(x[1]), self.coordinates))
-        results = map(
-            lambda x : tuple(map(lambda x: x.item(), np.array(x[0]) - np.array(x[1]))),
-            coords
+    @pytest.mark.parametrize(
+        "initial, r, exception, match",
+        [ # Angles in degrees here
+            [(1, 45, 45), -1, ValueError, "r cannot be less than zero"],
+            [(0, nan, nan), 1, ValueError, "r must be 0 if phi and theta are NaN"],
+            [(0, nan, nan), nan, ValueError, "r cannot be NaN"],
+        ]
+    )
+    def test_r_exceptions(self, initial: Space3DVector, r: float,
+                          exception: Type[Exception], match: str) -> None:
+        """Tests for setting the radial spherical coordinate to a value that should raise an
+        exception.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        with pytest.raises(exception, match=match):
+            point.r = r
+
+    @pytest.mark.parametrize(
+        "initial, phi, expected",
+        [ # Angles in degrees here
+            [(0, nan, nan), nan, (0, nan, nan)],
+            [(1, 45, 45), 0, (1, 0, 45)],
+        ]
+    )
+    def test_phi_nominal(self, initial: Space3DVector, phi: float,
+                         expected: Space3DVector) -> None:
+        """Tests for setting the phi spherical coordinate where Point should not raise an
+        exception but still changes (or could accidentally change) r and theta.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        point.phi = radians(phi)
+        np.testing.assert_array_almost_equal(
+            point.spherical, (expected[0], radians(expected[1]), radians(expected[2]))
         )
-        pts = [[Point(a), Point(b)] for a, b in coords]
-        for (pt1, pt2), result in zip(pts, results):
-            with self.subTest(point1=pt1, point2=pt2, result=result):
-                np.testing.assert_allclose(pt1 - pt2, result, atol=1e-15)
 
+    @pytest.mark.parametrize(
+        "initial, phi, exception, match",
+        [ # Angles in degrees here
+            [(1, 45, 45), nan, ValueError, "If phi is NaN, theta must be pi/2 or NaN"],
+            [(1, 45, 135), nan, ValueError, "If phi is NaN, theta must be pi/2 or NaN"],
+            [(0, nan, nan), 45, ValueError, "phi can only be set to NaN if theta is already NaN"],
+        ]
+    )
+    def test_phi_exceptions(self, initial: Space3DVector, phi: float,
+                            exception: Type[Exception], match: str) -> None:
+        """Tests for setting the phi spherical coordinate to a value that should raise an
+        exception.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        with pytest.raises(exception, match=match):
+            point.phi = radians(phi)
 
-if __name__ == "__main__":
-    unittest.main()
+    @pytest.mark.parametrize(
+        "initial, theta, expected",
+        [
+            [(0, nan, nan), nan, (0, nan, nan)],
+            [(1, nan, 0), 0, (1, nan, 0)],
+            [(1, nan, 180), 180, (1, nan, 180)],
+            [(1, 45, 45), 90, (1, 45, 90)],
+        ]
+    )
+    def test_theta_nominal(self, initial: Space3DVector, theta: float,
+                           expected: Space3DVector) -> None:
+        """Tests for setting the theta spherical coordinate where Point should not raise an
+        exception but still changes (or could accidentally change) r and phi.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        point.theta = radians(theta)
+        np.testing.assert_array_almost_equal(
+            point.spherical, (expected[0], radians(expected[1]), radians(expected[2]))
+        )
+
+    @pytest.mark.parametrize(
+        "initial, theta, exception, match",
+        [ # Angles in degrees here
+            [(1, 45, 45), nan, ValueError, "Theta cannot be NaN if r is non-zero"],
+            [(0, nan, nan), 1, ValueError, "theta must be NaN, 0, or pi if phi is NaN"],
+        ]
+    )
+    def test_theta_exceptions(self, initial: Space3DVector, theta: float,
+                              exception: Type[Exception], match: str) -> None:
+        """Tests for setting the theta spherical coordinate to a value that should raise an
+        exception.
+        """
+        point = Point.from_spherical(initial[0], radians(initial[1]), radians(initial[2]))
+        with pytest.raises(exception, match=match):
+            point.theta = radians(theta)
+
+@pytest.mark.parametrize(
+    "point, vector",
+    [
+        [(0, 0), (0, 0)],
+        [(1, 1), (0, 0)],
+        [(0, 0, 0), (0, 0, 0)],
+        [(1, 1, 1), (0, 0, 0)],
+        [(0, 0, 0), (1.2, 2.3, 1.2)],
+    ]
+)
+class TestPointOperatorDunders:
+    """Tests for the dunders allowing Point to interact with other types using +, -, etc."""
+
+    def test_add_sequence(self, point: SpaceVector, vector: Sequence[float]) -> None:
+        """Test for adding point to a sequence from the left and right."""
+        for seq in [tuple(vector), list(vector)]:
+            # add
+            np.testing.assert_array_equal(Point(point) + seq, # add
+                                          np.array(point) + np.array(seq))
+            # radd
+            np.testing.assert_array_equal(vector + Point(point), # radd
+                                           np.array(seq) + np.array(point))
+
+    def test_add_horizontal_numpy_array(self, point: SpaceVector,
+                                        vector: Sequence[float]) -> None:
+        """Test for adding point to a horizontal numpy array from the left and right."""
+        np.testing.assert_array_equal(Point(point) + np.array(vector), # add
+                                      np.array(point) + np.array(vector))
+        np.testing.assert_array_equal(np.array(vector) + Point(point), # radd
+                                      np.array(vector) + np.array(point))
+
+    def test_add_vertical_numpy_array(self, point: SpaceVector, vector: Sequence[float]) -> None:
+        """Test for adding point to a vertical numpy array from the left and right."""
+        # add, actually uses the numpy implementation and returns a 2x2 or 3x3 matrix
+        np.testing.assert_array_equal(
+            Point(point) + np.array(vector).reshape(len(vector), 1),
+            np.array(point) + np.array(vector).reshape(len(vector), 1),
+        )
+        # radd, actually uses the numpy implementation and returns a 2x2 or 3x3 matrix.
+        np.testing.assert_array_equal(
+            np.array(vector).reshape(len(vector), 1) + Point(point),
+            np.array(vector).reshape(len(vector), 1) + np.array(point)
+        )
+    def test_sub_sequence(self, point: SpaceVector, vector: Sequence[float]) -> None:
+        """Test for subtracting a point to/from a sequence from the left and right."""
+        for seq in [tuple(vector), list(vector)]:
+            np.testing.assert_array_equal(Point(point) - seq, # sub
+                                          np.array(point) - np.array(seq))
+            np.testing.assert_array_equal(seq - Point(point), # rsub
+                                          np.array(seq) - np.array(point))
+
+    def test_sub_horizontal_numpy_array(self, point: SpaceVector,
+                                        vector: Sequence[float]) -> None:
+        """Test for subtracting a point to/from a horizontal numpy array from the left and right.
+        """
+        np.testing.assert_array_equal(Point(point) - np.array(vector), # sub
+                                      np.array(point) - np.array(vector))
+        np.testing.assert_array_equal(np.array(vector) - Point(point), # rsub
+                                      np.array(vector) - np.array(point))
