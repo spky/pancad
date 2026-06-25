@@ -146,7 +146,7 @@ class SphericalVector(Sequence[float]):
     def __array__(self, dtype: None=None, copy: None=None) -> Numpy1D:
         array = np.array(self._values)
         if copy is not None and not copy:
-            raise ValueError("PolarVector cannot return the original")
+            raise ValueError(f"SphericalVector cannot return the original")
         if dtype:
             return array.astype(dtype)
         return array
