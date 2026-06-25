@@ -5,6 +5,7 @@ points.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import singledispatchmethod
 import math
 from sqlite3 import PrepareProtocol
@@ -43,7 +44,7 @@ class Line(AbstractGeometry):
     :param uid: The unique ID of the line.
     """
 
-    zero_tol = np.sqrt(np.finfo(np.float64).eps)
+    zero_tol = np.sqrt(np.finfo(np.float64).eps) # pylint: disable=no-member
     """Any Line direction vector component smaller than this number will be set to 0."""
 
     def __init__(self, point: Point, direction: VectorLike,
@@ -80,7 +81,7 @@ class Line(AbstractGeometry):
         if len(a) != len(b):
             raise ValueError("a and b must be the same dimension")
         for i, point in enumerate(points):
-            if isinstance(point, VectorLike):
+            if isinstance(point, (Sequence, np.ndarray)):
                 points[i] = Point(point)
         if any(not isinstance(point, Point) for point in points):
             raise ValueError("a and b must be VectorLikes or pancad Points.")
@@ -124,7 +125,7 @@ class Line(AbstractGeometry):
         :returns: A Line that runs through the point in a direction defined by
             the provided angles.
         """
-        if isinstance(point, VectorLike):
+        if isinstance(point, (Sequence, np.ndarray)):
             point = Point(point)
         if not isinstance(point, Point):
             raise TypeError(f"Expected Point/VectorLike for point, got {point}")

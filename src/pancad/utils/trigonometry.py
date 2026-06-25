@@ -6,7 +6,8 @@ from __future__ import annotations
 from functools import partial
 import math
 from math import degrees
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
+from collections.abc import Sequence
 
 import numpy as np
 from numpy.linalg import norm
@@ -16,10 +17,11 @@ from pancad.utils.pancad_types import PolarVector, SphericalVector
 
 if TYPE_CHECKING:
     from typing import Literal
+    from collections.abc import Callable
 
-    import numpy.typing as npt
-
-    from pancad.utils.pancad_types import Space3DVector, Space2DVector, SpaceVector
+    from pancad.utils.pancad_types import (
+        Space3DVector, Space2DVector, SpaceVector, Numpy1D, Numpy2D
+    )
 
 def angle_mod(angle: float) -> float:
     """Returns the angle bounded from -2pi to +2pi since python's modulo
@@ -33,26 +35,55 @@ def angle_mod(angle: float) -> float:
         return angle % (2*np.pi)
     return angle % (-2*np.pi)
 
-def get_unit_vector(vector: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+@overload
+def check_vector_shape(shape: tuple[int]) -> tuple[int]: ...
+@overload
+def check_vector_shape(shape: tuple[int, int]) -> tuple[int, int]: ...
+def check_vector_shape(shape: tuple[int] | tuple[int, int]) -> tuple[int] | tuple[int, int]:
+    """Checks whether the numpy shape is a valid vector shape. Assumes that the provided shape is
+    already a one or two long tuple for a 1 to 2 dimensional numpy array.
+
+    :raises ValueError: When the length of the vector is not 2 or 3 or when a 2D array has more
+        than one column.
+    """
+    if shape[0] not in {2, 3}:
+        raise ValueError("Expected a 2 or 3 long vector")
+    if len(shape) == 2 and shape[1] != 1:
+        raise ValueError("Expected a 2D array to have only 1 column")
+    return shape
+
+@overload
+def get_unit_vector(vector: SpaceVector) -> Numpy1D: ...
+@overload
+def get_unit_vector(vector: Numpy1D) -> Numpy1D: ...
+@overload
+def get_unit_vector(vector: Numpy2D) -> Numpy2D: ...
+def get_unit_vector(vector: SpaceVector | Numpy1D | Numpy2D) -> Numpy1D | Numpy2D:
     """Returns the unit vector of the given vector. If the vector is a zero
     vector, returns the zero vector.
+
+    :raises TypeError: When provided a 0D or >2D numpy array.
+    :raises ValueError: When provided a non 2D or 3D vector or when provided a zero length vector.
     """
-    unit_vector: npt.NDArray[np.float64]
+    shape: tuple[int] | tuple[int, int]
+    flat_vector = to_1d_np(vector)
     if isinstance(vector, np.ndarray):
-        shape = vector.shape
+        shape = check_vector_shape(vector.shape)
     else:
         shape = (len(vector),)
-    vector = to_1d_np(vector)
-    length = np.linalg.norm(vector)
-    if is_geometry_vector(vector):
-        if length == 0:
-            unit_vector = vector
-        else:
-            unit_vector = vector / length
-    else:
-        raise ValueError("Unit vectors will only be found for 2 and 3 element"
-                         f" vectors. Vector '{vector}' has shape {shape}")
-    return unit_vector.reshape(shape)
+    length = np.float64(np.linalg.norm(flat_vector, ord=2))
+    try:
+        with np.errstate(all="raise"):
+            unit_vector: Numpy1D = flat_vector / length
+    except FloatingPointError as exc:
+        if np.isclose(length, 0):
+            raise ValueError("Expected vector of nonzero length") from exc
+        raise
+    if len(shape) == 1:
+        out_1d_vector: Numpy1D = unit_vector.reshape(*shape)
+        return out_1d_vector
+    out_2d_vector: Numpy2D = unit_vector.reshape(*shape)
+    return out_2d_vector
 
 def get_vector_angle(vector1: SpaceVector,
                      vector2: SpaceVector,
@@ -108,21 +139,9 @@ def is_clockwise(vector1: Space2DVector, vector2: Space2DVector) -> bool:
         vector1_90_ccw = (-y1, x1)
         # numpy can output an array from dot, so float is called on it here to guarantee the type
         return float(np.dot(vector1_90_ccw, vector2)) < 0
-    raise ValueError("Both vectors must be 2 long")
+    raise TypeError(f"Expected 2D vectors. Got: {vector1} and {vector2}")
 
-def is_geometry_vector(vector: npt.NDArray[np.float64]) -> bool:
-    """Returns whether the NumPy vector is a valid 2D or 3D vector
-
-    :param vector: A NumPy vector to be checked
-    :returns: True if the vector is a valid 2D or 3D vector
-    """
-    return vector.shape in [(2,), (3,), (2,1), (3,1)]
-
-def is_iterable(value: object) -> bool:
-    """Returns whether a value is iterable."""
-    return hasattr(value, "__iter__")
-
-def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
+def multi_rotation(permutation: str, *angles: float) -> Numpy2D:
     """Returns a rotation matrix of multiple rotations around the x, y, and z
     axes.
 
@@ -136,19 +155,19 @@ def multi_rotation(permutation: str, *angles: float) -> npt.NDArray[np.float64]:
     if len(angles) != len(permutation):
         raise ValueError("Length of permutation must be the same as the number"
                          f" of angles ({len(permutation)}!={len(angles)})")
-    rotation_funcs = {
+    rotation_funcs: dict[str, Callable[[float], Numpy2D]] = {
         "x": rotation_x,
         "y": rotation_y,
         "z": rotation_z,
     }
     permutation = permutation.casefold()
-    matrix: npt.NDArray[np.floating] = np.identity(3)
+    matrix = np.identity(3, dtype=np.float64)
     for angle, axis in zip(angles, list(permutation)):
         matrix = matrix @ rotation_funcs[axis](angle)
     return matrix.astype(np.float64)
 
 def rotation(angle: float,
-             around: Literal["x", "y", "z", "2"] | Space3DVector) -> npt.NDArray[np.float64]:
+             around: Literal["x", "y", "z", "2"] | Space3DVector) -> Numpy2D:
     """Returns a rotation matrix that rotates around the given axis/vector by the
     angle. Assumes a right-handed coordinate system.
 
@@ -160,7 +179,7 @@ def rotation(angle: float,
     """
     cost = math.cos(angle)
     sint = math.sin(angle)
-    around_axis: npt.NDArray[np.float64]
+    around_axis: Numpy1D
 
     if around == "2":
         return np.array([[cost, -sint], [sint, cost]])
@@ -182,19 +201,19 @@ def rotation(angle: float,
     return np.array(matrix)
 
 # Special Case Rotation Matrices
-rotation_x = partial(rotation, around="x")
+rotation_x: Callable[[float], Numpy2D] = partial(rotation, around="x")
 """Returns a rotation matrix for rotation about the x axis. Requires only 1
 angle argument.
 """
-rotation_y = partial(rotation, around="y")
+rotation_y: Callable[[float], Numpy2D] = partial(rotation, around="y")
 """Returns a rotation matrix for rotation about the y axis. Requires only 1
 angle.
 """
-rotation_z = partial(rotation, around="z")
+rotation_z: Callable[[float], Numpy2D] = partial(rotation, around="z")
 """Returns a rotation matrix for rotation about the z axis. Requires only 1
 angle argument.
 """
-rotation_2 = partial(rotation, around="2")
+rotation_2: Callable[[float], Numpy2D] = partial(rotation, around="2")
 """Returns a rotation matrix for rotation in 2D. Requires only 1 angle
 argument.
 """
@@ -212,16 +231,14 @@ def positive_angle(angle: float) -> float:
         return angle_mod(angle)
     return angle_mod(angle) + 2*np.pi
 
-def to_1d_tuple(value: SpaceVector | npt.NDArray[np.float64]) -> SpaceVector:
+def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector:
     """Returns a 2D or 3D vector as a tuple from a given value."""
     tuple_value: tuple[float, ...]
     # Convert internal values based on the container type
-    if isinstance(value, tuple) and not all(map(is_iterable, value)):
-        tuple_value = value
-    if isinstance(value, list) and not all(map(is_iterable, value)):
-        tuple_value = tuple(value)
-    if isinstance(value, np.ndarray) and is_geometry_vector(value):
-        tuple_value = tuple(float(coordinate.squeeze()) for coordinate in value)
+    if isinstance(value, Sequence):
+        tuple_value = tuple(map(float, value))
+    elif isinstance(value, np.ndarray):
+        tuple_value = tuple(to_1d_np(value))
     # Unpack and return tuple to guarantee length
     if len(tuple_value) == 2:
         x, y = tuple_value
@@ -231,16 +248,24 @@ def to_1d_tuple(value: SpaceVector | npt.NDArray[np.float64]) -> SpaceVector:
         return (x, y, z)
     raise ValueError(f"Cannot convert {value} of class {value.__class__} to a 2 or 3 long tuple")
 
-def to_1d_np(value: SpaceVector | npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """Returns a 1D numpy array from a given value."""
-    if isinstance(value, tuple) and not all(map(is_iterable, value)):
-        return np.array(value)
-    if isinstance(value, list) and not all(map(is_iterable, value)):
-        return np.array(value)
-    if isinstance(value, np.ndarray) and is_geometry_vector(value):
-        return value.squeeze()
-    raise ValueError(f"Cannot convert {value} of class {value.__class__} to"
-                     "a 1D numpy.ndarray")
+def to_1d_np(value: Sequence[float] | Numpy1D | Numpy2D) -> Numpy1D:
+    """Returns a flat/horizontal 1D numpy array from a given sequence of floats or a 1 dimensional
+    numpy array.
+
+    :raises TypeError: When provided a sequence of values that cannot be coerced by numpy into a
+        float.
+    :raises ValueError: When pr
+    """
+    if isinstance(value, Sequence):
+        try:
+            return np.array(value, dtype=np.float64, # pylint: disable=unexpected-keyword-arg
+                            ndmax=1)
+        except ValueError as exc:
+            msg = f"Could not create a 1D numpy array from Sequence value: {value}"
+            raise TypeError(msg) from exc
+    if isinstance(value, np.ndarray):
+        return np.array(value.flatten(), dtype=np.float64)
+    raise ValueError(f"Cannot convert {value} of class {value.__class__} to a 1D numpy array")
 
 def r_of_cartesian(cartesian: SpaceVector) -> float:
     """Returns the r component of a polar or spherical vector from a
@@ -306,8 +331,6 @@ def polar_to_cartesian(polar: Space2DVector) -> Space2DVector:
         (azimuth angle) in radians.
     :returns: An equivalent 2D vector with cartesian components x and y.
     """
-    if len(polar) != 2:
-        raise ValueError("Vector must be 2D to return a polar coordinate")
     r, phi = polar
     if r == 0 and math.isnan(phi):
         return (0, 0)
@@ -347,7 +370,7 @@ def spherical_to_cartesian(spherical: Space3DVector) -> Space3DVector:
     if math.isnan(theta):
         raise ValueError("Theta cannot be NaN if r is non-zero")
     if math.isnan(phi) and (theta != 0 or theta != math.pi):
-        raise ValueError("If phi is NaN, theta must be pi/2")
+        raise ValueError("If phi is NaN, theta must be pi/2 or NaN")
     raise ValueError(f"Unhandled spherical case! Got: {spherical}")
 
 def cartesian_to_spherical(cartesian: Space3DVector) -> SphericalVector:

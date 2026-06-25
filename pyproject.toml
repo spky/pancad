@@ -17,9 +17,9 @@ license = "CC0-1.0"
 license-files = ["LICENSE"]
 readme = "README.md"
 dependencies = [
-    "numpy==2.2.1",
-    "numpy-quaternion==2024.0.10",
-    "scipy==1.16.1",
+    "numpy>=2.4",
+    "numpy-quaternion",
+    "scipy",
 ]
 [project.urls]
 Homepage = "https://github.com/spky/pancad"
@@ -32,12 +32,13 @@ path = "src/pancad/__about__.py"
 python = "3.11"
 
 [tool.hatch.envs.lint]
-dependencies = [
+extra-dependencies = [
     "pylint",
+    "pytest",
 ]
 
 [tool.hatch.envs.dev]
-dependencies = [
+extra-dependencies = [
   "matplotlib",
   "jupyterlab",
   "ipywidgets",
@@ -54,6 +55,7 @@ check = [
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
+  "pytest",
 ]
 [tool.hatch.envs.types.scripts]
 # Script to type check a given file
@@ -62,6 +64,7 @@ check = "mypy --install-types --non-interactive {args:.}"
 strict = "mypy --install-types --non-interactive --strict {args:.}"
 # Script to strictly type check all the files in the tool.mypy section
 strictdefault = "mypy --install-types --non-interactive --strict"
+strictdefaultnoany = "mypy --install-types --non-interactive --strict --disallow-any-expr"
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.11"]
@@ -110,4 +113,7 @@ files = [
     "src/pancad/geometry/point.py",
     "src/pancad/geometry/unique_lists.py",
     "src/pancad/utils/trigonometry.py",
+    "src/pancad/utils/pancad_types.py",
+    "tests/test_trigonometry.py",
+    "tests/test_geometry/test_point.py",
 ]

@@ -1,3 +1,5 @@
+"""A module containing pancad's unit tests."""
+
 from os.path import dirname
 
 from tests import sample_freecad

@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 import math
 from sqlite3 import PrepareProtocol
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -16,13 +16,19 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
-    from typing import Optional, Type, Self
+    from typing import Optional, Type, Self, Literal
     from uuid import UUID
 
     import numpy.typing as npt
 
     from pancad.utils.pancad_types import (
-        PolarVector, SphericalVector, SpaceVector, Space2DVector, Space3DVector
+        Numpy1D,
+        Numpy2D,
+        PolarVector,
+        SphericalVector,
+        SpaceVector,
+        Space2DVector,
+        Space3DVector,
     )
 
 
@@ -38,7 +44,7 @@ class Point(AbstractGeometry):
         arguments or as a single vector.
     :param uid: The unique ID of the point for interoperable CAD identification.
     """
-    def __init__(self, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def __init__(self, *components: float | Sequence[float] | Numpy1D,
                  uid: Optional[str | UUID]=None):
         self._cartesian: SpaceVector
         self._iter_index = 0 # Used for __iter__ counting
@@ -48,11 +54,11 @@ class Point(AbstractGeometry):
 
     # Class Methods #
     @classmethod
-    def from_polar(cls, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def from_polar(cls, *components: float | Sequence[float] | Numpy1D,
                    uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from polar coordinates.
 
-        :param components: The (Radius (r), Azimuth (phi)) individual number arguments or as a 
+        :param components: The (Radius (r), Azimuth (phi)) individual number arguments or as a
             single vector. Azimuth must be in radians.
         :param uid: The unique ID of the point for interoperable CAD
             identification.
@@ -64,7 +70,7 @@ class Point(AbstractGeometry):
         return cls(trig.polar_to_cartesian(vector), uid=uid)
 
     @classmethod
-    def from_spherical(cls, *components: float | Sequence[float] | npt.NDArray[np.float64],
+    def from_spherical(cls, *components: float | Sequence[float] | Numpy1D,
                        uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from spherical coordinates (Radius (r), Azimuth
         (phi), Elevation (theta)). Azimuth and Elevation angles must be in
@@ -92,15 +98,9 @@ class Point(AbstractGeometry):
         return self._cartesian
 
     @cartesian.setter
-    def cartesian(self, value: Sequence[float]) -> None:
-        if len(value) == 2:
-            x, y = value
-            self._cartesian = (x, y)
-        elif len(value) == 3:
-            x, y, z = value
-            self._cartesian = (x, y, z)
-        else:
-            raise ValueError(f"Expected 2 or 3 long vector, given {len(value)}")
+    def cartesian(self, value: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        vector = trig.to_1d_tuple(value)
+        self._cartesian = vector
 
     @property
     def x(self) -> float:
@@ -220,13 +220,13 @@ class Point(AbstractGeometry):
             if self.polar.r != 0 and math.isnan(value):
                 raise ValueError("phi cannot be NaN if r is non-zero")
             if self.polar.r == 0 and not math.isnan(value):
-                raise ValueError("phi can only be NaN if r is zero")
+                raise ValueError("phi must be NaN if r is zero")
             self.polar = (self.polar.r, value)
         else:
             # Spherical (or invalid)
             if math.isnan(self.spherical.theta) and not math.isnan(value):
                 # r would need to be NaN
-                raise ValueError("Phi can only be NaN if theta is also NaN")
+                raise ValueError("phi can only be set to NaN if theta is already NaN")
             self.spherical = (self.r, value, self.theta)
 
     @property
@@ -240,7 +240,8 @@ class Point(AbstractGeometry):
 
     @theta.setter
     def theta(self, value: float) -> None:
-        if math.isnan(self.spherical.phi) and value not in [0, math.pi, math.nan]:
+        if (math.isnan(self.spherical.phi)
+                and (value not in [0, math.pi] and not math.isnan(value))):
             raise ValueError("theta must be NaN, 0, or pi if phi is NaN")
         self.spherical = (self.spherical.r, self.spherical.phi, value)
 
@@ -294,31 +295,48 @@ class Point(AbstractGeometry):
         self.cartesian = other.cartesian
         return self
 
-    def vector(self, vertical: bool=True) -> npt.NDArray[np.float64]:
+    @overload
+    def vector(self) -> Numpy1D: ...
+    @overload
+    def vector(self, vertical: Literal[False]) -> Numpy1D: ...
+    @overload
+    def vector(self, vertical: Literal[True]) -> Numpy2D: ...
+    @overload
+    def vector(self, vertical: bool) -> Numpy1D | Numpy2D: ...
+    def vector(self, vertical: bool=True) -> Numpy1D | Numpy2D:
         """Returns a numpy vector of the point's cartesian.
 
         :param vertical: Sets whether to return a vertical vector. Defaults True.
         :returns: The cartesian position vector of the point.
         """
-        array = np.array(self)
         if vertical:
-            return array.reshape(len(self.cartesian), 1)
-        return array
+            array_2d: Numpy2D = np.array(self).reshape(len(self.cartesian), 1)
+            return array_2d
+        array_1d: Numpy1D = np.array(self)
+        return array_1d
 
     # Python Dunders #
-    def __add__(self, other: Point | npt.NDArray[np.float64] | SpaceVector) -> SpaceVector:
-        """Returns the addition of two point's cartesian position vectors."""
-        if isinstance(other, (np.ndarray, tuple)):
-            if len(self) == len(other):
-                numpy_array = np.array(self) + np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot add 2D elements to/from 3D elements")
-        if isinstance(other, Point):
-            if len(self) == len(other):
-                numpy_array = np.array(self) + np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot add 2D points to/from 3D points")
+    def __add__(self, other: Point | Sequence[float]) -> Numpy1D:
+        """Returns the addition of the point's cartesian position vector and another vector of
+        the same length as a numpy array. Points can also be added to numpy arrays, but numpy's
+        dunders handle those cases through the array dunder.
+
+        :raises ValueError: When vector lengths are unequal or the other is not 2D/3D.
+        """
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return np.array(self) + other_array
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
         return NotImplemented
+
+    def __radd__(self, other: Point | Sequence[float]) -> Numpy1D:
+        return self.__add__(other)
 
     def __conform__(self, protocol: Type[PrepareProtocol]) -> str:
         """Conforms the point's values for storage in sqlite."""
@@ -326,14 +344,31 @@ class Point(AbstractGeometry):
             return ";".join(map(str, self.cartesian))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
 
-    def __sub__(self, other: Point | npt.NDArray[np.float64] | SpaceVector) -> SpaceVector:
-        """Returns the subtraction of two point's cartesian position vectors as
-        a tuple"""
-        if isinstance(other, Point):
-            if len(self) == len(other):
-                numpy_array = np.array(self) - np.array(other)
-                return tuple(map(lambda x: x.item(), numpy_array))
-            raise ValueError("Cannot subtract 2D points to/from 3D points")
+    def __sub__(self, other: Point | Sequence[float]) -> Numpy1D:
+        """Returns the subtraction of two point's cartesian position vectors as a numpy array."""
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return np.array(self) - other_array
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
+        return NotImplemented
+
+    def __rsub__(self, other: Point | Sequence[float]) -> Numpy1D:
+        if isinstance(other, (Sequence, Point)):
+            other_array = np.array(other, dtype=np.float64)
+            trig.check_vector_shape(other_array.shape)
+            try:
+                return other_array - np.array(self)
+            except ValueError as exc:
+                if len(self) != len(other):
+                    msg = f"Cannot add {len(self)}D elements to/from {len(other)}D elements"
+                    raise ValueError(msg) from exc
+                raise
         return NotImplemented
 
     def __copy__(self) -> Point:
@@ -380,11 +415,11 @@ class Point(AbstractGeometry):
         return super().__repr__().format(details=f"({point_str})")
 
     # NumPy Dunders #
-    def __array__(self, dtype: None=None, copy: None=None) -> npt.NDArray[np.float64]:
+    def __array__(self, dtype: None=None, copy: None=None) -> Numpy1D:
         """Array function to allow the point to be fed into a numpy array
         function and return a horizontal numpy array.
 
-        :raises TypeError: When copy is set to False. copy argument only included for numpy 
+        :raises TypeError: When copy is set to False. copy argument only included for numpy
             compatibility.
         """
         array = np.array(list(self))

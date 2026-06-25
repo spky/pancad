@@ -3,6 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import atan2, cos, sin, sqrt
 from numbers import Real
@@ -115,7 +116,7 @@ class Ellipse(AbstractGeometry):
 
     def __init__(self, center, semi_major_axis, semi_minor_axis,
                  major_direction, minor_direction=None, uid=None):
-        if isinstance(center, VectorLike):
+        if isinstance(center, (Sequence, np.ndarray)):
             center = Point(center)
         if len(center) == 2 and minor_direction is not None:
             raise ValueError("minor_direction cannot be provided in 2D case")
@@ -186,7 +187,7 @@ class Ellipse(AbstractGeometry):
     @no_dimensional_mismatch
     @updates_reference_points
     def center(self, point: Point | VectorLike) -> None:
-        if isinstance(point, VectorLike):
+        if isinstance(point, (Sequence, np.ndarray)):
             point = Point(point)
         self.parts.center.update(point)
         for axis in [self.parts.major_axis, self.parts.minor_axis]:
