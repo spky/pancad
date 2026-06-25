@@ -7,7 +7,7 @@ from typing import Union, overload
 
 import numpy as np
 
-VectorLike = Union[Sequence, np.ndarray]
+VectorLike = Union[Sequence[float], np.ndarray]
 Space2DVector = tuple[float, float]
 Space3DVector = tuple[float, float, float]
 

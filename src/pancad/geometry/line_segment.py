@@ -3,6 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from numbers import Real
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
@@ -18,7 +19,6 @@ from pancad.utils.geometry import parse_vector
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from typing import Self
 
 
@@ -33,9 +33,9 @@ class LineSegment(AbstractGeometry):
                  start: Point | VectorLike,
                  end: Point | VectorLike,
                  uid: str=None) -> None:
-        if isinstance(start, VectorLike):
+        if isinstance(start, (Sequence, np.ndarray)):
             start = Point(start)
-        if isinstance(end, VectorLike):
+        if isinstance(end, (Sequence, np.ndarray)):
             end = Point(end)
         if any(not isinstance(point, Point) for point in [start, end]):
             types = [type(point) for point in [start, end]]

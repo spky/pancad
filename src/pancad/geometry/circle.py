@@ -3,8 +3,11 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
@@ -31,7 +34,7 @@ class Circle(AbstractGeometry):
                  radius: Real,
                  *,
                  uid: str=None) -> None:
-        if isinstance(center, VectorLike):
+        if isinstance(center, (Sequence, np.ndarray)):
             center = Point(center)
         if len(center) == 3:
             raise NotImplementedError("3D Circles not implemented yet.")
