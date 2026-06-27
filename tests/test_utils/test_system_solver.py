@@ -4,23 +4,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import csv
-import numpy as np
-import numpy.testing as nptest
-import pytest
 from pprint import pp
+
+import numpy as np
+import pytest
 
 from pancad.api import (Axis, Line, Point, Plane, ThreeDSketchSystem,
                         make_constraint, SketchConstraint as SC)
 from pancad.utils import solvers, solver_residuals as pcres
 
 if TYPE_CHECKING:
-    from numbers import Real
     from collections.abc import Callable
     from pathlib import Path
 
     from _pytest.mark.structures import ParameterSet
-
-    import numpy.typing as npt
 
     from pancad.abstract import AbstractGeometrySystem, AbstractGeometry
     from pancad.utils.pancad_types import SpaceVector, Space3DVector, Numpy1D
@@ -473,7 +470,7 @@ class TestResiduals:
         ]
     )
     def test_direction_residual(self,
-                                func: Callable[npt.NDArray, npt.NDArray],
+                                func: Callable[[Numpy1D, Numpy1D], Numpy1D],
                                 v1: SpaceVector, v2: SpaceVector,
                                 expected: SpaceVector) -> None:
         """Test for calculating the residual of two vectors that must be codirectional,
@@ -540,11 +537,11 @@ class TestResiduals:
         ]
     )
     def test_unique_direction(self, vector: SpaceVector, atol: float,
-                              expected: tuple[Real, Real]) -> None:
+                              expected: tuple[float, float]) -> None:
         v = np.array(vector)
         exp = np.array(expected)
         atol = np.float64(atol)
-        nptest.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
+        np.testing.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
 
     @pytest.mark.parametrize(
         "plane, point, distance, expected",
