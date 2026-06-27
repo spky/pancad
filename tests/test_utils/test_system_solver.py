@@ -16,13 +16,14 @@ from pancad.utils import solvers, solver_residuals as pcres
 if TYPE_CHECKING:
     from numbers import Real
     from collections.abc import Callable
+    from pathlib import Path
 
     from _pytest.mark.structures import ParameterSet
 
     import numpy.typing as npt
 
     from pancad.abstract import AbstractGeometrySystem, AbstractGeometry
-    from pancad.utils.pancad_types import SpaceVector, Space3DVector
+    from pancad.utils.pancad_types import SpaceVector, Space3DVector, Numpy1D
 
     # Constraints in a system defined here by listing the SketchConstraint and geometry indices.
     ConstraintDef = tuple[SC, tuple[int, ...]]
@@ -334,13 +335,13 @@ def _2_planes_distance(fix_pln_vecs: tuple[Space3DVector, Space3DVector],
     ]
 )
 def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometrySystem,
-                      tmp_path):
+                      tmp_path: Path):
     """Tests that SystemSolver can solve the constraints in the initial system and output the
     expected system.
     """
     solver = solvers.SystemSolver(initial)
-    run_data = []
-    titles = []
+    run_data: list[list[str] | list[float]] = []
+    titles: list[str] = []
     for var in solver.get_variables():
         prefix = f"variable_{var.element}_{var.name.value}"
         titles.extend([f"{prefix}_{i}" for i in range(len(var))])
@@ -348,18 +349,21 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
         prefix = f"residual_{eq.element}_{eq.name.value}"
         titles.extend([f"{prefix}_{i}" for i in range(len(eq.calc()))])
     run_data.append(titles)
-    def fun_log(f: Callable[[npt.NDArray], npt.NDArray]) -> Callable[[npt.NDArray], npt.NDArray]:
-        def wrap(x: npt.NDArray) -> npt.NDArray:
+
+    def fun_log(f: Callable[[Numpy1D], Numpy1D]) -> Callable[[Numpy1D], Numpy1D]:
+        def wrap(x: Numpy1D) -> Numpy1D:
             result = f(x)
             run_data.append([*x, *result])
             return result
         return wrap
+
     try:
         solution = solver.solve(fun_wrap=fun_log)
     finally:
         with open(tmp_path / "convergence_data.csv", "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerows(run_data)
+
     debugs = {
         "Initial Input Vector": solver.label_x(solver.get_initial()),
         "Initial Residuals": solver.label_fun(solver.fun(solver.get_initial())),
@@ -378,6 +382,7 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
         print(title)
         print(value)
     assert initial.is_equal(expected)
+
 
 EPS_64 = np.finfo(np.float64).eps
 MAX_64 = np.finfo(np.float64).max
