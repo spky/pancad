@@ -16,19 +16,18 @@ from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Literal, Type
 
-    import numpy.typing as npt
-
     from pancad.abstract import PancadThing
+    from pancad.utils.pancad_types import Numpy1D
 
 
 ################################################################################
 # Helpers
 ################################################################################
 
-def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
-                       ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+def get_3_plane_points(point: Numpy1D, normal: Numpy1D) -> tuple[Numpy1D, Numpy1D, Numpy1D]:
     """Returns three non-collinear points on the same plane as a point. The first returned point
     will be the closest point on the origin, the 2nd is arbitrarily offset from the first, and the
     3rd is placed away from the first point at the cross product of the vector from the first
@@ -37,11 +36,10 @@ def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
     :raises ValueError: When provided a zero vector for the normal vector or when either the
         normal or point vector is 2D.
     """
-    points = []
     # Point closest to origin first.
     with np.errstate(divide="raise", invalid="raise"):
         try:
-            points.append(normal * np.dot(point, normal) / sum(normal**2))
+            closest_point = normal * np.dot(point, normal) / sum(normal**2)
         except FloatingPointError as exc:
             msg = f"Expected nonzero normal, got point: {point} and normal: {normal}"
             raise ValueError(msg) from exc
@@ -49,7 +47,7 @@ def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
             if any(len(v) != 3 for v in (point, normal)):
                 exc.add_note(f"Expected 3D vectors, got: {point} and {normal}")
             raise
-    vec = np.ones(3)
+    vec = np.ones(3) # Offset vector
     normal_zero_indices = []
     with np.errstate(divide="raise", invalid="raise"):
         for i in range(3):
@@ -61,11 +59,9 @@ def get_3_plane_points(point: npt.NDArray, normal: npt.NDArray
                 if len(normal_zero_indices) > 2:
                     raise ValueError("Normal vector cannot be zero vector") from exc
     vec = vec / np.linalg.norm(vec)
-    points.extend([points[0] + vec, points[0] + np.cross(normal, vec)])
-    return points
+    return closest_point, closest_point + vec, closest_point + np.cross(normal, vec)
 
-def get_plane_to_point_distance(plane_point: npt.NDArray, normal: npt.NDArray,
-                                point: npt.NDArray) -> np.float64:
+def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Numpy1D) -> float:
     """Returns the distance from the plane to the point.
 
     :param plane_point: A point position vector on the plane.
@@ -84,9 +80,11 @@ def get_plane_to_point_distance(plane_point: npt.NDArray, normal: npt.NDArray,
     # plane's normal vector.
     distance_vector = unit_normal * np.dot(unit_normal, point - plane_point)
     # Make the norm positive if it's in the direction of the normal using dot product sign.
-    return np.copysign(np.linalg.norm(distance_vector), np.dot(distance_vector, unit_normal))
+    return float(
+        np.copysign(np.linalg.norm(distance_vector), np.dot(distance_vector, unit_normal))
+    )
 
-def get_unique_vector(vector: npt.NDArray) -> npt.NDArray:
+def get_unique_vector(vector: Numpy1D) -> Numpy1D:
     """Checks the vector against unique direction rules and inverts it if any are violated.
 
     Example of the algorithm using 3D vectors:
@@ -110,23 +108,23 @@ def get_unique_vector(vector: npt.NDArray) -> npt.NDArray:
 # Residuals
 ################################################################################
 
-_param_order_map = {}
+_param_order_map: dict[CEN, tuple[Type[PancadThing], ...]] = {}
 """Mapping for ordering parameters by their geometry type for cases where the order matters.
-Any residual function where ordering does matter are omitted from the mapping.
+Any residual function where ordering does not matter are omitted from the mapping.
 """
 
-def unit_vector(vector: npt.NDArray) -> np.float64:
+def unit_vector(vector: Numpy1D) -> float:
     """Calculates how far a vector is from being a unit vector."""
-    return np.linalg.norm(vector) - 1
+    return float(np.linalg.norm(vector) - 1)
 
-def non_zero_vector(vector: npt.NDArray, zero_atol: np.float64=np.float64(1e-15)) -> np.float64:
+def non_zero_vector(vector: Numpy1D, zero_atol: float=1e-15) -> np.float64:
     """Produces a residual to constrain a vector to being non-zero."""
     if np.isclose(np.linalg.norm(vector), 0, atol=zero_atol):
         return np.float64(1)
     return np.float64(0)
 
-def _direction(v1: npt.NDArray, v2: npt.NDArray,
-               comp: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL]) -> npt.NDArray:
+def _direction(v1: Numpy1D, v2: Numpy1D,
+               comp: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL]) -> Numpy1D:
     """Calculates how close a second vector is to pointing in the same direction (codirectional),
     opposite directions (antiparallel), or in the generically parallel direction as the first
     vector.
@@ -137,8 +135,8 @@ def _direction(v1: npt.NDArray, v2: npt.NDArray,
     :raises TypeError: When provided an unexpected comp(arison) value.
     """
     norm1, norm2 = map(np.linalg.norm, (v1, v2))
-    dot = np.dot(v1, v2)
-    comp_signs = {SC.CODIRECTIONAL: 1, SC.ANTIPARALLEL: -1, SC.PARALLEL: np.copysign(1, dot)}
+    dot = float(np.dot(v1, v2))
+    comp_signs = {SC.CODIRECTIONAL: 1, SC.ANTIPARALLEL: -1, SC.PARALLEL: int(np.copysign(1, dot))}
     try:
         # Get the sign for the respective comparison difference equation.
         sign = comp_signs[comp]
@@ -159,7 +157,7 @@ def _direction(v1: npt.NDArray, v2: npt.NDArray,
     # the solver to switch them.
     return v1 - sign * v2
 
-codirectional = partial(_direction, comp=SC.CODIRECTIONAL)
+codirectional: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.CODIRECTIONAL)
 codirectional.__doc__ = """
     Calculates how close two vectors are to pointing in the same direction.
 
@@ -167,7 +165,7 @@ codirectional.__doc__ = """
     :param v2: Another n-dimensional vector.
 """.strip()
 
-antiparallel = partial(_direction, comp=SC.ANTIPARALLEL)
+antiparallel: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.ANTIPARALLEL)
 antiparallel.__doc__ = """
     Calculates how close two vectors are to pointing in opposite directions.
 
@@ -175,7 +173,7 @@ antiparallel.__doc__ = """
     :param v2: Another n-dimensional vector.
 """.strip()
 
-parallel = partial(_direction, comp=SC.PARALLEL)
+parallel: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.PARALLEL)
 parallel.__doc__ = """
     Calculates how close two vectors are to pointing in the same or opposite directions.
 
@@ -183,14 +181,13 @@ parallel.__doc__ = """
     :param v2: Another n-dimensional vector.
 """.strip()
 
-def equal_vector(v1: npt.NDArray, v2: npt.NDArray) -> npt.NDArray:
+def equal_vector(v1: Numpy1D, v2: Numpy1D) -> Numpy1D:
     """Calculates how close a each component of a second vector is to being equal to the first
     vector's components.
     """
     return v1 - v2
 
-def perpendicular(vector_1: npt.NDArray[np.float64],
-                  vector_2: npt.NDArray[np.float64]) -> np.float64:
+def perpendicular(vector_1: Numpy1D, vector_2: Numpy1D) -> float:
     """Calculates how close the second vector is to being on the plane created by the first vector
     and the origin for the 3D case and just the dot product for the 2D case. Performing a dot
     product on the vectors squares the values.
@@ -203,10 +200,10 @@ def perpendicular(vector_1: npt.NDArray[np.float64],
     :raises ValueError: When provided a zero vector or differing length vectors.
     """
     if any(len(v) == 2 for v in (vector_1, vector_2)):
-        norm_1, norm_2 = map(np.linalg.norm, (vector_1, vector_2))
+        norm_1, norm_2 = map(lambda x: float(np.linalg.norm(x)), (vector_1, vector_2))
         try:
             with np.errstate(divide="raise", invalid="raise"):
-                return np.dot(vector_1, vector_2) / (norm_1 * norm_2)
+                return float(np.dot(vector_1, vector_2) / (norm_1 * norm_2))
         except FloatingPointError as exc:
             msg = f"Cannot normalize, one of the vectors a zero vector: {vector_1}, {vector_2}"
             raise ValueError(msg) from exc
@@ -224,8 +221,8 @@ def perpendicular(vector_1: npt.NDArray[np.float64],
     return point_plane_coincident(np.array([0,0,0], dtype=np.float64), vector_1, unit_vector_2)
 
 
-def point_line_distance(line_pt: npt.NDArray, direction: npt.NDArray,
-                        pt: npt.NDArray, distance: np.float64) -> np.float64:
+def point_line_distance(line_pt: Numpy1D, direction: Numpy1D,
+                        pt: Numpy1D, distance: float) -> float:
     """Calculates how close a point is to being a specified closest distance from a line.
 
     :param line_pt: A point on the line.
@@ -235,9 +232,11 @@ def point_line_distance(line_pt: npt.NDArray, direction: npt.NDArray,
     """
     unit_d = direction / np.linalg.norm(direction)
     line_pt_sub_pt = line_pt - pt
-    return np.linalg.norm(line_pt_sub_pt - np.dot(line_pt_sub_pt, unit_d) * unit_d) - distance
+    actual_distance = np.linalg.norm(line_pt_sub_pt - np.dot(line_pt_sub_pt, unit_d) * unit_d)
+    return float(actual_distance) - distance
 
-point_line_coincident = partial(point_line_distance, distance=np.float64(0))
+point_line_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D],
+                                float] = partial(point_line_distance, distance=0)
 point_line_coincident.__doc__ = """
     Calculates how close a point is to being on a line.
 
@@ -249,8 +248,8 @@ point_line_coincident.__doc__ = """
 _param_order_map[CEN.POINT_LINE_DISTANCE] = (Axis, Line, Point)
 _param_order_map[CEN.POINT_LINE_COINCIDENT] = _param_order_map[CEN.POINT_LINE_DISTANCE]
 
-def point_plane_distance(plane_point: npt.NDArray, normal: npt.NDArray,
-                         point: npt.NDArray, distance: np.float64) -> np.float64:
+def point_plane_distance(plane_point: Numpy1D, normal: Numpy1D,
+                         point: Numpy1D, distance: float) -> float:
     """Calculates how close a point is to being a specified closest distance from a plane.
 
     :param plane_point: A point on the plane.
@@ -261,7 +260,8 @@ def point_plane_distance(plane_point: npt.NDArray, normal: npt.NDArray,
     """
     return get_plane_to_point_distance(plane_point, normal, point) - distance
 
-point_plane_coincident = partial(point_plane_distance, distance=np.float64(0))
+point_plane_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D],
+                                 float] = partial(point_plane_distance, distance=0)
 point_plane_coincident.__doc__ = """
     Calculates how close a point is to being on a plane.
 
@@ -273,9 +273,9 @@ point_plane_coincident.__doc__ = """
 _param_order_map[CEN.POINT_PLANE_DISTANCE] = (Plane, Point)
 _param_order_map[CEN.POINT_PLANE_COINCIDENT] = _param_order_map[CEN.POINT_PLANE_DISTANCE]
 
-def plane_line_distance(plane_point: npt.NDArray, normal: npt.NDArray,
-                        line_point: npt.NDArray, direction: npt.NDArray,
-                        distance: np.float64) -> np.float64:
+def plane_line_distance(plane_point: Numpy1D, normal: Numpy1D,
+                        line_point: Numpy1D, direction: Numpy1D,
+                        distance: float) -> float:
     """Calculates how close a line is to being a specified distance from a plane. Also works on
     axes.
 
@@ -289,9 +289,10 @@ def plane_line_distance(plane_point: npt.NDArray, normal: npt.NDArray,
     distance_residuals = np.empty(2)
     for i, point in enumerate((line_point, line_point + direction / np.linalg.norm(direction))):
         distance_residuals[i] = point_plane_distance(plane_point, normal, point, distance)
-    return distance_residuals[np.argmax(abs(distance_residuals))]
+    return float(distance_residuals[np.argmax(abs(distance_residuals))])
 
-plane_line_coincident = partial(plane_line_distance, distance=np.float64(0))
+plane_line_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D, Numpy1D],
+                                float] = partial(plane_line_distance, distance=np.float64(0))
 plane_line_coincident.__doc__ = """
     Calculates how close a line or axis is to being on a plane.
 
@@ -303,9 +304,9 @@ plane_line_coincident.__doc__ = """
 _param_order_map[CEN.PLANE_LINE_DISTANCE] = (Plane, Axis, Line)
 _param_order_map[CEN.PLANE_LINE_COINCIDENT] = _param_order_map[CEN.PLANE_LINE_DISTANCE]
 
-def plane_plane_distance(point_1: npt.NDArray, normal_1: npt.NDArray,
-                         point_2: npt.NDArray, normal_2: npt.NDArray,
-                         distance: np.float64) -> np.float64:
+def plane_plane_distance(point_1: Numpy1D, normal_1: Numpy1D,
+                         point_2: Numpy1D, normal_2: Numpy1D,
+                         distance: float) -> float:
     """Calculates how close two planes are to being a specified distance from each other.
 
     :param point_1: A point on the first Plane.
@@ -331,9 +332,10 @@ def plane_plane_distance(point_1: npt.NDArray, normal_1: npt.NDArray,
             # The normal vectors are perpendicular, so the effective distance is infinity.
             return np.inf
         distance_residuals[i] = point_plane_distance(point_1, normal_1, projected_point, distance)
-    return distance_residuals[np.argmax(abs(distance_residuals))]
+    return float(distance_residuals[np.argmax(abs(distance_residuals))])
 
-plane_plane_coincident = partial(plane_plane_distance, distance=np.float64(0))
+plane_plane_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D, Numpy1D],
+                                 float] = partial(plane_plane_distance, distance=0)
 plane_plane_coincident.__doc__ = """
     Calculates how close two planes are to being coincident with each other.
 
@@ -343,14 +345,13 @@ plane_plane_coincident.__doc__ = """
     :param n2: The normal vector of the second Plane.
 """.strip()
 
-def line_line_coincident(p1: npt.NDArray, d1: npt.NDArray,
-                         p2: npt.NDArray, d2: npt.NDArray) -> npt.NDArray:
+def line_line_coincident(p1: Numpy1D, d1: Numpy1D, p2: Numpy1D, d2: Numpy1D) -> Numpy1D:
     """Calculates how close two lines are to being coincident with each other."""
     offset_p = p2 + d2 / np.linalg.norm(d2)
     return np.array([point_line_coincident(p1, d1, point) for point in (p2, offset_p)])
 
 
-def line_ref_point(ref_pt: npt.NDArray, direction: npt.NDArray) -> np.float64:
+def line_ref_point(ref_pt: Numpy1D, direction: Numpy1D) -> float:
     """Calculates how close a Line or Axis' reference point is to being the closest to origin
     point. This is the same as the vectors being perpendicular except when the reference point is
     a zero vector.
@@ -359,9 +360,9 @@ def line_ref_point(ref_pt: npt.NDArray, direction: npt.NDArray) -> np.float64:
         return perpendicular(ref_pt, direction)
     except ValueError:
         # Should only execute when the point is a zero vector.
-        return np.linalg.norm(ref_pt)
+        return float(np.linalg.norm(ref_pt))
 
-def unique_vector(vector: npt.NDArray, zero_atol: np.float64=np.float64(1e-16)) -> npt.NDArray:
+def unique_vector(vector: Numpy1D, zero_atol: float=1e-16) -> Numpy1D:
     """Calculates how far a vector is into the non-unique set of vectors. All pancad
     non-unique vectors are opposites of a unique vector.
 
@@ -375,7 +376,7 @@ def unique_vector(vector: npt.NDArray, zero_atol: np.float64=np.float64(1e-16)) 
     :param zero_atol: The absolute tolerance to use when checking whether components are 0.
     :returns: A numpy array of the residuals for z (if 3D), y, and x.
     """
-    residuals = []
+    residuals: list[float] = []
     if len(vector) == 3:
         x, y, z = vector
         # If z is the negative zero_atol, this function should treat z as 0 and move to 2D case.
@@ -400,8 +401,7 @@ def unique_vector(vector: npt.NDArray, zero_atol: np.float64=np.float64(1e-16)) 
         residuals.extend([y - abs(y), 0])
     return np.array(residuals)
 
-def get_param_sort_key(type_: Type[PancadThing],
-                   equation_name: CEN) -> float:
+def get_param_sort_key(type_: Type[PancadThing], equation_name: CEN) -> float:
     """Returns the parameter sorting key of the type for the named equation.
 
     :param type_: The parameter's source type.
