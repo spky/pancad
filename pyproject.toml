@@ -35,6 +35,10 @@ python = "3.11"
 extra-dependencies = [
     "pylint",
     "pytest",
+    "matplotlib",
+    "ipywidgets",
+    "plotly",
+    "pandas",
 ]
 
 [tool.hatch.envs.dev]
@@ -56,6 +60,9 @@ check = [
 extra-dependencies = [
   "mypy>=1.0.0",
   "pytest",
+  "matplotlib",
+  "ipywidgets",
+  "plotly",
 ]
 [tool.hatch.envs.types.scripts]
 # Script to type check a given file
@@ -69,6 +76,7 @@ strictdefaultnoany = "mypy --install-types --non-interactive --strict --disallow
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
     "pandas",
+    "pytest-regressions",
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]
@@ -122,4 +130,5 @@ files = [
     "src/pancad/utils/solver_residuals.py",
     "tests/test_trigonometry.py",
     "tests/test_geometry/test_point.py",
+    "tests/utils/plotting.py",
 ]

@@ -1,6 +1,7 @@
 """Utilities for plotting pancad tests."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 import csv
 import tempfile
 import getpass
@@ -8,17 +9,20 @@ from pathlib import Path
 from functools import reduce
 from typing import TYPE_CHECKING, Literal, get_args
 
-import ipywidgets as widgets
+import ipywidgets as widgets # type: ignore
 from IPython.display import display as ip_display
 from traitlets import TraitError
 import matplotlib.pyplot as plt
-import plotly.express as px
+import plotly.express as px # type: ignore
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ipywidgets.widgets.widget import Widget
+    from collections.abc import Callable
+    from typing import Optional
 
-    ChangeDict = dict[str, str | Widget | None]
+    from ipywidgets.widgets.widget import Widget # type: ignore
+
+    ChangeDict = dict[str, str | list[str] | Widget | None]
 
 PlotEngine = Literal["matplotlib", "plotly"]
 
@@ -30,14 +34,14 @@ class TestPlotter:
     :param engine: The plotting package name to use to generate plots.
     """
 
-    def __init__(self, root: Path=None, engine: PlotEngine="plotly"):
+    def __init__(self, root: Optional[Path]=None, engine: PlotEngine="plotly"):
         if engine not in get_args(PlotEngine):
             raise TypeError(f"Expected one of {get_args(PlotEngine)} for engine. Got: {engine}")
         if root is None:
             root = Path(tempfile.gettempdir()) / f"pytest-of-{getpass.getuser()}"
         self._engine = engine
-        self._root = root
-        selects = [
+        self._root: Path = root
+        selects: list[tuple[str, Widget, str, Callable[[ChangeDict], None], dict[str, str]]] = [
             ("run", widgets.RadioButtons, "Run Folder", self._on_run_change, {}),
             ("test", widgets.Dropdown, "Test Folder", self._on_test_change, {}),
             ("file", widgets.RadioButtons, "CSV File",
@@ -57,7 +61,7 @@ class TestPlotter:
             layout = widgets.Layout(**layout_opts)
             self._widgets[key] = widget_func(description=desc, layout=layout)
             self._widgets[key].observe(on_change_func, names="value")
-        
+
         self._widgets.update({key: widgets.Output() for key in ("plot", "err")})
         self._widgets["run"].options = [d.stem for d in self._root.iterdir() if d.is_dir()]
         try:
@@ -67,33 +71,53 @@ class TestPlotter:
 
     def display(self) -> None:
         """Displays data in TestPlotter's default order."""
-        ip_display(*list(self._widgets.values()))
+        ip_display(*list(self._widgets.values())) # type: ignore
 
     def get_widgets(self) -> dict[str, Widget]:
         """Returns all widgets inside this TestPlotter."""
         return self._widgets
 
-    def get_df(self, series: list[str]=None) -> pd.DataFrame:
+    def get_df(self, series: Optional[list[str]]=None) -> pd.DataFrame:
         """Reads the current data file into a pandas dataframe."""
-        parts = [self._root,
-                 *[Path(self._widgets[n].value).name for n in ("run", "test", "file")]]
-        path = reduce(lambda a, b: a / b, parts)
+        path = self._get_test_filepath()
         df = pd.read_csv(path)
-        if series is not None:
+        if series:
             return df.drop(df.columns.difference(series), axis=1)
         return df
+
+    def _get_test_filepath(self) -> Path:
+        parts: list[Path | str] = [self._root]
+        for name in ("run", "test", "file"):
+            path_part = self._widgets[name].value
+            parts.append(Path(path_part).name)
+        return Path(reduce(lambda a, b: Path(a) / b, parts))
+
+    def _check_series_titles(self, change: ChangeDict, key: str) -> list[str]:
+        new_series = change[key]
+        if not isinstance(new_series, Sequence):
+            raise TypeError(f"Expected sequence of strings, got: {new_series}")
+        selected_series: list[str] = []
+        for title in new_series:
+            if isinstance(title, str):
+                selected_series.append(title)
+            else:
+                raise TypeError("Expected string for series titles")
+        return selected_series
 
     def _on_run_change(self, change: ChangeDict) -> None:
         """Updates the test folder selection when the run selection is changed."""
         test = self._widgets["test"]
-        if change["new"] is None:
+        new_filename = change["new"]
+        if not new_filename:
             test.options = []
+        elif not isinstance(new_filename, str):
+            raise TypeError(f"Expected string for run filename, got: {new_filename}")
         else:
-            path = self._root / change["new"]
+            path = self._root / new_filename
             test.options = [d.stem for d in path.iterdir() if d.is_dir()]
         test.value = None
 
-    def _update_fig(self, _: ChangeDict=None) -> None:
+    def _update_fig(self, _: Optional[ChangeDict]=None) -> None:
         """Updates the plot to be a log or non-log plot."""
         if self._widgets["logplot"].value:
             self._fig.update_yaxes(type="log")
@@ -118,13 +142,16 @@ class TestPlotter:
     def _on_file_change(self, change: ChangeDict) -> None:
         """Updates the data series selection when the file selection is changed."""
         series = self._widgets["series"]
-        if change["new"] is None:
+        new_filename = change["new"]
+        if new_filename is None:
             series.options = []
+        elif not isinstance(new_filename, str):
+            raise TypeError(f"Expected string change value, got: {new_filename}")
         else:
             run = self._widgets["run"].value
             test = self._widgets["test"].value
-            path = self._root / run / test / Path(change["new"]).name
-            with open(path, newline="") as file:
+            path = self._root / run / test / Path(new_filename).name
+            with open(path, newline="", encoding="utf-8") as file:
                 reader = csv.DictReader(file)
                 series.options = list(next(reader))
         series.value = []
@@ -138,7 +165,8 @@ class TestPlotter:
     def _on_series_change_plotly(self, change: ChangeDict) -> None:
         """Updates the output plot to a plotly plot when the data series selection is changed."""
         with self._widgets["err"]:
-            df = self.get_df(change["new"])
+            selected_series = self._check_series_titles(change, "new")
+            df = self.get_df(selected_series)
             self._fig = px.line(df, width=2400, height=800)
             self._fig.update_yaxes(exponentformat="E")
             self._update_fig()
@@ -147,23 +175,22 @@ class TestPlotter:
         """Updates the output plot to a matplotlib plot when the data series selection is changed.
         """
         with self._widgets["err"]:
-            parts = [self._root,
-                     *[Path(self._widgets[n].value).name for n in ("run", "test", "file")]]
-            path = reduce(lambda a, b: a / b, parts)
+            path = self._get_test_filepath()
             fig, ax = plt.subplots(num=1, clear=True)
-            for name, vals in self._get_data(path, change["new"]).items():
+            selected_series = self._check_series_titles(change, "new")
+            for _, vals in self._get_data(path, selected_series).items():
                 ax.plot(list(range(len(vals))), vals)
         self._widgets["plot"].clear_output()
         with self._widgets["plot"]:
             plt.show(fig)
 
     @staticmethod
-    def _get_data(path: Path, series: list[str]) -> dict[str, float]:
+    def _get_data(path: Path, series: list[str]) -> dict[str, list[float]]:
         """Returns the data inside the selected csv file output."""
-        with open(path, newline="") as file:
+        with open(path, newline="", encoding="utf-8") as file:
             reader = csv.DictReader(file, quoting=csv.QUOTE_NONNUMERIC)
-            data = {}
+            data: dict[str, list[float]] = {}
             for row in reader:
                 for key, value in row.items():
-                    data.setdefault(key, []).append(value)
+                    data.setdefault(key, []).append(float(value))
         return {k: v for k, v in data.items() if k in series}
