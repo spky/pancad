@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import csv
 from pprint import pp
 
 import numpy as np
 import pytest
+import pandas as pd
 
 from pancad.api import (Axis, Line, Point, Plane, ThreeDSketchSystem,
                         make_constraint, SketchConstraint as SC)
@@ -337,7 +337,7 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
     expected system.
     """
     solver = solvers.SystemSolver(initial)
-    run_data: list[list[str] | list[float]] = []
+    run_data: list[list[float]] = []
     titles: list[str] = []
     for var in solver.get_variables():
         prefix = f"variable_{var.element}_{var.name.value}"
@@ -345,7 +345,6 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
     for eq in solver.get_equations():
         prefix = f"residual_{eq.element}_{eq.name.value}"
         titles.extend([f"{prefix}_{i}" for i in range(len(eq.calc()))])
-    run_data.append(titles)
 
     def fun_log(f: Callable[[Numpy1D], Numpy1D]) -> Callable[[Numpy1D], Numpy1D]:
         def wrap(x: Numpy1D) -> Numpy1D:
@@ -357,9 +356,9 @@ def test_solve_system(initial: AbstractGeometrySystem, expected: AbstractGeometr
     try:
         solution = solver.solve(fun_wrap=fun_log)
     finally:
+        df = pd.DataFrame(run_data, columns=titles)
         with open(tmp_path / "convergence_data.csv", "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerows(run_data)
+            df.to_csv(file, index=False)
 
     debugs = {
         "Initial Input Vector": solver.label_x(solver.get_initial()),
