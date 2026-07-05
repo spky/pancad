@@ -51,6 +51,12 @@ extra-dependencies = [
   "pandas",
 ]
 
+[tool.hatch.envs.dev.scripts]
+lab = [
+    "jupyter-lab"
+]
+
+
 [tool.hatch.envs.lint.scripts]
 check = [
     "pylint {args:.}",
