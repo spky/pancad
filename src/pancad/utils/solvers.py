@@ -35,20 +35,17 @@ from pancad.utils import solver_residuals as pcres
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from numbers import Real
     from typing import Literal, Type, Optional
     from uuid import UUID
 
-    import numpy.typing as npt
-
     from pancad.abstract import AbstractGeometrySystem, AbstractConstraint, PancadThing
-    from pancad.utils.pancad_types import SpaceVector
+    from pancad.utils.pancad_types import SpaceVector, Numpy1D
 
     GeoCombo = frozenset[Type[AbstractGeometry]]
     VariableMap = dict[Type[AbstractGeometry], list[CVN]]
 
 def get_length(segment: LineSegment,
-               along: Literal["x", "y", "z"]=None) -> float:
+               along: Optional[Literal["x", "y", "z"]]=None) -> float:
     """Returns the length of the line segment, defined as the distance between
     the start and end points.
 
@@ -75,9 +72,9 @@ def get_length(segment: LineSegment,
         raise TypeError(msg) from exc
 
 def set_length(segment: LineSegment,
-               value: Real,
+               value: float,
                from_: Literal["start", "end"],
-               along: Literal["x", "y", "z"]=None) -> LineSegment:
+               along: Optional[Literal["x", "y", "z"]]=None) -> LineSegment:
     """Sets the length of the line segment.
 
     .. note:: Cases similar to setting the y direction of a line segment
@@ -155,7 +152,7 @@ def _line_segment(geometry: LineSegment) -> FitBox2D:
                   max(geometry.start.y, geometry.end.y))
     return FitBox2D(min_coords, max_coords)
 
-def _norm_with_zero(vector: npt.NDArray | SpaceVector) -> npt.NDArray:
+def _norm_with_zero(vector: Numpy1D | SpaceVector) -> Numpy1D:
     """Normalizes a vector if its magnitude is not zero or returns it as is if it is zero."""
     if np.isclose(norm := np.linalg.norm(vector), 0):
         return np.array(vector)
@@ -179,7 +176,7 @@ class ConstraintVariable:
     def __init__(self,
                  element: AbstractGeometry | AbstractConstraint,
                  name: CVN,
-                 initial: npt.NDArray,
+                 initial: Numpy1D,
                  solver: SystemSolver):
         self.element = element
         self.name = name
@@ -194,7 +191,7 @@ class ConstraintVariable:
         return self.element.uid
 
     @property
-    def value(self) -> npt.NDArray:
+    def value(self) -> Numpy1D:
         """The variable's current value.
 
         :raises ValueError: When a new value's length does not match the current value length.
@@ -203,7 +200,7 @@ class ConstraintVariable:
         return self._value
 
     @value.setter
-    def value(self, new_value: npt.NDArray):
+    def value(self, new_value: Numpy1D):
         if self.fixed:
             raise RuntimeError("Cannot update variable value, variable is fixed")
         if len(new_value) != len(self):
@@ -234,7 +231,7 @@ class ConstraintEquation:
         """The unique id of the source element."""
         return self.element.uid
 
-    def calc(self) -> npt.NDArray:
+    def calc(self) -> Numpy1D:
         """Calculates the equation's residual based on the current parameter values."""
         param_values = []
         for p in self.params:
@@ -276,7 +273,7 @@ class SystemSolver:
             self._add_constraint(c)
 
     @property
-    def x(self) -> npt.NDArray:
+    def x(self) -> Numpy1D:
         """The current non-fixed system variable values.
 
         :raises ValueError: When a new x vector is not the same length as the old one.
@@ -289,7 +286,7 @@ class SystemSolver:
         return np.array(x)
 
     @x.setter
-    def x(self, new_x: npt.NDArray):
+    def x(self, new_x: Numpy1D):
         if len(new_x) != len(self.x):
             raise ValueError(f"Expected {len(self.x)} long vector, got: {new_x}")
         start = 0
@@ -300,7 +297,7 @@ class SystemSolver:
             var.value = new_x[start:end]
             start = end
 
-    def fun(self, x: npt.NDArray) -> npt.NDArray:
+    def fun(self, x: Numpy1D) -> Numpy1D:
         """Returns the residuals of the system for a given non-fixed vector value and updates
         the current x vector.
         """
@@ -314,9 +311,9 @@ class SystemSolver:
         return result
 
     def solve(self, method: str="lm",
-              fun_wrap: Callable[[Callable[[npt.NDArray], npt.NDArray]],
-                                 Callable[[npt.NDArray], npt.NDArray]]=None,
-              **kwargs) -> npt.NDArray:
+              fun_wrap: Optional[Callable[[Callable[[Numpy1D], Numpy1D]],
+                                          Callable[[Numpy1D], Numpy1D]]]=None,
+              **kwargs) -> Numpy1D:
         """Returns the roots of the system's functions as a 1D numpy array.
 
         :param method: The type of solver that should be used. Defaults to
@@ -338,7 +335,7 @@ class SystemSolver:
         solution = find_root(func, x0, method=method, **kwargs)
         return solution
 
-    def get_initial(self, include_fixed: bool=False) -> npt.NDArray:
+    def get_initial(self, include_fixed: bool=False) -> Numpy1D:
         """Returns the initial input vector to feed to the non-linear solver.
 
         :param include_fixed: Whether to include the values of the fixed system variables.
@@ -385,7 +382,7 @@ class SystemSolver:
         """Returns the system's equations."""
         return self._equations
 
-    def update(self, new_x: npt.NDArray) -> None:
+    def update(self, new_x: Numpy1D) -> None:
         """Updates all the elements in the system to a new vector value."""
         updaters = {
             CVN.DIRECTION: _update_direction,
@@ -400,7 +397,7 @@ class SystemSolver:
             new_value = new_x[start:end]
             updaters[v.name](v.element, new_value)
 
-    def label_x(self, x: npt.NDArray) -> str:
+    def label_x(self, x: Numpy1D) -> str:
         """Returns a string table with each vector variable value labeled and indexed.
 
         :raises ValueError: When the x vector is not the same length as the current x.
@@ -435,7 +432,7 @@ class SystemSolver:
             start = i + 1
         return get_table_string(data, column_map)
 
-    def label_fun(self, results: npt.NDArray) -> str:
+    def label_fun(self, results: Numpy1D) -> str:
         """Returns a string table with each vector variable value labeled and
         indexed assuming the vector is in the same order as the equation function
         output.
@@ -723,7 +720,7 @@ class SystemSolver:
             self._variables.append(var)
 
     @staticmethod
-    def _var_data(var: ConstraintVariable) -> dict[str, str | SpaceVector | Real]:
+    def _var_data(var: ConstraintVariable) -> dict[str, str | SpaceVector | float]:
         """Returns a dict of variable data from a ConstraintVariable for reporting."""
         if isinstance(var.initial, tuple):
             end = var.start + len(var.initial)
@@ -763,18 +760,18 @@ class SystemSolver:
         return "\n".join(strings)
 
 
-def _update_location(geometry: Point, value: npt.NDArray) -> None:
+def _update_location(geometry: Point, value: Numpy1D) -> None:
     """Updates a Point's location."""
     geometry.cartesian = value
 
-def _update_direction(geometry: Axis | Line,  value: npt.NDArray) -> None:
+def _update_direction(geometry: Axis | Line,  value: Numpy1D) -> None:
     """Updates a Line or Axis direction."""
     geometry.direction = value
 
-def _update_normal(geometry: Plane, value: npt.NDArray) -> None:
+def _update_normal(geometry: Plane, value: Numpy1D) -> None:
     """Updates a Plane's normal vector."""
     geometry.normal = value
 
-def _update_ref_point(geometry: Axis | Line | Plane, value: npt.NDArray) -> None:
+def _update_ref_point(geometry: Axis | Line | Plane, value: Numpy1D) -> None:
     """Updates a Line or Axis reference point closest to the origin."""
     geometry.move_to_point(value)
