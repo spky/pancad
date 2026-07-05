@@ -8,7 +8,7 @@ import dataclasses
 from typing import TYPE_CHECKING
 import textwrap
 from itertools import repeat
-from functools import singledispatch, singledispatchmethod, partial
+from functools import cached_property, singledispatch, singledispatchmethod, partial
 
 import numpy as np
 from scipy.optimize import root as find_root
@@ -180,7 +180,7 @@ class ConstraintVariable:
                  solver: SystemSolver):
         self.element = element
         self.name = name
-        self.initial = initial
+        self.initial = np.copy(initial)
         self.fixed = False
         self._solver = solver
         self.value = np.copy(initial) # Initialize value
@@ -189,6 +189,10 @@ class ConstraintVariable:
     def source(self) -> str | UUID:
         """The unique id of the source element."""
         return self.element.uid
+
+    @property
+    def key(self) -> tuple[str | UUID, CVN]:
+        return self.element.uid, self.name
 
     @property
     def value(self) -> Numpy1D:
@@ -207,6 +211,16 @@ class ConstraintVariable:
             raise ValueError(f"Expected {len(self)} long vector, got: {new_value}")
         self._value = new_value
 
+    def new(self, value: Numpy1D) -> ConstraintVariable:
+        """Creates a new ConstraintVariable with a new value but all other properties constant.
+
+        :raises ValueError: When a new value's length does not match the current value length.
+        :raises RuntimeError: When attempting to create a new fixed variable.
+        """
+        new = ConstraintVariable(self.element, self.name, self.initial, self._solver)
+        new.value = np.copy(value)
+        return new
+
     def __len__(self) -> int:
         return len(self.initial)
 
@@ -217,7 +231,7 @@ class ConstraintEquation:
 
     :param element: The geometry or constraint requiring the equation.
     :param name: The constraint equation name enumeration value.
-    :param params: A list of constraint variables to reference during calculations.
+    :param params: A list of the initial constraint variables to reference during calculations.
     :param constants: A mapping of variable names to constant values used in each calculation.
         Ex: A Distance constraint may have its value set in here.
     """
@@ -226,20 +240,32 @@ class ConstraintEquation:
     params: list[ConstraintVariable] = dataclasses.field(repr=False)
     constants: dict[str, np.float64] = dataclasses.field(default_factory=dict)
 
+    @cached_property
+    def keys(self) -> list[tuple[str | UUID, CVN]]:
+        """The keys of the equations parameters in the order they must be input into its function.
+        """
+        return [p.key for p in self.params]
+
     @property
     def source(self) -> str | UUID:
         """The unique id of the source element."""
         return self.element.uid
 
-    def calc(self) -> Numpy1D:
-        """Calculates the equation's residual based on the current parameter values."""
-        param_values = []
-        for p in self.params:
-            if len(p) == 1:
-                param_values.append(p.value[0])
+    def get_initial(self) -> Numpy1D:
+        """Returns the initial value of the equation at the start of the solving."""
+        return self.calc(self.params)
+
+    def calc(self, params: list[ConstraintVariable]) -> Numpy1D:
+        """Calculates the equation's residual based on the provided parameters."""
+        values = []
+        for initial, current in zip(self.params, params, strict=True):
+            if initial.key != current.key:
+                raise ValueError("Provided parameter sources do not match initial parameters'")
+            if len(current.value) == 1:
+                values.append(current.value[0])
             else:
-                param_values.append(p.value)
-        result = pcres.RESIDUAL_FUNCS[self.name](*param_values, **self.constants)
+                values.append(current.value)
+        result = pcres.RESIDUAL_FUNCS[self.name](*values, **self.constants)
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
@@ -263,7 +289,6 @@ class SystemSolver:
         self._system = system
         self._equations = []
         self._variables = []
-        self.run_data = []
         for c in self._system.constraints:
             for geo in c.get_parents():
                 # Make sure the geometry variables/constraints have been added
@@ -272,43 +297,22 @@ class SystemSolver:
                     self._add_geometry_funcs(geo)
             self._add_constraint(c)
 
-    @property
-    def x(self) -> Numpy1D:
-        """The current non-fixed system variable values.
-
-        :raises ValueError: When a new x vector is not the same length as the old one.
-        """
-        x = []
-        for var in self._variables:
-            if var.fixed:
-                continue
-            x.extend(var.value)
-        return np.array(x)
-
-    @x.setter
-    def x(self, new_x: Numpy1D):
-        if len(new_x) != len(self.x):
-            raise ValueError(f"Expected {len(self.x)} long vector, got: {new_x}")
-        start = 0
-        for var in self._variables:
-            if var.fixed:
-                continue
-            end = start + len(var)
-            var.value = new_x[start:end]
-            start = end
-
     def fun(self, x: Numpy1D) -> Numpy1D:
         """Returns the residuals of the system for a given non-fixed vector value and updates
         the current x vector.
         """
-        self.x = x
+        variables = {v.key: v for v in self.read_variables(x)}
+        variables.update({v.key: v for v in self._variables if v.fixed})
+        calculated = []
+        for equation in self._equations:
+            params = [variables[key] for key in equation.keys]
+            calculated.append(equation.calc(params))
         try:
-            result = np.concatenate([f.calc() for f in self._equations])
+            return np.concatenate(calculated)
         except ValueError:
-            if self.x.size == 0:
-                return np.array([])
+            if not {v.key: v for v in self.read_variables(x)}:
+                return np.array([], dtype=np.float64)
             raise
-        return result
 
     def solve(self, method: str="lm",
               fun_wrap: Optional[Callable[[Callable[[Numpy1D], Numpy1D]],
@@ -346,6 +350,27 @@ class SystemSolver:
                 continue
             x0.extend(var.initial)
         return np.array(x0)
+
+    def read_variables(self, x: Numpy1D) -> list[ConstraintVariable]:
+        """Returns a list of variables from a solver input vector.
+
+        :raises ValueError: When the provided vector is not the same length as the initial vector.
+        """
+        variables = []
+        start = 0
+        for var in self._variables:
+            if var.fixed:
+                continue
+            end = start + len(var)
+            try:
+                value = x[start:end]
+            except IndexError as exc:
+                raise ValueError("Provided x is shorter than the initial x vector")
+            variables.append(var.new(x[start:end]))
+            start = end
+        if len(x) > start:
+            raise ValueError("Provided x is longer than the initial x vector")
+        return variables
 
     def get_var_slice(self, var: ConstraintVariable) -> tuple[int, int]:
         """Returns the start and end indicies of a variable in the x input vector."""
@@ -402,7 +427,7 @@ class SystemSolver:
 
         :raises ValueError: When the x vector is not the same length as the current x.
         """
-        if len(x) != len(self.x):
+        if len(x) != len(self.get_initial()):
             raise ValueError(f"Expected {len(self.x)} long vector, got: {x}")
         column_map = {
             "#": "#",
