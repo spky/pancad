@@ -1,8 +1,9 @@
 """A file containing unit tests for the pancad.utils.trigonometry module."""
 from __future__ import annotations
 
-from math import radians, cos, sin, tau as TAU
+from math import radians, cos, sin, tau as TAU, sqrt
 from typing import TYPE_CHECKING
+from decimal import Decimal
 
 import numpy as np
 import pytest
@@ -165,3 +166,36 @@ class TestRotationMatrices:
         matrix = trig.multi_rotation("xyz", 0, 0, angle)
         expected = trig.rotation_z(angle)
         np.testing.assert_array_equal(matrix, expected)
+
+class TestDecimalPrecision:
+    """Tests for functions intended to provide extended precision compared to 64 bit floats."""
+
+    @pytest.mark.parametrize(
+        "v1, v2, expected",
+        [
+            [(1, 1, 1), (1, 1, 1), 3.0],
+        ]
+    )
+    def test_decimal_dot_float(self, v1: SpaceVector, v2: SpaceVector, expected: float) -> None:
+        """Test decimal_dot's ability to return expected dot product float values."""
+        assert trig.decimal_dot(v1, v2) == expected
+
+    @pytest.mark.parametrize(
+        "v1, v2, expected",
+        [
+            [(1, 1, 1), (1, 1, 1), "3.0"],
+        ]
+    )
+    def test_decimal_dot_decimal(self, v1: SpaceVector, v2: SpaceVector, expected: str) -> None:
+        """Test decimal_dot's ability to return expected dot product decimal values."""
+        assert trig.decimal_dot(v1, v2) == Decimal(expected)
+
+    @pytest.mark.parametrize(
+        "vector, expected",
+        [
+            [(1, 1, 1), sqrt(3.0)],
+        ]
+    )
+    def test_decimal_norm_float(self, vector: SpaceVector, expected: float) -> None:
+        """Test decimal_norm's ability to return expected 2-norm float values."""
+        assert trig.decimal_norm(vector) == expected
