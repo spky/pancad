@@ -192,6 +192,7 @@ class ConstraintVariable:
 
     @property
     def key(self) -> tuple[str | UUID, CVN]:
+        """The unique identifying tuple of the source uid and variable name for this variable."""
         return self.element.uid, self.name
 
     @property
@@ -365,8 +366,8 @@ class SystemSolver:
             try:
                 value = x[start:end]
             except IndexError as exc:
-                raise ValueError("Provided x is shorter than the initial x vector")
-            variables.append(var.new(x[start:end]))
+                raise ValueError("Provided x is shorter than the initial x vector") from exc
+            variables.append(var.new(value))
             start = end
         if len(x) > start:
             raise ValueError("Provided x is longer than the initial x vector")
@@ -428,7 +429,7 @@ class SystemSolver:
         :raises ValueError: When the x vector is not the same length as the current x.
         """
         if len(x) != len(self.get_initial()):
-            raise ValueError(f"Expected {len(self.x)} long vector, got: {x}")
+            raise ValueError(f"Expected {len(self.get_initial())} long vector, got: {x}")
         column_map = {
             "#": "#",
             "Value": "value",
