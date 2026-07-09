@@ -3,8 +3,8 @@ between formats.
 """
 from __future__ import annotations
 
-from decimal import localcontext
-from functools import partial
+import decimal
+from functools import partial, singledispatch
 import math
 from math import degrees
 from typing import TYPE_CHECKING, overload
@@ -55,17 +55,18 @@ def check_vector_shape(shape: tuple[int] | tuple[int, int]) -> tuple[int] | tupl
     return shape
 
 @overload
-def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
+def decimal_dot(vector_1: Iterable[float | np.int_], vector_2: Iterable[float | np.int_],
                 as_float: Literal[True], precision: int) -> float: ...
 @overload
-def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float]) -> float: ...
+def decimal_dot(vector_1: Iterable[float | np.int_], vector_2: Iterable[float | np.int_]
+                ) -> float: ...
 @overload
-def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
+def decimal_dot(vector_1: Iterable[float | np.int_], vector_2: Iterable[float | np.int_],
                 as_float: Literal[False], precision: int) -> Decimal: ...
 @overload
-def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
+def decimal_dot(vector_1: Iterable[float | np.int_], vector_2: Iterable[float | np.int_],
                 as_float: bool) -> Decimal | float: ...
-def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
+def decimal_dot(vector_1: Iterable[float | np.int_], vector_2: Iterable[float | np.int_],
                 as_float: bool=True, precision: int=16) -> Decimal | float:
     """A non-numpy implementation of the dot product using Python's decimal library for extended
     precision.
@@ -78,10 +79,10 @@ def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
     :raises ValueError: When the vector lengths do not match.
     """
     products = []
-    with localcontext(prec=precision) as context:
+    with decimal.localcontext(prec=precision):
         try:
             for comp_1, comp_2 in zip(vector_1, vector_2, strict=True):
-                decimal_1, decimal_2 = map(context.create_decimal_from_float, (comp_1, comp_2))
+                decimal_1, decimal_2 = map(to_decimal, (comp_1, comp_2))
                 products.append(decimal_1 * decimal_2)
         except ValueError as exc:
             if "zip()" in str(exc):
@@ -90,18 +91,18 @@ def decimal_dot(vector_1: Iterable[float], vector_2: Iterable[float],
         return float(sum(products)) if as_float else sum(products)
 
 @overload
-def decimal_norm(vector: Iterable[float],
+def decimal_norm(vector: Iterable[float | np.int_],
                  as_float: Literal[True], precision: int) -> float: ...
 @overload
-def decimal_norm(vector: Iterable[float]) -> float: ...
+def decimal_norm(vector: Iterable[float | np.int_]) -> float: ...
 @overload
-def decimal_norm(vector: Iterable[float],
+def decimal_norm(vector: Iterable[float | np.int_],
                  as_float: Literal[False], precision: int) -> Decimal: ...
 @overload
-def decimal_norm(vector: Iterable[float], as_float: Literal[False]) -> Decimal: ...
+def decimal_norm(vector: Iterable[float | np.int_], as_float: Literal[False]) -> Decimal: ...
 @overload
-def decimal_norm(vector: Iterable[float], as_float: bool) -> Decimal | float: ...
-def decimal_norm(vector: Iterable[float],
+def decimal_norm(vector: Iterable[float | np.int_], as_float: bool) -> Decimal | float: ...
+def decimal_norm(vector: Iterable[float | np.int_],
                  as_float: bool=True, precision: int=16) -> Decimal | float:
     """A non-numpy implementation of the 2-norm using Python's decimal library for extended
     precision.
@@ -113,6 +114,25 @@ def decimal_norm(vector: Iterable[float],
     """
     norm_as_decimal = decimal_dot(vector, vector, as_float=False, precision=precision).sqrt()
     return float(norm_as_decimal) if as_float else norm_as_decimal
+
+@singledispatch
+def to_decimal(number: float | str | np.int_) -> Decimal:
+    """Returns a number as a decimal. Relies on the calling context for the precision setting."""
+    raise TypeError(f"Unsupported decimal conversion type: {type(number)}")
+
+@to_decimal.register(float)
+def _from_float(number: float) -> Decimal:
+    return decimal.getcontext().create_decimal_from_float(number)
+
+@to_decimal.register(str)
+def _from_str(number: str) -> Decimal:
+    return decimal.Decimal(number)
+
+@to_decimal.register(np.int_)
+def _from_numpy_int(number: np.int_) -> Decimal:
+    # Numpy ints are not a type of float and cannot be placed into decimal directly.
+    # Numpy floats are fine though and can be passed directly.
+    return decimal.getcontext().create_decimal_from_float(number.item())
 
 @overload
 def get_unit_vector(vector: SpaceVector) -> Numpy1D: ...
