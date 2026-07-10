@@ -1,0 +1,10 @@
+,"variable_<Plane(0,0,0)(1,0,0)>_normal_0","variable_<Plane(0,0,0)(1,0,0)>_normal_1","variable_<Plane(0,0,0)(1,0,0)>_normal_2","variable_<Plane(0,0,0)(1,0,0)>_ref_point_0","variable_<Plane(0,0,0)(1,0,0)>_ref_point_1","variable_<Plane(0,0,0)(1,0,0)>_ref_point_2","residual_<Plane(0,0,0)(1,0,0)>_non_zero_0","residual_<Distance-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE[10None]>_plane_plane_distance_0","residual_<Distance-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE[10None]>_parallel_0","residual_<Distance-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE[10None]>_parallel_1","residual_<Distance-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE[10None]>_parallel_2","residual_<Codirectional-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE>_codirectional_0","residual_<Codirectional-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE>_codirectional_1","residual_<Codirectional-Plane(0,0,0)(0,0,1)CORE,Plane(0,0,0)(1,0,0)CORE>_codirectional_2"
+0,1,0,0,0,0,0,0,inf,-1,0,1,-1,0,1
+1,1,0,0,0,0,0,0,inf,-1,0,1,-1,0,1
+2,1,0,0,0,0,0,0,inf,-1,0,1,-1,0,1
+3,1.0000000149011612,0,0,0,0,0,0,inf,-1.0000000149011612,0,1,-1.0000000149011612,0,1
+4,1,1.4901161193847656e-08,0,0,0,0,0,inf,-1,-1.4901161193847656e-08,1,-1,-1.4901161193847656e-08,1
+5,1,0,1.4901161193847656e-08,0,0,0,0,-47453142.812125772,-1,0,0.99999998509883881,-1,0,0.99999998509883881
+6,1,0,0,1.4901161193847656e-08,0,0,0,inf,-1,0,1,-1,0,1
+7,1,0,0,0,1.4901161193847656e-08,0,0,inf,-1,0,1,-1,0,1
+8,1,0,0,0,0,1.4901161193847656e-08,0,inf,-1,0,1,-1,0,1

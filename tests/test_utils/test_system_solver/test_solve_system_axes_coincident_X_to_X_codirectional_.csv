@@ -1,0 +1,10 @@
+,"variable_<Axis(0,0,0)(1,0,0)>_ref_point_0","variable_<Axis(0,0,0)(1,0,0)>_ref_point_1","variable_<Axis(0,0,0)(1,0,0)>_ref_point_2","variable_<Axis(0,0,0)(1,0,0)>_direction_0","variable_<Axis(0,0,0)(1,0,0)>_direction_1","variable_<Axis(0,0,0)(1,0,0)>_direction_2","residual_<Axis(0,0,0)(1,0,0)>_non_zero_0","residual_<Coincident-Axis(0,0,0)(1,0,0)CORE,Axis(0,0,0)(1,0,0)CORE>_line_line_coincident_0","residual_<Coincident-Axis(0,0,0)(1,0,0)CORE,Axis(0,0,0)(1,0,0)CORE>_line_line_coincident_1","residual_<Codirectional-Axis(0,0,0)(1,0,0)CORE,Axis(0,0,0)(1,0,0)CORE>_codirectional_0","residual_<Codirectional-Axis(0,0,0)(1,0,0)CORE,Axis(0,0,0)(1,0,0)CORE>_codirectional_1","residual_<Codirectional-Axis(0,0,0)(1,0,0)CORE,Axis(0,0,0)(1,0,0)CORE>_codirectional_2"
+0,0,0,0,1,0,0,0,0,0,0,0,0
+1,0,0,0,1,0,0,0,0,0,0,0,0
+2,0,0,0,1,0,0,0,0,0,0,0,0
+3,1.4901161193847656e-08,0,0,1,0,0,0,0,0,0,0,0
+4,0,1.4901161193847656e-08,0,1,0,0,0,1.4901161193847656e-08,1.4901161193847656e-08,0,0,0
+5,0,0,1.4901161193847656e-08,1,0,0,0,1.4901161193847656e-08,1.4901161193847656e-08,0,0,0
+6,0,0,0,1.0000000149011612,0,0,0,0,0,0,0,0
+7,0,0,0,1,1.4901161193847656e-08,0,0,0,1.4901161193847656e-08,0,1.4901161193847656e-08,0
+8,0,0,0,1,0,1.4901161193847656e-08,0,0,1.4901161193847656e-08,0,0,1.4901161193847656e-08
