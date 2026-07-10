@@ -136,7 +136,7 @@ files = [
     "src/pancad/utils/pancad_types.py",
     "src/pancad/utils/solver_residuals.py",
     "src/pancad/_testing",
-    "tests/test_trigonometry.py",
+    "tests/utils/test_trigonometry.py",
     "tests/geometry/test_point.py",
     "tests/testing_utils/plotting.py",
 ]

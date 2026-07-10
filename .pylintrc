@@ -31,15 +31,6 @@ ignore-paths=^docs/.*$,
              ^tests/utils/.*$,
              ^tests/testing_utils/.ipynb_checkpoints/.*$,
              ^tests/conftest.py$,
-             ^tests/test_file_handlers.py$,
-             ^tests/test_pancad_init.py$,
-             ^tests/test_public_interface.py$,
-             ^tests/test_svg_element_utils.py$,
-             ^tests/test_svg_elements.py$,
-             ^tests/test_svg_file.py$,
-             ^tests/test_svg_generators.py$,
-             ^tests/test_svg_parsers.py$,
-             ^tests/test_svg_validators.py$,
 
 [DESIGN]
 
