@@ -120,7 +120,7 @@ def to_decimal(number: float | str | np.int_) -> Decimal:
     """Returns a number as a decimal. Relies on the calling context for the precision setting."""
     raise TypeError(f"Unsupported decimal conversion type: {type(number)}")
 
-@to_decimal.register(float)
+@to_decimal.register(float | int)
 def _from_float(number: float) -> Decimal:
     return decimal.getcontext().create_decimal_from_float(number)
 
