@@ -1,0 +1,9 @@
+,"variable_<Point(0,0)>_location_0","variable_<Point(0,0)>_location_1","residual_<Coincident-Point(0,0)CORE,Point(1,1)CORE>_equal_vector_0","residual_<Coincident-Point(0,0)CORE,Point(1,1)CORE>_equal_vector_1"
+0,0,0,-1,-1
+1,0,0,-1,-1
+2,0,0,-1,-1
+3,1.4901161193847656e-08,0,-0.99999998509883881,-1
+4,0,1.4901161193847656e-08,-1,-0.99999998509883881
+5,1,1,0,0
+6,1.0000000149011612,1,1.4901161193847656e-08,0
+7,1,1.0000000149011612,0,1.4901161193847656e-08

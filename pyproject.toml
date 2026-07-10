@@ -83,6 +83,7 @@ strictdefaultnoany = "mypy --install-types --non-interactive --strict --disallow
 extra-dependencies = [
     "pandas",
     "pytest-regressions",
+    "threadpoolctl",
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]
@@ -134,6 +135,7 @@ files = [
     "src/pancad/utils/trigonometry.py",
     "src/pancad/utils/pancad_types.py",
     "src/pancad/utils/solver_residuals.py",
+    "src/pancad/_testing",
     "tests/test_trigonometry.py",
     "tests/test_geometry/test_point.py",
     "tests/utils/plotting.py",
