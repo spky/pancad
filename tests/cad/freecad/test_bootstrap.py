@@ -7,6 +7,8 @@ from pathlib import Path
 from logging import getLogger
 from importlib.util import find_spec
 
+import pytest
+
 from pancad.utils.initialize import write_cache
 from pancad.cad.freecad._bootstrap import get_app_dir, find_app_dir
 
@@ -22,10 +24,15 @@ FREECAD_TOML = RESOURCES_PATH / "freecad.toml"
 
 logger = getLogger(__name__)
 
-class SampleUserConfigs(TestCase):
+@pytest.fixture(name="datadir_with_setup")
+def fixture_datadir_with_setup(shared_datadir: Path) -> Path:
+    CACHE_PATH.unlink(missing_ok=True)
+    yield shared_datadir
+    CONFIG_PATH.unlink(missing_ok=True)
+    CACHE_PATH.unlink(missing_ok=True)
+
+class TestSampleUserConfigs:
     """Tests using specialized user config sample files."""
-    def setUp(self):
-        CACHE_PATH.unlink(missing_ok=True)
     
     @staticmethod
     def copy_config_to_user(path: Path):
@@ -37,30 +44,26 @@ class SampleUserConfigs(TestCase):
         with open(sample_path, "rb") as sample:
             return tomllib.load(sample)["application_paths"]["freecad"]
     
-    def test_freecad_1_windows_bin(self):
-        path = SAMPLE_CONFIG / "freecad_1_windows_bin.toml"
+    def test_freecad_1_windows_bin(self, datadir_with_setup: Path):
+        path = datadir_with_setup / "freecad_1_windows_bin.toml"
         self.copy_config_to_user(path)
         expected = self.get_expected(path)
-        self.assertEqual(str(get_app_dir()), expected)
+        assert str(get_app_dir()) == expected
     
-    def test_freecad_bin_user_config_fake(self):
-        path = SAMPLE_CONFIG / "freecad_bin_user_config_fake.toml"
+    def test_freecad_bin_user_config_fake(self, datadir_with_setup: Path):
+        path = datadir_with_setup / "freecad_bin_user_config_fake.toml"
         self.copy_config_to_user(path)
         expected = self.get_expected(path)
-        self.assertEqual(str(find_app_dir()), expected)
+        assert str(find_app_dir()) == expected
     
-    def test_freecad_bin_user_config_fake_to_cache(self):
-        path = SAMPLE_CONFIG / "freecad_bin_user_config_fake.toml"
+    def test_freecad_bin_user_config_fake_to_cache(self, datadir_with_setup: Path):
+        path = datadir_with_setup / "freecad_bin_user_config_fake.toml"
         test_cache = {"application_paths": {"freecad": "FAKE_CACHE_PATH"}}
         write_cache(test_cache)
         expected = test_cache["application_paths"]["freecad"]
-        self.assertEqual(str(find_app_dir()), expected)
+        assert str(find_app_dir()) == expected
     
-    def tearDown(self):
-        CONFIG_PATH.unlink(missing_ok=True)
-        CACHE_PATH.unlink(missing_ok=True)
-
-class MissingUserConfigAndCache(TestCase):
+class TestMissingUserConfigAndCache(TestCase):
     """Tests for how pancad handles the user's config and cache missing while 
     trying to import FreeCAD.
     """
