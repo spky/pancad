@@ -4,8 +4,6 @@ import os
 
 from pathlib import Path
 
-sys.path.append('src')
-
 import pancad
 
 class TestSVGInterface(unittest.TestCase):
@@ -66,8 +64,3 @@ class TestSVGInterface(unittest.TestCase):
         """Read both a freecad sketch and svg file, compare them, and update the 
         oldest one to the newer one."""
         pass
-
-if __name__ == "__main__":
-    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
-        f.write("finished")
-    unittest.main()
