@@ -1,10 +1,9 @@
 import sys
 from pathlib import Path
-import unittest
 import xml.etree.ElementTree as ET
 import os
 
-sys.path.append('src')
+import pytest
 
 import pancad
 from pancad.graphics.svg import element_utils as seu
@@ -14,103 +13,92 @@ from pancad.graphics.svg import generators as sg
 
 from pancad.utils.file_handlers import InvalidAccessModeError
 
+@pytest.fixture(name="default_style")
+def fixture_default_style() -> sg.SVGStyle:
+    """A style with some default settings to be able to view the svg after writing."""
+    style = sg.SVGStyle()
+    settings = {"fill": "none", "stroke": "black", "stroke-width": "0.010467px",
+                "stroke-linecap": "butt", "stroke-linejoin": "miter"}
+    for key, value in settings.items():
+        style.set_property(key, value)
+    return style
 
-class TestSVGFileInternal(unittest.TestCase):
-    
-    def setUp(self):
-        self.SAMPLE_FOLDER = "tests/sample_svgs"
-        self.DUMP_FOLDER = "tests/test_output_dump"
-    
-    def test_init(self):
-        tests = [
-            [os.path.join(self.SAMPLE_FOLDER,"input_sketch_test.svg"), "r"],
-            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "w"],
-            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "x"],
-            [os.path.join(self.DUMP_FOLDER, "should_not_exist.svg"), "+"],
-            [None, "r"],
-        ]
-        for t in tests:
-            with self.subTest(t=t):
-                file = sf.SVGFile(t[0], t[1])
-    
+@pytest.fixture(name="svg_tag")
+def fixture_svg_tag() -> se.SvgTag:
+    """An empty svg tag with inch units."""
+    tag = se.SvgTag("svg1")
+    tag.unit = "in"
+    return tag
+
+class TestFileInit:
+    """Tests for initializing an SVGFile with a filepath."""
+
+    @pytest.mark.parametrize("mode", ["w", "x", "+"])
+    def test_non_read_init(self, mode: str, tmp_path: Path) -> None:
+        """Test initializing on a filepath that doesn't exist runs with no error."""
+        sf.SVGFile(tmp_path / "should_not_exist.svg", mode)
+
+    def test_read_init(self, shared_datadir: Path) -> None:
+        """Test that parsing on initialization of a read-mode SvgFile runs with no error."""
+        file = sf.SVGFile(shared_datadir / "input_sketch_test.svg", "r")
+        file.parse()
+
+    @pytest.mark.skip("Skipping until svg refactor, see #221")
+    def test_read_svg(self, shared_datadir: Path) -> None:
+        """Test the public svg file reading interface."""
+        file_instance = pancad.read_svg(shared_datadir / "input_sketch_test.svg")
+
+
+class TestInternals:
+    """Tests for SVGFile methods that don't need to read or write files."""
+
     def test_set_declaration(self):
+        """Test that the svg files xml declaration is set correctly."""
         file = sf.SVGFile()
         file.set_declaration()
         test = ET.tostring(file._declaration)
-        ans = b'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
-        self.assertEqual(test, ans)
-    
+        assert test == b'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+
     def test_setting_svg(self):
+        """Test that the file's svg element can be set."""
         file = sf.SVGFile()
         svg = se.SvgTag("svg1")
         file.svg = svg
-    
+
     def test_resetting_svg(self):
-        # Checks whether the default properties get removed from original
+        """Test that the default properties are removed from the original."""
         file = sf.SVGFile()
         svg1 = se.SvgTag("svg1")
         svg2 = se.SvgTag("svg2")
         file.svg = svg1
         file.svg = svg2
-        self.assertEqual(ET.tostring(svg1), b'<svg id="svg1" />')
-    
-    def test_parse(self):
-        filepath = os.path.join(self.SAMPLE_FOLDER, "input_sketch_test.svg")
-        file = sf.SVGFile(filepath, "r")
-        file.parse()
-    
+        assert ET.tostring(svg1) == b'<svg id="svg1" />'
+
     def test_validate_mode_InvalidAccessModeError(self):
+        """Test that an invalid access mode raises an InvalidAccessModeError."""
         file = sf.SVGFile()
-        with self.assertRaises(InvalidAccessModeError):
+        with pytest.raises(InvalidAccessModeError):
             file.mode = "bad"
-    
 
-class TestSVGFileWriting(unittest.TestCase):
-    
-    def setUp(self):
-        self.DUMP_FOLDER = "tests/test_output_dump"
-        self.default_style = sg.SVGStyle()
-        self.default_style.set_property("fill", "none")
-        self.default_style.set_property("stroke", "black")
-        self.default_style.set_property("stroke-width", "0.010467px")
-        self.default_style.set_property("stroke-linecap", "butt")
-        self.default_style.set_property("stroke-linejoin", "miter")
-        self.svg = se.SvgTag("svg1")
-        self.svg.unit = "in"
-    
-    def test_write(self):
-        filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write")
+
+class TestSVGFileWriting:
+    """Tests for writing svg files."""
+
+    def test_write(self, svg_tag: se.SvgTag, default_style: sg.SVGStyle, tmp_path: Path) -> None:
+        filepath = tmp_path / "test_svg_file_write"
         file = sf.SVGFile(filepath, "w")
-        self.svg.append(se.SvgGroup("g1"))
-        self.svg.sub("g1").set("style", self.default_style.string)
-        
-        self.svg.sub("g1").append(se.SvgPath("path1", "M 0 0 1 1"))
-        
-        file.svg = self.svg
-        file.write(indent="  ")
-    
-    def test_write_circle(self):
-        filepath = os.path.join(self.DUMP_FOLDER, "test_svg_file_write_circle")
-        file = sf.SVGFile(filepath, "w")
-        self.svg.append(se.SvgGroup("g1"))
-        self.svg.sub("g1").set("style", self.default_style.string)
-        
-        self.svg.sub("g1").append(se.SvgCircle("c1", 0.5, 0.5, 0.5))
-        
-        file.svg = self.svg
+        svg_tag.append(se.SvgGroup("g1"))
+        svg_tag.sub("g1").set("style", default_style.string)
+        svg_tag.sub("g1").append(se.SvgPath("path1", "M 0 0 1 1"))
+        file.svg = svg_tag
         file.write(indent="  ")
 
-class TestSVGPublicInterface(unittest.TestCase):
-    def setUp(self):
-        self.SAMPLE_FOLDER = "tests/sample_svgs"
-        self.DUMP_FOLDER = "tests/test_output_dump"
-    
-    @unittest.skip("Skipping to work on freecad refactor")
-    def test_read_svg(self):
-        filepath = os.path.join(self.SAMPLE_FOLDER,"input_sketch_test.svg")
-        file_instance = pancad.read_svg(filepath)
-
-if __name__ == "__main__":
-    with open("tests/logs/"+ Path(sys.modules[__name__].__file__).stem+".log", "w") as f:
-        f.write("finished")
-    unittest.main()
+    def test_write_circle(self, svg_tag: se.SvgTag, default_style: sg.SVGStyle,
+                          tmp_path: Path) -> None:
+        filepath = tmp_path / "test_svg_file_write_circle"
+        file = sf.SVGFile(filepath, "w")
+        svg_tag.append(se.SvgGroup("g1"))
+        svg_tag.sub("g1").set("style", default_style.string)
+        svg_tag.sub("g1").append(se.SvgCircle("c1", 0.5, 0.5, 0.5))
+        file.svg = svg_tag
+        file.write(indent="  ")
