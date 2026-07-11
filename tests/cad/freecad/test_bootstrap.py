@@ -19,7 +19,6 @@ USER_DIR = Path(os.path.expandvars(CONFIG["paths"]["user_dir"]))
 FILENAMES = CONFIG["filenames"]
 CONFIG_PATH = USER_DIR / FILENAMES["user_config"]
 CACHE_PATH = USER_DIR / FILENAMES["cache"]
-SAMPLE_CONFIG = Path(find_spec("tests.sample_config").origin).parent
 FREECAD_TOML = RESOURCES_PATH / "freecad.toml"
 
 logger = getLogger(__name__)
