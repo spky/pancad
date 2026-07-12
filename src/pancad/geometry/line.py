@@ -221,10 +221,16 @@ class Line(AbstractGeometry):
         :setter: Finds and sets the spherical vector's unique direction vector
             as the direction of the Line.
         """
-        return trig.cartesian_to_spherical(self.direction)
+        if len(self.direction) == 3:
+            return trig.cartesian_to_spherical(self.direction)
+        raise ValueError("Cannot return the spherical direction vector of a 2D line.")
+
     @direction_spherical.setter
-    def direction_spherical(self, vector: VectorLike) -> None:
-        self.direction = trig.spherical_to_cartesian(vector)
+    def direction_spherical(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_tuple(vector)
+        if len(parsed_vector) != 3:
+            raise ValueError("Expected a 3 long vector.")
+        self.direction = trig.spherical_to_cartesian(parsed_vector)
 
     @property
     def phi(self) -> float:
