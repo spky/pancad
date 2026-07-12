@@ -6,7 +6,6 @@
 # it can't be used as an escape character.
 ignore-paths=^docs/.*$,
              ^dist/.*$,
-             ^tests/sample_pancad_objects/.*$,
              ^tests/cad/.*$,
              ^tests/filetypes/.*$,
              ^tests/geometry/test_circle.py$,
@@ -30,6 +29,7 @@ ignore-paths=^docs/.*$,
              ^tests/svg/.*$,
              ^tests/utils/.*$,
              ^tests/testing_utils/.ipynb_checkpoints/.*$,
+             ^tests/testing_utils/sketch_gen.py$,
              ^tests/conftest.py$,
 
 [DESIGN]
