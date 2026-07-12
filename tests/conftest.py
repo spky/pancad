@@ -8,6 +8,7 @@ from pancad.constants import FeatureType as FT
 from pancad.geometry.extrude import Extrude, ExtrudeSettings
 
 from tests.sample_pancad_objects import sample_sketches
+from tests.testing_utils import sketch_gen
 from tests.sample_pancad_objects.sample_sketches import (
     unconstrained_square_sketch,
     joined_square_sketch,
@@ -15,6 +16,7 @@ from tests.sample_pancad_objects.sample_sketches import (
     square_sketch_variations,
     line_angled_to_x_axis_sketches,
 )
+
 
 @pytest.fixture
 def empty_part_file() -> PartFile:
@@ -25,7 +27,7 @@ def empty_part_file() -> PartFile:
 def square_sketch_part_file() -> PartFile:
     """A partfile with just a square sketch inside it"""
     part = PartFile("SquareSketchPartTest")
-    sketch = sample_sketches.square()
+    sketch = sketch_gen.square()
     constraints = [
         AlignAxes(part.container.feature_system.coordinate_system,
                   sketch.pose.coordinate_system),
@@ -38,7 +40,7 @@ def square_sketch_part_file() -> PartFile:
 def cube_part_file() -> PartFile:
     """A partfile with just a square sketch and extrude inside it"""
     part = PartFile("CubePartTest")
-    sketch = sample_sketches.square()
+    sketch = sketch_gen.square()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
     extrude = Extrude(sketch, extrude_settings, name="CubeExtrude")
     constraints = [
@@ -53,7 +55,7 @@ def cube_part_file() -> PartFile:
 @pytest.fixture
 def cylinder_part_file() -> PartFile:
     part = PartFile("CylinderPartTest")
-    sketch = sample_sketches.circle()
+    sketch = sketch_gen.circle()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
     extrude = Extrude(sketch, extrude_settings, name="CylinderExtrude")
     constraints = [
@@ -68,7 +70,7 @@ def cylinder_part_file() -> PartFile:
 @pytest.fixture
 def rounded_edge_cube_part_file() -> PartFile:
     part = PartFile("RoundedEdgeCubePartTest")
-    sketch = sample_sketches.rounded_square()
+    sketch = sketch_gen.rounded_square()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
     extrude = Extrude(sketch, extrude_settings, name="RoundedSquareExtrude")
     constraints = [
@@ -84,7 +86,7 @@ def rounded_edge_cube_part_file() -> PartFile:
 def ellipse_part_file() -> PartFile:
     """A partfile with just a a single ellipse sketch and extrusion."""
     part = PartFile("EllipseExtrudePartTest")
-    sketch = sample_sketches.ellipse()
+    sketch = sketch_gen.ellipse()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
     extrude = Extrude(sketch, extrude_settings, name="EllipseExtrude")
     constraints = [

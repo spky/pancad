@@ -4,7 +4,7 @@ from inspect import stack
 from pancad.filetypes.part_file import PartFile
 from pancad.geometry.extrude import Extrude
 
-from tests.sample_pancad_objects import sample_sketches
+from tests.testing_utils import sketch_gen
 
 class TestPartFileInitialization(unittest.TestCase):
     
@@ -53,7 +53,7 @@ class TestPartFile(unittest.TestCase):
 class TestAddGeometry(TestPartFile):
     def setUp(self):
         self.file = PartFile()
-        self.sketch = sample_sketches.square()
+        self.sketch = sketch_gen.square()
         self.height = 3
     
     def test_add_sketch(self):

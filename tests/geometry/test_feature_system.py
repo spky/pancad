@@ -10,15 +10,15 @@ from pancad.constraints.state_constraint import AlignAxes
 from pancad.geometry.feature_container import FeatureContainer
 from pancad.geometry.extrude import Extrude
 from pancad.geometry.system import FeatureSystem
-from tests.sample_pancad_objects import sample_sketches
+from tests.testing_utils import sketch_gen
 from pancad.exceptions import MissingCADDependencyError
 
 
 @pytest.fixture(
     params = [
-        sample_sketches.square,
-        sample_sketches.ellipse,
-        sample_sketches.rounded_square
+        sketch_gen.square,
+        sketch_gen.ellipse,
+        sketch_gen.rounded_square
     ]
 )
 def iso_sketch(request):

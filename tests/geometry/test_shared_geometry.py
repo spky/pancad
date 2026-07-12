@@ -19,7 +19,7 @@ from pancad.api import(
     FeatureSystem,
 )
 from pancad.geometry.coordinate_system import Pose
-from tests.sample_pancad_objects.sample_sketches import square, circle
+from tests.testing_utils.sketch_gen import square, circle
 
 def _square_extrude(length: float) -> Extrude:
     return Extrude.from_length(square(), length)

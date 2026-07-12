@@ -10,7 +10,7 @@ from pancad.constraints.distance import (
 )
 from pancad.constants import FeatureType as FT, ConstraintReference as CR
 
-from tests.sample_pancad_objects import sample_sketches
+from tests.testing_utils import sketch_gen
 
 
 # Testing Properties During Nominal Initialization
@@ -30,7 +30,7 @@ def square_extrude(request):
         "unit": unit,
         "name": name
     }
-    sketch = sample_sketches.square()
+    sketch = sketch_gen.square()
     settings = ExtrudeSettings(type_=type_,
                                length=length,
                                opposite_length=opposite,
@@ -69,7 +69,7 @@ def test_length_change(square_extrude):
 )
 def test_from_length_type_exception(type_):
     with pytest.raises(TypeError):
-        test = Extrude.from_length(sample_sketches.square(), 1, type_=type_)
+        test = Extrude.from_length(sketch_gen.square(), 1, type_=type_)
 
 def test_from_length_nominal():
-    extrude = Extrude.from_length(sample_sketches.square(), 1)
+    extrude = Extrude.from_length(sketch_gen.square(), 1)

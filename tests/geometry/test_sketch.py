@@ -3,13 +3,13 @@ from math import radians
 
 import pytest
 
-from tests.sample_pancad_objects import sample_sketches
+from tests.testing_utils import sketch_gen
 
 @pytest.fixture(
     params = [
-        sample_sketches.square,
-        sample_sketches.ellipse,
-        sample_sketches.rounded_square
+        sketch_gen.square,
+        sketch_gen.ellipse,
+        sketch_gen.rounded_square
     ]
 )
 def default_sketch(request):
