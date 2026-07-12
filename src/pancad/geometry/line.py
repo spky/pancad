@@ -185,8 +185,7 @@ class Line(AbstractGeometry):
     def direction(self, vector: VectorLike) -> None:
         vector = trig.to_1d_np(vector)
         if not np.any(vector):
-            msg = f"Direction vector cannot be zero vector: {vector}"
-            raise ValueError(msg)
+            raise ValueError("Direction vector cannot be zero vector")
         self._direction = self._unique_direction(vector)
         new_closest = self._closest_to_origin(self._point_closest_to_origin.cartesian,
                                               self.direction)
@@ -202,6 +201,7 @@ class Line(AbstractGeometry):
             the direction of the Line.
         """
         return trig.cartesian_to_polar(self.direction)
+
     @direction_polar.setter
     def direction_polar(self, vector: VectorLike) -> None:
         self.direction = trig.polar_to_cartesian(vector)
@@ -377,7 +377,7 @@ class Line(AbstractGeometry):
         """Returns the Point on the Line closest to the origin."""
         return Point(closest_to_origin(point, vector))
 
-    def _unique_direction(self, vector: np.ndarray) -> np.ndarray:
+    def _unique_direction(self, vector: Numpy1D) -> SpaceVector:
         """Returns a unit vector that can uniquely identify the direction of
         the given vector. Does so flipping the unit vector if necessary to
         ensure there can only ever be one vector for every direction.
