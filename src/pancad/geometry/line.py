@@ -19,7 +19,7 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import closest_to_origin
-from pancad.utils.pancad_types import VectorLike, Numpy1D
+from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import Self, Optional
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from numpy.typing import ArrayLike
 
     from pancad.utils.pancad_types import (
-        SpaceVector, Space3DVector, Space2DVector
+        SpaceVector, Space3DVector, Space2DVector, Numpy1D, Numpy2D, PolarVector, SphericalVector
     )
 
 class Line(AbstractGeometry):
@@ -182,17 +182,17 @@ class Line(AbstractGeometry):
         return self._direction
 
     @direction.setter
-    def direction(self, vector: VectorLike) -> None:
-        vector = trig.to_1d_np(vector)
-        if not np.any(vector):
+    def direction(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_np(vector)
+        if not np.any(parsed_vector):
             raise ValueError("Direction vector cannot be zero vector")
-        self._direction = self._unique_direction(vector)
+        self._direction = self._unique_direction(parsed_vector)
         new_closest = self._closest_to_origin(self._point_closest_to_origin.cartesian,
                                               self.direction)
         self._point_closest_to_origin.update(new_closest)
 
     @property
-    def direction_polar(self) -> Space2DVector:
+    def direction_polar(self) -> PolarVector:
         """The unique direction of the line with polar components.
 
         :getter: Returns the direction of the line as a (r, phi) tuple. Phi is
@@ -200,14 +200,19 @@ class Line(AbstractGeometry):
         :setter: Finds and sets the polar vector's unique direction vector as
             the direction of the Line.
         """
-        return trig.cartesian_to_polar(self.direction)
+        if len(self.direction) == 2:
+            return trig.cartesian_to_polar(self.direction)
+        raise ValueError("Cannot return the polar direction vector of a 3D line")
 
     @direction_polar.setter
-    def direction_polar(self, vector: VectorLike) -> None:
-        self.direction = trig.polar_to_cartesian(vector)
+    def direction_polar(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_tuple(vector)
+        if len(parsed_vector) != 2:
+            raise ValueError("Expected a 2 long vector.")
+        self.direction = trig.polar_to_cartesian(parsed_vector)
 
     @property
-    def direction_spherical(self) -> Space3DVector:
+    def direction_spherical(self) -> SphericalVector:
         """The unique direction of the line with spherical components.
 
         :getter: Returns the direction of the line as a (r, phi, theta) tuple.
