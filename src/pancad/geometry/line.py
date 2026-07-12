@@ -22,7 +22,7 @@ from pancad.utils.geometry import closest_to_origin
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
-    from typing import Self, Optional
+    from typing import Self, Optional, Type
 
     from numpy.typing import ArrayLike
 
@@ -55,7 +55,7 @@ class Line(AbstractGeometry):
             msg = ("point cannot be a tuple for Line's init function."
                    "Use Line.from_two_points or provide a Point instead")
             raise ValueError(msg)
-        self._point_closest_to_origin = Line._closest_to_origin(point,
+        self._point_closest_to_origin = Line._closest_to_origin(point.cartesian,
                                                                 self.direction)
         super().__init__({ConstraintReference.CORE: self})
 
@@ -274,7 +274,9 @@ class Line(AbstractGeometry):
         :getter: Returns the inclination angle of the line's direction
         :setter: Read-only.
         """
-        return trig.theta_of_cartesian(self.direction)
+        if len(self.direction) == 3:
+            return trig.theta_of_cartesian(self.direction)
+        raise ValueError("Cannot return the spherical theta of a 2D line")
 
     @property
     def x_intercept(self) -> float:
@@ -369,7 +371,7 @@ class Line(AbstractGeometry):
             elif phi is None and theta is not None:
                 direction_end_pt.theta = theta
             self.direction = tuple(direction_end_pt)
-        new_closest = self._closest_to_origin(point, self.direction)
+        new_closest = self._closest_to_origin(point.cartesian, self.direction)
         self._point_closest_to_origin.update(new_closest)
         return self
 
@@ -384,7 +386,7 @@ class Line(AbstractGeometry):
         return self
 
     @staticmethod
-    def _closest_to_origin(point: ArrayLike, vector: VectorLike) -> Point:
+    def _closest_to_origin(point: SpaceVector, vector: SpaceVector) -> Point:
         """Returns the Point on the Line closest to the origin."""
         return Point(closest_to_origin(point, vector))
 
@@ -422,7 +424,7 @@ class Line(AbstractGeometry):
         return trig.to_1d_tuple(unit_vector + 0)
 
     # Python Dunders #
-    def __conform__(self, protocol: PrepareProtocol) -> str:
+    def __conform__(self, protocol: Type[PrepareProtocol]) -> str:
         if protocol is PrepareProtocol:
             dimensions = [*self.reference_point, *self.direction]
             return ";".join(map(str, dimensions))
@@ -529,7 +531,7 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
-    def is_equal(self, other: AbstractGeometry) -> bool:
+    def is_equal(self, other: Axis) -> bool:
         """Returns whether the other geometry is geometrically equal. This is a
         separate check from whether a geometry element is equal to this
         geometry element since the uids would not be the same.
@@ -562,6 +564,7 @@ class Axis(AbstractGeometry):
         """
         self.direction = other.direction
         self._line.update(other.reference_line)
+        return self
 
     @singledispatchmethod
     def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
