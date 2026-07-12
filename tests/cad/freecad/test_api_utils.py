@@ -11,15 +11,13 @@ import pytest
 from pancad.cad.freecad import api_utils, xml_utils
 from pancad.cad.freecad.api import freecad, freecad_part
 
-SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
-
 # Testing Reading Content
 
 @pytest.fixture(name="freecad_doc",
                 params=["cube_1x1x1.FCStd", "one_of_each_sketch_geometry.FCStd"])
-def fixture_freecad_doc(request):
+def fixture_freecad_doc(request, shared_datadir: Path):
     """Generic 1x1x1 cube file for easy testing."""
-    return freecad.open(str(SAMPLE_FREECAD / request.param))
+    return freecad.open(str(shared_datadir / request.param))
 
 @pytest.fixture(name="sketches")
 def fixture_sketches(freecad_doc):

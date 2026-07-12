@@ -10,17 +10,15 @@ from pancad.cad.freecad._feature_translation import (
 )
 from pancad.cad.freecad.read_xml import FCStd
 
-SAMPLE_FREECAD = Path(find_spec("tests.sample_freecad").origin).parent
-
 @pytest.fixture(params=[
     "cube_1x1x1.FCStd",
     "one_of_each_sketch_geometry.FCStd",
     "cube_1x1x1_PointOnObject.FCStd",
     ]
 )
-def freecad_doc(request):
+def freecad_doc(request, shared_datadir: Path):
     """Generic 1x1x1 cube file for easy testing."""
-    yield str(SAMPLE_FREECAD / request.param)
+    yield str(shared_datadir / request.param)
 
 @pytest.mark.parametrize(
     "part_file_fixture, expected",
