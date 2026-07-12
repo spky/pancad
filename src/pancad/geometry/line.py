@@ -19,7 +19,7 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import closest_to_origin
-from pancad.utils.pancad_types import VectorLike
+from pancad.utils.pancad_types import VectorLike, Numpy1D
 
 if TYPE_CHECKING:
     from typing import Self, Optional
@@ -105,11 +105,11 @@ class Line(AbstractGeometry):
             points = (Point(0, intercept), Point(1, intercept))
         else:
             points = (Point(0, intercept), Point(1, slope + intercept))
-        return Line.from_two_points(*points, uid)
+        return cls.from_two_points(*points, uid)
 
     @classmethod
     def from_point_and_angle(cls,
-                             point: Point | VectorLike,
+                             point: Point | Sequence[float] | Numpy1D,
                              phi: float,
                              theta: Optional[float]=None,
                              uid: Optional[str]=None) -> Self:
@@ -124,19 +124,17 @@ class Line(AbstractGeometry):
         :returns: A Line that runs through the point in a direction defined by
             the provided angles.
         """
-        if isinstance(point, (Sequence, np.ndarray)):
-            point = Point(point)
         if not isinstance(point, Point):
-            raise TypeError(f"Expected Point/VectorLike for point, got {point}")
-        if len(point) == 3 and theta is None:
-            raise ValueError("Expected theta for a 3D point.")
-        if len(point) == 2 and theta is not None:
-            raise ValueError("Expected None for theta for a 2D point.")
+            point = Point(point)
         if len(point) == 2:
+            if theta is not None:
+                raise ValueError("Expected None for theta for a 2D point.")
             direction_end_pt = Point(1, 0)
             direction_end_pt.phi = phi
         else:
             direction_end_pt = Point(1, 0, 0)
+            if theta is None:
+                raise ValueError("Expected theta for a 3D point.")
             direction_end_pt.spherical = (1, phi, theta)
         return cls(point, tuple(direction_end_pt), uid)
 
