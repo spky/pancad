@@ -22,8 +22,7 @@ from pancad.utils.geometry import closest_to_origin
 from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
-    from numbers import Real
-    from typing import Self
+    from typing import Self, Optional
 
     from numpy.typing import ArrayLike
 
@@ -48,7 +47,7 @@ class Line(AbstractGeometry):
     """Any Line direction vector component smaller than this number will be set to 0."""
 
     def __init__(self, point: Point, direction: VectorLike,
-                 uid: str=None) -> None:
+                 uid: Optional[str]=None) -> None:
         self.uid = uid
         self._point_closest_to_origin = Point([0] * len(point)) # Initialize closest point
         self.direction = direction
@@ -65,7 +64,7 @@ class Line(AbstractGeometry):
     def from_two_points(cls,
                         a: Point | VectorLike,
                         b: Point | VectorLike,
-                        uid: str=None) -> Self:
+                        uid: Optional[str]=None) -> Self:
         """Returns a Line instance defined by points a and b. 2D points will
         produce 2D lines, 3D produce 3D lines, and 2D and 3D points cannot
         be mixed.
@@ -92,9 +91,9 @@ class Line(AbstractGeometry):
 
     @classmethod
     def from_slope_and_y_intercept(cls,
-                                   slope: Real,
-                                   intercept: Real,
-                                   uid: str=None) -> Self:
+                                   slope: float,
+                                   intercept: float,
+                                   uid: Optional[str]=None) -> Self:
         """Returns a 2D line described by y = mx + b.
 
         :param slope: The slope (m) of the line.
@@ -111,9 +110,9 @@ class Line(AbstractGeometry):
     @classmethod
     def from_point_and_angle(cls,
                              point: Point | VectorLike,
-                             phi: Real,
-                             theta: Real=None,
-                             uid: str=None) -> Self:
+                             phi: float,
+                             theta: Optional[float]=None,
+                             uid: Optional[str]=None) -> Self:
         """Return a line from a given point and phi or phi and theta. The Line
         will be 2D if point is 2D. The Line will be 3D if point is 3D, phi
         is provided, and theta is provided.
@@ -142,7 +141,7 @@ class Line(AbstractGeometry):
         return cls(point, tuple(direction_end_pt), uid)
 
     @classmethod
-    def from_x_intercept(cls, x_intercept: Real, uid: str=None) -> Self:
+    def from_x_intercept(cls, x_intercept: float, uid: Optional[str]=None) -> Self:
         """Returns a 2D vertical line that passes through the x intercept.
 
         :param x_intercept: The value of x where the line crosses the x-axis.
@@ -152,7 +151,7 @@ class Line(AbstractGeometry):
         return cls(Point(x_intercept, 0), (0, 1), uid)
 
     @classmethod
-    def from_y_intercept(cls, y_intercept: Real, uid: str=None) -> Self:
+    def from_y_intercept(cls, y_intercept: float, uid: Optional[str]=None) -> Self:
         """Returns a 2D horizontal line that passes through the y intercept.
 
         :param y_intercept: The value of y where the line crosses the y-axis.
@@ -225,7 +224,7 @@ class Line(AbstractGeometry):
         self.direction = trig.spherical_to_cartesian(vector)
 
     @property
-    def phi(self) -> Real:
+    def phi(self) -> float:
         """The polar/spherical azimuth component of the line's direction in
         radians.
 
@@ -244,7 +243,7 @@ class Line(AbstractGeometry):
         return self._point_closest_to_origin.copy()
 
     @property
-    def slope(self) -> Real:
+    def slope(self) -> float:
         """The slope of the line (m in y = mx + b), only available if the line
         is 2D.
 
@@ -259,7 +258,7 @@ class Line(AbstractGeometry):
         raise ValueError("slope is not defined for a 3D line")
 
     @property
-    def theta(self) -> Real:
+    def theta(self) -> float:
         """The spherical inclination component of the line's direction in
         radians.
 
@@ -269,7 +268,7 @@ class Line(AbstractGeometry):
         return trig.theta_of_cartesian(self.direction)
 
     @property
-    def x_intercept(self) -> Real:
+    def x_intercept(self) -> float:
         """The x-intercept of the 2D line (x when y = 0 in y = mx + b), raises
         a ValueError if the line is 3D.
 
@@ -287,7 +286,7 @@ class Line(AbstractGeometry):
         raise ValueError("x-intercept is not defined for a 3D line")
 
     @property
-    def y_intercept(self) -> Real:
+    def y_intercept(self) -> float:
         """The y-intercept of the line (b in y = mx + b), only available if
         the line is 2D.
 
@@ -313,7 +312,7 @@ class Line(AbstractGeometry):
         return (self.reference_point.is_equal(other.reference_point)
                 and np.allclose(self.direction, other.direction))
 
-    def get_parametric_point(self, t: Real) -> Point:
+    def get_parametric_point(self, t: float) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by
         the unique unit vector direction of the line and initialized at the
         point closest to the origin.
@@ -324,7 +323,7 @@ class Line(AbstractGeometry):
         return Point(np.array(self.reference_point)
                      + trig.to_1d_np(self.direction)*t)
 
-    def get_parametric_constants(self) -> tuple[Real]:
+    def get_parametric_constants(self) -> tuple[float]:
         """Returns a tuple containing parameters for the line. The reference
         point is used for the initial position and the line's direction vector
         is used for a, b, and c.
@@ -335,8 +334,8 @@ class Line(AbstractGeometry):
 
     def move_to_point(self,
                       point: Point | SpaceVector,
-                      phi: Real=None,
-                      theta: Real=None) -> Self:
+                      phi: Optional[float]=None,
+                      theta: Optional[float]=None) -> Self:
         """Moves the line to go through a point and changes the line's
         direction's around that point.
 
@@ -459,7 +458,7 @@ class Axis(AbstractGeometry):
     """
 
     def __init__(self, point: Point | SpaceVector, direction: SpaceVector,
-                 uid:str=None) -> None:
+                 uid: Optional[str]=None) -> None:
         self.uid = uid
         if not isinstance(point, Point):
             point = Point(point)
@@ -531,7 +530,7 @@ class Axis(AbstractGeometry):
 
     def move_to_point(self,
                       point: Point | SpaceVector,
-                      direction: SpaceVector=None) -> Self:
+                      direction: Optional[SpaceVector]=None) -> Self:
         """Moves the axis to go through the point. Leaves direction constant
         unless provided.
 
