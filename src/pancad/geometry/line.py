@@ -336,7 +336,7 @@ class Line(AbstractGeometry):
         return (*self.reference_point.cartesian, *self.direction)
 
     def move_to_point(self,
-                      point: Point | float | Sequence[float] | Numpy1D,
+                      point: Point | Sequence[float] | Numpy1D,
                       phi: Optional[float]=None,
                       theta: Optional[float]=None) -> Self:
         """Moves the line to go through a point and changes the line's
@@ -529,8 +529,8 @@ class Axis(AbstractGeometry):
                 and self.reference_point.is_equal(other.reference_point))
 
     def move_to_point(self,
-                      point: Point | SpaceVector,
-                      direction: Optional[SpaceVector]=None) -> Self:
+                      point: Point | Sequence[float] | Numpy1D,
+                      direction: Optional[Sequence[float] | Numpy1D | Numpy2D]=None) -> Self:
         """Moves the axis to go through the point. Leaves direction constant
         unless provided.
 
@@ -556,7 +556,7 @@ class Axis(AbstractGeometry):
         return self
 
     @singledispatchmethod
-    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -580,7 +580,7 @@ class Axis(AbstractGeometry):
         return self
 
     @rotate.register(np.ndarray)
-    def _with_matrix(self, rotation: np.ndarray) -> Self:
+    def _with_matrix(self, rotation: Numpy2D) -> Self:
         try:
             new = rotation @ self.direction
         except ValueError as exc:
