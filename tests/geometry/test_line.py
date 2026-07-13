@@ -8,7 +8,7 @@ import unittest
 from typing import TYPE_CHECKING
 
 import numpy as np
-import quaternion # pylint: disable=unused-import
+import quaternion # type: ignore # pylint: disable=unused-import
 import pytest
 
 from pancad.utils import trigonometry as trig
@@ -17,7 +17,7 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
 
 if TYPE_CHECKING:
-    from pancad.utils.pancad_types import SpaceVector as SVec
+    from pancad.utils.pancad_types import SpaceVector
 
 
 ROUNDING_PLACES = 10
@@ -79,8 +79,8 @@ def test_line_unique_direction(direction, expected):
         pytest.param(Axis, ((0,0,0), (1,0,0)), (1,0,0), ((0,0,0), (1,0,0)), id="A-x-mv-to-1,0,0"),
     ]
 )
-def test_move_to_point(cls_func, initial: tuple[SVec, SVec], point: SVec,
-                       expected: tuple[SVec, SVec]):
+def test_move_to_point(cls_func, initial: tuple[SpaceVector, SpaceVector], point: SpaceVector,
+                       expected: tuple[SpaceVector, SpaceVector]):
     geo = Line(Point(initial[0]), initial[1])
     geo.move_to_point(point)
     np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
@@ -97,8 +97,8 @@ def test_move_to_point(cls_func, initial: tuple[SVec, SVec], point: SVec,
                      id="A-r0,1,0x-to-r0,0,0y"), # Checks that reference_point is updated
     ]
 )
-def test_direction_setter(cls_func, initial: tuple[SVec, SVec], direct: SVec,
-                          expected: tuple[SVec, SVec]):
+def test_direction_setter(cls_func, initial: tuple[SpaceVector, SpaceVector], direct: SpaceVector,
+                          expected: tuple[SpaceVector, SpaceVector]):
     geo = cls_func(Point(initial[0]), initial[1])
     geo.direction = direct
     np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
