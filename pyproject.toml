@@ -131,6 +131,7 @@ force-build = [
 files = [
     "src/pancad/abstract.py",
     "src/pancad/geometry/point.py",
+    "src/pancad/geometry/line.py",
     "src/pancad/geometry/unique_lists.py",
     "src/pancad/utils/trigonometry.py",
     "src/pancad/utils/pancad_types.py",
