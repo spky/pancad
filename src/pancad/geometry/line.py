@@ -12,7 +12,8 @@ from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
-import quaternion
+# Ignoring quaternion typing, see issue #300
+import quaternion # type: ignore
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
@@ -23,8 +24,6 @@ from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import Self, Optional, Type
-
-    from numpy.typing import ArrayLike
 
     from pancad.utils.pancad_types import (
         SpaceVector, Space3DVector, Space2DVector, Numpy1D, Numpy2D, PolarVector, SphericalVector
@@ -567,7 +566,7 @@ class Axis(AbstractGeometry):
         return self
 
     @singledispatchmethod
-    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
