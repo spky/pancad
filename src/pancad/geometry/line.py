@@ -20,7 +20,6 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import closest_to_origin
-from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
     from typing import Self, Optional, Type
@@ -326,7 +325,8 @@ class Line(AbstractGeometry):
         return Point(np.array(self.reference_point)
                      + trig.to_1d_np(self.direction)*t)
 
-    def get_parametric_constants(self) -> tuple[float]:
+    def get_parametric_constants(self) -> (tuple[float, float, float, float] |
+                                           tuple[float, float, float, float, float, float]):
         """Returns a tuple containing parameters for the line. The reference
         point is used for the initial position and the line's direction vector
         is used for a, b, and c.
@@ -336,7 +336,7 @@ class Line(AbstractGeometry):
         return (*self.reference_point.cartesian, *self.direction)
 
     def move_to_point(self,
-                      point: Point | SpaceVector,
+                      point: Point | float | Sequence[float] | Numpy1D,
                       phi: Optional[float]=None,
                       theta: Optional[float]=None) -> Self:
         """Moves the line to go through a point and changes the line's
@@ -382,7 +382,7 @@ class Line(AbstractGeometry):
         """Returns the Point on the Line closest to the origin."""
         return Point(closest_to_origin(point, vector))
 
-    def _unique_direction(self, vector: Numpy1D) -> SpaceVector:
+    def _unique_direction(self, vector: SpaceVector | Numpy1D) -> SpaceVector:
         """Returns a unit vector that can uniquely identify the direction of
         the given vector. Does so flipping the unit vector if necessary to
         ensure there can only ever be one vector for every direction.
@@ -460,7 +460,7 @@ class Axis(AbstractGeometry):
     :param uid: The unique ID of the axis.
     """
 
-    def __init__(self, point: Point | SpaceVector, direction: SpaceVector,
+    def __init__(self, point: Point | Sequence[float] | Numpy1D, direction: SpaceVector,
                  uid: Optional[str]=None) -> None:
         self.uid = uid
         if not isinstance(point, Point):
@@ -483,19 +483,16 @@ class Axis(AbstractGeometry):
         return self._direction
 
     @direction.setter
-    def direction(self, vector: VectorLike) -> None:
-        vector = trig.to_1d_np(vector)
-        if not np.any(vector):
-            msg = f"Direction vector cannot be zero vector: {vector}"
-            raise ValueError(msg)
-        if len(vector) != len(self):
-            msg = (f"{len(vector)}D vector cannot be the direction"
-                   f" of a {len(self)}D axis: {vector}")
-            raise ValueError(msg)
-        self._direction = trig.to_1d_tuple(trig.get_unit_vector(vector))
+    def direction(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_np(vector)
+        if not np.any(parsed_vector):
+            raise ValueError("Direction vector cannot be zero vector")
+        if len(parsed_vector) != len(self._line):
+            raise ValueError("Direction vector must be the same dimension as the Axis")
+        self._direction = trig.to_1d_tuple(trig.get_unit_vector(parsed_vector))
         # Axis uses Line to inform geometry, but the Line shouldn't be referenced
         # by constraints. Axis should be referenced directly.
-        self._line.direction = vector
+        self._line.direction = parsed_vector
 
     @property
     def reference_point(self) -> Point:
