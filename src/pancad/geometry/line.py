@@ -45,7 +45,7 @@ class Line(AbstractGeometry):
     zero_tol = np.sqrt(np.finfo(np.float64).eps) # pylint: disable=no-member
     """Any Line direction vector component smaller than this number will be set to 0."""
 
-    def __init__(self, point: Point, direction: VectorLike,
+    def __init__(self, point: Point, direction: Sequence[float] | Numpy1D | Numpy2D,
                  uid: Optional[str]=None) -> None:
         self.uid = uid
         self._point_closest_to_origin = Point([0] * len(point)) # Initialize closest point
@@ -61,8 +61,8 @@ class Line(AbstractGeometry):
     # Class Methods
     @classmethod
     def from_two_points(cls,
-                        a: Point | VectorLike,
-                        b: Point | VectorLike,
+                        a: Point | Sequence[float] | Numpy1D,
+                        b: Point | Sequence[float] | Numpy1D,
                         uid: Optional[str]=None) -> Self:
         """Returns a Line instance defined by points a and b. 2D points will
         produce 2D lines, 3D produce 3D lines, and 2D and 3D points cannot
@@ -73,20 +73,13 @@ class Line(AbstractGeometry):
         :param uid: The unique ID of the line.
         :returns: A Line that is coincident with points a and b.
         """
-        points = [a, b]
-        if any(len(point) not in [2, 3] for point in points):
-            raise ValueError("a and b must be 2D or 3D")
-        if len(a) != len(b):
-            raise ValueError("a and b must be the same dimension")
-        for i, point in enumerate(points):
-            if isinstance(point, (Sequence, np.ndarray)):
-                points[i] = Point(point)
-        if any(not isinstance(point, Point) for point in points):
-            raise ValueError("a and b must be VectorLikes or pancad Points.")
-        if points[0] == points[1]:
+        if not isinstance(a, Point):
+            a = Point(a)
+        if not isinstance(b, Point):
+            b = Point(b)
+        if a.is_equal(b):
             raise ValueError("Defining points are at the same position")
-        a_vector, b_vector = np.array(points[0]), np.array(points[1])
-        return cls(Point(a_vector), b_vector - a_vector, uid)
+        return cls(a, b - a, uid)
 
     @classmethod
     def from_slope_and_y_intercept(cls,
