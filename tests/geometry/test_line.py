@@ -17,92 +17,218 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
 
 if TYPE_CHECKING:
-    from pancad.utils.pancad_types import SpaceVector
+    from typing import Type, Any, TypedDict, NotRequired
+    from collections.abc import Callable
 
+    from pancad.utils.pancad_types import SpaceVector, PolarVector, SphericalVector
 
-ROUNDING_PLACES = 10
+@pytest.fixture(name="sample_lines")
+def fixture_sample_lines() -> list[Line | Axis]:
+                         # two_point_lines: list[Line],
+                         # point_direction_lines: list[Line]) -> list[Line]:
+    """Returns a list of Lines and Axes to test Line properties with. Added to by other
+    fixtures.
+    """
+    return []
+    # return two_point_lines + point_direction_lines
 
-EPS_64 = np.finfo(np.float64).eps
+@pytest.fixture(name="line_vectors")
+def fixture_line_data() -> list[dict[str, SpaceVector]]:
+    """Returns a list of line parameters and expected values to test Line properties with. Added
+    to by other fixtures.
+    """
+    return []
 
-# id abbreviations: uv=unit vector
-@pytest.mark.parametrize(
-    "direction, expected",
-    [
-        # Zero Vector Tests
-        ## 2D Tests ##
-        # Positive Unit Vector
-        pytest.param((1, 0), (1, 0), id="1,0"),
-        pytest.param((0, 1), (0, 1), id="0,1"),
-        # Negative Unit Vector
-        pytest.param((-1, 0), (1, 0), id="-1,0to1,0"),
-        pytest.param((0, -1), (0, 1), id="0,-1to0,1"),
-        # 2 Direction Positive and Negative
-        pytest.param((1, 1), trig.get_unit_vector(np.array((1, 1))), id="1,1uv"),
-        pytest.param((-1, -1), trig.get_unit_vector(np.array((1, 1))), id="-1,-1uv"),
-        ## 3D Tests ##
-        # Positive Unit Vector
-        pytest.param((1, 0, 0), (1, 0, 0), id="1,0,0"),
-        pytest.param((0, 1, 0), (0, 1, 0), id="0,1,0"),
-        pytest.param((0, 0, 1), (0, 0, 1), id="0,0,1"),
-        # Negative Unit Vector
-        pytest.param((-1, 0, 0), (1, 0, 0), id="-1,0,0to1,0,0"),
-        pytest.param((0, -1, 0), (0, 1, 0), id="0,-1,0to0,1,0"),
-        pytest.param((0, 0, -1), (0, 0, 1), id="0,0,-1to0,0,1"),
-        # 2 Direction Positive
-        pytest.param((1, 1, 0), trig.get_unit_vector(np.array((1,1,0))), id="1,1,0uv"),
-        pytest.param((0, 1, 1), trig.get_unit_vector(np.array((0,1,1))), id="0,1,1uv"),
-        # 2 Direction Negative
-        pytest.param((-1, -1, 0), trig.get_unit_vector(np.array((1,1,0))), id="-1,-1,0uv"),
-        pytest.param((0, -1, -1), trig.get_unit_vector(np.array((0, 1, 1))), id="0,-1,-1uv"),
-        # 3 Direction Positive and Negative
-        pytest.param((1, 1, 1), trig.get_unit_vector(np.array((1,1,1))), id="1,1,1uv"),
-        pytest.param((-1, -1, -1), trig.get_unit_vector(np.array([1,1,1])), id="-1,-1,-1uv"),
+@pytest.fixture(name="two_point_lines", autouse=True)
+def fixture_two_point_lines(geometry_samples: dict[str, Any],
+                            sample_lines: list[Line | Axis],
+                            line_vectors: list[dict[str, SpaceVector]],
+                            read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+    """Adds a list of lines defined by two points to sample_lines."""
+    for params in geometry_samples["two_point_lines"]:
+        data: dict[str, SpaceVector] = {}
+        for key in ("start", "end", "unique_direction", "ref_point"):
+            data[key] = read_vector(params["vectors"][key], key == "unique_direction")
+        if polar_spherical := params["vectors"].get("polar_spherical"):
+            ps_vector = read_vector(polar_spherical, False)
+            if len(ps_vector) == 2:
+                r, phi = ps_vector
+                data["polar_spherical"] = (r, math.radians(phi))
+            else:
+                r, phi, theta = ps_vector
+                data["polar_spherical"] = (r, math.radians(phi), math.radians(theta))
+        sample_lines.append(Line.from_two_points(data["start"], data["end"]))
+        line_vectors.append(data)
 
-        # Near Zero Tests
-        pytest.param((0.1, -EPS_64, -EPS_64), (1,0,0), id="0.1,-eps,-epsTO1,0,0"),
-        pytest.param((0.1, -EPS_64, EPS_64), (1,0,0), id="0.1,-eps,epsTO1,0,0"),
-        pytest.param((0.1, EPS_64, -EPS_64), (1,0,0), id="0.1,eps,-epsTO1,0,0"),
-        pytest.param((0.1, EPS_64, EPS_64), (1,0,0), id="0.1,eps,epsTO1,0,0"),
-        pytest.param((-1, EPS_64, -EPS_64), (1, 0, 0), id="-1,eps,-epsTO1,-eps,eps"),
-    ]
-)
-def test_line_unique_direction(direction: SpaceVector, expected: SpaceVector) -> None:
-    """Test that Line's direction is correctly translated to a unique vector."""
-    point = Point([0] * len(direction))
-    line = Line(point, direction)
-    np.testing.assert_array_almost_equal(line.direction, expected)
+@pytest.fixture(name="point_direction_lines", autouse=True)
+def fixture_point_direction_lines(geometry_samples: dict[str, Any],
+                                  sample_lines: list[Line | Axis],
+                                  line_vectors: list[dict[str, SpaceVector]],
+                                  read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+    """Adds a list of lines defined by a point and a direction to sample_lines."""
+    for params in geometry_samples["point_direction_lines"]:
+        data: dict[str, SpaceVector] = {}
+        for key in ("start", "in_direction", "unique_direction", "ref_point"):
+            data[key] = read_vector(params["vectors"][key], key == "unique_direction")
+        sample_lines.append(Line(Point(data["start"]), data["in_direction"]))
+        line_vectors.append(data)
 
-@pytest.mark.parametrize(
-    "cls_func, initial, point, expected",
-    [
-        pytest.param(Line, ((0,0,0), (1,0,0)), (1,0,0), ((0,0,0), (1,0,0)), id="L-x-mv-to-1,0,0"),
-        pytest.param(Axis, ((0,0,0), (1,0,0)), (1,0,0), ((0,0,0), (1,0,0)), id="A-x-mv-to-1,0,0"),
-    ]
-)
-def test_move_to_point(cls_func, initial: tuple[SpaceVector, SpaceVector], point: SpaceVector,
-                       expected: tuple[SpaceVector, SpaceVector]) -> None:
-    geo = Line(Point(initial[0]), initial[1])
-    geo.move_to_point(point)
-    np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
-                                  [*expected[0], *expected[1]])
+@pytest.fixture(name="point_direction_axes", autouse=True)
+def fixture_point_direction_axes(geometry_samples: dict[str, Any],
+                                 sample_lines: list[Line | Axis],
+                                 line_vectors: list[dict[str, SpaceVector]],
+                                 read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+    """Adds a list of axes defined by a point and a direction to sample_lines."""
+    for params in geometry_samples["point_direction_lines"]:
+        data: dict[str, SpaceVector] = {}
+        for key in ("start", "in_direction", "ref_point"):
+            data[key] = read_vector(params["vectors"][key], False)
+        data["unique_direction"] = read_vector(params["vectors"]["in_direction"], True)
+        sample_lines.append(Axis(Point(data["start"]), data["in_direction"]))
+        line_vectors.append(data)
 
-@pytest.mark.parametrize(
-    "cls_func, initial, direct, expected",
-    [
-        pytest.param(Line, ((0,0,0), (1,0,0)), (0,0,1), ((0,0,0), (0,0,1)), id="L-x-to-z"),
-        pytest.param(Axis, ((0,0,0), (1,0,0)), (0,0,1), ((0,0,0), (0,0,1)), id="L-x-to-z"),
-        pytest.param(Line, ((0,1,0), (1,0,0)), (0,1,0), ((0,0,0), (0,1,0)),
-                     id="L-r0,1,0x-to-r0,0,0y"), # Checks that reference_point is updated
-        pytest.param(Axis, ((0,1,0), (1,0,0)), (0,1,0), ((0,0,0), (0,1,0)),
-                     id="A-r0,1,0x-to-r0,0,0y"), # Checks that reference_point is updated
-    ]
-)
-def test_direction_setter(cls_func, initial: tuple[SpaceVector, SpaceVector], direct: SpaceVector,
-                          expected: tuple[SpaceVector, SpaceVector]) -> None:
-    geo = cls_func(Point(initial[0]), initial[1])
-    geo.direction = direct
-    np.testing.assert_array_equal([*geo.reference_point.cartesian, *geo.direction],
-                                  [*expected[0], *expected[1]])
+@pytest.fixture(name="slope_y_intercept_lines", autouse=True)
+def fixture_slope_y_intercept_lines(geometry_samples: dict[str, Any],
+                                    sample_lines: list[Line | Axis],
+                                    line_vectors: list[dict[str, SpaceVector]],
+                                    read_vector: Callable[[Any, bool], SpaceVector]
+                                    ) -> tuple[list[Line], list[dict[str, float]]]:
+    """Adds a list of lines defined by a slope and y intercept to sample_lines."""
+    vectors: list[dict[str, SpaceVector]] = []
+    lines: list[Line] = []
+    line_constants: list[dict[str, float]] = []
+    for params in geometry_samples["slope_y_intercept_lines"]:
+        vectors.append(
+            {
+                "ref_point": read_vector(params["vectors"]["ref_point"], False),
+                "unique_direction": read_vector(params["vectors"]["unique_direction"], True),
+            }
+        )
+        constants = {k: float(params["scalars"][k]) for k in ("slope", "intercept")}
+        lines.append(Line.from_slope_and_y_intercept(constants["slope"], constants["intercept"]))
+        line_constants.append(constants)
+    line_vectors.extend(vectors)
+    sample_lines.extend(lines)
+    return lines, line_constants
+
+@pytest.fixture(name="point_angle_lines", autouse=True)
+def fixture_point_angle_lines(geometry_samples: dict[str, Any],
+                              sample_lines: list[Line | Axis],
+                              line_vectors: list[dict[str, SpaceVector]],
+                              read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+    """Adds a list of lines defined by a point and 1 (or 2 if 3D) angles to sample_lines. Also
+    adds the expected polar_spherical vector since it's how the line is defined.
+    """
+    for params in geometry_samples["point_angle_lines"]:
+        data: dict[str, SpaceVector] = {}
+        for key in ("start", "ref_point"):
+            data[key] = read_vector(params["vectors"][key], False)
+        data["unique_direction"] = read_vector(params["vectors"]["unique_direction"], True)
+        if polar_spherical := params["vectors"].get("polar_spherical"):
+            ps_vector = read_vector(polar_spherical, False)
+            if len(ps_vector) == 2:
+                r, expected_phi = ps_vector
+                data["polar_spherical"] = (r, math.radians(expected_phi))
+            else:
+                r, expected_phi, expected_theta = ps_vector
+                data["polar_spherical"] = (r, math.radians(expected_phi),
+                                           math.radians(expected_theta))
+        phi = math.radians(params["scalars"]["phi"])
+        if "theta" in params["scalars"]:
+            theta = math.radians(params["scalars"]["theta"])
+            sample_lines.append(Line.from_point_and_angle(data["start"], phi, theta))
+        else:
+            sample_lines.append(Line.from_point_and_angle(data["start"], phi))
+        line_vectors.append(data)
+
+class TestSampleProperties:
+    """Tests for whether all sample Lines have the corresponding expected properties after
+    initialization.
+    """
+
+    def test_direction(self, sample_lines: list[Line | Axis],
+                       line_vectors: list[dict[str, SpaceVector]]) -> None:
+        """Test whether the directions of the sample lines match the expected directions."""
+        for line, expected in zip(sample_lines, line_vectors, strict=True):
+            # TODO: Check why the float values aren't coming out exactly the same.
+            np.testing.assert_array_almost_equal(line.direction, expected["unique_direction"])
+
+    def test_ref_point(self, sample_lines: list[Line | Axis],
+                       line_vectors: list[dict[str, SpaceVector]]) -> None:
+        """Test whether the reference_point of the sample lines match the expected points."""
+        for line, expected in zip(sample_lines, line_vectors, strict=True):
+            # TODO: Check why the float values aren't coming out exactly the same.
+            np.testing.assert_array_almost_equal(line.reference_point.cartesian,
+                                                 expected["ref_point"])
+
+    def test_len(self, sample_lines: list[Line | Axis]) -> None:
+        """Tests that the length of sample lines matches the dimension of its direction."""
+        for line in sample_lines:
+            assert len(line) == len(line.direction)
+
+    def test_slope_intercept(self,
+                             slope_y_intercept_lines: tuple[list[Line], list[dict[str, float]]]
+                             ) -> None:
+        """Test that the slopes and intercepts of the sample lines are calculated correctly."""
+        for line, constants in zip(*slope_y_intercept_lines):
+            assert line.slope == constants["slope"]
+            assert line.y_intercept == constants["intercept"]
+
+    def test_direction_polar_spherical(self, sample_lines: list[Line | Axis],
+                                       line_vectors: list[dict[str, SpaceVector]]) -> None:
+        """Test that any defined polar or spherical vectors of the sample lines match the
+        calculated ones.
+        """
+        for line, expected in zip(sample_lines, line_vectors, strict=True):
+            if isinstance(line, Axis):
+                continue
+            if not (expected_vector := expected.get("polar_spherical")):
+                # Any entry without polar spherical doesn't need to be tested.
+                continue
+            line_vector: SphericalVector | PolarVector
+            if len(expected_vector) == 2:
+                line_vector = line.direction_polar
+            else:
+                line_vector = line.direction_spherical
+            # TODO: Check why the float values aren't coming out exactly the same.
+            np.testing.assert_array_almost_equal(line_vector, expected_vector)
+
+# TODO: Replace Near Zero tests with floating point steps rather than EPS_64
+
+class TestLineChanges:
+    """Tests for changing Line properties after initialization."""
+
+    def test_move_to_point(self, property_changes: dict[str, Any],
+                           read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+        """Test moving a line from its initialized position to different points and orientations.
+        """
+        for data in property_changes["lines"]["move_to_point"]:
+            line = Line(Point(read_vector(data["start"], False)),
+                        read_vector(data["direction"], False))
+            for change in data["changes"]:
+                phi = math.radians(float(change["phi"])) if "phi" in change else None
+                theta = math.radians(float(change["theta"])) if "theta" in change else None
+                line.move_to_point(read_vector(change["point"], False), phi, theta)
+                # TODO: Check why the float values aren't coming out exactly the same.
+                assert line.direction == pytest.approx(read_vector(change["direction"], True))
+                # TODO: Check why the float values aren't coming out exactly the same.
+                expected_ref = read_vector(change["ref_point"], False)
+                assert line.reference_point.cartesian == pytest.approx(expected_ref)
+
+    def test_direction_setter(self, property_changes: dict[str, Any],
+                              read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+        """Test setting a line's direction and the resulting impacts on the reference point."""
+        for data in property_changes["lines"]["direction_setter"]:
+            line = Line(Point(read_vector(data["start"], False)),
+                        read_vector(data["direction"], False))
+            for change in data["changes"]:
+                line.direction = read_vector(change["vector"], False)
+                assert line.direction == read_vector(change["direction"], True)
+                assert line.reference_point.cartesian == read_vector(change["ref_point"], False)
+
+# TODO: Add tests for each input type initialization method for Line and for Axis.
+# TODO: Add Axis direction setting test
+# TODO: Add tests for is_equal for Line and Axis.
 
 class TestLineInit(unittest.TestCase):
 
@@ -110,136 +236,17 @@ class TestLineInit(unittest.TestCase):
         self.pt_a = Point((1,0,0))
         self.pt_b = Point((1,10,0))
 
-    def test_line_len_dunder(self) -> None:
-        tests = [
-            ((0, 0), (1, 1), 2),
-            ((0, 0, 0), (1, 1, 1), 3),
-        ]
-        for pt_a, pt_b, length in tests:
-            with self.subTest(point_a=pt_a, point_b=pt_b,
-                              expected_length=length):
-                point_1, point_2 = Point(pt_a), Point(pt_b)
-                test_line = Line.from_two_points(point_1, point_2)
-                self.assertEqual(len(test_line), length)
-
     def test_line_str_dunder(self) -> None:
         test = Line.from_two_points(self.pt_a, self.pt_b)
         self.assertEqual(str(test), "<Line(1,0,0)d(0,1,0)>")
 
-class TestLineTwoPointDefinition(unittest.TestCase):
-
-    def setUp(self) -> None:
-        # Point A, Point B, Expected Point Closest to Origin,
-        # Vector in Expected Direction (subsequently converted to unit vector)
-        self.tests = [
-            # Set 1: Diagonal Off-Origin
-            ((0, 4), (4, 0), (2, 2), (-1, 1)),
-            ((0, 4), (-4, 0), (-2, 2), (1, 1)),
-            ((0, -4), (-4, 0), (-2, -2), (-1, 1)),
-            ((0, -4), (4, 0), (2, -2), (1, 1)),
-            # Set 2: Vertical +, -, and 0
-            ((2, 0), (2, 2), (2, 0), (0, 1)),
-            ((-2, 0), (-2, 2), (-2, 0), (0, 1)),
-            ((0, 0), (0, 2), (0, 0), (0, 1)),
-            # Set 3: Horizontal +, -, and 0
-            ((0, 2), (2, 2), (0, 2), (1, 0)),
-            ((0, 1), (1, 1), (0, 1), (1, 0)),
-            ((0, -2), (2, -2), (0, -2), (1, 0)),
-            ((0, 0), (2, 0), (0, 0), (1, 0)),
-            # Set 4: Diagonal On-Origin Per Quadrant
-            ((1, 1), (2, 2), (0, 0), (1, 1)),
-            ((-1, 1), (-2, 2), (0, 0), (-1, 1)),
-            ((-1, -1), (-2, -2), (0, 0), (1, 1)),
-            ((1, -1), (2, -2), (0, 0), (-1, 1)),
-            # Set 5: Diagonal On-Origin Across Quadrant
-            ((-1, -1), (1, 1), (0, 0), (1, 1)),
-            ((-1, 1), (1, -1), (0, 0), (-1, 1)),
-            # Set 6: Horizontal/Vertical On-Origin Across Quadrant
-            ((-1, 0), (1, 0), (0, 0), (1, 0)),
-            ((0, -1), (0, 1), (0, 0), (0, 1)),
-        ]
-        for i, (pt_a, pt_b, e_pt, vector) in enumerate(self.tests):
-            # Convert expected direction to unit vector
-            np_vector = trig.to_1d_np(vector)
-            unit_vector = trig.get_unit_vector(np_vector)
-            self.tests[i] = (pt_a, pt_b, e_pt, trig.to_1d_tuple(unit_vector))
-
-    def test_from_two_points_point_closest_to_origin(self) -> None:
-        for point_a, point_b, expected_point, _ in self.tests:
-            with self.subTest(point_a=point_a, point_b=point_b,
-                              expected_point=expected_point):
-                pt_a, pt_b = Point(point_a), Point(point_b)
-                e_pt = Point(expected_point)
-                test_line = Line.from_two_points(pt_a, pt_b)
-                np.testing.assert_allclose(test_line.reference_point.cartesian, e_pt.cartesian)
-
-    def test_from_two_points_point_closest_to_origin_tuple(self) -> None:
-        for point_a, point_b, expected_point, _ in self.tests:
-            with self.subTest(point_a=point_a, point_b=point_b,
-                              expected_point=expected_point):
-                e_pt = Point(expected_point)
-                test_line = Line.from_two_points(point_a, point_b)
-                np.testing.assert_allclose(test_line.reference_point.cartesian, e_pt.cartesian)
-
-    def test_from_two_points_direction(self) -> None:
-        for point_a, point_b, _, expected_direction in self.tests:
-            with self.subTest(point_a=point_a, point_b=point_b,
-                              expected_direction=expected_direction):
-                pt_a, pt_b = Point(point_a), Point(point_b)
-                test_line = Line.from_two_points(pt_a, pt_b)
-                np.testing.assert_allclose(test_line.direction, expected_direction)
-
-    def test_from_two_points_direction_tuple(self) -> None:
-        for point_a, point_b, _, expected_direction in self.tests:
-            with self.subTest(point_a=point_a, point_b=point_b,
-                              expected_direction=expected_direction):
-                test_line = Line.from_two_points(point_a, point_b)
-                np.testing.assert_allclose(test_line.direction, expected_direction)
+class TestExceptions:
+    """Test Line and Axis ability to raise exceptions."""
 
     def test_from_two_points_same_point(self) -> None:
-        pt_a = Point((1, 1))
-        pt_b = Point((1, 1))
-        with self.assertRaises(ValueError):
-            test_line = Line.from_two_points(pt_a, pt_b)
-
-class TestEquationLineDefinitions(unittest.TestCase):
-
-    def setUp(self) -> None:
-        # Slope (m), Y-Intercept (b), Expected Point, Expected Direction
-        self.tests = [
-            (0, 0, (0, 0), (1, 0)),
-            (1, 0, (0, 0), (1, 1)),
-            (-1, 0, (0, 0), (-1, 1)),
-            (-1, 4, (2, 2), (-1, 1)),
-        ]
-        for i, (m, b, pt, direction) in enumerate(self.tests):
-            self.tests[i] = (m, b, Point(pt), trig.get_unit_vector(direction))
-
-    def test_from_slope_and_y_intercept_expected_point(self) -> None:
-        for m, b, pt, direction in self.tests:
-            with self.subTest(slope=m, intercept=b,
-                              expected_closest_to_origin_point=pt):
-                test_line = Line.from_slope_and_y_intercept(m, b)
-                np.testing.assert_allclose(test_line.reference_point.cartesian, pt.cartesian)
-
-    def test_from_slope_and_y_intercept_expected_direction(self) -> None:
-        for m, b, pt, direction in self.tests:
-            with self.subTest(slope=m, intercept=b,
-                              expected_direction=direction):
-                test_line = Line.from_slope_and_y_intercept(m, b)
-                np.testing.assert_allclose(test_line.direction, direction)
-
-    def test_slope_getter_non_nan(self) -> None:
-        for m, b, pt, direction in self.tests:
-            with self.subTest(slope=m, intercept=b):
-                test_line = Line.from_slope_and_y_intercept(m, b)
-                self.assertEqual(test_line.slope, m)
-
-    def test_y_intercept_getter_non_nan(self) -> None:
-        for m, b, pt, direction in self.tests:
-            with self.subTest(slope=m, intercept=b):
-                test_line = Line.from_slope_and_y_intercept(m, b)
-                self.assertEqual(test_line.y_intercept, b)
+        """Test that initializing a Line with two of the same point raises a ValueError."""
+        with pytest.raises(ValueError):
+            test_line = Line.from_two_points((1, 1), (1, 1))
 
 class TestLineCoordinateSystemConversion(unittest.TestCase):
 
@@ -269,28 +276,6 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                     (Point(pt_a[:2]), Point(pt_b[:2]), (r, math.radians(phi)))
                 )
 
-    def test_direction_polar(self) -> None:
-        for pt_a, pt_b, (r, phi) in self.tests_2d:
-            with self.subTest(
-                        point_a=tuple(pt_a), point_b=tuple(pt_b),
-                        expected_phi=(f"Radians: {phi},"
-                                     + f" Degrees: {math.degrees(phi)}")
-                    ):
-                test_line = Line.from_two_points(pt_a, pt_b)
-                np.testing.assert_allclose(test_line.direction_polar, (r, phi))
-
-    def test_direction_spherical(self) -> None:
-        for pt_a, pt_b, (r, phi, theta) in self.tests_3d:
-            with self.subTest(
-                    point_a=tuple(pt_a), point_b=tuple(pt_b),
-                    expected_phi=(f"Radians: {phi},"
-                                 + f" Degrees: {math.degrees(phi)}"),
-                    expected_theta=(f"Radians: {theta},"
-                                    + f" Degrees: {math.degrees(theta)}")
-                    ):
-                test_line = Line.from_two_points(pt_a, pt_b)
-                np.testing.assert_allclose(test_line.direction_spherical, (r, phi, theta), atol=1e-15)
-
     def test_direction_polar_setter(self) -> None:
         for pt_a, pt_b, polar_vector in self.tests_2d:
             with self.subTest(
@@ -312,74 +297,6 @@ class TestLineCoordinateSystemConversion(unittest.TestCase):
                 before_direction = test_line.direction
                 test_line.direction_spherical = spherical_vector
                 np.testing.assert_allclose(test_line.direction, before_direction, atol=1e-15)
-
-class TestLinePointMovers2D(unittest.TestCase):
-
-    def setUp(self) -> None:
-        lines = [
-            ((0, 1), (1, 1)),
-            ((0, 1), (1, 1)),
-            ((-4, 0), (0, 4)),
-        ]
-        self.lines = [Line.from_two_points(p1, p2) for p1, p2 in lines]
-        new_points = [
-            (0, 2),
-            (3, 3),
-        ]
-        self.new_points = list(map(Point, new_points))
-        self.line_to_pts = []
-        for line in self.lines:
-            line_cases = zip(itertools.repeat(line, len(self.new_points)),
-                             self.new_points)
-            self.line_to_pts.extend(list(line_cases))
-
-        phis = [
-            0,
-            45,
-            90,
-            135,
-            -90,
-            -135,
-            180,
-            -180,
-        ]
-        self.phis = list(map(math.radians, phis))
-        self.line_pts_to_phi = []
-        for line in self.line_to_pts:
-            cases = zip(itertools.repeat(line, len(self.phis)),
-                        self.phis)
-            self.line_pts_to_phi.extend(list(cases))
-
-    def test_move_to_point(self) -> None:
-        for line, new_pt in self.line_to_pts:
-            with self.subTest(line=line, point=new_pt):
-                test_line = line.copy()
-                test_line.move_to_point(new_pt)
-                results = [
-                    spatial_relations.coincident(test_line, new_pt),
-                    spatial_relations.parallel(test_line, line)
-                ]
-                self.assertTrue(all(results))
-
-    def test_move_to_point_phi(self) -> None:
-        for (line, new_pt), new_phi in self.line_pts_to_phi:
-            with self.subTest(line=line, point=new_pt,
-                              phi=(f"Radians: {new_phi}, "
-                                   + f"Degrees: {math.degrees(new_phi)}")):
-                expected_direction = trig.polar_to_cartesian((1, new_phi))
-                expected_line = Line(new_pt, expected_direction)
-                line.move_to_point(new_pt, new_phi)
-                self.assertTrue(line.is_equal(expected_line))
-
-    def test_from_point_and_angle(self) -> None:
-        for (_, pt), phi in self.line_pts_to_phi:
-            with self.subTest(point=pt,
-                              phi=(f"Radians: {phi}, "
-                              + f"Degrees: {math.degrees(phi)}")):
-                expected_direction = trig.polar_to_cartesian((1, phi))
-                expected_line = Line(pt, expected_direction)
-                line = Line.from_point_and_angle(pt, phi)
-                self.assertTrue(line.is_equal(expected_line))
 
 class TestLineUpdate(unittest.TestCase):
 

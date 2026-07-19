@@ -1,0 +1,68 @@
+# property_changes.toml is a test data file containing definitions of geometry and how to change
+# its parameters after initialization
+
+
+# Line move_to_point changes
+#     start: Line initialization point.
+#     direction: Line initialization direction.
+#     point: A point to move to.
+#     phi: Optional azimuth setting in degrees.
+#     theta: Optional elevation setting in degrees.
+#     ref_point: Expected new reference point.
+#     direction: Expected new direction.
+[lines]
+[[lines.move_to_point]]
+start = [0, 0, 0]
+direction = [1, 0, 0]
+changes = [
+    {point = [0, 0, 0], phi = 0, theta = 0, ref_point = [0, 0, 0], direction = [0, 0, 1]},
+    {point = [0, 0, 0], phi = 0, theta = 90, ref_point = [0, 0, 0], direction = [1, 0, 0]},
+]
+
+[[lines.move_to_point]]
+start = [0, 0]
+direction = [1, 0]
+changes = [
+    # 'Rotate' all around origin point, one per quadrant/axis and +/- direction.
+    # Note: The line's not actually rotating, the angle is being set in polar coordinates.
+    {point = [0, 0], ref_point = [0, 0], direction = [1, 0], phi = 0},
+    {point = [0, 0], ref_point = [0, 0], direction = [1, 1], phi = 45},
+    {point = [0, 0], ref_point = [0, 0], direction = [0, 1], phi = 90},
+    {point = [0, 0], ref_point = [0, 0], direction = [-1, 1], phi = 135},
+    {point = [0, 0], ref_point = [0, 0], direction = [1, 0], phi = 180},
+    {point = [0, 0], ref_point = [0, 0], direction = [-1, 1], phi = -45},
+    {point = [0, 0], ref_point = [0, 0], direction = [0, 1], phi = -90},
+    {point = [0, 0], ref_point = [0, 0], direction = [1, 1], phi = -135},
+    {point = [0, 0], ref_point = [0, 0], direction = [1, 0], phi = -180},
+
+    # 'Rotate' off the origin point, test that the reference points are calculated correctly.
+    # Note: The line's not actually rotating, the angle is being set in polar coordinates.
+    {point = [0, 4], ref_point = [0, 4], direction = [1, 0], phi = 0},
+    {point = [0, 4], ref_point = [-2, 2], direction = [1, 1], phi = 45},
+    {point = [0, 4], ref_point = [2, 2], direction = [-1, 1], phi = 135},
+    {point = [0, 4], ref_point = [0, 4], direction = [1, 0], phi = 180},
+    {point = [0, -4], ref_point = [0, -4], direction = [1, 0], phi = 0},
+    {point = [0, -4], ref_point = [2, -2], direction = [1, 1], phi = 45},
+    {point = [0, -4], ref_point = [-2, -2], direction = [-1, 1], phi = 135},
+    {point = [0, -4], ref_point = [0, -4], direction = [1, 0], phi = 180},
+]
+
+# Line direction_setter changes
+#     start: Line initialization point.
+#     direction: Line initialization direction.
+#     vector: The vector to set the direction to.
+#     ref_point: Expected new reference point.
+#     direction: Expected new direction.
+[[lines.direction_setter]]
+start = [0, 0, 0]
+direction = [1, 0, 0]
+changes = [
+    {vector = [0, 0, 1], ref_point = [0, 0, 0], direction = [0, 0, 1]},
+]
+
+[[lines.direction_setter]]
+start = [0, 1, 0]
+direction = [1, 0, 0]
+changes = [
+    {vector = [0, 1, 0], ref_point = [0, 0, 0], direction = [0, 1, 0]},
+]

@@ -1,5 +1,11 @@
 """Module defining pytest fixture configuration"""
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
+import tomllib
+from pathlib import Path
+
+import numpy as np
 import pytest
 
 from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
@@ -11,8 +17,45 @@ from pancad.filetypes.part_file import PartFile
 from pancad.constraints.state_constraint import AlignAxes
 from pancad.constants import FeatureType as FT
 from pancad.geometry.extrude import Extrude, ExtrudeSettings
+from pancad.utils import trigonometry as trig
 
 from tests.testing_utils import sketch_gen
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any, Optional
+
+    from pancad.utils.pancad_types import SpaceVector
+
+@pytest.fixture(name="geometry_samples", scope="session")
+def fixture_geometry_samples() -> dict[str, Any]:
+    """Returns the dictionary read from the geometry_samples file containing parameters for
+    geometry.
+    """
+    with open(Path(__file__).parent / "data" / "geometry_samples.toml", "rb") as file:
+        return tomllib.load(file)
+
+@pytest.fixture(name="property_changes", scope="session")
+def fixture_property_changes() -> dict[str, Any]:
+    """Returns the dictionary read from the property_changes file containing parameters for
+    initializing and then changing geometry.
+    """
+    with open(Path(__file__).parent / "data" / "property_changes.toml", "rb") as file:
+        return tomllib.load(file)
+
+@pytest.fixture(name="read_vector")
+def fixture_read_vector() -> Callable[[Any, bool], SpaceVector]:
+    """Returns a function that will read a SpaceVector from any input or raise a TypeError when it
+    isn't possible. Used to ensure static type checking can still be used with raw read in data.
+    Normalizes the vector to a unit vector when normalize is set to True.
+    """
+    def _read_vector(raw_vector: Any, normalize: bool=False) -> SpaceVector:
+        vector = tuple(map(float, raw_vector))
+        assert len(vector) == 2 or len(vector) == 3
+        if normalize:
+            vector = trig.to_1d_tuple(trig.get_unit_vector(vector))
+        return vector
+    return _read_vector
 
 @pytest.fixture
 def unconstrained_square_sketch() -> Sketch:
@@ -211,7 +254,7 @@ def cylinder_part_file() -> PartFile:
     part.container.feature_system.constraints.extend(constraints)
     part.container.feature_system.features.append(extrude)
     return part
-    
+
 @pytest.fixture
 def rounded_edge_cube_part_file() -> PartFile:
     part = PartFile("RoundedEdgeCubePartTest")
