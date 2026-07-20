@@ -66,3 +66,35 @@ direction = [1, 0, 0]
 changes = [
     {vector = [0, 1, 0], ref_point = [0, 0, 0], direction = [0, 1, 0]},
 ]
+
+# Line direction_setter changes
+#     start: Line initialization point.
+#     direction: Expected new direction.
+#     For each change:
+#     new: The polar (2D) or spherical (3d) vector to set the direction to. The 2nd and 3rd item
+#         are in degrees.
+#     ref_point: Expected new reference point.
+#     direction: Expected new direction.
+[[lines.polar_spherical_direction_setter]]
+start = [0, 0]
+direction = [1, 0]
+changes = [
+    {new = [1, 0], ref_point = [0, 0], direction = [1, 0]},
+    {new = [1, 90], ref_point = [0, 0], direction = [0, 1]},
+]
+
+[[lines.polar_spherical_direction_setter]]
+start = [0, 0, 0]
+direction = [1, 0, 0]
+changes = [
+    {new = [1, 0, 90], ref_point = [0, 0, 0], direction = [1, 0, 0]},
+    {new = [1, 90, 90], ref_point = [0, 0, 0], direction = [0, 1, 0]},
+    {new = [1, "nan", 0], ref_point = [0, 0, 0], direction = [0, 0, 1]},
+]
+
+[[lines.update]]
+start = [0, 0, 0]
+direction = [1, 0, 0]
+changes = [
+    {start = [1, 1, 0], direction = [1, 1, 1]},
+]

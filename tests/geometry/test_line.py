@@ -4,7 +4,6 @@ from __future__ import annotations
 import itertools
 import math
 from math import cos, sin, radians
-import unittest
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -193,6 +192,14 @@ class TestSampleProperties:
             # TODO: Check why the float values aren't coming out exactly the same.
             np.testing.assert_array_almost_equal(line_vector, expected_vector)
 
+    def test_is_equal(self, sample_lines: list[Line | Axis]) -> None:
+        """Test that all the sample lines/axes can be found equal to themselves."""
+        for line in sample_lines:
+            if isinstance(line, Axis):
+                line.is_equal(line)
+            else:
+                line.is_equal(line)
+
 # TODO: Replace Near Zero tests with floating point steps rather than EPS_64
 
 class TestLineChanges:
@@ -226,19 +233,46 @@ class TestLineChanges:
                 assert line.direction == read_vector(change["direction"], True)
                 assert line.reference_point.cartesian == read_vector(change["ref_point"], False)
 
+    def test_polar_spherical_direction_setter(self, property_changes: dict[str, Any],
+                                              read_vector: Callable[[Any, bool], SpaceVector]
+                                              ) -> None:
+        """Test setting a line's polar or spherical direction and the resulting impacts on the
+        reference point.
+        """
+        for data in property_changes["lines"]["polar_spherical_direction_setter"]:
+            line = Line(Point(read_vector(data["start"], False)),
+                        read_vector(data["direction"], False))
+            for change in data["changes"]:
+                ps_vector = read_vector(change["new"], False)
+                if len(ps_vector) == 2:
+                    r, phi = ps_vector
+                    line.direction_polar = (r, math.radians(phi))
+                else:
+                    r, phi, theta = ps_vector
+                    line.direction_spherical = (r, math.radians(phi), math.radians(theta))
+                assert line.direction == read_vector(change["direction"], True)
+                assert line.reference_point.cartesian == read_vector(change["ref_point"], False)
+
+    def test_update(self, property_changes: dict[str, Any],
+                    read_vector: Callable[[Any, bool], SpaceVector]) -> None:
+        """Test updating a line with another line."""
+        for data in property_changes["lines"]["update"]:
+            line = Line(Point(read_vector(data["start"], False)),
+                        read_vector(data["direction"], False))
+            for change in data["changes"]:
+                other = Line(Point(read_vector(change["start"], False)),
+                             read_vector(change["direction"], False))
+                line.update(other)
+                assert line.is_equal(other)
+
 # TODO: Add tests for each input type initialization method for Line and for Axis.
 # TODO: Add Axis direction setting test
-# TODO: Add tests for is_equal for Line and Axis.
 
-class TestLineInit(unittest.TestCase):
-
-    def setUp(self) -> None:
-        self.pt_a = Point((1,0,0))
-        self.pt_b = Point((1,10,0))
+class TestLineInit:
 
     def test_line_str_dunder(self) -> None:
-        test = Line.from_two_points(self.pt_a, self.pt_b)
-        self.assertEqual(str(test), "<Line(1,0,0)d(0,1,0)>")
+        test = Line.from_two_points((1,0,0), (1,10,0))
+        assert str(test) == "<Line(1,0,0)d(0,1,0)>"
 
 class TestExceptions:
     """Test Line and Axis ability to raise exceptions."""
@@ -247,64 +281,6 @@ class TestExceptions:
         """Test that initializing a Line with two of the same point raises a ValueError."""
         with pytest.raises(ValueError):
             test_line = Line.from_two_points((1, 1), (1, 1))
-
-class TestLineCoordinateSystemConversion(unittest.TestCase):
-
-    def setUp(self) -> None:
-        """
-        Test Order:
-            Point A, Point B, Phi (Azimuth) Angle, Theta (Inclination) Angle
-        Angles get converted to radians prior to test
-        r separately defined for legibility since for line direction unit
-        vectors it will always be 1.
-        """
-        tests = [
-            ((0, 0, 0), (1, 0, 0), (1, 0, 90)),
-            ((0, 0, 0), (0, 1, 0), (1, 90, 90)),
-            ((0, 0, 0), (0, 0, 1), (1, math.nan, 0)),
-        ]
-        self.tests_2d, self.tests_3d = [], []
-        for pt_a, pt_b, (r, phi, theta) in tests:
-            self.tests_3d.append(
-                (
-                    Point(pt_a), Point(pt_b),
-                    (r, math.radians(phi), math.radians(theta)),
-                )
-            )
-            if pt_a[:2] != pt_b[:2]: # To deal with when x = y = 0 and z != 0
-                self.tests_2d.append(
-                    (Point(pt_a[:2]), Point(pt_b[:2]), (r, math.radians(phi)))
-                )
-
-    def test_direction_polar_setter(self) -> None:
-        for pt_a, pt_b, polar_vector in self.tests_2d:
-            with self.subTest(
-                        point_a=tuple(pt_a), point_b=tuple(pt_b),
-                        polar_vector=polar_vector
-                    ):
-                test_line = Line.from_two_points(pt_a, pt_b)
-                before_direction = test_line.direction
-                test_line.direction_polar = polar_vector
-                np.testing.assert_allclose(test_line.direction, before_direction, atol=1e-15)
-
-    def test_direction_spherical_setter(self) -> None:
-        for pt_a, pt_b, spherical_vector in self.tests_3d:
-            with self.subTest(
-                        point_a=tuple(pt_a), point_b=tuple(pt_b),
-                        spherical_vector=spherical_vector
-                    ):
-                test_line = Line.from_two_points(pt_a, pt_b)
-                before_direction = test_line.direction
-                test_line.direction_spherical = spherical_vector
-                np.testing.assert_allclose(test_line.direction, before_direction, atol=1e-15)
-
-class TestLineUpdate(unittest.TestCase):
-
-    def test_update(self) -> None:
-        line = Line(Point(0, 0, 0), (1, 0, 0))
-        new = Line(Point(1, 1, 0), (1, 1, 1))
-        line.update(new)
-        self.assertTrue(line.is_equal(new))
 
 ORIGIN_2D = (0, 0) # 2D Origin Point
 ORIGIN_3D = (0, 0, 0) # 3D Origin Point
@@ -409,6 +385,3 @@ def test_rotate_axis_exceptions(point, direction, rotation, msg) -> None:
     axis = Axis(point, direction)
     with pytest.raises(ValueError, match=msg):
         axis.rotate(rotation)
-
-if __name__ == "__main__":
-    unittest.main()
