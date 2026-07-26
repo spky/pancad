@@ -9,6 +9,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+import quaternion # type: ignore
 
 from pancad.constants import ConstraintReference as CR, SketchConstraint as SC
 from pancad.constraints._generator import make_constraint
@@ -84,6 +85,19 @@ def read_vector(raw_vector: Any,
         vector = trig.to_1d_tuple(trig.get_unit_vector(vector))
     return vector
 
+def read_quaternion(raw_quat: Any) -> quaternion.quaternion:
+    """Returns a quaternion from an unknown datatype, usually read from a toml file.
+
+    :param raw_quat: An object that should be a dictionary with 'angle' and 'axis' keys.
+    :raises AssertionError: When the axis vector's length is not 3.
+    """
+    angle = math.radians(float(raw_quat["angle"]))
+    axis = read_vector(raw_quat["axis"])
+    assert len(axis) == 3
+    w = math.cos(angle / 2)
+    i, j, k = map(lambda c: c * math.sin(angle / 2), axis)
+    return quaternion.quaternion(w, i, j, k)
+
 def resolve_test_data_keys(fixture_name: str, data: dict[str, Any]) -> list[str]:
     """Returns a list of keys found in the fixture's name that match keys in the data.
     Progressively searches down the data's nested dictionary for keys that match the start of the
@@ -124,9 +138,10 @@ def _read_geometry_data_entry(entry: dict[str, Any]) -> GeometrySampleData:
     scalars.update( # Covert degree scalars to radians
         {k: math.radians(v) for k, v in entry.get("degree_scalars", {}).items()}
     )
-    if vectors or scalars:
-        return {"vectors": vectors, "scalars": scalars}
-    raise LookupError("No vectors or scalars found")
+    quats = {k: read_quaternion(v) for k, v in entry.get("quats", {}).items()}
+    if vectors or scalars or quats:
+        return {"vectors": vectors, "scalars": scalars, "quats": quats}
+    raise LookupError("No vectors, scalars, or quaternions found")
 
 def read_geometry_data(data: dict[str, Any],
                         *keys: str) -> dict[tuple[str, ...], GeometrySampleData]:

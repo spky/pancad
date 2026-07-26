@@ -1,12 +1,10 @@
 """Tests for pancad's Line class"""
 from __future__ import annotations
 
-import itertools
-from math import cos, sin, radians
 from typing import TYPE_CHECKING
 
 import numpy as np
-import quaternion # type: ignore # pylint: disable=unused-import
+import quaternion # type: ignore
 import pytest
 
 from pancad.utils import trigonometry as trig
@@ -189,7 +187,7 @@ class TestAxisChanges:
         assert axis.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
 
     def test_rotation_2d(self, changes_axis_rotation_2d: ChangeTest) -> None:
-        """Test that an 2D axis can rotate with expected reference_point and direction results."""
+        """Test that a 2D axis can rotate with expected reference_point and direction results."""
         sample, change = changes_axis_rotation_2d
         axis = Axis(sample["vectors"]["start"], sample["vectors"]["direction"])
         axis.rotate(trig.rotation_2(change["scalars"]["angle"]))
@@ -197,13 +195,23 @@ class TestAxisChanges:
         assert axis.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
 
     def test_rotation_3d_matrix(self, changes_axis_rotation_3d: ChangeTest) -> None:
-        """Test that n 3D axis can rotate with expected reference_point and direction results
+        """Test that a 3D axis can rotate with expected reference_point and direction results
         using a rotation matrix.
         """
         sample, change = changes_axis_rotation_3d
         axis = Axis(sample["vectors"]["start"], sample["vectors"]["direction"])
         matrix = trig.yaw_pitch_roll(*[change["scalars"][c] for c in ("yaw", "pitch", "roll")])
         axis.rotate(matrix)
+        assert axis.direction == pytest.approx(change["vectors"]["direction"])
+        assert axis.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
+
+    def test_rotation_quat(self, changes_axis_rotation_quat: ChangeTest) -> None:
+        """Test that a 3D axis can rotate with expected reference_point and direction results
+        using a quaternion.
+        """
+        sample, change = changes_axis_rotation_quat
+        axis = Axis(sample["vectors"]["start"], sample["vectors"]["direction"])
+        axis.rotate(change["quats"]["rotation"])
         assert axis.direction == pytest.approx(change["vectors"]["direction"])
         assert axis.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
 
@@ -239,69 +247,8 @@ class TestSpotChecks:
         with pytest.raises(ValueError, match=msg):
             axis.rotate(rotation)
 
-ORIGIN_2D = (0, 0) # 2D Origin Point
-ORIGIN_3D = (0, 0, 0) # 3D Origin Point
-X_2D = (1, 0) # 2D X Axis Vector
-Y_2D = (0, 1) # 2D Y Axis Vector
-X_3D = (1, 0, 0) # 3D X Axis Vector
-Y_3D = (0, 1, 0) # 3D Y Axis Vector
-Z_3D = (0, 0, 1) # 3D Z Axis Vector
-SQ2R = 1 / np.sqrt(2) # 1 over the square root of 2
-# NOTE: Manual test input angles in degrees
-
-QUAT_ROTATIONS = [
-    # Init Point, Initial Direction, Rotation Axis Vector, Rotation Angle, Expected, Id Prefix
-    (ORIGIN_3D, X_3D, (0, 0, 0), 0, X_3D, "q_unrotated_x_zero_axis"),
-    (ORIGIN_3D, X_3D, (1, 0, 0), 0, X_3D, "q_unrotated_x_axis"),
-    (ORIGIN_3D, X_3D, (1, 0, 0), 90, X_3D, "q_rotate_x_around_x"),
-    (ORIGIN_3D, X_3D, (0, 1, 0), 90, (0, 0, -1), "q_rotate_x_to_-z"),
-    (ORIGIN_3D, X_3D, (0, 1, 0), -90, Z_3D, "q_rotate_x_to_+z"),
-    (ORIGIN_3D, X_3D, (0, 1, 0), 270, Z_3D, "q_opposite_rotate_x_to_+z"),
-    (ORIGIN_3D, X_3D, (0, 1, 0), 180, (-1, 0, 0), "q_rotate_x_to_-x"),
-    (ORIGIN_3D, X_3D, (0, 1, 0), 135, (-SQ2R, 0, -SQ2R), "q_rotate_x_135_around_y"),
-    (ORIGIN_3D, Z_3D, (0, 1, 0), 135, (SQ2R, 0, -SQ2R), "q_rotate_z_135_around_y"),
-]
-
-def _quaternion_params(rotations):
-    """Generates the list of pytest parameters for testing quaternion rotation."""
-    params = []
-    for point, initial, rotation_axis, angle, expected, id_ in rotations:
-        quat_w = cos(radians(angle / 2))
-        quat_ijk = map(lambda x, y: x * sin(radians(y) / 2),
-                       rotation_axis, itertools.repeat(angle))
-        quat = quaternion.quaternion(quat_w, *quat_ijk)
-        test_id = "_".join([id_, str(angle), str(rotation_axis), str(expected)])
-        param = pytest.param(point, initial, quat, expected, id=test_id)
-        params.append(param)
-    return params
-
-@pytest.mark.parametrize(
-    "point, initial, rotation, expected",
-    [
-        *_quaternion_params(QUAT_ROTATIONS),
-    ]
-)
-def test_rotate_axis(point, initial, rotation, expected) -> None:
-    """Tests for Axis rotation with quaternions and rotation matrices.
-
-    :param point: Axis definition point.
-    :param initial: Initial axis direction.
-    :param rotation: A quaternion or rotation matrix.
-    :param expected: Expected axis direction result.
-    """
-    axis = Axis(point, initial)
-    rotated = axis.rotate(rotation).direction
-    print(axis, rotated)
-    assert np.allclose(rotated, expected)
-
-@pytest.mark.parametrize(
-    "point, direction, rotation, msg",
-    [
-        pytest.param(ORIGIN_2D, X_2D, np.quaternion(1, 0, 0, 0), "Cannot rotate 2D", id="2d_quat"),
-    ]
-)
-def test_rotate_axis_exceptions(point, direction, rotation, msg) -> None:
-    """Tests for handling axis rotation errors."""
-    axis = Axis(point, direction)
-    with pytest.raises(ValueError, match=msg):
-        axis.rotate(rotation)
+    def test_rotate_quaternion_dimension_mismatch(self) -> None:
+        """Tests that rotating 2D Axis with a quaternion raises a ValueError."""
+        axis = Axis((0, 0), (1, 0))
+        with pytest.raises(ValueError, match="2D Axis with"):
+            axis.rotate(quaternion.quaternion(1, 0, 0, 0))
