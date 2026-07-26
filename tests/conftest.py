@@ -209,8 +209,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         ids, change_data = _make_geometry_change_input(change_fixture)
         metafunc.parametrize(change_fixture, change_data, ids=ids)
 
-@pytest.fixture
-def unconstrained_square_sketch() -> Sketch:
+@pytest.fixture(name="unconstrained_square_sketch")
+def fixture_unconstrained_square_sketch() -> Sketch:
     """Square sketch with just the lines, no constraints."""
     side = 1
     bottom_left = (0, 0)
@@ -226,8 +226,8 @@ def unconstrained_square_sketch() -> Sketch:
     pose = Pose.from_yaw_pitch_roll((0, 0, 0), 0, 0, 0)
     return Sketch(system, pose)
 
-@pytest.fixture
-def joined_square_sketch(unconstrained_square_sketch) -> Sketch:
+@pytest.fixture(name="joined_square_sketch")
+def fixture_joined_square_sketch(unconstrained_square_sketch) -> Sketch:
     """Square sketch with just the lines. Line end points are coincident."""
     sketch = unconstrained_square_sketch
     bottom, right, top, left = sketch.geometry_system.geometry
@@ -241,8 +241,8 @@ def joined_square_sketch(unconstrained_square_sketch) -> Sketch:
     )
     return sketch
 
-@pytest.fixture
-def square_sketch_bottom_length(joined_square_sketch) -> Sketch:
+@pytest.fixture(name="square_sketch_bottom_length")
+def fixture_square_sketch_bottom_length(joined_square_sketch) -> Sketch:
     """Square sketch with the bottom line length constrained."""
     sketch = joined_square_sketch
     unit = "mm"
@@ -313,8 +313,8 @@ CONSTRAINT_PARAMS = [
     ),
 
 ]
-@pytest.fixture(params=CONSTRAINT_PARAMS)
-def square_sketch_variations(request, square_sketch_bottom_length):
+@pytest.fixture(name="square_sketch_variations", params=CONSTRAINT_PARAMS)
+def fixture_square_sketch_variations(request, square_sketch_bottom_length):
     """Variations on a fully constrained square sketch. Same geometry, varied
     constraints.
     """
@@ -329,8 +329,8 @@ def square_sketch_variations(request, square_sketch_bottom_length):
     sketch.geometry_system.constraints.extend(constraints)
     yield sketch
 
-@pytest.fixture
-def line_angled_to_x_axis_sketches(request) -> list[Sketch]:
+@pytest.fixture(name="line_angled_to_x_axis_sketches")
+def fixture_line_angled_to_x_axis_sketches() -> list[Sketch]:
     """A list of angle-sweeping sketches placing a single line segment in
     different quadrants relative to the sketch's x-axis. Useful for checking the
     implementation of angle constraints inside a single CAD file.
@@ -358,13 +358,13 @@ def line_angled_to_x_axis_sketches(request) -> list[Sketch]:
     return sketches
 
 
-@pytest.fixture
-def empty_part_file() -> PartFile:
+@pytest.fixture(name="empty_part_file")
+def fixture_empty_part_file() -> PartFile:
     """A partfile with nothing in it."""
     return PartFile("EmptyTestPart")
 
-@pytest.fixture
-def square_sketch_part_file() -> PartFile:
+@pytest.fixture(name="square_sketch_part_file")
+def fixture_square_sketch_part_file() -> PartFile:
     """A partfile with just a square sketch inside it"""
     part = PartFile("SquareSketchPartTest")
     sketch = sketch_gen.square()
@@ -376,8 +376,8 @@ def square_sketch_part_file() -> PartFile:
     part.container.feature_system.constraints.extend(constraints)
     return part
 
-@pytest.fixture
-def cube_part_file() -> PartFile:
+@pytest.fixture(name="cube_part_file")
+def fixture_cube_part_file() -> PartFile:
     """A partfile with just a square sketch and extrude inside it"""
     part = PartFile("CubePartTest")
     sketch = sketch_gen.square()
@@ -392,8 +392,9 @@ def cube_part_file() -> PartFile:
     part.container.feature_system.features.append(extrude)
     return part
 
-@pytest.fixture
-def cylinder_part_file() -> PartFile:
+@pytest.fixture(name="cylinder_part_file")
+def fixture_cylinder_part_file() -> PartFile:
+    """A PartFile with a cylinder sketch and extrusion inside it."""
     part = PartFile("CylinderPartTest")
     sketch = sketch_gen.circle()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
@@ -407,8 +408,9 @@ def cylinder_part_file() -> PartFile:
     part.container.feature_system.features.append(extrude)
     return part
 
-@pytest.fixture
-def rounded_edge_cube_part_file() -> PartFile:
+@pytest.fixture(name="rounded_edge_cube_part_file")
+def fixture_rounded_edge_cube_part_file() -> PartFile:
+    """A PartFile with a rounded square sketch and extrusion inside it."""
     part = PartFile("RoundedEdgeCubePartTest")
     sketch = sketch_gen.rounded_square()
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
@@ -422,8 +424,8 @@ def rounded_edge_cube_part_file() -> PartFile:
     part.container.feature_system.features.append(extrude)
     return part
 
-@pytest.fixture
-def ellipse_part_file() -> PartFile:
+@pytest.fixture(name="ellipse_part_file")
+def fixture_ellipse_part_file() -> PartFile:
     """A partfile with just a a single ellipse sketch and extrusion."""
     part = PartFile("EllipseExtrudePartTest")
     sketch = sketch_gen.ellipse()
@@ -438,8 +440,9 @@ def ellipse_part_file() -> PartFile:
     part.container.feature_system.features.append(extrude)
     return part
 
-@pytest.fixture
-def square_variations_part_file(square_sketch_variations) -> PartFile:
+@pytest.fixture(name="square_variations_part_file")
+def fixture_square_variations_part_file(square_sketch_variations) -> PartFile:
+    """A PartFile for each square_variations sketch the sketch and an extrusion inside it."""
     sketch = square_sketch_variations
     part = PartFile("square_sketch_variations")
     extrude_settings = ExtrudeSettings(type_=FT.DIMENSION, length=1, unit="mm")
@@ -453,8 +456,9 @@ def square_variations_part_file(square_sketch_variations) -> PartFile:
     part.container.feature_system.features.append(extrude)
     return part
 
-@pytest.fixture
-def angle_dimension_sweep_part_file(line_angled_to_x_axis_sketches) -> PartFile:
+@pytest.fixture(name="angle_dimension_sweep_part_file")
+def fixture_angle_dimension_sweep_part_file(line_angled_to_x_axis_sketches) -> PartFile:
+    """A PartFile with a sketch containing a sweep of angles for checking angle translation."""
     part = PartFile("angle_dimension_sweep")
     for sketch in line_angled_to_x_axis_sketches:
         part.container.feature_system.features.append(sketch)
