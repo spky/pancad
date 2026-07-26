@@ -18,15 +18,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pancad.utils.pancad_types import SpaceVector, Numpy2D
-
-    class GeometrySampleData(TypedDict):
-        """A dictionary containing inputs for an element of sample geometry."""
-        # TODO: Remove once conftest.py is typed.
-        vectors: dict[str, SpaceVector]
-        scalars: dict[str, float]
+    from tests._typing import GeometrySampleData, ChangeTest
 
     LineMaker = Callable[[GeometrySampleData, pytest.FixtureRequest], Line]
-    ChangeTest = tuple["GeometrySampleData", "GeometrySampleData"]
 
 @pytest.fixture(name="make_line")
 def fixture_make_line() -> LineMaker:

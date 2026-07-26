@@ -28,14 +28,7 @@ if TYPE_CHECKING:
     from typing import Any, Optional, TypedDict
 
     from pancad.utils.pancad_types import SpaceVector
-
-    SampleTests = tuple[list[str], list["GeometrySampleData"]]
-    ChangeTests = tuple[list[str], list[tuple["GeometrySampleData", "GeometrySampleData"]]]
-
-    class GeometrySampleData(TypedDict):
-        """A dictionary containing inputs for an element of sample geometry."""
-        vectors: dict[str, SpaceVector]
-        scalars: dict[str, float]
+    from tests._typing import GeometrySampleData, SampleTestGroup, ChangeTestGroup
 
 @cache
 def read_test_data_file(path: Path) -> dict[str, Any]:
@@ -155,7 +148,7 @@ def read_geometry_data(data: dict[str, Any],
         except LookupError:
             keyed_data ={k + (sk,): sv for k, v in keyed_data.items() for sk, sv in v.items()}
 
-def _make_geometry_sample_input(fixture_name: str) -> SampleTests:
+def _make_geometry_sample_input(fixture_name: str) -> SampleTestGroup:
     """Converts the raw data read from a fixture's sample data file into a list of test ids and a
     list of GeometrySampleData dictionaries.
     """
@@ -164,7 +157,7 @@ def _make_geometry_sample_input(fixture_name: str) -> SampleTests:
     data = read_geometry_data(raw_data, *keys)
     return [".".join(id_) for id_ in data], list(data.values())
 
-def _make_geometry_change_input(fixture_name: str) -> ChangeTests:
+def _make_geometry_change_input(fixture_name: str) -> ChangeTestGroup:
     """Converts the raw data read from a fixture's sample data file into a list of test ids and a
     list of GeometrySampleData dictionary pairs. The first of the pair is the starting geometry
     and the second specifies the change to perform on the starting geometry.
