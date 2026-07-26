@@ -127,8 +127,6 @@ class TestLineSampleProperties:
         """Test that all the sample lines can be found equal to themselves."""
         line_sample.is_equal(line_sample)
 
-# TODO: Replace Near Zero tests with floating point steps rather than EPS_64
-
 class TestLineChanges:
     """Tests for changing Line properties post-initialization."""
 
@@ -215,7 +213,73 @@ class TestAxisChanges:
         assert axis.direction == pytest.approx(change["vectors"]["direction"])
         assert axis.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
 
-# TODO: Add tests for each input type initialization method for Line and for Axis.
+@pytest.mark.parametrize(
+    "ref_point, direction",
+    [pytest.param((0, 0), (1, 0), id="2d"), pytest.param((0, 0, 0), (1, 0, 0), id="3d")],
+)
+class TestLineInitializationTypes:
+    """Tests for initializing Line elements with different types."""
+
+    def test_point_space_vector(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Line can be initialized by a Point and a SpaceVector."""
+        line = Line(Point(ref_point), direction)
+        assert line.direction == direction
+        assert line.reference_point.cartesian == ref_point
+
+    def test_point_list(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Line can be initialized by a Point and a list of floats."""
+        line = Line(Point(ref_point), list(direction))
+        assert line.direction == direction
+        assert line.reference_point.cartesian == ref_point
+
+    def test_point_numpy_1d(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Line can be initialized by a Point and a 1D numpy array."""
+        line = Line(Point(ref_point), np.array(direction))
+        assert line.direction == direction
+        assert line.reference_point.cartesian == ref_point
+
+    def test_point_numpy_2d(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Line can be initialized by a Point and a 1D numpy array."""
+        line = Line(Point(ref_point), np.array(direction).reshape(-1, 1))
+        assert line.direction == direction
+        assert line.reference_point.cartesian == ref_point
+
+@pytest.mark.parametrize(
+    "ref_point, direction",
+    [pytest.param((0, 0), (1, 0), id="2d"), pytest.param((0, 0, 0), (1, 0, 0), id="3d")],
+)
+class TestAxisInitializationTypes:
+    """Tests for initializing Axis elements with different types."""
+
+    def test_tuples(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Axis can be initialized by two tuples."""
+        axis = Axis(ref_point, direction)
+        assert axis.direction == direction
+        assert axis.reference_point.cartesian == ref_point
+
+    def test_point_and_tuple(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Axis can be initialized by a Point and a tuple."""
+        axis = Axis(Point(ref_point), direction)
+        assert axis.direction == direction
+        assert axis.reference_point.cartesian == ref_point
+
+    def test_tuple_and_list(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Axis can be initialized by a tuple and a list of floats."""
+        axis = Axis(ref_point, list(direction))
+        assert axis.direction == direction
+        assert axis.reference_point.cartesian == ref_point
+
+    def test_numpy_1ds(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Axis can be initialized by two 1D numpy arrays."""
+        axis = Axis(np.array(ref_point), np.array(direction))
+        assert axis.direction == direction
+        assert axis.reference_point.cartesian == ref_point
+
+    def test_numpy_1d_and_numpy_2d(self, ref_point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that Axis can be initialized by two 1D numpy arrays."""
+        axis = Axis(np.array(ref_point), np.array(direction).reshape(-1, 1))
+        assert axis.direction == direction
+        assert axis.reference_point.cartesian == ref_point
 
 class TestSpotChecks:
     """Test the initialization of Line/Axis properties hasn't unexpectedly changed. These tests
