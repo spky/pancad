@@ -25,7 +25,7 @@ from tests.testing_utils import sketch_gen
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Optional, TypedDict
+    from typing import Any
 
     from pancad.utils.pancad_types import SpaceVector
     from tests._typing import GeometrySampleData, SampleTestGroup, ChangeTestGroup

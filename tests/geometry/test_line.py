@@ -14,7 +14,6 @@ from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
 
 if TYPE_CHECKING:
-    from typing import Type, Any, TypedDict, NotRequired
     from collections.abc import Callable
 
     from pancad.utils.pancad_types import SpaceVector, Numpy2D
