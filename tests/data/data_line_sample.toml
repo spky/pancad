@@ -1,0 +1,256 @@
+# data_line_sample.toml is a test data file containing line definition samples.
+
+# Lines defined by two points.
+#     start: The first point.
+#     end: The second point. Must be the same dimension as start.
+#     ref_point: The expected resulting point closest to the origin.
+#     unique_direction: The expected unique direction of the line - must be normalized at runtime.
+#     polar_spherical: Optional - the expected polar (2D) or spherical (3D) direction vector.
+[two_point_lines.diagonal_off_origin_quadrant_1]
+vectors = {start = [0, 4], end = [4, 0], ref_point = [2, 2]}
+normed_vectors = {unique_direction = [-1, 1]}
+
+[two_point_lines.diagonal_off_origin_quadrant_2]
+vectors = {start = [0, 4], end = [-4, 0], ref_point = [-2, 2]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[two_point_lines.diagonal_off_origin_quadrant_3]
+vectors = {start = [0, -4], end = [-4, 0], ref_point = [-2, -2]}
+normed_vectors = {unique_direction = [-1, 1]}
+
+[two_point_lines.diagonal_off_origin_quadrant_4]
+vectors = {start = [0, -4], end = [4, 0], ref_point = [2, -2]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[two_point_lines.vertical_line_through_origin]
+vectors = {start = [0, 0], end = [0, 2], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+
+[two_point_lines.vertical_line_positive_x]
+vectors = {start = [2, 0], end = [2, 2], ref_point = [2, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+
+[two_point_lines.vertical_line_negative_x]
+vectors = {start = [-2, 0], end = [-2, 2], ref_point = [-2, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+
+[two_point_lines.horizontal_line_through_origin]
+vectors = {start = [0, 0], end = [2, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+
+[two_point_lines.horizontal_line_positive_y]
+vectors = {start = [0, 2], end = [2, 2], ref_point = [0, 2]}
+normed_vectors = {unique_direction = [1, 0]}
+
+[two_point_lines.horizontal_line_negative_y]
+vectors = {start = [0, -2], end = [2, -2], ref_point = [0, -2]}
+normed_vectors = {unique_direction = [1, 0]}
+
+[two_point_lines.diagonal_init_in_quadrant_1_thru_origin]
+vectors = {start = [1, 1], end = [2, 2], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[two_point_lines.diagonal_init_in_quadrant_2_thru_origin]
+vectors = {start = [-1, 1], end = [-2, 2], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+
+[two_point_lines.diagonal_init_in_quadrant_3_thru_origin]
+vectors = {start = [-1, -1], end = [-2, -2], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[two_point_lines.diagonal_init_in_quadrant_4_thru_origin]
+vectors = {start = [1, -1], end = [2, -2], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+
+[two_point_lines.diagonal_init_from_quadrant_3_to_1]
+vectors = {start = [-1, -1], end = [1, 1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[two_point_lines.diagonal_init_from_quadrant_2_to_4]
+vectors = {start = [-1, 1], end = [1, -1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+
+[two_point_lines.x_axis_3d]
+vectors = {start = [0, 0, 0], end = [1, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 0, 0]}
+polar_spherical_vectors = {direction = [1, 0, 90]}
+
+[two_point_lines.y_axis_3d]
+vectors = {start = [0, 0, 0], end = [0, 1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 1, 0]}
+polar_spherical_vectors = {polar_spherical = [1, 90, 90]}
+
+[two_point_lines.z_axis_3d]
+vectors = {start = [0, 0, 0], end = [0, 0, 1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 0, 1]}
+polar_spherical_vectors = {polar_spherical = [1, "nan", 0]}
+
+# Lines defined by a start point and a direction vector.
+#     start: The first point.
+#     in_direction: The direction input into the Line. Must be the same dimension as start
+#     ref_point: The expected resulting point closest to the origin.
+#     unique_direction: The expected unique direction of the line - must be normalized at runtime.
+# 2D point_direction_lines
+[point_direction_lines.positive_x_2d_unit_vector]
+vectors = {start = [0, 0], in_direction = [1, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+
+[point_direction_lines.positive_y_2d_unit_vector]
+vectors = {start = [0, 0], in_direction = [0, 1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+
+[point_direction_lines.negative_x_2d_unit_vector]
+vectors = {start = [0, 0], in_direction = [-1, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+
+[point_direction_lines.negative_y_2d_unit_vector]
+vectors = {start = [0, 0], in_direction = [0, -1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+
+[point_direction_lines.2_direction_positive_2d_vector]
+vectors = {start = [0, 0], in_direction = [1, 1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+
+[point_direction_lines.2_direction_negative_2d_vector]
+vectors = {start = [0, 0], in_direction = [-1, -1], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+
+# 3D point_direction_lines
+[point_direction_lines.positive_x_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [1, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 0, 0]}
+
+[point_direction_lines.positive_y_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, 1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 1, 0]}
+
+[point_direction_lines.positive_z_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, 0, 1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 0, 1]}
+
+[point_direction_lines.negative_x_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [-1, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 0, 0]}
+
+[point_direction_lines.negative_y_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, -1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 1, 0]}
+
+[point_direction_lines.negative_z_3d_unit_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, 0, -1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 0, 1]}
+
+[point_direction_lines.2_direction_xy_positive_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [1, 1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 1, 0]}
+
+[point_direction_lines.2_direction_yz_positive_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, 1, 1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 1, 1]}
+
+[point_direction_lines.2_direction_xy_negative_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [-1, -1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 1, 0]}
+
+[point_direction_lines.2_direction_yz_negative_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [0, -1, -1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [0, 1, 1]}
+
+[point_direction_lines.3_direction_positive_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [1, 1, 1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 1, 1]}
+
+[point_direction_lines.3_direction_negative_3d_vector]
+vectors = {start = [0, 0, 0], in_direction = [-1, -1, -1], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 1, 1]}
+
+# 2D Lines defined by a slope and y intercept
+#     slope: The slope of the 2D line.
+#     intercept: The y-intercept of the line.
+#     ref_point: The expected resulting point closest to the origin.
+#     unique_direction: The expected unique direction of the line - must be normalized at runtime.
+[slope_y_intercept_lines.horizontal_thru_origin]
+vectors = {ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+scalars = {slope = 0, intercept = 0}
+
+[slope_y_intercept_lines.slope_1_thru_origin]
+vectors = {ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+scalars = {slope = 1, intercept = 0}
+
+[slope_y_intercept_lines.slope_negative_1_thru_origin]
+vectors = {ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+scalars = {slope = -1, intercept = 0}
+
+[slope_y_intercept_lines.slope_negative_1_intercept_4]
+vectors = {ref_point = [2, 2]}
+normed_vectors = {unique_direction = [-1, 1]}
+scalars = {slope = -1, intercept = 4}
+
+# Lines defined by a point, azimuth angle phi, and elevation angle theta (if 3D)
+#     start: The first point.
+#     phi: The azimuth angle in degrees
+#     theta: The elevation angle in degrees
+#     ref_point: The expected resulting point closest to the origin.
+#     unique_direction: The expected unique direction of the line - must be normalized at runtime.
+[point_angle_lines.polar_origin_0]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+polar_spherical_vectors = {polar_spherical = [1, 0]}
+degree_scalars = {phi = 0}
+
+[point_angle_lines.polar_origin_45]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 45]}
+degree_scalars = {phi = 45}
+
+[point_angle_lines.polar_origin_negative_135]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 45]}
+degree_scalars = {phi = -135}
+
+[point_angle_lines.polar_origin_90]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 90]}
+degree_scalars = {phi = 90}
+
+[point_angle_lines.polar_origin_negative_90]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [0, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 90]}
+degree_scalars = {phi = -90}
+
+[point_angle_lines.polar_origin_135]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 135]}
+degree_scalars = {phi = 135}
+
+[point_angle_lines.polar_origin_negative_45]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [-1, 1]}
+polar_spherical_vectors = {polar_spherical = [1, 135]}
+degree_scalars = {phi = -45}
+
+[point_angle_lines.polar_origin_180]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+polar_spherical_vectors = {polar_spherical = [1, 0]}
+degree_scalars = {phi = 180}
+
+[point_angle_lines.polar_origin_negative_180]
+vectors = {start = [0, 0], ref_point = [0, 0]}
+normed_vectors = {unique_direction = [1, 0]}
+polar_spherical_vectors = {polar_spherical = [1, 0]}
+degree_scalars = {phi = -180}
+
+[point_angle_lines.polar_x_axis_3d]
+vectors = {start = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {unique_direction = [1, 0, 0]}
+polar_spherical_vectors = {polar_spherical = [1, 0, 90]}
+degree_scalars = {phi = 0, theta = 90}

@@ -17,7 +17,6 @@ ignore-paths=^docs/.*$,
              ^tests/geometry/test_extrude.py$,
              ^tests/geometry/test_feature_system.py$,
              ^tests/geometry/test_horizontal.py$,
-             ^tests/geometry/test_line.py$,
              ^tests/geometry/test_line_segment.py$,
              ^tests/geometry/test_plane.py$,
              ^tests/geometry/test_shared_geometry.py$,
@@ -30,7 +29,6 @@ ignore-paths=^docs/.*$,
              ^tests/utils/.*$,
              ^tests/testing_utils/.ipynb_checkpoints/.*$,
              ^tests/testing_utils/sketch_gen.py$,
-             ^tests/conftest.py$,
 
 [DESIGN]
 

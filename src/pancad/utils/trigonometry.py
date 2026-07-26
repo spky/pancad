@@ -313,6 +313,12 @@ def positive_angle(angle: float) -> float:
         return angle_mod(angle)
     return angle_mod(angle) + 2*np.pi
 
+@overload
+def to_1d_tuple(value: Space2DVector) -> Space2DVector: ...
+@overload
+def to_1d_tuple(value: Space3DVector) -> Space3DVector: ...
+@overload
+def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector: ...
 def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector:
     """Returns a 2D or 3D vector as a tuple from a given value."""
     tuple_value: tuple[float, ...]

@@ -12,23 +12,20 @@ from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
-import quaternion
+# Ignoring quaternion typing, see issue #300
+import quaternion # type: ignore
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import closest_to_origin
-from pancad.utils.pancad_types import VectorLike
 
 if TYPE_CHECKING:
-    from numbers import Real
-    from typing import Self
-
-    from numpy.typing import ArrayLike
+    from typing import Self, Optional, Type
 
     from pancad.utils.pancad_types import (
-        SpaceVector, Space3DVector, Space2DVector
+        SpaceVector, Space3DVector, Space2DVector, Numpy1D, Numpy2D, PolarVector, SphericalVector
     )
 
 class Line(AbstractGeometry):
@@ -47,8 +44,8 @@ class Line(AbstractGeometry):
     zero_tol = np.sqrt(np.finfo(np.float64).eps) # pylint: disable=no-member
     """Any Line direction vector component smaller than this number will be set to 0."""
 
-    def __init__(self, point: Point, direction: VectorLike,
-                 uid: str=None) -> None:
+    def __init__(self, point: Point, direction: Sequence[float] | Numpy1D | Numpy2D,
+                 uid: Optional[str]=None) -> None:
         self.uid = uid
         self._point_closest_to_origin = Point([0] * len(point)) # Initialize closest point
         self.direction = direction
@@ -56,16 +53,16 @@ class Line(AbstractGeometry):
             msg = ("point cannot be a tuple for Line's init function."
                    "Use Line.from_two_points or provide a Point instead")
             raise ValueError(msg)
-        self._point_closest_to_origin = Line._closest_to_origin(point,
+        self._point_closest_to_origin = Line._closest_to_origin(point.cartesian,
                                                                 self.direction)
         super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods
     @classmethod
     def from_two_points(cls,
-                        a: Point | VectorLike,
-                        b: Point | VectorLike,
-                        uid: str=None) -> Self:
+                        a: Point | Sequence[float] | Numpy1D,
+                        b: Point | Sequence[float] | Numpy1D,
+                        uid: Optional[str]=None) -> Self:
         """Returns a Line instance defined by points a and b. 2D points will
         produce 2D lines, 3D produce 3D lines, and 2D and 3D points cannot
         be mixed.
@@ -75,26 +72,19 @@ class Line(AbstractGeometry):
         :param uid: The unique ID of the line.
         :returns: A Line that is coincident with points a and b.
         """
-        points = [a, b]
-        if any(len(point) not in [2, 3] for point in points):
-            raise ValueError("a and b must be 2D or 3D")
-        if len(a) != len(b):
-            raise ValueError("a and b must be the same dimension")
-        for i, point in enumerate(points):
-            if isinstance(point, (Sequence, np.ndarray)):
-                points[i] = Point(point)
-        if any(not isinstance(point, Point) for point in points):
-            raise ValueError("a and b must be VectorLikes or pancad Points.")
-        if points[0] == points[1]:
+        if not isinstance(a, Point):
+            a = Point(a)
+        if not isinstance(b, Point):
+            b = Point(b)
+        if a.is_equal(b):
             raise ValueError("Defining points are at the same position")
-        a_vector, b_vector = np.array(points[0]), np.array(points[1])
-        return cls(Point(a_vector), b_vector - a_vector, uid)
+        return cls(a, b - a, uid)
 
     @classmethod
     def from_slope_and_y_intercept(cls,
-                                   slope: Real,
-                                   intercept: Real,
-                                   uid: str=None) -> Self:
+                                   slope: float,
+                                   intercept: float,
+                                   uid: Optional[str]=None) -> Self:
         """Returns a 2D line described by y = mx + b.
 
         :param slope: The slope (m) of the line.
@@ -106,14 +96,14 @@ class Line(AbstractGeometry):
             points = (Point(0, intercept), Point(1, intercept))
         else:
             points = (Point(0, intercept), Point(1, slope + intercept))
-        return Line.from_two_points(*points, uid)
+        return cls.from_two_points(*points, uid)
 
     @classmethod
     def from_point_and_angle(cls,
-                             point: Point | VectorLike,
-                             phi: Real,
-                             theta: Real=None,
-                             uid: str=None) -> Self:
+                             point: Point | Sequence[float] | Numpy1D,
+                             phi: float,
+                             theta: Optional[float]=None,
+                             uid: Optional[str]=None) -> Self:
         """Return a line from a given point and phi or phi and theta. The Line
         will be 2D if point is 2D. The Line will be 3D if point is 3D, phi
         is provided, and theta is provided.
@@ -125,24 +115,22 @@ class Line(AbstractGeometry):
         :returns: A Line that runs through the point in a direction defined by
             the provided angles.
         """
-        if isinstance(point, (Sequence, np.ndarray)):
-            point = Point(point)
         if not isinstance(point, Point):
-            raise TypeError(f"Expected Point/VectorLike for point, got {point}")
-        if len(point) == 3 and theta is None:
-            raise ValueError("Expected theta for a 3D point.")
-        if len(point) == 2 and theta is not None:
-            raise ValueError("Expected None for theta for a 2D point.")
+            point = Point(point)
         if len(point) == 2:
+            if theta is not None:
+                raise ValueError("Expected None for theta for a 2D point.")
             direction_end_pt = Point(1, 0)
             direction_end_pt.phi = phi
         else:
             direction_end_pt = Point(1, 0, 0)
+            if theta is None:
+                raise ValueError("Expected theta for a 3D point.")
             direction_end_pt.spherical = (1, phi, theta)
         return cls(point, tuple(direction_end_pt), uid)
 
     @classmethod
-    def from_x_intercept(cls, x_intercept: Real, uid: str=None) -> Self:
+    def from_x_intercept(cls, x_intercept: float, uid: Optional[str]=None) -> Self:
         """Returns a 2D vertical line that passes through the x intercept.
 
         :param x_intercept: The value of x where the line crosses the x-axis.
@@ -152,7 +140,7 @@ class Line(AbstractGeometry):
         return cls(Point(x_intercept, 0), (0, 1), uid)
 
     @classmethod
-    def from_y_intercept(cls, y_intercept: Real, uid: str=None) -> Self:
+    def from_y_intercept(cls, y_intercept: float, uid: Optional[str]=None) -> Self:
         """Returns a 2D horizontal line that passes through the y intercept.
 
         :param y_intercept: The value of y where the line crosses the y-axis.
@@ -185,18 +173,17 @@ class Line(AbstractGeometry):
         return self._direction
 
     @direction.setter
-    def direction(self, vector: VectorLike) -> None:
-        vector = trig.to_1d_np(vector)
-        if not np.any(vector):
-            msg = f"Direction vector cannot be zero vector: {vector}"
-            raise ValueError(msg)
-        self._direction = self._unique_direction(vector)
+    def direction(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_np(vector)
+        if not np.any(parsed_vector):
+            raise ValueError("Direction vector cannot be zero vector")
+        self._direction = self._unique_direction(parsed_vector)
         new_closest = self._closest_to_origin(self._point_closest_to_origin.cartesian,
                                               self.direction)
         self._point_closest_to_origin.update(new_closest)
 
     @property
-    def direction_polar(self) -> Space2DVector:
+    def direction_polar(self) -> PolarVector:
         """The unique direction of the line with polar components.
 
         :getter: Returns the direction of the line as a (r, phi) tuple. Phi is
@@ -204,13 +191,19 @@ class Line(AbstractGeometry):
         :setter: Finds and sets the polar vector's unique direction vector as
             the direction of the Line.
         """
-        return trig.cartesian_to_polar(self.direction)
+        if len(self.direction) == 2:
+            return trig.cartesian_to_polar(self.direction)
+        raise ValueError("Cannot return the polar direction vector of a 3D line")
+
     @direction_polar.setter
-    def direction_polar(self, vector: VectorLike) -> None:
-        self.direction = trig.polar_to_cartesian(vector)
+    def direction_polar(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_tuple(vector)
+        if len(parsed_vector) != 2:
+            raise ValueError("Expected a 2 long vector.")
+        self.direction = trig.polar_to_cartesian(parsed_vector)
 
     @property
-    def direction_spherical(self) -> Space3DVector:
+    def direction_spherical(self) -> SphericalVector:
         """The unique direction of the line with spherical components.
 
         :getter: Returns the direction of the line as a (r, phi, theta) tuple.
@@ -219,13 +212,19 @@ class Line(AbstractGeometry):
         :setter: Finds and sets the spherical vector's unique direction vector
             as the direction of the Line.
         """
-        return trig.cartesian_to_spherical(self.direction)
+        if len(self.direction) == 3:
+            return trig.cartesian_to_spherical(self.direction)
+        raise ValueError("Cannot return the spherical direction vector of a 2D line.")
+
     @direction_spherical.setter
-    def direction_spherical(self, vector: VectorLike) -> None:
-        self.direction = trig.spherical_to_cartesian(vector)
+    def direction_spherical(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_tuple(vector)
+        if len(parsed_vector) != 3:
+            raise ValueError("Expected a 3 long vector.")
+        self.direction = trig.spherical_to_cartesian(parsed_vector)
 
     @property
-    def phi(self) -> Real:
+    def phi(self) -> float:
         """The polar/spherical azimuth component of the line's direction in
         radians.
 
@@ -244,7 +243,7 @@ class Line(AbstractGeometry):
         return self._point_closest_to_origin.copy()
 
     @property
-    def slope(self) -> Real:
+    def slope(self) -> float:
         """The slope of the line (m in y = mx + b), only available if the line
         is 2D.
 
@@ -259,17 +258,19 @@ class Line(AbstractGeometry):
         raise ValueError("slope is not defined for a 3D line")
 
     @property
-    def theta(self) -> Real:
+    def theta(self) -> float:
         """The spherical inclination component of the line's direction in
         radians.
 
         :getter: Returns the inclination angle of the line's direction
         :setter: Read-only.
         """
-        return trig.theta_of_cartesian(self.direction)
+        if len(self.direction) == 3:
+            return trig.theta_of_cartesian(self.direction)
+        raise ValueError("Cannot return the spherical theta of a 2D line")
 
     @property
-    def x_intercept(self) -> Real:
+    def x_intercept(self) -> float:
         """The x-intercept of the 2D line (x when y = 0 in y = mx + b), raises
         a ValueError if the line is 3D.
 
@@ -287,7 +288,7 @@ class Line(AbstractGeometry):
         raise ValueError("x-intercept is not defined for a 3D line")
 
     @property
-    def y_intercept(self) -> Real:
+    def y_intercept(self) -> float:
         """The y-intercept of the line (b in y = mx + b), only available if
         the line is 2D.
 
@@ -313,7 +314,7 @@ class Line(AbstractGeometry):
         return (self.reference_point.is_equal(other.reference_point)
                 and np.allclose(self.direction, other.direction))
 
-    def get_parametric_point(self, t: Real) -> Point:
+    def get_parametric_point(self, t: float) -> Point:
         """Returns the point at parameter t where a, b, and c are defined by
         the unique unit vector direction of the line and initialized at the
         point closest to the origin.
@@ -324,7 +325,8 @@ class Line(AbstractGeometry):
         return Point(np.array(self.reference_point)
                      + trig.to_1d_np(self.direction)*t)
 
-    def get_parametric_constants(self) -> tuple[Real]:
+    def get_parametric_constants(self) -> (tuple[float, float, float, float] |
+                                           tuple[float, float, float, float, float, float]):
         """Returns a tuple containing parameters for the line. The reference
         point is used for the initial position and the line's direction vector
         is used for a, b, and c.
@@ -334,9 +336,9 @@ class Line(AbstractGeometry):
         return (*self.reference_point.cartesian, *self.direction)
 
     def move_to_point(self,
-                      point: Point | SpaceVector,
-                      phi: Real=None,
-                      theta: Real=None) -> Self:
+                      point: Point | Sequence[float] | Numpy1D,
+                      phi: Optional[float]=None,
+                      theta: Optional[float]=None) -> Self:
         """Moves the line to go through a point and changes the line's
         direction's around that point.
 
@@ -361,7 +363,7 @@ class Line(AbstractGeometry):
             elif phi is None and theta is not None:
                 direction_end_pt.theta = theta
             self.direction = tuple(direction_end_pt)
-        new_closest = self._closest_to_origin(point, self.direction)
+        new_closest = self._closest_to_origin(point.cartesian, self.direction)
         self._point_closest_to_origin.update(new_closest)
         return self
 
@@ -376,11 +378,11 @@ class Line(AbstractGeometry):
         return self
 
     @staticmethod
-    def _closest_to_origin(point: ArrayLike, vector: VectorLike) -> Point:
+    def _closest_to_origin(point: SpaceVector, vector: SpaceVector) -> Point:
         """Returns the Point on the Line closest to the origin."""
         return Point(closest_to_origin(point, vector))
 
-    def _unique_direction(self, vector: np.ndarray) -> np.ndarray:
+    def _unique_direction(self, vector: SpaceVector | Numpy1D) -> SpaceVector:
         """Returns a unit vector that can uniquely identify the direction of
         the given vector. Does so flipping the unit vector if necessary to
         ensure there can only ever be one vector for every direction.
@@ -414,7 +416,7 @@ class Line(AbstractGeometry):
         return trig.to_1d_tuple(unit_vector + 0)
 
     # Python Dunders #
-    def __conform__(self, protocol: PrepareProtocol) -> str:
+    def __conform__(self, protocol: Type[PrepareProtocol]) -> str:
         if protocol is PrepareProtocol:
             dimensions = [*self.reference_point, *self.direction]
             return ";".join(map(str, dimensions))
@@ -458,8 +460,9 @@ class Axis(AbstractGeometry):
     :param uid: The unique ID of the axis.
     """
 
-    def __init__(self, point: Point | SpaceVector, direction: SpaceVector,
-                 uid:str=None) -> None:
+    def __init__(self, point: Point | Sequence[float] | Numpy1D,
+                 direction: Sequence[float] | Numpy1D | Numpy2D,
+                 uid: Optional[str]=None) -> None:
         self.uid = uid
         if not isinstance(point, Point):
             point = Point(point)
@@ -481,19 +484,16 @@ class Axis(AbstractGeometry):
         return self._direction
 
     @direction.setter
-    def direction(self, vector: VectorLike) -> None:
-        vector = trig.to_1d_np(vector)
-        if not np.any(vector):
-            msg = f"Direction vector cannot be zero vector: {vector}"
-            raise ValueError(msg)
-        if len(vector) != len(self):
-            msg = (f"{len(vector)}D vector cannot be the direction"
-                   f" of a {len(self)}D axis: {vector}")
-            raise ValueError(msg)
-        self._direction = trig.to_1d_tuple(trig.get_unit_vector(vector))
+    def direction(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
+        parsed_vector = trig.to_1d_np(vector)
+        if not np.any(parsed_vector):
+            raise ValueError("Direction vector cannot be zero vector")
+        if len(parsed_vector) != len(self._line):
+            raise ValueError("Direction vector must be the same dimension as the Axis")
+        self._direction = trig.to_1d_tuple(trig.get_unit_vector(parsed_vector))
         # Axis uses Line to inform geometry, but the Line shouldn't be referenced
         # by constraints. Axis should be referenced directly.
-        self._line.direction = vector
+        self._line.direction = parsed_vector
 
     @property
     def reference_point(self) -> Point:
@@ -521,7 +521,7 @@ class Axis(AbstractGeometry):
         """
         return Axis(self.reference_point, self.direction)
 
-    def is_equal(self, other: AbstractGeometry) -> bool:
+    def is_equal(self, other: Axis) -> bool:
         """Returns whether the other geometry is geometrically equal. This is a
         separate check from whether a geometry element is equal to this
         geometry element since the uids would not be the same.
@@ -530,8 +530,8 @@ class Axis(AbstractGeometry):
                 and self.reference_point.is_equal(other.reference_point))
 
     def move_to_point(self,
-                      point: Point | SpaceVector,
-                      direction: SpaceVector=None) -> Self:
+                      point: Point | Sequence[float] | Numpy1D,
+                      direction: Optional[Sequence[float] | Numpy1D | Numpy2D]=None) -> Self:
         """Moves the axis to go through the point. Leaves direction constant
         unless provided.
 
@@ -554,9 +554,10 @@ class Axis(AbstractGeometry):
         """
         self.direction = other.direction
         self._line.update(other.reference_line)
+        return self
 
     @singledispatchmethod
-    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -580,7 +581,7 @@ class Axis(AbstractGeometry):
         return self
 
     @rotate.register(np.ndarray)
-    def _with_matrix(self, rotation: np.ndarray) -> Self:
+    def _with_matrix(self, rotation: Numpy2D) -> Self:
         try:
             new = rotation @ self.direction
         except ValueError as exc:
