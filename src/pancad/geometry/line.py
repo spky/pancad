@@ -460,7 +460,8 @@ class Axis(AbstractGeometry):
     :param uid: The unique ID of the axis.
     """
 
-    def __init__(self, point: Point | Sequence[float] | Numpy1D, direction: SpaceVector,
+    def __init__(self, point: Point | Sequence[float] | Numpy1D,
+                 direction: Sequence[float] | Numpy1D | Numpy2D,
                  uid: Optional[str]=None) -> None:
         self.uid = uid
         if not isinstance(point, Point):
