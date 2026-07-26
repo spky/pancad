@@ -1,0 +1,40 @@
+# changes_axis.toml is a test data file containing definitions of starting Axis
+# geometry and how to change its parameters post-initialization.
+
+[direction_setter]
+[direction_setter.3d_x_axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+[direction_setter.3d_x_axis.to_z]
+vectors = {ref_point = [0, 0, 0], direction = [0, 0, 1]}
+[direction_setter.3d_x_axis.to_negative_z]
+vectors = {ref_point = [0, 0, 0], direction = [0, 0, -1]}
+
+[direction_setter.3d_horizontal_plus_1_y.initial]
+vectors = {start = [0, 1, 0], direction = [1, 0, 0]}
+[direction_setter.3d_horizontal_plus_1_y.to_y]
+vectors = {ref_point = [0, 0, 0], direction = [0, 1, 0]}
+[direction_setter.3d_horizontal_plus_1_y.to_negative_y]
+vectors = {ref_point = [0, 0, 0], direction = [0, -1, 0]}
+
+[rotation_2d.x_axis]
+[rotation_2d.x_axis.initial]
+vectors = {start = [0, 0], direction = [1, 0]}
+[rotation_2d.x_axis.unrotated]
+degree_scalars = {angle=0}
+vectors = {ref_point = [0, 0], direction = [1, 0]}
+[rotation_2d.x_axis.clockwise_90_to_y]
+degree_scalars = {angle=90}
+vectors = {ref_point = [0, 0], direction = [0, 1]}
+[rotation_2d.x_axis.clockwise_180_to_negative_x]
+degree_scalars = {angle=180}
+vectors = {ref_point = [0, 0], direction = [-1, 0]}
+
+[rotation_3d]
+[rotation_3d.x_axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+[rotation_3d.x_axis.unrotated]
+degree_scalars = {yaw = 0, pitch = 0, roll = 0}
+vectors = {ref_point = [0, 0, 0], direction = [1, 0, 0]}
+[rotation_3d.x_axis.yaw_plus_90]
+degree_scalars = {yaw = 90, pitch = 0, roll = 0}
+vectors = {ref_point = [0, 0, 0], direction = [0, 1, 0]}

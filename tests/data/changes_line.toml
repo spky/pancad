@@ -1,0 +1,98 @@
+# changes_line.toml is a test data file containing definitions of starting line
+# geometry and how to change its parameters post-initialization.
+
+# Each set of changes needs to have an 'initial' entry to start from
+
+[move_to_point]
+[move_to_point.3D_X_Axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+
+[move_to_point.3D_X_Axis.to_Z]
+vectors = {point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {direction = [0, 0, 1]}
+degree_scalars = {phi = 0, theta = 0}
+[move_to_point.3D_X_Axis.to_X]
+vectors = {point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {direction = [1, 0, 0]}
+degree_scalars = {phi = 0, theta = 90}
+
+
+[move_to_point.2D_X_Axis.initial]
+vectors = {start = [0, 0], direction = [1, 0]}
+[move_to_point.2D_X_Axis.to_X]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [1, 0]}
+degree_scalars = {phi = 0}
+[move_to_point.2D_X_Axis.to_plus_45]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [1, 1]}
+degree_scalars = {phi = 45}
+[move_to_point.2D_X_Axis.to_plus_90]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [0, 1]}
+degree_scalars = {phi = 90}
+[move_to_point.2D_X_Axis.to_plus_135]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [-1, 1]}
+degree_scalars = {phi = 135}
+[move_to_point.2D_X_Axis.to_plus_180]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [1, 0]}
+degree_scalars = {phi = 180}
+[move_to_point.2D_X_Axis.to_neg_45]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [-1, 1]}
+degree_scalars = {phi = -45}
+[move_to_point.2D_X_Axis.to_neg_90]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [0, 1]}
+degree_scalars = {phi = -90}
+[move_to_point.2D_X_Axis.to_neg_135]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [1, 1]}
+degree_scalars = {phi = -135}
+[move_to_point.2D_X_Axis.to_neg_180]
+vectors = {point = [0, 0], ref_point = [0, 0]}
+normed_vectors = {direction = [1, 0]}
+degree_scalars = {phi = -180}
+
+[direction_setter]
+[direction_setter.3d_x_axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+[direction_setter.3d_x_axis.to_z]
+vectors = {vector = [0, 0, 1], ref_point = [0, 0, 0], direction = [0, 0, 1]}
+
+[direction_setter.horizontal_plus_1_y.initial]
+vectors = {start = [0, 1, 0], direction = [1, 0, 0]}
+[direction_setter.horizontal_plus_1_y.to_y]
+vectors = {vector = [0, 1, 0], ref_point = [0, 0, 0], direction = [0, 1, 0]}
+
+[polar_direction_setter]
+[polar_direction_setter.x_axis.initial]
+vectors = {start = [0, 0], direction = [1, 0]}
+[polar_direction_setter.x_axis.to_x]
+vectors = {ref_point = [0, 0], direction = [1, 0]}
+polar_spherical_vectors = {new = [1, 0]}
+[polar_direction_setter.x_axis.to_y]
+vectors = {ref_point = [0, 0], direction = [0, 1]}
+polar_spherical_vectors = {new = [1, 90]}
+
+[spherical_direction_setter]
+[spherical_direction_setter.3d_x_axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+[spherical_direction_setter.3d_x_axis.to_x]
+vectors = {ref_point = [0, 0, 0], direction = [1, 0, 0]}
+polar_spherical_vectors = {new = [1, 0, 90]}
+[spherical_direction_setter.3d_x_axis.to_y]
+vectors = {ref_point = [0, 0, 0], direction = [0, 1, 0]}
+polar_spherical_vectors = {new = [1, 90, 90]}
+[spherical_direction_setter.3d_x_axis.to_z]
+vectors = {ref_point = [0, 0, 0], direction = [0, 0, 1]}
+polar_spherical_vectors = {new = [1, "nan", 0]}
+
+[update]
+[update.3d_x_axis.initial]
+vectors = {start = [0, 0, 0], direction = [1, 0, 0]}
+[update.3d_x_axis.to_110_start_111_direction]
+vectors = {start = [1, 1, 0]}
+normed_vectors = {direction = [1, 1, 1]}
