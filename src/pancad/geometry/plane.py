@@ -212,7 +212,7 @@ class Plane(AbstractGeometry):
         point closest to the origin and the unit vector normal to the plane.
         """
         strings = []
-        for vector in [self.reference_point, self.normal]:
+        for vector in [self.reference_point.cartesian, self.normal]:
             vector_strings = []
             for component in vector:
                 if np.isclose(component, 0):
