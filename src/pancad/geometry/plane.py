@@ -14,9 +14,9 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
-    from numbers import Real
     from typing import Self
-    import quaternion
+    # Ignoring quaternion typing, see issue #300
+    import quaternion # type: ignore
 
     from pancad.utils.pancad_types import Space3DVector
 
@@ -58,7 +58,7 @@ class Plane(AbstractGeometry):
         return trig.cartesian_to_spherical(self.normal)
 
     @property
-    def phi(self) -> Real:
+    def phi(self) -> float:
         """The spherical azimuth of the plane's normal vector in radians.
         Read-only.
         """
@@ -82,7 +82,7 @@ class Plane(AbstractGeometry):
         return self._axis.copy()
 
     @property
-    def theta(self) -> Real:
+    def theta(self) -> float:
         """The spherical inclination component of the plane's normal vector in
         radians. Read-only.
 
@@ -105,7 +105,7 @@ class Plane(AbstractGeometry):
         return (self.reference_axis.is_equal(other.reference_axis)
                 and self.reference_point.is_equal(other.reference_point))
 
-    def get_d(self) -> Real:
+    def get_d(self) -> float:
         """Returns the Plane's Point-Normal form constant d (equation of form
         ax + by + cz + d = 0)
         """
@@ -132,7 +132,7 @@ class Plane(AbstractGeometry):
             self.normal = normal
         return self
 
-    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
         """Rotates the plane about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -159,8 +159,8 @@ class Plane(AbstractGeometry):
     @three_dimensions_required
     def from_point_and_angles(cls,
                               point: Point,
-                              phi: Real,
-                              theta: Real,
+                              phi: float,
+                              theta: float,
                               uid: str=None) -> Plane:
         """Return a Plane from a given point, phi, and theta.
 
