@@ -14,22 +14,25 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Self
     # Ignoring quaternion typing, see issue #300
     import quaternion # type: ignore
 
-    from pancad.utils.pancad_types import Space3DVector
+    from pancad.utils.pancad_types import Space3DVector, Numpy1D, Numpy2D, SphericalVector
 
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
-    def __init__(self, point: Point | Space3DVector=None,
-                 normal: Space3DVector=None,
-                 uid: str=None):
+    def __init__(self, point: Point | Sequence[float] | Numpy1D,
+                 normal: Sequence[float] | Numpy1D | Numpy2D,
+                 uid: str | None=None):
         self.uid = uid
         if not isinstance(point, Point):
             point = Point(point)
         self._axis = Axis(point, normal)
+        if len(self._axis.direction) != 3:
+            raise ValueError(f"Plane normal vector must be 3D, got: {normal}")
         self._point_closest_to_origin = Plane._closest_to_origin(point, self.normal)
         self._axis.move_to_point(self._point_closest_to_origin)
         super().__init__({ConstraintReference.CORE: self})
@@ -43,15 +46,15 @@ class Plane(AbstractGeometry):
         :setter: Finds the vector's unit vector and sets that as the plane
             normal vector.
         """
+        assert len(self._axis.direction) == 3
         return self._axis.direction
 
     @normal.setter
-    @three_dimensions_required
-    def normal(self, vector: Space3DVector):
+    def normal(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
         self._axis.move_to_point(self._point_closest_to_origin, vector)
 
     @property
-    def normal_spherical(self) -> Space3DVector:
+    def normal_spherical(self) -> SphericalVector:
         """The unit vector describing the normal direction of the plane in
         spherical coordinates. Read-only.
         """
@@ -113,7 +116,8 @@ class Plane(AbstractGeometry):
         x0, y0, z0 = tuple(self.reference_point)
         return -(a*x0 + b*y0 + c*z0)
 
-    def move_to_point(self, point: Point, normal: Space3DVector=None) -> Self:
+    def move_to_point(self, point: Point | Sequence[float] | Numpy1D,
+                      normal: Sequence[float] | Numpy1D | Numpy2D | None=None) -> Self:
         """Moves the plane to the point. Sets the normal vector at that point if
         it is given.
 
@@ -126,6 +130,10 @@ class Plane(AbstractGeometry):
             point = Point(point)
         if normal is None:
             normal = self.normal
+        else:
+            normal = trig.to_1d_tuple(normal)
+            if len(normal) != 3:
+                raise ValueError(f"Plane normal vector must be 3D, got: {normal}")
         new_closest = Plane._closest_to_origin(point, normal)
         self._point_closest_to_origin.update(new_closest)
         if normal is not None:
@@ -145,7 +153,7 @@ class Plane(AbstractGeometry):
             raise
         return self
 
-    def update(self, other: Plane) -> None:
+    def update(self, other: Plane) -> Self:
         """Updates the plane to match the position and normal direction of
         another plane.
 
@@ -153,6 +161,7 @@ class Plane(AbstractGeometry):
         """
         self._point_closest_to_origin.update(other.reference_point)
         self.normal = other.normal
+        return self
 
     # Class Methods #
     @classmethod
