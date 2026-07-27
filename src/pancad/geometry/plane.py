@@ -11,11 +11,11 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Axis
 from pancad.utils import trigonometry as trig
-from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Self
+
     # Ignoring quaternion typing, see issue #300
     import quaternion # type: ignore
 
@@ -140,7 +140,7 @@ class Plane(AbstractGeometry):
             self.normal = normal
         return self
 
-    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
         """Rotates the plane about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -165,12 +165,11 @@ class Plane(AbstractGeometry):
 
     # Class Methods #
     @classmethod
-    @three_dimensions_required
     def from_point_and_angles(cls,
-                              point: Point,
+                              point: Point | Sequence[float] | Numpy1D,
                               phi: float,
                               theta: float,
-                              uid: str=None) -> Plane:
+                              uid: str | None=None) -> Plane:
         """Return a Plane from a given point, phi, and theta.
 
         :param point: A point on the plane
