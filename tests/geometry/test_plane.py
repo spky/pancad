@@ -10,9 +10,50 @@ from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 
 if TYPE_CHECKING:
+    from typing import Callable
+
     from pancad.utils.pancad_types import Space3DVector
 
-    from tests._typing import ChangeTest
+    from tests._typing import GeometrySampleData, ChangeTest
+
+    PlaneMaker = Callable[[GeometrySampleData, pytest.FixtureRequest], Plane]
+
+@pytest.fixture(name="make_plane")
+def fixture_make_plane() -> PlaneMaker:
+    """Returns a function that converts GeometrySampleData into a Plane based on the request id"""
+    def _make_plane(sample: GeometrySampleData, request: pytest.FixtureRequest) -> Plane:
+        id_ = request.node.callspec.id
+        vectors = sample["vectors"]
+        if "point_normal" in id_:
+            return Plane(vectors["in_point"], vectors["in_normal"])
+        raise ValueError(f"Unexpected Plane data group: {id_}")
+    return _make_plane
+
+@pytest.fixture(name="plane_sample")
+def fixture_plane_sample(data_plane_sample: GeometrySampleData,
+                         make_plane: PlaneMaker,
+                         request: pytest.FixtureRequest) -> Plane:
+    """Returns a sample plane to test properties."""
+    return make_plane(data_plane_sample, request)
+
+class TestPlaneSampleProperties:
+    """Tests whether all sample Plane eleemnts have the expected properties post-initialization"""
+
+    def test_normal(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
+        """Test sample Plane normal vectors match the expected data file value."""
+        assert plane_sample.normal == data_plane_sample["vectors"]["normal"]
+
+    def test_ref_point(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
+        """Test sample Plane reference points match the expected data file value."""
+        assert plane_sample.reference_point.cartesian == data_plane_sample["vectors"]["ref_point"]
+
+    def test_len(self, plane_sample: Plane) -> None:
+        """Test that all sample planes are 3 dimensional."""
+        assert len(plane_sample) == 3
+
+    def test_is_equal(self, plane_sample: Plane) -> None:
+        """Test that all the sample Planes can be found equal to themselves."""
+        plane_sample.is_equal(plane_sample)
 
 class TestPlaneChanges:
     """Tests for changing Plane properties post-initialization."""
