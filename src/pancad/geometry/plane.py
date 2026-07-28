@@ -43,8 +43,8 @@ class Plane(AbstractGeometry):
         """The unit vector that describes the normal direction of the plane.
 
         :getter: Returns the normal vector of the plane.
-        :setter: Finds the vector's unit vector and sets that as the plane
-            normal vector.
+        :setter: Sets the plane's normal to a new vector. Pivots about the Plane's current
+            reference point.
         """
         assert len(self._axis.direction) == 3
         return self._axis.direction
