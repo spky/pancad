@@ -1,0 +1,44 @@
+[move_to_point]
+[move_to_point.xy_plane.initial]
+vectors = {point = [0, 0, 0], normal = [0, 0, 1]}
+[move_to_point.xy_plane.unmoved]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 0, 1], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, 1]}
+[move_to_point.xy_plane.to_negative_xy_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 0, -1], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, -1]}
+[move_to_point.xy_plane.to_xy_plus_1_in_z_normal]
+vectors = {in_point = [0, 0, 1], ref_point = [0, 0, 1], normal = [0, 0, 1]}
+[move_to_point.xy_plane.translate_to_111]
+vectors = {in_point = [1, 1, 1], ref_point = [0, 0, 1], normal = [0, 0, 1]}
+[move_to_point.xy_plane.to_xz_plane_plus_1_in_y_normal]
+vectors = {in_point = [0, 1, 0], in_normal = [0, 1, 0], ref_point = [0, 1, 0]}
+normed_vectors = {normal = [0, 1, 0]}
+[move_to_point.xy_plane.to_xz_plane_translate_to_111]
+# The reference point should be at (0, 1, 0) rather than (1, 1, 1) because the normal vector
+# is not aligned with the reference point vector to make it the closest point.
+vectors = {in_point = [1, 1, 1], in_normal = [0, 1, 0], ref_point = [0, 1, 0]}
+normed_vectors = {normal = [0, 1, 0]}
+
+[update.xy_plane]
+[update.xy_plane.initial]
+vectors = {point = [0, 0, 0], normal = [0, 0, 1]}
+[update.xy_plane.to_yz_plane_plus_1_in_z_normal]
+vectors = {in_point = [1, 0, 0], in_normal = [1, 0, 0], ref_point = [1, 0, 0], normal = [1, 0, 0]}
+
+
+[rotation_quat.xy_plane]
+[rotation_quat.xy_plane.initial]
+vectors = {point = [0, 0, 0], normal = [0, 0, 1]}
+[rotation_quat.xy_plane.unrotated_zero_axis]
+quats = {rotation = {angle = 0, axis = [0, 0, 0]}}
+vectors = {ref_point = [0, 0, 0], normal = [0, 0, 1]}
+[rotation_quat.xy_plane.unrotated_around_z_axis]
+quats = {rotation = {angle = 0, axis = [0, 0, 1]}}
+vectors = {ref_point = [0, 0, 0], normal = [0, 0, 1]}
+[rotation_quat.xy_plane.90_around_z_axis_no_effect]
+quats = {rotation = {angle = 90, axis = [0, 0, 1]}}
+vectors = {ref_point = [0, 0, 0], normal = [0, 0, 1]}
+[rotation_quat.xy_plane.rotate_to_yz_plane_around_y_90]
+quats = {rotation = {angle = 90, axis = [0, 1, 0]}}
+vectors = {ref_point = [0, 0, 0], normal = [1, 0, 0]}
