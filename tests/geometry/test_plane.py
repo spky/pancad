@@ -4,10 +4,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import numpy as np
 
 from pancad.geometry.plane import Plane
+from pancad.geometry.point import Point
 
 if TYPE_CHECKING:
+    from pancad.utils.pancad_types import Space3DVector
+
     from tests._typing import ChangeTest
 
 class TestPlaneChanges:
@@ -39,3 +43,32 @@ class TestPlaneChanges:
         plane.update(other)
         assert plane.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
         assert plane.normal == pytest.approx(change["vectors"]["normal"])
+
+@pytest.mark.parametrize("ref_point, normal", [pytest.param((0, 0, 0), (1, 0, 0), id="xy_plane")])
+class TestPlaneInitializationTypes:
+    """Tests for initializing Plane elements with different types."""
+
+    def test_tuples(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two tuples."""
+        plane = Plane(ref_point, normal)
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_point_and_tuple(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with a Point and a tuple."""
+        plane = Plane(Point(ref_point), normal)
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_lists(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(list(ref_point), list(normal))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_numpy_1ds(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(np.array(ref_point), np.array(normal))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_numpy_1d_and_numpy_2d(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(np.array(ref_point), np.array(normal).reshape(-1, 1))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
