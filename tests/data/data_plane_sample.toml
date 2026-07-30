@@ -1,0 +1,55 @@
+# data_plane_sample.toml is a test data file containing plane definition samples.
+
+[point_normal]
+[point_normal.xy_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 0, 1], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, 1]}
+[point_normal.negative_xy_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 0, -1], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, -1]}
+[point_normal.xz_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 1, 0]}
+[point_normal.negative_xz_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, -1, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, -1, 0]}
+[point_normal.yz_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [1, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [1, 0, 0]}
+[point_normal.negative_yz_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [-1, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [-1, 0, 0]}
+[point_normal.on_origin_111_normal]
+vectors = {in_point = [0, 0, 0], in_normal = [1, 1, 1], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [1, 1, 1]}
+[point_normal.222_ref_point_111_normal]
+vectors = {in_point = [2, 2, 2], in_normal = [1, 1, 1], ref_point = [2, 2, 2]}
+normed_vectors = {normal = [1, 1, 1]}
+[point_normal.10_normal_in_xy_plane]
+vectors = {in_point = [0, 0, 0], in_normal = [0, 0, 10], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, 1]}
+[point_normal.plus_10_in_z_direction_xy_plane]
+vectors = {in_point = [0, 0, 10], in_normal = [0, 0, 1], ref_point = [0, 0, 10]}
+normed_vectors = {normal = [0, 0, 1]}
+
+[point_angles]
+[point_angles.xy_plane]
+vectors = {in_point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, 1]}
+degree_scalars = {phi = 0, theta = 0}
+[point_angles.negative_xy_plane]
+vectors = {in_point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 0, -1]}
+degree_scalars = {phi = 0, theta = 180}
+[point_angles.xz_plane]
+vectors = {in_point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [0, 1, 0]}
+degree_scalars = {phi = 90, theta = 90}
+[point_angles.yz_plane]
+vectors = {in_point = [0, 0, 0], ref_point = [0, 0, 0]}
+normed_vectors = {normal = [1, 0, 0]}
+degree_scalars = {phi = 0, theta = 90}
+[point_angles.xy_plane_plus_1_in_z_direction]
+vectors = {in_point = [0, 0, 1], ref_point = [0, 0, 1]}
+normed_vectors = {normal = [0, 0, 1]}
+degree_scalars = {phi = 0, theta = 0}

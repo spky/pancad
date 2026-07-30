@@ -1,119 +1,119 @@
 """Tests for pancad's Plane class."""
-import itertools
-from math import cos, sin, radians
+from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING
+
 import pytest
+import numpy as np
 
-from pancad.geometry.point import Point
 from pancad.geometry.plane import Plane
-from pancad.geometry import conversion
+from pancad.geometry.point import Point
 
-ROUNDING_PLACES = 10
+if TYPE_CHECKING:
+    from typing import Callable
 
-ORIGIN = (0, 0, 0)
-X_3D = (1, 0, 0)
-Y_3D = (0, 1, 0)
-Z_3D = (0, 0, 1)
+    from pancad.utils.pancad_types import Space3DVector
 
-XY_PARAM = (ORIGIN, Z_3D)
-XZ_PARAM = (ORIGIN, Y_3D)
+    from tests._typing import GeometrySampleData, ChangeTest
 
-# id abbreviations: trans=translate, [xyz][+-]1= Add/subtract 1 from component.
-# xy=XY-Plane, xz=XZ-Plane, yz=YZ-Plane, - indicates normal is antiparallel.
-@pytest.mark.parametrize(
-    "plane_init, point, normal, expected",
-    [
-        pytest.param(XY_PARAM, ORIGIN, Z_3D, XY_PARAM, id="xy_unrotated"),
-        pytest.param((ORIGIN, (0, 0, -1)),
-                     ORIGIN, (0, 0, -1),
-                     (ORIGIN, (0, 0, -1)),
-                     id="-xy_unrotated"),
-        pytest.param(XY_PARAM,
-                     (0, 0, 1), None,
-                     ((0, 0, 1), Z_3D),
-                     id="xy_trans_z+1"),
-        pytest.param(XY_PARAM,
-                     (1, 1, 1), None,
-                     ((0, 0, 1), Z_3D),
-                     id="xy_trans_x+1y+1z+1"),
-        pytest.param(XY_PARAM, ORIGIN, Y_3D, XZ_PARAM, id="xy_normal_set_to_xz"),
-        pytest.param(XY_PARAM,
-                     (0, 1, 0), Y_3D,
-                     ((0, 1, 0), Y_3D),
-                     id="xy_normal_set_to_xz,y+1"),
-        pytest.param(XY_PARAM,
-                     (1, 1, 1), Y_3D,
-                     ((0, 1, 0), Y_3D),
-                     id="xy_normal_set_to_xz,x+1y+1z+1"),
-    ]
-)
-def test_move_to_point(plane_init, point, normal, expected):
-    """Tests plane movement to a new point and normal against known values."""
-    init_point, init_normal = plane_init
-    exp_point, exp_normal = expected
-    plane = Plane(init_point, init_normal)
-    plane.move_to_point(point, normal)
-    result_pt = np.array(plane.reference_point)
-    print(plane.reference_point, result_pt, plane.normal)
-    np.testing.assert_array_almost_equal(result_pt, exp_point)
-    np.testing.assert_array_almost_equal(plane.normal, exp_normal)
+    PlaneMaker = Callable[[GeometrySampleData, pytest.FixtureRequest], Plane]
 
-QUAT_ROTATIONS = [
-    # Init Point, Initial Direction, Rotation Axis Vector, Rotation Angle,
-    # Expected Closest Point, Expected Normal, Id Prefix
-    (ORIGIN, Z_3D, (0, 0, 0), 0, ORIGIN, Z_3D, "q_xy_unrotated_zero_axis"),
-    (ORIGIN, Z_3D, Z_3D, 0, ORIGIN, Z_3D, "q_xy_unrotated_around_z_axis"),
-    (ORIGIN, Z_3D, Z_3D, 90, ORIGIN, Z_3D, "q_xy_rotate_z_around_z"),
-    (ORIGIN, Z_3D, Y_3D, 90, ORIGIN, X_3D, "q_xy_rotate_to_yz"),
-    ((1, 1, 1), Z_3D, Y_3D, 90, (0, 0, 1), X_3D, "q_1,1,1_znorm_rotate_around_y"),
-]
+@pytest.fixture(name="make_plane")
+def fixture_make_plane() -> PlaneMaker:
+    """Returns a function that converts GeometrySampleData into a Plane based on the request id"""
+    def _make_plane(sample: GeometrySampleData, request: pytest.FixtureRequest) -> Plane:
+        id_ = request.node.callspec.id
+        vectors, scalars = sample["vectors"], sample["scalars"]
+        if "point_normal" in id_:
+            return Plane(vectors["in_point"], vectors["in_normal"])
+        if "point_angles" in id_:
+            return Plane.from_point_and_angles(vectors["in_point"],
+                                               scalars["phi"], scalars["theta"])
+        raise ValueError(f"Unexpected Plane data group: {id_}")
+    return _make_plane
 
-def _quaternion_rotate_params(rotations):
-    """Generates the list of pytest parameters for testing quaternion plane rotation."""
-    params = []
-    for point, normal, rotation_axis, angle, exp_closest, exp_normal, id_ in rotations:
-        quat_w = cos(radians(angle / 2))
-        quat_ijk = map(lambda x, y: x * sin(radians(y) / 2),
-                       rotation_axis, itertools.repeat(angle))
-        quat = np.quaternion(quat_w, *quat_ijk)
-        test_id = "_".join(
-            [id_, str(angle), str(rotation_axis), str(exp_closest), str(exp_normal)],
-        )
-        param = pytest.param(point, normal, quat, exp_closest, exp_normal, id=test_id)
-        params.append(param)
-    return params
+@pytest.fixture(name="plane_sample")
+def fixture_plane_sample(data_plane_sample: GeometrySampleData,
+                         make_plane: PlaneMaker,
+                         request: pytest.FixtureRequest) -> Plane:
+    """Returns a sample plane to test properties."""
+    return make_plane(data_plane_sample, request)
 
-@pytest.mark.parametrize(
-    "init_point, init_normal, rotation, exp_point, exp_normal",
-    [
-        *_quaternion_rotate_params(QUAT_ROTATIONS),
-    ]
-)
-def test_rotate(init_point, init_normal, rotation, exp_point, exp_normal):
-    """Tests plane rotation to a new closest point and normal behavior against
-    known values.
-    """
-    plane = Plane(init_point, init_normal)
-    plane.rotate(rotation)
-    np.testing.assert_array_almost_equal(plane.normal, exp_normal)
-    np.testing.assert_array_almost_equal(np.array(plane.reference_point),
-                                         exp_point)
+class TestPlaneSampleProperties:
+    """Tests whether all sample Plane eleemnts have the expected properties post-initialization"""
 
-def test_update():
-    """Tests Plane's ability to update to match another Plane."""
-    plane = Plane((0, 0, 0), (0, 0, 1))
-    other = Plane((1, 1, 1), (1, 0, 0))
-    plane.update(other)
-    np.testing.assert_array_almost_equal(plane.normal, other.normal)
-    np.testing.assert_array_almost_equal(tuple(plane.reference_point),
-                                         tuple(other.reference_point))
+    def test_normal(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
+        """Test sample Plane normal vectors match the expected data file value."""
+        assert plane_sample.normal == pytest.approx(data_plane_sample["vectors"]["normal"])
 
-def test_get_3_points_on_plane():
-    """Test ability to get 3 unique points on a plane."""
-    pt = Point(0, 0, 0)
-    normal = (0, 0, 1)
-    pln = Plane(pt, normal)
-    points = conversion.get_3_points_on_plane(pln)
-    dot_products = list(map(lambda p : np.dot(tuple(p), pln.normal), points))
-    np.testing.assert_array_almost_equal(dot_products, (0, 0, 0))
+    def test_ref_point(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
+        """Test sample Plane reference points match the expected data file value."""
+        vectors = data_plane_sample["vectors"]
+        assert plane_sample.reference_point.cartesian == pytest.approx(vectors["ref_point"])
+
+    def test_len(self, plane_sample: Plane) -> None:
+        """Test that all sample planes are 3 dimensional."""
+        assert len(plane_sample) == 3
+
+    def test_is_equal(self, plane_sample: Plane) -> None:
+        """Test that all the sample Planes can be found equal to themselves."""
+        plane_sample.is_equal(plane_sample)
+
+class TestPlaneChanges:
+    """Tests for changing Plane properties post-initialization."""
+
+    def test_move_to_point(self, changes_plane_move_to_point: ChangeTest) -> None:
+        """Test moving a Plane from its initialized state to different points and orientations."""
+        sample, change = changes_plane_move_to_point
+        plane = Plane(sample["vectors"]["point"], sample["vectors"]["normal"])
+        plane.move_to_point(change["vectors"]["in_point"], change["vectors"].get("in_normal"))
+        assert plane.reference_point.cartesian == change["vectors"]["ref_point"]
+        assert plane.normal == change["vectors"]["normal"]
+
+    def test_rotation_quat(self, changes_plane_rotation_quat: ChangeTest) -> None:
+        """Test that a Plane can rotate with expected reference_point and direction results
+        using a quaternion.
+        """
+        sample, change = changes_plane_rotation_quat
+        plane = Plane(sample["vectors"]["point"], sample["vectors"]["normal"])
+        plane.rotate(change["quats"]["rotation"])
+        assert plane.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
+        assert plane.normal == pytest.approx(change["vectors"]["normal"])
+
+    def test_update(self, changes_plane_update: ChangeTest) -> None:
+        """Test Plane's ability to update to match another Plane."""
+        sample, change = changes_plane_update
+        plane = Plane(sample["vectors"]["point"], sample["vectors"]["normal"])
+        other = Plane(change["vectors"]["in_point"], change["vectors"]["in_normal"])
+        plane.update(other)
+        assert plane.reference_point.cartesian == pytest.approx(change["vectors"]["ref_point"])
+        assert plane.normal == pytest.approx(change["vectors"]["normal"])
+
+@pytest.mark.parametrize("ref_point, normal", [pytest.param((0, 0, 0), (1, 0, 0), id="xy_plane")])
+class TestPlaneInitializationTypes:
+    """Tests for initializing Plane elements with different types."""
+
+    def test_tuples(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two tuples."""
+        plane = Plane(ref_point, normal)
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_point_and_tuple(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with a Point and a tuple."""
+        plane = Plane(Point(ref_point), normal)
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_lists(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(list(ref_point), list(normal))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_numpy_1ds(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(np.array(ref_point), np.array(normal))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)
+
+    def test_numpy_1d_and_numpy_2d(self, ref_point: Space3DVector, normal: Space3DVector) -> None:
+        """Test initialization with two lists."""
+        plane = Plane(np.array(ref_point), np.array(normal).reshape(-1, 1))
+        assert (plane.normal, plane.reference_point.cartesian) == (normal, ref_point)

@@ -11,54 +11,72 @@ from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.geometry.line import Axis
 from pancad.utils import trigonometry as trig
-from pancad.utils.geometry import three_dimensions_required
 
 if TYPE_CHECKING:
-    from numbers import Real
+    from collections.abc import Sequence
     from typing import Self
-    import quaternion
 
-    from pancad.utils.pancad_types import Space3DVector
+    # Ignoring quaternion typing, see issue #300
+    import quaternion # type: ignore
+
+    from pancad.utils.pancad_types import Space3DVector, Numpy1D, Numpy2D, SphericalVector
 
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
-    def __init__(self, point: Point | Space3DVector=None,
-                 normal: Space3DVector=None,
-                 uid: str=None):
+    def __init__(self, point: Point | Sequence[float] | Numpy1D,
+                 normal: Sequence[float] | Numpy1D | Numpy2D,
+                 uid: str | None=None):
         self.uid = uid
         if not isinstance(point, Point):
             point = Point(point)
         self._axis = Axis(point, normal)
+        if len(self._axis.direction) != 3:
+            raise ValueError(f"Plane normal vector must be 3D, got: {normal}")
         self._point_closest_to_origin = Plane._closest_to_origin(point, self.normal)
         self._axis.move_to_point(self._point_closest_to_origin)
         super().__init__({ConstraintReference.CORE: self})
 
-    # Getters #
+    @classmethod
+    def from_point_and_angles(cls,
+                              point: Point | Sequence[float] | Numpy1D,
+                              phi: float,
+                              theta: float,
+                              uid: str | None=None) -> Plane:
+        """Return a Plane from a given point, phi, and theta.
+
+        :param point: A point on the plane
+        :param phi: The phi angle of the plane's normal vector in radians
+        :param theta: The theta angle of the plane's normal vector in radians
+        :returns: A Plane object that runs through the point with a normal vector
+            with the provided angles
+        """
+        return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
+
     @property
     def normal(self) -> Space3DVector:
         """The unit vector that describes the normal direction of the plane.
 
         :getter: Returns the normal vector of the plane.
-        :setter: Finds the vector's unit vector and sets that as the plane
-            normal vector.
+        :setter: Sets the plane's normal to a new vector. Pivots about the Plane's current
+            reference point.
         """
+        assert len(self._axis.direction) == 3
         return self._axis.direction
 
     @normal.setter
-    @three_dimensions_required
-    def normal(self, vector: Space3DVector):
+    def normal(self, vector: Sequence[float] | Numpy1D | Numpy2D) -> None:
         self._axis.move_to_point(self._point_closest_to_origin, vector)
 
     @property
-    def normal_spherical(self) -> Space3DVector:
+    def normal_spherical(self) -> SphericalVector:
         """The unit vector describing the normal direction of the plane in
         spherical coordinates. Read-only.
         """
         return trig.cartesian_to_spherical(self.normal)
 
     @property
-    def phi(self) -> Real:
+    def phi(self) -> float:
         """The spherical azimuth of the plane's normal vector in radians.
         Read-only.
         """
@@ -82,7 +100,7 @@ class Plane(AbstractGeometry):
         return self._axis.copy()
 
     @property
-    def theta(self) -> Real:
+    def theta(self) -> float:
         """The spherical inclination component of the plane's normal vector in
         radians. Read-only.
 
@@ -90,7 +108,6 @@ class Plane(AbstractGeometry):
         """
         return trig.theta_of_cartesian(self.normal)
 
-    # Public Methods #
     def copy(self) -> Plane:
         """Returns a copy of the plane that has the same closest to origin
         point and normal vector, but with a different uid.
@@ -105,7 +122,7 @@ class Plane(AbstractGeometry):
         return (self.reference_axis.is_equal(other.reference_axis)
                 and self.reference_point.is_equal(other.reference_point))
 
-    def get_d(self) -> Real:
+    def get_d(self) -> float:
         """Returns the Plane's Point-Normal form constant d (equation of form
         ax + by + cz + d = 0)
         """
@@ -113,7 +130,8 @@ class Plane(AbstractGeometry):
         x0, y0, z0 = tuple(self.reference_point)
         return -(a*x0 + b*y0 + c*z0)
 
-    def move_to_point(self, point: Point, normal: Space3DVector=None) -> Self:
+    def move_to_point(self, point: Point | Sequence[float] | Numpy1D,
+                      normal: Sequence[float] | Numpy1D | Numpy2D | None=None) -> Self:
         """Moves the plane to the point. Sets the normal vector at that point if
         it is given.
 
@@ -126,13 +144,17 @@ class Plane(AbstractGeometry):
             point = Point(point)
         if normal is None:
             normal = self.normal
+        else:
+            normal = trig.to_1d_tuple(normal)
+            if len(normal) != 3:
+                raise ValueError(f"Plane normal vector must be 3D, got: {normal}")
         new_closest = Plane._closest_to_origin(point, normal)
         self._point_closest_to_origin.update(new_closest)
         if normal is not None:
             self.normal = normal
         return self
 
-    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
         """Rotates the plane about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -145,7 +167,7 @@ class Plane(AbstractGeometry):
             raise
         return self
 
-    def update(self, other: Plane) -> None:
+    def update(self, other: Plane) -> Self:
         """Updates the plane to match the position and normal direction of
         another plane.
 
@@ -153,26 +175,8 @@ class Plane(AbstractGeometry):
         """
         self._point_closest_to_origin.update(other.reference_point)
         self.normal = other.normal
+        return self
 
-    # Class Methods #
-    @classmethod
-    @three_dimensions_required
-    def from_point_and_angles(cls,
-                              point: Point,
-                              phi: Real,
-                              theta: Real,
-                              uid: str=None) -> Plane:
-        """Return a Plane from a given point, phi, and theta.
-
-        :param point: A point on the plane
-        :param phi: The phi angle of the plane's normal vector in radians
-        :param theta: The theta angle of the plane's normal vector in radians
-        :returns: A Plane object that runs through the point with a normal vector
-            with the provided angles
-        """
-        return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
-
-    # Static Methods #
     @staticmethod
     def _closest_to_origin(point: Point, normal: Space3DVector) -> Point:
         """Returns the point on the plane created by the point and normal vector
@@ -189,7 +193,6 @@ class Plane(AbstractGeometry):
         t = (a*x0 + b*y0 + c*z0)/(a**2 + b**2 + c**2)
         return Point(a*t, b*t, c*t)
 
-    # Python Dunders #
     def __copy__(self) -> Plane:
         return self.copy()
 
@@ -204,7 +207,7 @@ class Plane(AbstractGeometry):
         point closest to the origin and the unit vector normal to the plane.
         """
         strings = []
-        for vector in [self.reference_point, self.normal]:
+        for vector in [self.reference_point.cartesian, self.normal]:
             vector_strings = []
             for component in vector:
                 if np.isclose(component, 0):
