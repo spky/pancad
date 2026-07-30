@@ -23,9 +23,12 @@ def fixture_make_plane() -> PlaneMaker:
     """Returns a function that converts GeometrySampleData into a Plane based on the request id"""
     def _make_plane(sample: GeometrySampleData, request: pytest.FixtureRequest) -> Plane:
         id_ = request.node.callspec.id
-        vectors = sample["vectors"]
+        vectors, scalars = sample["vectors"], sample["scalars"]
         if "point_normal" in id_:
             return Plane(vectors["in_point"], vectors["in_normal"])
+        if "point_angles" in id_:
+            return Plane.from_point_and_angles(vectors["in_point"],
+                                               scalars["phi"], scalars["theta"])
         raise ValueError(f"Unexpected Plane data group: {id_}")
     return _make_plane
 
@@ -41,11 +44,12 @@ class TestPlaneSampleProperties:
 
     def test_normal(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
         """Test sample Plane normal vectors match the expected data file value."""
-        assert plane_sample.normal == data_plane_sample["vectors"]["normal"]
+        assert plane_sample.normal == pytest.approx(data_plane_sample["vectors"]["normal"])
 
     def test_ref_point(self, plane_sample: Plane, data_plane_sample: GeometrySampleData) -> None:
         """Test sample Plane reference points match the expected data file value."""
-        assert plane_sample.reference_point.cartesian == data_plane_sample["vectors"]["ref_point"]
+        vectors = data_plane_sample["vectors"]
+        assert plane_sample.reference_point.cartesian == pytest.approx(vectors["ref_point"])
 
     def test_len(self, plane_sample: Plane) -> None:
         """Test that all sample planes are 3 dimensional."""
