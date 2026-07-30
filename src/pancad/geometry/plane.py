@@ -37,7 +37,22 @@ class Plane(AbstractGeometry):
         self._axis.move_to_point(self._point_closest_to_origin)
         super().__init__({ConstraintReference.CORE: self})
 
-    # Getters #
+    @classmethod
+    def from_point_and_angles(cls,
+                              point: Point | Sequence[float] | Numpy1D,
+                              phi: float,
+                              theta: float,
+                              uid: str | None=None) -> Plane:
+        """Return a Plane from a given point, phi, and theta.
+
+        :param point: A point on the plane
+        :param phi: The phi angle of the plane's normal vector in radians
+        :param theta: The theta angle of the plane's normal vector in radians
+        :returns: A Plane object that runs through the point with a normal vector
+            with the provided angles
+        """
+        return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
+
     @property
     def normal(self) -> Space3DVector:
         """The unit vector that describes the normal direction of the plane.
@@ -93,7 +108,6 @@ class Plane(AbstractGeometry):
         """
         return trig.theta_of_cartesian(self.normal)
 
-    # Public Methods #
     def copy(self) -> Plane:
         """Returns a copy of the plane that has the same closest to origin
         point and normal vector, but with a different uid.
@@ -163,24 +177,6 @@ class Plane(AbstractGeometry):
         self.normal = other.normal
         return self
 
-    # Class Methods #
-    @classmethod
-    def from_point_and_angles(cls,
-                              point: Point | Sequence[float] | Numpy1D,
-                              phi: float,
-                              theta: float,
-                              uid: str | None=None) -> Plane:
-        """Return a Plane from a given point, phi, and theta.
-
-        :param point: A point on the plane
-        :param phi: The phi angle of the plane's normal vector in radians
-        :param theta: The theta angle of the plane's normal vector in radians
-        :returns: A Plane object that runs through the point with a normal vector
-            with the provided angles
-        """
-        return cls(point, trig.spherical_to_cartesian((1, phi, theta)), uid)
-
-    # Static Methods #
     @staticmethod
     def _closest_to_origin(point: Point, normal: Space3DVector) -> Point:
         """Returns the point on the plane created by the point and normal vector
@@ -197,7 +193,6 @@ class Plane(AbstractGeometry):
         t = (a*x0 + b*y0 + c*z0)/(a**2 + b**2 + c**2)
         return Point(a*t, b*t, c*t)
 
-    # Python Dunders #
     def __copy__(self) -> Plane:
         return self.copy()
 
