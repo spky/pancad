@@ -7,6 +7,7 @@ from functools import cache
 from typing import TYPE_CHECKING
 import tomllib
 from pathlib import Path
+import sys
 
 import pytest
 import quaternion # type: ignore
@@ -208,6 +209,19 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     for change_fixture in [f for f in metafunc.fixturenames if f.startswith("changes_")]:
         ids, change_data = _make_geometry_change_input(change_fixture)
         metafunc.parametrize(change_fixture, change_data, ids=ids)
+
+@pytest.fixture(name="min_squareable")
+def fixture_min_squareable() -> float:
+    """Returns the minimum squareable floating point number on this system."""
+    # When the square of a float is smaller than the smallest IEEE subnormal, the new float is
+    # set to 0.
+    info = sys.float_info
+    min_squareable_exp = (info.min_exp - info.mant_dig) // 2
+    squareable_limit = 1 / math.sqrt(info.radix) * info.radix ** min_squareable_exp
+    min_squareable = math.nextafter(squareable_limit, 1)
+    assert squareable_limit**2  == 0 # check the squareable_limit's square is actually 0
+    assert min_squareable**2 != 0 # check that min_squareable's square is actually not 0
+    return min_squareable
 
 @pytest.fixture(name="unconstrained_square_sketch")
 def fixture_unconstrained_square_sketch() -> Sketch:

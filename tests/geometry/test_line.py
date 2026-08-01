@@ -322,20 +322,8 @@ class TestSpotChecks:
 class TestDirectionAroundOrigin:
     """Tests for ensuring the validity of the Line direction behavior around the origin point."""
 
-    def test_smallest_vector(self) -> None:
+    def test_smallest_direction(self, min_squareable: float) -> None:
         """Test the repeatability of Line's direction as a unit vector's length approaches 0."""
-        # First find smallest subnormal number per the IEEE 754 floating-point specification.
-        info = sys.float_info
-        smallest_subnormal = info.radix ** (info.min_exp - info.mant_dig)
-        # Turning the vector into a unit vector requires squaring the vector components as part of
-        # normalization.
         # When the square of a component is smaller than the smallest subnormal, the component is
         # set to 0.
-        min_squareable_exp = (info.min_exp - info.mant_dig) // 2
-        squareable_limit = 1 / math.sqrt(info.radix) * info.radix ** min_squareable_exp
-        min_squareable = math.nextafter(squareable_limit, 1)
-        # Check that the test found the smallest squareable number for the system and that Line
-        # can get the direction of a vector that small.
-        assert squareable_limit**2  == 0
-        assert min_squareable**2 != 0
         assert Line(Point(0, 0, 0), (min_squareable, 0, 0)).direction == (1, 0, 0)
