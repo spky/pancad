@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-import math
-import sys
 
 import numpy as np
 import quaternion # type: ignore
@@ -323,7 +321,20 @@ class TestDirectionAroundOrigin:
     """Tests for ensuring the validity of the Line direction behavior around the origin point."""
 
     def test_smallest_direction(self, min_squareable: float) -> None:
-        """Test the repeatability of Line's direction as a unit vector's length approaches 0."""
-        # When the square of a component is smaller than the smallest subnormal, the component is
-        # set to 0.
+        """Test the ability to initialize Line's direction using a vector with the smallest
+        possible float that can still be squared on the system.
+        """
         assert Line(Point(0, 0, 0), (min_squareable, 0, 0)).direction == (1, 0, 0)
+
+    def test_smallest_unique_direction(self, min_squareable: float) -> None:
+        """Test the ability to make the direction vector unique even when the input components are
+        very close to 0.
+        """
+        assert Line(Point(0, 0, 0), (0, 0, -min_squareable)).direction == (0, 0, 1)
+
+    def test_two_smallest_components(self, min_squareable: float) -> None:
+        """Test Line direction initialization with two components starting as close to 0 as
+        possible.
+        """
+        expected = tuple(np.array((1, 1, 0)) / np.linalg.norm((1, 1, 0)))
+        assert Line(Point(0, 0, 0), (min_squareable, min_squareable, 0)).direction == expected
