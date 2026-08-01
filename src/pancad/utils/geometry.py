@@ -117,8 +117,11 @@ def get_unique_vector(vector: Sequence[float] | Numpy1D) -> tuple[float, ...] | 
     for component in tuple_vector[::-1]:
         if component < 0:
             tuple_vector = tuple(map(lambda c: -c, tuple_vector))
+            break
         if component > 0:
             break
+    # Add 0 to ensure negative zero representations are eliminated
+    tuple_vector = tuple(map(lambda c: c + 0, tuple_vector))
     if isinstance(vector, np.ndarray):
         return np.array(tuple_vector)
     return tuple_vector

@@ -118,3 +118,26 @@ def test_get_rotation_quat_excs(start, target, err_type, msg):
     """Test the error handling of get_rotation_quat."""
     with pytest.raises(err_type, match=msg):
         geo_utils.get_rotation_quat(start, target)
+
+@pytest.mark.parametrize(
+    "vector, expected",
+    [
+        [(0, 0, 0), (0, 0, 0)],
+        [(1, 1, 1), (1, 1, 1)],
+        [(-1, -1, -1), (1, 1, 1)],
+        [(1, 1, -1), (-1, -1, 1)],
+        [(-1, -1), (1, 1)],
+    ]
+)
+class TestGetUniqueVector:
+    """Tests for calcuating the unique versions of vectors."""
+
+    def test_tuples(self, vector: tuple[float, ...], expected: tuple[float, ...]) -> None:
+        """Test that vectors are converted to their unique versions."""
+        assert geo_utils.get_unique_vector(vector) == expected
+
+    def test_numpy_array(self, vector: tuple[float, ...], expected: tuple[float, ...]) -> None:
+        """Test that a numpy array input returns a numpy array output."""
+        result = geo_utils.get_unique_vector(np.array(vector))
+        assert tuple(result) == expected # Check correct value
+        assert isinstance(result, np.ndarray) # Check that the output is actually a numpy array
