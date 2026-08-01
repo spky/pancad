@@ -320,21 +320,29 @@ class TestSpotChecks:
 class TestDirectionAroundOrigin:
     """Tests for ensuring the validity of the Line direction behavior around the origin point."""
 
-    def test_smallest_direction(self, min_squareable: float) -> None:
+    def test_smallest_direction(self, min_full_precision_squareable: float) -> None:
         """Test the ability to initialize Line's direction using a vector with the smallest
         possible float that can still be squared on the system.
         """
-        assert Line(Point(0, 0, 0), (min_squareable, 0, 0)).direction == (1, 0, 0)
+        assert Line(Point(0, 0, 0), (min_full_precision_squareable, 0, 0)).direction == (1, 0, 0)
 
-    def test_smallest_unique_direction(self, min_squareable: float) -> None:
+    def test_smallest_unique_direction(self, min_full_precision_squareable: float) -> None:
         """Test the ability to make the direction vector unique even when the input components are
         very close to 0.
         """
-        assert Line(Point(0, 0, 0), (0, 0, -min_squareable)).direction == (0, 0, 1)
+        assert Line(Point(0, 0, 0), (0, 0, -min_full_precision_squareable)).direction == (0, 0, 1)
 
-    def test_two_smallest_components(self, min_squareable: float) -> None:
+    def test_two_smallest_components(self, min_full_precision_squareable: float) -> None:
         """Test Line direction initialization with two components starting as close to 0 as
         possible.
         """
         expected = tuple(np.array((1, 1, 0)) / np.linalg.norm((1, 1, 0)))
-        assert Line(Point(0, 0, 0), (min_squareable, min_squareable, 0)).direction == expected
+        in_direction = (min_full_precision_squareable, min_full_precision_squareable, 0)
+        assert Line(Point(0, 0, 0), in_direction).direction == expected
+
+    def test_subnormal_direction(self, min_squareable: float) -> None:
+        """Test that the direction raises a ValueError if the vector is so small that roundoff
+        makes the results unreliable.
+        """
+        with pytest.raises(ValueError, match="^Normalization failed"):
+            assert Line(Point(0, 0, 0), (min_squareable, 0, 0)).direction == (1, 0, 0)
