@@ -4,7 +4,7 @@ from __future__ import annotations
 from functools import wraps
 from itertools import islice
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 from numbers import Real
 from warnings import catch_warnings
 
@@ -98,6 +98,31 @@ def no_dimensional_mismatch(func):
     return wrapper
 
 ### Functions
+@overload
+def get_unique_vector(vector: Sequence[float]) -> tuple[float, ...]: ...
+@overload
+def get_unique_vector(vector: Numpy1D) -> Numpy1D: ...
+def get_unique_vector(vector: Sequence[float] | Numpy1D) -> tuple[float, ...] | Numpy1D:
+    """Checks the vector against unique direction rules and inverts it if any are violated.
+
+    Example of the algorithm using 3D vectors:
+    1. The z component must be nonnegative.
+    2. If z is exactly 0 or the vector is 2D, y must be nonnegative.
+    3. If both y and z are exactly 0 or the vector is 2D, x must be nonnegative.
+    4. Zero vectors are considered already unique and returned as is.
+
+    :param vector: An n-dimensional vector.
+    """
+    tuple_vector = tuple(vector)
+    for component in tuple_vector[::-1]:
+        if component < 0:
+            tuple_vector = tuple(map(lambda c: -c, tuple_vector))
+        if component > 0:
+            break
+    if isinstance(vector, np.ndarray):
+        return np.array(tuple_vector)
+    return tuple_vector
+
 def parse_vector(*components: float | Sequence[float] | Numpy1D) -> SpaceVector:
     """Batches structures of vector component inputs to a tuple of Reals.
     Usually used by pancad to parse position and direction information into the
