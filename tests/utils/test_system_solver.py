@@ -26,6 +26,8 @@ if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometrySystem, AbstractGeometry
     from pancad.utils.pancad_types import SpaceVector, Space3DVector, Numpy1D
 
+    from tests._typing import GeometrySampleData
+
     # Constraints in a system defined here by listing the SketchConstraint and geometry indices.
     ConstraintDef = tuple[SC, tuple[int, ...]]
     SystemTestPair = tuple[ThreeDSketchSystem, ThreeDSketchSystem]
@@ -525,50 +527,14 @@ class TestResiduals:
         assert pcres.perpendicular(np.array(v1, dtype=np.float64),
                                    np.array(v2, dtype=np.float64)) == expected
 
-    @pytest.mark.parametrize(
-        "vector, atol, expected",
-        [ #nu = non-unique
-            # 3D Whole Numbers
-            pytest.param((1,0,0), DEF_0_TOL, (0,0,0), id="3d_nominal_x"),
-            pytest.param((0,1,0), DEF_0_TOL, (0,0,0), id="3d_nominal_y"),
-            pytest.param((0,0,1), DEF_0_TOL, (0,0,0), id="3d_nominal_z"),
-            pytest.param((-1,0,0), DEF_0_TOL, (0,0,-2), id="3d_nu_negative_x"),
-            pytest.param((0,-1,0), DEF_0_TOL, (0,-2,0), id="3d_nu_negative_y"),
-            pytest.param((0,0,-1), DEF_0_TOL, (-2,0,0), id="3d_nu_negative_z"),
-            pytest.param((1,1,0), DEF_0_TOL, (0,0,0), id="3d_nominal_1,1,0"),
-            pytest.param((-1,-1,0), DEF_0_TOL, (0,-2,0), id="3d_nu_-1,-1,0"),
-            pytest.param((-1,-1,1), DEF_0_TOL, (0,0,0), id="3d_nominal_-1,-1,1"),
-            pytest.param((1,1,1), DEF_0_TOL, (0,0,0), id="3d_nominal_1,1,1"),
-            pytest.param((-1,-1,-1), DEF_0_TOL, (-2,0,0), id="3d_nu_-1,-1,-1"),
-
-            # 3D Near Zeros
-            pytest.param((1,DEF_0_TOL,0), DEF_0_TOL, (0,0,0), id="3d_x_with_plus_0tol_y"),
-            pytest.param((1,-DEF_0_TOL,0), DEF_0_TOL, (0,-2*DEF_0_TOL,0),
-                         id="3d_x_with_minus_0tol_y"),
-            pytest.param((1,-DEF_0_TOL,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,-2*DEF_0_TOL,0),
-                         id="3d_x_with_minus_0tol_y_and_z"),
-            pytest.param((1,1,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,0,0),
-                         id="3d_1,1,0_with_minus_0tol_z"),
-
-            # 2D
-            pytest.param((1,0), DEF_0_TOL, (0,0), id="2d_nominal_x"),
-            pytest.param((0,1), DEF_0_TOL, (0,0), id="2d_nominal_y"),
-            pytest.param((1,0), DEF_0_TOL, (0,0), id="2d_nominal_x"),
-            pytest.param((-1,0), DEF_0_TOL, (0,-2), id="2d_nu_negative_x"),
-            pytest.param((0,-1), DEF_0_TOL, (-2,0), id="2d_nu_negative_y"),
-
-            # 2D Near Zeros
-            pytest.param((1,DEF_0_TOL), DEF_0_TOL, (0,0), id="2d_x_with_plus_0tol_y"),
-            pytest.param((1,-DEF_0_TOL), DEF_0_TOL, (-2*DEF_0_TOL,0),
-                         id="2d_x_with_minus_0tol_y"),
-        ]
-    )
-    def test_unique_direction(self, vector: SpaceVector, atol: float,
-                              expected: tuple[float, float]) -> None:
-        v = np.array(vector)
-        exp = np.array(expected)
-        atol = np.float64(atol)
-        np.testing.assert_array_equal(pcres.unique_vector(v, zero_atol=atol), exp)
+    def test_unique_vector(self, data_geo_util_sample_residual_unique_vector: GeometrySampleData
+                           ) -> None:
+        """Test that unique vector residuals are calculated to be zero vectors when unique and the
+        expected error vector when not unique.
+        """
+        vectors = data_geo_util_sample_residual_unique_vector["vectors"]
+        np.testing.assert_array_equal(pcres.unique_vector(np.array(vectors["input"])),
+                                      np.array(vectors["result"]))
 
     @pytest.mark.parametrize(
         "plane, point, distance, expected",
