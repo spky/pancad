@@ -10,10 +10,10 @@ import math
 import numpy as np
 
 from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
-
 from pancad.geometry.line import Axis, Line
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
+from pancad.utils.geometry import get_unique_vector
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -83,26 +83,6 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
     return float(
         np.copysign(np.linalg.norm(distance_vector), np.dot(distance_vector, unit_normal))
     )
-
-def get_unique_vector(vector: Numpy1D) -> Numpy1D:
-    """Checks the vector against unique direction rules and inverts it if any are violated.
-
-    Example of the algorithm using 3D vectors:
-    1. The z component must be nonnegative.
-    2. If z is exactly 0 or the vector is 2D, y must be nonnegative.
-    3. If both y and z are exactly 0 or the vector is 2D, x must be nonnegative.
-    4. Zero vectors are considered already unique and returned as is.
-
-    :param vector: An n-dimensional vector.
-    """
-    for component in vector[::-1]:
-        if component < 0:
-            return -vector
-        if component > 0:
-            return vector
-    return vector
-
-
 
 ################################################################################
 # Residuals
