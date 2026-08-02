@@ -37,7 +37,8 @@ normed_vectors = {direction = [-1, 1]}
 degree_scalars = {phi = 135}
 [move_to_point.2D_X_Axis.to_plus_180]
 vectors = {point = [0, 0], ref_point = [0, 0]}
-normed_vectors = {direction = [1, 0]}
+# Due to Python's math.sin function returning a slightly positive number for pi, 180 is not flipped
+normed_vectors = {direction = [-1, 1.2246467991473532e-16]}
 degree_scalars = {phi = 180}
 [move_to_point.2D_X_Axis.to_neg_45]
 vectors = {point = [0, 0], ref_point = [0, 0]}

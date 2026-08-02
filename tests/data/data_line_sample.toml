@@ -238,9 +238,9 @@ polar_spherical_vectors = {polar_spherical = [1, 135]}
 degree_scalars = {phi = -45}
 
 [point_angle_lines.polar_origin_180]
-vectors = {start = [0, 0], ref_point = [0, 0]}
-normed_vectors = {unique_direction = [1, 0]}
-polar_spherical_vectors = {polar_spherical = [1, 0]}
+# Due to Python's math.sin function returning a slightly positive number for pi, 180 is not flipped
+vectors = {start = [0, 0], ref_point = [0, 0], unique_direction = [-1, 1.2246467991473532e-16]}
+polar_spherical_vectors = {polar_spherical = [1, 180]}
 degree_scalars = {phi = 180}
 
 [point_angle_lines.polar_origin_negative_180]

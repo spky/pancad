@@ -1,11 +1,15 @@
 """Tests for pancad's geometry utility functions."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import numpy as np
 import quaternion
 import pytest
 
 import pancad.utils.geometry as geo_utils
+
+if TYPE_CHECKING:
+    from tests._typing import GeometrySampleData
 
 # Test id abbreviations:
 # pt=point, vec=vector, para=parallel, perp=perpendicular, dir=direction
@@ -118,3 +122,27 @@ def test_get_rotation_quat_excs(start, target, err_type, msg):
     """Test the error handling of get_rotation_quat."""
     with pytest.raises(err_type, match=msg):
         geo_utils.get_rotation_quat(start, target)
+
+class TestGetUniqueVector:
+    """Tests for calcuating the unique versions of vectors."""
+
+    def test_2d_3d_tuples(self, data_geo_util_sample_unique_vector: GeometrySampleData) -> None:
+        """Test that 2D and 3D vectors are converted to their unique versions."""
+        vectors = data_geo_util_sample_unique_vector["vectors"]
+        assert geo_utils.get_unique_vector(vectors["input"]) == vectors["result"]
+
+    def test_numpy_array(self, data_geo_util_sample_unique_vector: GeometrySampleData) -> None:
+        """Test that 2D and 3D numpy array inputs return a numpy array output."""
+        vectors = data_geo_util_sample_unique_vector["vectors"]
+        result = geo_utils.get_unique_vector(np.array(vectors["input"]))
+        assert tuple(result) == vectors["result"] # Check correct value
+        assert isinstance(result, np.ndarray) # Check that the output is actually a numpy array
+
+    def test_1d_tuple(self) -> None:
+        """Test ability to return unique 1D tuples."""
+        assert geo_utils.get_unique_vector((-1,)) == (1,)
+        assert geo_utils.get_unique_vector((1,)) == (1,)
+
+    def test_0d_tuple(self) -> None:
+        """Test ability to return an empty unique tuple."""
+        assert geo_utils.get_unique_vector(tuple()) == tuple()

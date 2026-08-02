@@ -223,6 +223,15 @@ def fixture_min_squareable() -> float:
     assert min_squareable**2 != 0 # check that min_squareable's square is actually not 0
     return min_squareable
 
+@pytest.fixture(name="min_full_precision_squareable")
+def fixture_min_full_precision_squareable() -> float:
+    """Returns the minimum squareable floating point number on this system that still maintains
+    full precision, meaning it is not subnormal.
+    """
+    min_squareable = math.sqrt(sys.float_info.min)
+    assert math.sqrt(min_squareable**2) == min_squareable
+    return min_squareable
+
 @pytest.fixture(name="unconstrained_square_sketch")
 def fixture_unconstrained_square_sketch() -> Sketch:
     """Square sketch with just the lines, no constraints."""

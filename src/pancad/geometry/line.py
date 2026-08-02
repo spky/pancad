@@ -19,7 +19,7 @@ from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
-from pancad.utils.geometry import closest_to_origin
+from pancad.utils.geometry import closest_to_origin, get_unique_vector
 
 if TYPE_CHECKING:
     from typing import Self, Optional, Type
@@ -390,30 +390,8 @@ class Line(AbstractGeometry):
         :param vector: A 1D vector of cartesian coordinates.
         :returns: The unique unit vector to represent the vector's direction.
         """
-        unit_vector = trig.get_unit_vector(vector)
-        for i, component in enumerate(unit_vector):
-            # Replace any near-zeros with zero to eliminate ambiguity.
-            if np.isclose(component, 0, atol=self.zero_tol):
-                unit_vector[i] = 0
-        # Ensure the vector is still a unit vector after zeroes are removed
-        unit_vector = trig.get_unit_vector(unit_vector)
-        if len(unit_vector) == 3:
-            x, y, z = unit_vector
-            if x < 0 and y == 0 and z == 0:
-                unit_vector = -unit_vector
-            elif y < 0 and z == 0:
-                unit_vector = -unit_vector
-            elif z < 0:
-                unit_vector = -unit_vector
-
-        elif len(unit_vector) == 2:
-            x, y = unit_vector
-            if x < 0 and y == 0:
-                unit_vector = -unit_vector
-            elif not y == 0 and y < 0:
-                unit_vector = -unit_vector
-        # Add 0 to ensure negative zero representations are eliminated
-        return trig.to_1d_tuple(unit_vector + 0)
+        unit_vector = get_unique_vector(trig.get_unit_vector(vector))
+        return trig.to_1d_tuple(unit_vector)
 
     # Python Dunders #
     def __conform__(self, protocol: Type[PrepareProtocol]) -> str:

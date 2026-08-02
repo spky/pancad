@@ -10,10 +10,10 @@ import math
 import numpy as np
 
 from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
-
 from pancad.geometry.line import Axis, Line
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
+from pancad.utils.geometry import get_unique_vector
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -83,26 +83,6 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
     return float(
         np.copysign(np.linalg.norm(distance_vector), np.dot(distance_vector, unit_normal))
     )
-
-def get_unique_vector(vector: Numpy1D) -> Numpy1D:
-    """Checks the vector against unique direction rules and inverts it if any are violated.
-
-    Example of the algorithm using 3D vectors:
-    1. The z component must be nonnegative.
-    2. If z is exactly 0 or the vector is 2D, y must be nonnegative.
-    3. If both y and z are exactly 0 or the vector is 2D, x must be nonnegative.
-    4. Zero vectors are considered already unique and returned as is.
-
-    :param vector: An n-dimensional vector.
-    """
-    for component in vector[::-1]:
-        if component < 0:
-            return -vector
-        if component > 0:
-            return vector
-    return vector
-
-
 
 ################################################################################
 # Residuals
@@ -362,44 +342,14 @@ def line_ref_point(ref_pt: Numpy1D, direction: Numpy1D) -> float:
         # Should only execute when the point is a zero vector.
         return float(np.linalg.norm(ref_pt))
 
-def unique_vector(vector: Numpy1D, zero_atol: float=1e-16) -> Numpy1D:
+def unique_vector(vector: Numpy1D) -> Numpy1D:
     """Calculates how far a vector is into the non-unique set of vectors. All pancad
     non-unique vectors are opposites of a unique vector.
 
-    Unique pancad vectors must meet these conditions:
-
-    1. If 3D, the z component must be nonnegative.
-    2. If 2D or z is 0, the y component must be nonnegative.
-    3. If both y and z is 0, the x component must be nonnegative.
-
     :param vector: A vector that must be unique.
-    :param zero_atol: The absolute tolerance to use when checking whether components are 0.
-    :returns: A numpy array of the residuals for z (if 3D), y, and x.
+    :returns: A numpy array of the residuals for x and y (and z, if 3D).
     """
-    residuals: list[float] = []
-    if len(vector) == 3:
-        x, y, z = vector
-        # If z is the negative zero_atol, this function should treat z as 0 and move to 2D case.
-        # If z is positive zero_atol, this function should treat z as 0 and move to 2D case.
-        # If z is less than negative zero_atol, this function should return the z residual and 0.
-        # If z is a nonzero positive number, this function should return np.array([0, 0]).
-        residuals.append(z - abs(z))
-        if abs(residuals[0]) >= 0 and not np.isclose(z, 0, atol=zero_atol):
-            # z is either positive or is a negative number that is not close to 0.
-            # Should return z residual and 0.
-            residuals.extend([0, 0])
-            return np.array(residuals)
-        # Z must be zero at this point, so the 3D problem reduces to 2D.
-    else:
-        x, y = vector
-    # Direction is 2D or z is 0.
-    if np.isclose(y, 0, atol=zero_atol):
-        # Y is close to 0, so return x residual.
-        residuals.extend([y - abs(y), x - abs(x)])
-    else:
-        # Y is not close to 0, so return y residual.
-        residuals.extend([y - abs(y), 0])
-    return np.array(residuals)
+    return vector - get_unique_vector(vector)
 
 def get_param_sort_key(type_: Type[PancadThing], equation_name: CEN) -> float:
     """Returns the parameter sorting key of the type for the named equation.

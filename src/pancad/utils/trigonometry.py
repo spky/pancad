@@ -6,6 +6,7 @@ from __future__ import annotations
 import decimal
 from functools import partial, singledispatch
 import math
+import sys
 from math import degrees
 from typing import TYPE_CHECKING, overload
 from collections.abc import Sequence
@@ -145,7 +146,10 @@ def get_unit_vector(vector: SpaceVector | Numpy1D | Numpy2D) -> Numpy1D | Numpy2
     vector, returns the zero vector.
 
     :raises TypeError: When provided a 0D or >2D numpy array.
-    :raises ValueError: When provided a non 2D or 3D vector or when provided a zero length vector.
+    :raises ValueError: When provided a non 2D/3D vector, a zero length vector, or when
+        normalization fails due to round off caused by the vector's components being too small but
+        not zero.
+    :raises RuntimeError: When the vector normalization step fails due to an unhandled case.
     """
     shape: tuple[int] | tuple[int, int]
     flat_vector = to_1d_np(vector)
@@ -161,6 +165,11 @@ def get_unit_vector(vector: SpaceVector | Numpy1D | Numpy2D) -> Numpy1D | Numpy2
         if np.isclose(length, 0):
             raise ValueError("Expected vector of nonzero length") from exc
         raise
+    if not np.isclose(failed_length := np.linalg.norm(unit_vector), 1):
+        if any(c**2 < sys.float_info.min and c != 0 for c in vector):
+            raise ValueError("Normalization failed, component squares smaller than system"
+                             f" min floating point value {sys.float_info.min}. Got: {vector}")
+        raise RuntimeError(f"Failed to normalize vector {vector}. Result Length: {failed_length}")
     if len(shape) == 1:
         out_1d_vector: Numpy1D = unit_vector.reshape(*shape)
         return out_1d_vector
