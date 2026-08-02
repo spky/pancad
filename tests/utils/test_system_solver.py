@@ -670,35 +670,6 @@ class TestResidualHelpers:
             raise
 
     @pytest.mark.parametrize(
-        "vector, expected",
-        [
-            # 0D
-            pytest.param(tuple(), tuple(), id="0d"),
-
-            # 1D
-            pytest.param((0,), (0,), id="zero_vector_1d"),
-            pytest.param((1,), (1,), id="1_1d"),
-            pytest.param((-1,), (1,), id="-1_1d"),
-            # 2D
-            pytest.param((0,0), (0,0), id="zero_vector_2d"),
-            # 3D
-            pytest.param((0,0,0), (0,0,0), id="zero_vector_3d"),
-            pytest.param((1,0,0), (1,0,0), id="x_3d"),
-            pytest.param((-1,0,0), (1,0,0), id="-x_3d"),
-            pytest.param((0,1,0), (0,1,0), id="y_3d"),
-            pytest.param((0,-1,0), (0,1,0), id="-y_3d"),
-            pytest.param((0,0,1), (0,0,1), id="z_3d"),
-            pytest.param((0,0,-1), (0,0,1), id="-z_3d"),
-            pytest.param((-1,-1,-1), (1,1,1), id="-1-1-1_3d"),
-            pytest.param((-1,-1,EPS_64), (-1,-1,EPS_64), id="-1-1eps_3d"),
-            pytest.param((-1,-1,-EPS_64), (1,1,EPS_64), id="-1-1-eps_3d"),
-        ]
-    )
-    def test_get_unique_vector(self, vector: tuple[float, ...], expected: tuple[float, ...]):
-        result = pcres.get_unique_vector(np.array(vector))
-        np.testing.assert_array_equal(result, expected)
-
-    @pytest.mark.parametrize(
         "plane, point, expected",
         [
             ### Moving Point around the XY plane.

@@ -1,0 +1,51 @@
+# data_geo_util_sample.toml is a test data file containing geometry definitions for testing the
+# pancad geometry utilities with.
+
+[unique_vector]
+# 2D/3D Zero Vectors
+[unique_vector.2d_zero_vector]
+vectors = {input = [0, 0], result = [0, 0]}
+[unique_vector.3d_zero_vector]
+vectors = {input = [0, 0, 0], result = [0, 0, 0]}
+
+# 2D Axis Vectors
+[unique_vector.2d_x]
+vectors = {input = [1, 0], result = [1, 0]}
+[unique_vector.2d_negative_x]
+vectors = {input = [-1, 0], result = [1, 0]}
+[unique_vector.2d_y]
+vectors = {input = [0, 1], result = [0, 1]}
+[unique_vector.2d_negative_y]
+vectors = {input = [0, -1], result = [0, 1]}
+
+# 2D Ones Vectors
+[unique_vector.2d_ones_vector]
+vectors = {input = [1, 1], result = [1, 1]}
+[unique_vector.2d_ones_vector_x_negative]
+vectors = {input = [-1, 1], result = [-1, 1]}
+[unique_vector.2d_ones_vector_y_negative]
+vectors = {input = [1, -1], result = [-1, 1]}
+
+# 3D Axis Vectors
+[unique_vector.3d_x]
+vectors = {input = [1, 0, 0], result = [1, 0, 0]}
+[unique_vector.3d_negative_x]
+vectors = {input = [-1, 0, 0], result = [1, 0, 0]}
+[unique_vector.3d_y]
+vectors = {input = [0, 1, 0], result = [0, 1, 0]}
+[unique_vector.3d_negative_y]
+vectors = {input = [0, -1, 0], result = [0, 1, 0]}
+[unique_vector.3d_z]
+vectors = {input = [0, 0, 1], result = [0, 0, 1]}
+[unique_vector.3d_negative_z]
+vectors = {input = [0, 0, -1], result = [0, 0, 1]}
+
+# 3D Ones Vectors
+[unique_vector.3d_ones_vector]
+vectors = {input = [1, 1, 1], result = [1, 1, 1]}
+[unique_vector.3d_ones_vector_z_negative]
+vectors = {input = [1, 1, -1], result = [-1, -1, 1]}
+[unique_vector.3d_ones_vector_y_negative]
+vectors = {input = [1, -1, 1], result = [1, -1, 1]}
+[unique_vector.3d_ones_vector_x_negative]
+vectors = {input = [-1, 1, 1], result = [-1, 1, 1]}
