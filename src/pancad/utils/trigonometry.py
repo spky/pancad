@@ -20,7 +20,7 @@ from pancad.utils.pancad_types import PolarVector, SphericalVector
 if TYPE_CHECKING:
     from decimal import Decimal
     from typing import Literal
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Collection
 
     from pancad.utils.pancad_types import (
         Space3DVector, Space2DVector, SpaceVector, Numpy1D, Numpy2D
@@ -136,12 +136,10 @@ def _from_numpy_int(number: np.int_) -> Decimal:
     return decimal.getcontext().create_decimal_from_float(number.item())
 
 @overload
-def get_unit_vector(vector: SpaceVector) -> Numpy1D: ...
-@overload
-def get_unit_vector(vector: Numpy1D) -> Numpy1D: ...
+def get_unit_vector(vector: Collection[float]) -> Numpy1D: ...
 @overload
 def get_unit_vector(vector: Numpy2D) -> Numpy2D: ...
-def get_unit_vector(vector: SpaceVector | Numpy1D | Numpy2D) -> Numpy1D | Numpy2D:
+def get_unit_vector(vector: Collection[float]) -> Numpy1D | Numpy2D:
     """Returns the unit vector of the given vector. If the vector is a zero
     vector, returns the zero vector.
 
@@ -345,7 +343,7 @@ def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector:
         return (x, y, z)
     raise ValueError(f"Cannot convert {value} of class {value.__class__} to a 2 or 3 long tuple")
 
-def to_1d_np(value: Sequence[float] | Numpy1D | Numpy2D) -> Numpy1D:
+def to_1d_np(value: Iterable[float]) -> Numpy1D:
     """Returns a flat/horizontal 1D numpy array from a given sequence of floats or a 1 dimensional
     numpy array.
 
