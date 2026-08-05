@@ -10,7 +10,7 @@ import numpy as np
 from pancad.utils import trigonometry as trig
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Collection
+    from collections.abc import Collection
     from typing import Literal, Self
 
     import numpy.typing as npt
