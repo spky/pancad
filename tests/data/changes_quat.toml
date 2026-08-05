@@ -1,0 +1,9 @@
+# changes_quat.toml is a test data file containing change tests for testing the pancad quaternion 
+# class.
+
+[rotate]
+[rotate.x_axis]
+initial = {vectors = {direction = [1, 0, 0]}}
+[rotate.x_axis.unrotated_zero_axis]
+vectors = {axis = [1, 0, 0], new = [1, 0, 0]}
+degree_scalars = {angle = 0}

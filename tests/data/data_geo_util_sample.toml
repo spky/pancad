@@ -67,3 +67,15 @@ vectors = {input = [0, 0, -1], result = [0, 0, -2]}
 vectors = {input = [1, 1, 1], result = [0, 0, 0]}
 [residual_unique_vector.3d_negative_ones_vector]
 vectors = {input = [-1, -1, -1], result = [-2, -2, -2]}
+
+# Quaternions
+[quats]
+[quats.from_angle]
+[quats.from_angle.unrotated_zero_axis]
+vectors = {axis = [1, 0, 0], vector = [0, 0, 0]}
+degree_scalars = {angle = 0}
+scalars = {scalar = 1}
+[quats.from_angle.90_around_x]
+vectors = {axis = [1, 0, 0], vector = [0.7071068, 0, 0]}
+degree_scalars = {angle = 90}
+scalars = {scalar = 0.7071068}
