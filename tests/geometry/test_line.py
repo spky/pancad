@@ -4,10 +4,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import quaternion # type: ignore
 import pytest
 
-from pancad.utils import trigonometry as trig
+from pancad.utils import trigonometry as trig, quat
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line, Axis
 
@@ -315,7 +314,7 @@ class TestSpotChecks:
         """Tests that rotating 2D Axis with a quaternion raises a ValueError."""
         axis = Axis((0, 0), (1, 0))
         with pytest.raises(ValueError, match="2D Axis with"):
-            axis.rotate(quaternion.quaternion(1, 0, 0, 0))
+            axis.rotate(quat.Quat(1, 0, 0, 0))
 
 class TestDirectionAroundOrigin:
     """Tests for ensuring the validity of the Line direction behavior around the origin point."""

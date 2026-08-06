@@ -4,8 +4,7 @@ program.
 
 from typing import TypedDict
 
-import quaternion # type: ignore
-
+from pancad.utils.quat import Quat
 from pancad.utils.pancad_types import SpaceVector
 
 class GeometrySampleData(TypedDict):
@@ -17,7 +16,7 @@ class GeometrySampleData(TypedDict):
     """
     vectors: dict[str, SpaceVector]
     scalars: dict[str, float]
-    quats: dict[str, quaternion.quaternion]
+    quats: dict[str, Quat]
 
 SampleTestGroup = tuple[list[str], list[GeometrySampleData]] # List of ids and list of geometry
 ChangeTest = tuple[GeometrySampleData, GeometrySampleData] # Pair of initial and change data

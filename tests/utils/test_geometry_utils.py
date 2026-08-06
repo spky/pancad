@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 import numpy as np
-import quaternion
 import pytest
 
 import pancad.utils.geometry as geo_utils
@@ -102,7 +101,7 @@ def test_get_rotation_quat(start, target):
     the start vector to the target vector.
     """
     q = geo_utils.get_rotation_quat(start, target)
-    rotated = quaternion.rotate_vectors(q, start)
+    rotated = q.rotate(start)
     print(f"{q} | Rotated: {rotated}")
     assert rotated == pytest.approx(target)
 

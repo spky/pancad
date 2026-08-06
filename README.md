@@ -29,8 +29,7 @@ See [CC0-1.0][4]
 ## Dependencies
 
 - [NumPy][5] - Used for matrix operations and numerical functions.
-- [quaternion][6] - Used for pesky quaternion defined coordinate systems.
-- [SciPy][7] - Used by quaternion.
+- [SciPy][6] - Used for its non-linear system solvers.
 
 <!-- References -->
 
@@ -39,5 +38,4 @@ See [CC0-1.0][4]
 [3]: https://pypi.org/project/pancad/
 [4]: https://creativecommons.org/publicdomain/zero/1.0/
 [5]: https://numpy.org/
-[6]: https://quaternion.readthedocs.io/en/latest/
-[7]: https://scipy.org/
+[6]: https://scipy.org/
