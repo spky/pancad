@@ -18,7 +18,6 @@ license-files = ["LICENSE"]
 readme = "README.md"
 dependencies = [
     "numpy>=2.4",
-    "numpy-quaternion",
     "scipy",
 ]
 [project.urls]
