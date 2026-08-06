@@ -12,14 +12,13 @@ from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING
 
 import numpy as np
-# Ignoring quaternion typing, see issue #300
-import quaternion # type: ignore
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
 from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import closest_to_origin, get_unique_vector
+from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from typing import Self, Optional, Type
@@ -535,7 +534,7 @@ class Axis(AbstractGeometry):
         return self
 
     @singledispatchmethod
-    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the axis about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.
@@ -543,18 +542,17 @@ class Axis(AbstractGeometry):
         :raises ValueError: When provided a rotation that does not correspond to
             the dimensions of the Axis.
         """
-        raise TypeError(f"Expected numpy array or quaternion, got: {rotation}")
+        raise TypeError(f"Expected numpy array or Quat, got: {rotation}")
 
-    @rotate.register(quaternion.quaternion)
-    def _with_quaternion(self, rotation: quaternion.quaternion) -> Self:
+    @rotate.register(Quat)
+    def _with_quaternion(self, rotation: Quat) -> Self:
         try:
-            new = quaternion.rotate_vectors(rotation, self.direction)
+            self.direction = rotation.rotate(self.direction)
         except ValueError as exc:
             if len(self) == 2:
-                msg = f"Cannot rotate 2D Axis with quaternion: {rotation}"
+                msg = f"Cannot rotate 2D Axis with Quat: {rotation}"
                 exc.add_note(msg)
             raise
-        self.direction = trig.to_1d_tuple(new + 0)
         self._line.direction = self.direction
         return self
 

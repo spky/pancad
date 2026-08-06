@@ -16,11 +16,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Self
 
-    # Ignoring quaternion typing, see issue #300
-    import quaternion # type: ignore
-
     from pancad.utils.pancad_types import Space3DVector, Numpy1D, Numpy2D, SphericalVector
-
+    from pancad.utils.quat import Quat
 
 class Plane(AbstractGeometry):
     """A class representing planes in 3D space."""
@@ -154,7 +151,7 @@ class Plane(AbstractGeometry):
             self.normal = normal
         return self
 
-    def rotate(self, rotation: Numpy2D | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the plane about its point closest to the origin.
 
         :param rotation: The matrix or quaternion to rotate with.

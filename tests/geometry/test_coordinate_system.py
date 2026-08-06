@@ -8,10 +8,10 @@ from pprint import pp
 
 import pytest
 import numpy as np
-import quaternion # pylint: disable=unused-import
 
 from pancad.constants import ConstraintReference as CR
 from pancad.geometry.coordinate_system import CoordinateSystem
+from pancad.utils.quat import Quat
 from pancad.utils.trigonometry import rotation_2, to_1d_tuple
 
 if TYPE_CHECKING:
@@ -120,7 +120,7 @@ def _rotate_3d_quaternion_params(origin: Space3DVector):
         quat_w = cos(radians(angle / 2))
         quat_ijk = map(lambda a, b: a * sin(radians(b) / 2),
                        rotation_axis, repeat(angle))
-        quat = np.quaternion(quat_w, *quat_ijk)
+        quat = Quat(quat_w, *quat_ijk)
         x_vec, y_vec, z_vec = INIT_ROTATION_AXIS_RESULTS[id_]
         expected = {
             CR.ORIGIN: origin,

@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Self
 
 import numpy as np
-import quaternion
 
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference as CR
@@ -17,6 +16,7 @@ from pancad.utils.trigonometry import yaw_pitch_roll
 from pancad.utils.geometry import get_rotation_quat
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.text_formatting import format_vector
+from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from typing import NoReturn
@@ -37,7 +37,7 @@ class CoordinateSystem(AbstractGeometry):
 
     def __init__(self,
                  origin: Point | SpaceVector,
-                 rotation: np.ndarray | np.quaternion=None,
+                 rotation: np.ndarray | Quat=None,
                  *, uid: str=None) -> None:
         self.uid = uid
         if not isinstance(origin, Point):
@@ -121,7 +121,7 @@ class CoordinateSystem(AbstractGeometry):
             comparisons.append(geometry.is_equal(other.get_reference(ref)))
         return all(comparisons)
 
-    def get_quaternion(self) -> np.quaternion:
+    def get_quaternion(self) -> Quat:
         """Returns a quaternion that can be used to rotate other vectors from
         the canonical cartesian coordinate system (1, 0, 0), (0, 1, 0),
         (0, 0, 1) to this coordinate system.
@@ -134,13 +134,11 @@ class CoordinateSystem(AbstractGeometry):
         for ref in (CR.X, CR.Y, CR.Z):
             canon_axis = canon_cs.get_reference(ref)
             cs_axis = self.get_reference(ref)
-            quats[ref] = get_rotation_quat(canon_axis.direction,
-                                           cs_axis.direction)
-        quats = {ref: q for ref, q in quats.items()
-                 if not np.isclose(q, np.quaternion(1, 0, 0, 0))}
+            quats[ref] = get_rotation_quat(canon_axis.direction, cs_axis.direction)
+        quats = {ref: q for ref, q in quats.items() if not np.allclose(q, Quat(1, 0, 0, 0))}
         if not quats:
             # All quaternions were identity quaternions, so just return one.
-            return np.quaternion(1, 0, 0, 0)
+            return Quat(1, 0, 0, 0)
         ref = next(iter(quats)) # Get one of the remaining references
         if np.allclose([q for _, q in quats.items()], [quats[ref]] * len(quats)):
             # Since identity quats have been filtered out, if all the leftover
@@ -154,14 +152,14 @@ class CoordinateSystem(AbstractGeometry):
                 # The the remaining axes are flipped, but have rotations that are
                 # in opposite directions. Either will work.
                 return quats[ref_1]
-            rot_axis_1 = quaternion.as_vector_part(quats[ref_1])
-            rot_axis_2 = quaternion.as_vector_part(quats[ref_2])
+            rot_axis_1 = quats[ref_1].vector
+            rot_axis_2 = quats[ref_2].vector
             if np.dot(rot_axis_1, rot_axis_2) == 0:
                 # Both remaining axes must have been flipped around if the
                 # rotation axes are perpendicular.
                 shared_axis = np.cross(canon_cs.get_reference(ref_1).direction,
                                        canon_cs.get_reference(ref_2).direction)
-                return np.quaternion(0, *shared_axis)
+                return Quat(0, *shared_axis)
         msg = ("Failed to find quaternion to rotate to this CoordinateSystem's"
                f" axes: {self.x_axis}, {self.y_axis}, {self.z_axis}."
                f" Leftover Quaternion Candidates: {quats}")
@@ -180,7 +178,7 @@ class CoordinateSystem(AbstractGeometry):
             geometry.update(other.get_reference(ref))
         return self
 
-    def rotate(self, rotation: np.ndarray | np.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | Quat) -> Self:
         """Rotates the system with a rotation matrix or quaternion."""
         for ref, geometry in self.children.items():
             if ref in (CR.ORIGIN, CR.CORE):
@@ -289,7 +287,7 @@ class Pose(AbstractGeometry):
         """Moves the Pose to a new location with no rotation."""
         self.coordinate_system.move_to_point(location)
 
-    def rotate(self, rotation: np.ndarray | quaternion.quaternion) -> Self:
+    def rotate(self, rotation: np.ndarray | Quat) -> Self:
         """Rotates the pose with a rotation matrix or quaternion."""
         self.coordinate_system.rotate(rotation)
         return self

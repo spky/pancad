@@ -15,14 +15,13 @@ from pancad.cad.freecad.constants import (ConstraintSubPart as CSP,
                                           ConstraintType,
                                           InternalGeometryType)
 from pancad.utils.trigonometry import is_clockwise
+from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from typing import NamedTuple
     from collections.abc import Callable
     from typing import Any, NoReturn
     from xml.etree.ElementTree import Element, ElementTree
-
-    import quaternion
 
     from pancad.cad.freecad.read_xml import FreeCADGeometryXML, FreeCADConstraintXML
 
@@ -464,7 +463,7 @@ class FreeCADPlacement:
     """Dataclass tracking a FreeCAD Placement object's properties from FCStd xml
     """
     location: tuple[float, float, float]
-    quat: quaternion.quaternion
+    quat: Quat
     o_vector: tuple[float, float, float]
 
     @classmethod
@@ -474,7 +473,7 @@ class FreeCADPlacement:
         location = read_vector(element, xyz, "P", False)
         o_vector = read_vector(element, xyz, "O", False)
         quat_vector = read_vector(element, ["Q0", "Q1", "Q2", "Q3"], is_2d=False)
-        return cls(location, np.quaternion(*quat_vector), o_vector)
+        return cls(location, Quat(*quat_vector), o_vector)
 
 @dataclasses.dataclass
 class PropertyPartShape:

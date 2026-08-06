@@ -9,9 +9,9 @@ from numbers import Real
 from warnings import catch_warnings
 
 import numpy as np
-import quaternion
 
 from pancad.utils import trigonometry as trig
+from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from typing import Any
@@ -239,8 +239,7 @@ def get_perpendicular(vector: Space3DVector) -> Space3DVector:
     ortho = np.cross(vector, ortho_map[x < y, x < z, y < z])
     return trig.get_unit_vector(ortho)
 
-def get_rotation_quat(start: Space3DVector, target: Space3DVector
-                      ) -> np.quaternion:
+def get_rotation_quat(start: Space3DVector, target: Space3DVector) -> Quat:
     """Returns a (non-unique) shortest-arc quaternion to rotate the start vector
     to the target vector.
 
@@ -263,14 +262,14 @@ def get_rotation_quat(start: Space3DVector, target: Space3DVector
     if any(np.allclose(vector, (0, 0, 0)) for vector in [start, target]):
         msg = f"start/target cannot be zero vector: {start}, {target}"
         raise ValueError(msg)
-    quat = np.quaternion(scalar, *axis)
-    norm = np.linalg.norm(quaternion.as_float_array(quat))
+    quat = Quat(scalar, *axis)
+    norm = np.linalg.norm(quat)
     if np.isclose(norm, 0):
         # If the norm of the quaternion is 0, the vectors are anti-parallel.
         # Anti-parallel vectors have an infinite number of shortest arc
         # quaternions, so an arbitrary perpendicular vector must be used as a
         # rotation axis.
         axis = get_perpendicular(start)
-        quat = np.quaternion(scalar, *axis)
-        norm = np.linalg.norm(quaternion.as_float_array(quat))
+        quat = Quat(scalar, *axis)
+        norm = np.linalg.norm(quat)
     return quat / norm
