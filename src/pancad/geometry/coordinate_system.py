@@ -3,7 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,17 +14,15 @@ from pancad.geometry.line import Axis
 from pancad.geometry.plane import Plane
 from pancad.utils.trigonometry import yaw_pitch_roll
 from pancad.utils.geometry import get_rotation_quat
-from pancad.utils.pancad_types import VectorLike
 from pancad.utils.text_formatting import format_vector
 from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
-    from typing import NoReturn
+    from collections.abc import Sequence
+    from typing import Self
     from numbers import Real
 
-    from pancad.utils.pancad_types import (
-        SpaceVector, Space3DVector, Space2DVector
-    )
+    from pancad.utils.pancad_types import SpaceVector, Space3DVector, Space2DVector, Numpy2D
 
 class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space.
@@ -35,14 +33,13 @@ class CoordinateSystem(AbstractGeometry):
     :param uid: The unique ID of the coordinate system.
     """
 
-    def __init__(self,
-                 origin: Point | SpaceVector,
-                 rotation: np.ndarray | Quat=None,
-                 *, uid: str=None) -> None:
+    def __init__(self, origin: Point | Sequence[float], rotation: Numpy2D | Quat | None=None,
+                 *, uid: str | None=None) -> None:
         self.uid = uid
         if not isinstance(origin, Point):
             origin = Point(origin)
         references = {CR.CORE: self, CR.ORIGIN: origin}
+        axes: dict[CR, SpaceVector]
         if len(origin) == 2:
             axes = {CR.X: (1, 0), CR.Y: (0, 1)}
         else:
@@ -55,14 +52,14 @@ class CoordinateSystem(AbstractGeometry):
             self.rotate(rotation)
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | Space3DVector,
-                            yaw: Real=0, pitch: Real=0, roll: Real=0,
-                            **kwargs) -> None:
+    def from_yaw_pitch_roll(cls, position: Point | Sequence[float],
+                            yaw: float=0, pitch: float=0, roll: float=0,
+                            *, uid: str | None=None) -> Self:
         """Initializes a CoordinateSystem from yaw, pitch, and roll angles in
         radians.
         """
         rotation = yaw_pitch_roll(yaw, pitch, roll)
-        return cls(position, rotation, **kwargs)
+        return cls(position, rotation, uid=uid)
 
     # Properties
     @property
@@ -71,7 +68,7 @@ class CoordinateSystem(AbstractGeometry):
         return self.get_reference(CR.ORIGIN)
 
     @origin.setter
-    def origin(self, point: Point | SpaceVector):
+    def origin(self, point: Point | SpaceVector) -> None:
         self.move_to_point(point)
 
     @property
@@ -224,8 +221,7 @@ class CoordinateSystem(AbstractGeometry):
 class Pose(AbstractGeometry):
     """The position and orientation of a 3D object."""
 
-    def __init__(self, coordinate_system: CoordinateSystem,
-                 *, uid: str=None) -> None:
+    def __init__(self, coordinate_system: CoordinateSystem, *, uid: str | None=None) -> None:
         self.uid = uid
         if (dimensions := len(coordinate_system)) != 3:
             raise ValueError("Expected 3D coordinate system,"
@@ -246,14 +242,14 @@ class Pose(AbstractGeometry):
         )
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | VectorLike,
-                            yaw: Real=0, pitch: Real=0, roll: Real=0,
-                            **kwargs) -> None:
+    def from_yaw_pitch_roll(cls, position: Point | Sequence[float],
+                            yaw: float=0, pitch: float=0, roll: float=0,
+                            uid: str | None=None) -> Self:
         """Initializes a Pose from yaw, pitch, and roll angles in radians."""
         coordinate_system = CoordinateSystem.from_yaw_pitch_roll(
             position, yaw, pitch, roll
         )
-        return cls(coordinate_system, **kwargs)
+        return cls(coordinate_system, uid=uid)
 
     @property
     def coordinate_system(self) -> CoordinateSystem:
@@ -286,6 +282,7 @@ class Pose(AbstractGeometry):
     def move_to_point(self, location: Point) -> Self:
         """Moves the Pose to a new location with no rotation."""
         self.coordinate_system.move_to_point(location)
+        return self
 
     def rotate(self, rotation: np.ndarray | Quat) -> Self:
         """Rotates the pose with a rotation matrix or quaternion."""
