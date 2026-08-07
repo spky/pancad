@@ -3,9 +3,9 @@ constraint is referencing. For example, a constraint can be defined between a
 point and a line's end point, so constraints need a way to track what part
 of the line is being constrained.
 """
-from enum import Flag, auto
+from enum import StrEnum, auto
 
-class ConstraintReference(Flag):
+class ConstraintReference(StrEnum):
     """An enumeration used by constraints to reference portions of geometry.
     ConstraintReferences are intended to be unambiguous definitions of
     portions of geometry, so each constraint reference can only refer to one
@@ -98,9 +98,9 @@ class ConstraintReference(Flag):
     def __repr__(self) -> str:
         return f"{self.name}"
 
-class FeatureReference(Flag):
+class FeatureReference(StrEnum):
     """An enumeration used by features to reference portions of other
     features.
     """
-    ROOT = auto
+    ROOT = auto()
     """The feature as a whole."""

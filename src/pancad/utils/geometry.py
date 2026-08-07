@@ -162,7 +162,9 @@ def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
     """
     items = []
     for item in inputs:
-        if isinstance(item, Sequence):
+        if isinstance(item, str):
+            items.append(item)
+        elif isinstance(item, Sequence):
             items.extend(item)
         else:
             items.append(item)
