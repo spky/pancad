@@ -18,7 +18,7 @@ from pancad.utils.text_formatting import format_vector
 from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection
     from typing import Self, Literal
 
     from pancad.utils.pancad_types import SpaceVector, Numpy2D
@@ -44,11 +44,10 @@ class CoordinateSystem(AbstractGeometry):
     _axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
     _plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
 
-    def __init__(self, origin: Point | Sequence[float], rotation: Numpy2D | Quat | None=None,
+    def __init__(self, origin: Collection[float], rotation: Numpy2D | Quat | None=None,
                  *, uid: str | None=None) -> None:
         self.uid = uid
-        if not isinstance(origin, Point):
-            origin = Point(origin)
+        origin = Point(origin)
         vectors = [[0] * i + [1] + [0] * (len(origin) - i - 1) for i in range(len(origin))]
         self._sys_refs: _CoordinateSystemRefs = {"origin": origin}
         for axis_key, vector in zip(self._axis_names, vectors):
@@ -65,7 +64,7 @@ class CoordinateSystem(AbstractGeometry):
             self.rotate(rotation)
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | Sequence[float],
+    def from_yaw_pitch_roll(cls, position: Collection[float],
                             yaw: float=0, pitch: float=0, roll: float=0,
                             *, uid: str | None=None) -> Self:
         """Initializes a CoordinateSystem from yaw, pitch, and roll angles in
@@ -86,7 +85,7 @@ class CoordinateSystem(AbstractGeometry):
         return self._sys_refs["origin"]
 
     @origin.setter
-    def origin(self, point: Point | SpaceVector) -> None:
+    def origin(self, point: Collection[float]) -> None:
         self.move_to_point(point)
 
     @property
@@ -196,17 +195,16 @@ class CoordinateSystem(AbstractGeometry):
             geometry.update(other.get_reference(ref))
         return self
 
-    def rotate(self, rotation: np.ndarray | Quat) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the system with a rotation matrix or quaternion."""
         for geometry in (self.axes | self.planes).values():
             geometry.rotate(rotation) # Rotate around closest points
             geometry.move_to_point(self.origin) # Realign axes and planes
         return self
 
-    def move_to_point(self, location: Point | SpaceVector) -> Self:
+    def move_to_point(self, location: Collection[float]) -> Self:
         """Moves the system to a new location with no rotation."""
-        if not isinstance(location, Point):
-            location = Point(location)
+        location = Point(location)
         self.origin.update(location)
         for geometry in (self.axes | self.planes).values():
             geometry.move_to_point(location)
@@ -259,7 +257,7 @@ class Pose(AbstractGeometry):
         )
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | Sequence[float],
+    def from_yaw_pitch_roll(cls, position: Collection[float],
                             yaw: float=0, pitch: float=0, roll: float=0,
                             uid: str | None=None) -> Self:
         """Initializes a Pose from yaw, pitch, and roll angles in radians."""
@@ -296,12 +294,12 @@ class Pose(AbstractGeometry):
     def is_equal(self, other: Pose) -> bool:
         return self.coordinate_system.is_equal(other.coordinate_system)
 
-    def move_to_point(self, location: Point) -> Self:
+    def move_to_point(self, location: Collection[float]) -> Self:
         """Moves the Pose to a new location with no rotation."""
         self.coordinate_system.move_to_point(location)
         return self
 
-    def rotate(self, rotation: np.ndarray | Quat) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the pose with a rotation matrix or quaternion."""
         self.coordinate_system.rotate(rotation)
         return self
