@@ -198,9 +198,7 @@ class CoordinateSystem(AbstractGeometry):
 
     def rotate(self, rotation: np.ndarray | Quat) -> Self:
         """Rotates the system with a rotation matrix or quaternion."""
-        for ref, geometry in self.children.items():
-            if ref in (CR.ORIGIN, CR.CORE):
-                continue
+        for geometry in (self.axes | self.planes).values():
             geometry.rotate(rotation) # Rotate around closest points
             geometry.move_to_point(self.origin) # Realign axes and planes
         return self
@@ -210,9 +208,7 @@ class CoordinateSystem(AbstractGeometry):
         if not isinstance(location, Point):
             location = Point(location)
         self.origin.update(location)
-        for ref, geometry in self.children.items():
-            if ref in (CR.ORIGIN, CR.CORE):
-                continue
+        for geometry in (self.axes | self.planes).values():
             geometry.move_to_point(location)
         return self
 
