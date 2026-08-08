@@ -3,7 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
@@ -19,10 +19,19 @@ from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self
+    from typing import Self, NotRequired, Literal
     from numbers import Real
 
     from pancad.utils.pancad_types import SpaceVector, Space3DVector, Space2DVector, Numpy2D
+
+class _CoordinateSystemRefs(TypedDict, total=False):
+    origin: Point
+    x: Axis
+    y: Axis
+    z: Axis
+    xy: Plane
+    xz: Plane
+    yz: Plane
 
 class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space.
@@ -38,16 +47,20 @@ class CoordinateSystem(AbstractGeometry):
         self.uid = uid
         if not isinstance(origin, Point):
             origin = Point(origin)
-        references = {CR.CORE: self, CR.ORIGIN: origin}
-        axes: dict[CR, SpaceVector]
-        if len(origin) == 2:
-            axes = {CR.X: (1, 0), CR.Y: (0, 1)}
-        else:
-            axes = {CR.X: (1, 0, 0), CR.Y: (0, 1, 0), CR.Z: (0, 0, 1)}
-            planes = {CR.XY: (0, 0, 1), CR.XZ: (0, 1, 0), CR.YZ: (1, 0, 0)}
-            references.update({r: Plane(origin, n) for r, n in planes.items()})
-        references.update({r: Axis(origin, v) for r, v in axes.items()})
-        super().__init__(references)
+        vectors = [[0] * i + [1] + [0] * (len(origin) - i - 1) for i in range(len(origin))]
+        self._sys_refs: _CoordinateSystemRefs = {"origin": origin}
+        axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
+        for axis_key, vector in zip(axis_names, vectors):
+            self._sys_refs[axis_key] = Axis(origin, vector)
+        if len(vectors) == 3:
+            plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
+            for plane_key, vector in zip(plane_names, vectors, strict=True):
+                self._sys_refs[plane_key] = Plane(origin, vector)
+        # Convert the sys_refs into a plane references dictionary. TypedDict items() are of type
+        # object so the type needs to be checked with isinstance.
+        references = {CR(k): v for k, v in self._sys_refs.items()
+                      if isinstance(v, AbstractGeometry)}
+        super().__init__({CR.CORE: self, **references})
         if rotation is not None:
             self.rotate(rotation)
 
