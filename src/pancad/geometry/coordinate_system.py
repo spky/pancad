@@ -271,27 +271,27 @@ class Pose(AbstractGeometry):
     @property
     def coordinate_system(self) -> CoordinateSystem:
         """Internal coordinate_system representing the the Pose."""
-        return self.get_reference(CR.CS)
+        return self._coordinate_system
 
     @property
     def origin(self) -> Point:
         """The origin point of the Pose's internal coordinate_system."""
-        return self.get_reference(CR.ORIGIN)
+        return self._coordinate_system.origin
 
     @property
     def front(self) -> Plane:
         """Front plane of the Pose."""
-        return self.get_reference(CR.FRONT)
+        return self._coordinate_system.xy_plane
 
     @property
     def right(self) -> Plane:
         """Right plane of the Pose."""
-        return self.get_reference(CR.RIGHT)
+        return self._coordinate_system.xz_plane
 
     @property
     def top(self) -> Plane:
         """Top plane of the Pose."""
-        return self.get_reference(CR.TOP)
+        return self._coordinate_system.yz_plane
 
     def is_equal(self, other: Pose) -> bool:
         return self.coordinate_system.is_equal(other.coordinate_system)
