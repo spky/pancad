@@ -41,6 +41,8 @@ class CoordinateSystem(AbstractGeometry):
         2D/3D CoordinateSystem to a desired orientation.
     :param uid: The unique ID of the coordinate system.
     """
+    _axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
+    _plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
 
     def __init__(self, origin: Point | Sequence[float], rotation: Numpy2D | Quat | None=None,
                  *, uid: str | None=None) -> None:
@@ -49,12 +51,10 @@ class CoordinateSystem(AbstractGeometry):
             origin = Point(origin)
         vectors = [[0] * i + [1] + [0] * (len(origin) - i - 1) for i in range(len(origin))]
         self._sys_refs: _CoordinateSystemRefs = {"origin": origin}
-        axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
-        for axis_key, vector in zip(axis_names, vectors):
+        for axis_key, vector in zip(self._axis_names, vectors):
             self._sys_refs[axis_key] = Axis(origin, vector)
-        if len(vectors) == 3:
-            plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
-            for plane_key, vector in zip(plane_names, vectors, strict=True):
+        if len(vectors) == 3: # 3D Coordinate System, add the planes.
+            for plane_key, vector in zip(self._plane_names, vectors, strict=True):
                 self._sys_refs[plane_key] = Plane(origin, vector)
         # Convert the sys_refs into a plane references dictionary. TypedDict items() are of type
         # object so the type needs to be checked with isinstance.
@@ -76,43 +76,53 @@ class CoordinateSystem(AbstractGeometry):
 
     # Properties
     @property
+    def axes(self) -> dict[CR, Axis]:
+        """The Axis elements of the CoordinateSystem mapped to the ConstraintReferences."""
+        return {CR(r): self._sys_refs[r] for r in self._axis_names if r in self._sys_refs}
+
+    @property
     def origin(self) -> Point:
         """The CoordinateSystem's Origin Point."""
-        return self.get_reference(CR.ORIGIN)
+        return self._sys_refs["origin"]
 
     @origin.setter
     def origin(self, point: Point | SpaceVector) -> None:
         self.move_to_point(point)
 
     @property
+    def planes(self) -> dict[CR, Plane]:
+        """The Plane elements of the CoordinateSystem mapped to the ConstraintReferences."""
+        return {CR(r): self._sys_refs[r] for r in self._plane_names if r in self._sys_refs}
+
+    @property
     def x_axis(self) -> Axis:
         """The CoordinateSystem's X-Axis."""
-        return self.get_reference(CR.X)
+        return self._sys_refs["x"]
 
     @property
     def y_axis(self) -> Axis:
         """The CoordinateSystem's Y-Axis."""
-        return self.get_reference(CR.Y)
+        return self._sys_refs["y"]
 
     @property
     def z_axis(self) -> Axis:
         """The CoordinateSystem's Z-Axis."""
-        return self.get_reference(CR.Z)
+        return self._sys_refs["z"]
 
     @property
     def xy_plane(self) -> Plane:
         """The CoordinateSystem's XY-Plane."""
-        return self.get_reference(CR.XY)
+        return self._sys_refs["xy"]
 
     @property
     def xz_plane(self) -> Plane:
         """The CoordinateSystem's XZ-Plane."""
-        return self.get_reference(CR.XZ)
+        return self._sys_refs["xz"]
 
     @property
     def yz_plane(self) -> Plane:
         """The CoordinateSystem's YZ-Plane."""
-        return self.get_reference(CR.YZ)
+        return self._sys_refs["yz"]
 
     # Public Methods
     def copy(self) -> CoordinateSystem:
@@ -141,9 +151,9 @@ class CoordinateSystem(AbstractGeometry):
             raise ValueError(msg)
         canon_cs = CoordinateSystem((0, 0, 0))
         quats = {}
-        for ref in (CR.X, CR.Y, CR.Z):
-            canon_axis = canon_cs.get_reference(ref)
-            cs_axis = self.get_reference(ref)
+        for ref, cs_axis in self.axes.items():
+            canon_axis = canon_cs.axes[ref]
+            assert len(canon_axis.direction) == 3 and len(cs_axis.direction) == 3
             quats[ref] = get_rotation_quat(canon_axis.direction, cs_axis.direction)
         quats = {ref: q for ref, q in quats.items() if not np.allclose(q, Quat(1, 0, 0, 0))}
         if not quats:
@@ -162,13 +172,11 @@ class CoordinateSystem(AbstractGeometry):
                 # The the remaining axes are flipped, but have rotations that are
                 # in opposite directions. Either will work.
                 return quats[ref_1]
-            rot_axis_1 = quats[ref_1].vector
-            rot_axis_2 = quats[ref_2].vector
-            if np.dot(rot_axis_1, rot_axis_2) == 0:
+            if np.dot(quats[ref_1].vector, quats[ref_2].vector) == 0:
                 # Both remaining axes must have been flipped around if the
                 # rotation axes are perpendicular.
-                shared_axis = np.cross(canon_cs.get_reference(ref_1).direction,
-                                       canon_cs.get_reference(ref_2).direction)
+                shared_axis = np.cross(canon_cs.axes[ref_1].direction,
+                                       canon_cs.axes[ref_2].direction)
                 return Quat(0, *shared_axis)
         msg = ("Failed to find quaternion to rotate to this CoordinateSystem's"
                f" axes: {self.x_axis}, {self.y_axis}, {self.z_axis}."
