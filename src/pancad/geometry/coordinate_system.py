@@ -19,12 +19,12 @@ from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self, NotRequired, Literal
-    from numbers import Real
+    from typing import Self, Literal
 
-    from pancad.utils.pancad_types import SpaceVector, Space3DVector, Space2DVector, Numpy2D
+    from pancad.utils.pancad_types import SpaceVector, Numpy2D
 
 class _CoordinateSystemRefs(TypedDict, total=False):
+    # A TypedDict used to store all CoordinateSystem cross references in a type safe way.
     origin: Point
     x: Axis
     y: Axis
