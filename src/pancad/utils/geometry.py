@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from functools import wraps
 from itertools import islice
-from collections.abc import Sequence
+from collections.abc import Sequence, Collection
 from typing import TYPE_CHECKING, overload
 from numbers import Real
 from warnings import catch_warnings
@@ -126,12 +126,12 @@ def get_unique_vector(vector: Sequence[float] | Numpy1D) -> tuple[float, ...] | 
         return np.array(tuple_vector)
     return tuple_vector
 
-def parse_vector(*components: float | Sequence[float] | Numpy1D) -> SpaceVector:
+def parse_vector(*components: float | Collection[float]) -> SpaceVector:
     """Batches structures of vector component inputs to a tuple of Reals.
     Usually used by pancad to parse position and direction information into the
     geometry classes.
 
-    :raises TypeError: When provided a single component that is not Sequence or
+    :raises TypeError: When provided a single component that is not a Collection or
         when 2 or more non-Real arguments.
     :raises ValueError: When provided 0 or more than 3 arguments.
     """
@@ -145,7 +145,7 @@ def parse_vector(*components: float | Sequence[float] | Numpy1D) -> SpaceVector:
                 raise ValueError("NumPy vectors must be 2 or 3 elements,"
                                  f" got {vector}")
             return tuple(float(component.squeeze()) for component in vector)
-        if isinstance(vector, Sequence):
+        if isinstance(vector, Collection):
             return tuple(vector)
         raise TypeError(f"Expected ndarray/Sequence, got {type(components)}")
     if all(isinstance(component, Real) for component in components):

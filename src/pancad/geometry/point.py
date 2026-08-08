@@ -3,7 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Collection
 import math
 from sqlite3 import PrepareProtocol
 from typing import TYPE_CHECKING, overload
@@ -16,6 +16,7 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.geometry import parse_vector
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from typing import Optional, Type, Self, Literal
     from uuid import UUID
 
@@ -44,17 +45,14 @@ class Point(AbstractGeometry):
         arguments or as a single vector.
     :param uid: The unique ID of the point for interoperable CAD identification.
     """
-    def __init__(self, *components: float | Sequence[float] | Numpy1D,
-                 uid: Optional[str | UUID]=None):
-        self._cartesian: SpaceVector
-        self._iter_index = 0 # Used for __iter__ counting
+    def __init__(self, *components: float | Collection[float], uid: Optional[str | UUID]=None):
         self.uid = uid
         self.cartesian = parse_vector(*components)
         super().__init__({ConstraintReference.CORE: self})
 
     # Class Methods #
     @classmethod
-    def from_polar(cls, *components: float | Sequence[float] | Numpy1D,
+    def from_polar(cls, *components: float | Collection[float],
                    uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from polar coordinates.
 
@@ -70,7 +68,7 @@ class Point(AbstractGeometry):
         return cls(trig.polar_to_cartesian(vector), uid=uid)
 
     @classmethod
-    def from_spherical(cls, *components: float | Sequence[float] | Numpy1D,
+    def from_spherical(cls, *components: float | Collection[float],
                        uid: Optional[str | UUID]=None) -> Point:
         """Initializes a point from spherical coordinates (Radius (r), Azimuth
         (phi), Elevation (theta)). Azimuth and Elevation angles must be in
@@ -98,7 +96,7 @@ class Point(AbstractGeometry):
         return self._cartesian
 
     @cartesian.setter
-    def cartesian(self, value: Sequence[float] | Numpy1D | Numpy2D) -> None:
+    def cartesian(self, value: Collection[float]) -> None:
         vector = trig.to_1d_tuple(value)
         self._cartesian = vector
 
@@ -316,14 +314,14 @@ class Point(AbstractGeometry):
         return array_1d
 
     # Python Dunders #
-    def __add__(self, other: Point | Sequence[float]) -> Numpy1D:
+    def __add__(self, other: Collection[float]) -> Numpy1D:
         """Returns the addition of the point's cartesian position vector and another vector of
         the same length as a numpy array. Points can also be added to numpy arrays, but numpy's
         dunders handle those cases through the array dunder.
 
         :raises ValueError: When vector lengths are unequal or the other is not 2D/3D.
         """
-        if isinstance(other, (Sequence, Point)):
+        if isinstance(other, Collection):
             other_array = np.array(other, dtype=np.float64)
             trig.check_vector_shape(other_array.shape)
             try:
@@ -335,7 +333,7 @@ class Point(AbstractGeometry):
                 raise
         return NotImplemented
 
-    def __radd__(self, other: Point | Sequence[float]) -> Numpy1D:
+    def __radd__(self, other: Collection[float]) -> Numpy1D:
         return self.__add__(other)
 
     def __conform__(self, protocol: Type[PrepareProtocol]) -> str:
@@ -344,9 +342,9 @@ class Point(AbstractGeometry):
             return ";".join(map(str, self.cartesian))
         raise TypeError(f"Expected sqlite3.PrepareProtocol, got {protocol}")
 
-    def __sub__(self, other: Point | Sequence[float]) -> Numpy1D:
+    def __sub__(self, other: Collection[float]) -> Numpy1D:
         """Returns the subtraction of two point's cartesian position vectors as a numpy array."""
-        if isinstance(other, (Sequence, Point)):
+        if isinstance(other, Collection):
             other_array = np.array(other, dtype=np.float64)
             trig.check_vector_shape(other_array.shape)
             try:
@@ -358,8 +356,8 @@ class Point(AbstractGeometry):
                 raise
         return NotImplemented
 
-    def __rsub__(self, other: Point | Sequence[float]) -> Numpy1D:
-        if isinstance(other, (Sequence, Point)):
+    def __rsub__(self, other: Collection[float]) -> Numpy1D:
+        if isinstance(other, Collection):
             other_array = np.array(other, dtype=np.float64)
             trig.check_vector_shape(other_array.shape)
             try:
@@ -387,22 +385,16 @@ class Point(AbstractGeometry):
         """Returns the dimension of the Point, 2 or 3."""
         return len(self.cartesian)
 
-    def __iter__(self) -> Self:
+    def __iter__(self) -> Iterator[float]:
         """Iterator function to allow the point's cartesian position to be
         output when the point is fed to a list or tuple like function.
         """
-        self._iter_index = 0
-        return self
+        yield from self._cartesian
 
-    def __next__(self) -> float:
-        """Next function to allow the point's cartesian position to be
-        output when the point is fed to a list or tuple like function.
-        """
-        if self._iter_index < len(self.cartesian):
-            i = self._iter_index
-            self._iter_index += 1
-            return self.cartesian[i]
-        raise StopIteration
+    def __contains__(self, value: object) -> bool:
+        if isinstance(value, (float, int)):
+            return value in self._cartesian
+        return False
 
     def __repr__(self) -> str:
         pt_strs = []
