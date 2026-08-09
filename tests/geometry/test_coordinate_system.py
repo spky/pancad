@@ -16,9 +16,9 @@ from pancad.utils.trigonometry import rotation_2, to_1d_tuple
 
 if TYPE_CHECKING:
     from numbers import Real
-    from pancad.utils.pancad_types import (
-        SpaceVector, Space3DVector, Space2DVector
-    )
+    from pancad.utils.pancad_types import SpaceVector, Space3DVector, Space2DVector, Numpy2D
+
+    from tests._typing import GeometrySampleData, ChangeTest
 
 PLANE_REFS = (CR.XY, CR.XZ, CR.YZ)
 AXIS_REFS = (CR.X, CR.Y, CR.Z)
@@ -28,27 +28,17 @@ X_3D = np.array([1, 0, 0])
 Y_3D = np.array([0, 1, 0])
 Z_3D = np.array([0, 0, 1])
 
-def _rotate_2d_params(origin: Space2DVector):
-    """Return parameters for testing 2D coordinate system rotation during
-    initialization.
+class TestRotations:
+    """Tests for verifying CoordinateSystem element can rotate using matrices in 2D."""
 
-    :param origin: The origin point of the coordinate system.
-    """
-    params = []
-    x_axis = (1, 0)
-    y_axis = to_1d_tuple(x_axis @ rotation_2(radians(-90)))
-    init_axes = {CR.X: x_axis, CR.Y: y_axis}
-    for angle in range(0, 405, 45):
-        rotation = rotation_2(radians(angle))
-        expected = {ref: rotation @ v for ref, v in init_axes.items()}
-        expected[CR.ORIGIN] = origin
-        id_ = f"2d_Origin{origin}_X{x_axis}_Y{y_axis}_Rot{angle}deg"
-        params.append(pytest.param(origin, rotation, expected, id=id_))
-    params.append( # Add case for when the rotation is set to None
-        pytest.param(origin, None, {CR.ORIGIN: origin, **init_axes},
-                     id=f"2d_Origin{origin}_RotNone_unrotated")
-    )
-    return params
+    def test_rotate_2d_init(self, changes_csys_rotate_2d: ChangeTest) -> None:
+        """Test initializing a 2D coordinate system using a rotation matrix."""
+        sample, change = changes_csys_rotate_2d
+        system = CoordinateSystem(sample["vectors"]["origin"],
+                                  rotation_2(change["scalars"]["angle"]))
+        assert system.origin.cartesian == pytest.approx(change["vectors"]["origin"])
+        assert system.x_axis.direction == pytest.approx(change["vectors"]["x"])
+        assert system.y_axis.direction == pytest.approx(change["vectors"]["y"])
 
 # The quaternion inputs are split into two dicts to make it slightly easier to read:
 # one for the rotation axis and the angle to rotate around, and one for the
@@ -134,8 +124,6 @@ def _rotate_3d_quaternion_params(origin: Space3DVector):
 @pytest.mark.parametrize(
     "origin, rotation, expected",
     [
-        *_rotate_2d_params((0, 0)),
-        *_rotate_2d_params((1, 1)), # set of 2D tests offset from origin
         *_rotate_3d_quaternion_params((0, 0, 0)),
         *_rotate_3d_quaternion_params((1, 1, 1)),
     ]

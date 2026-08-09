@@ -1,0 +1,79 @@
+# changes_csys.toml is a test data file containing definitions of starting CoordinateSystem
+# geometry and how to change its parameters post-initialization.
+
+[rotate_2d]
+[rotate_2d.canon.initial]
+vectors = {origin = [0, 0]}
+[rotate_2d.canon.unrotated]
+vectors = {origin = [0, 0], x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 0}
+[rotate_2d.canon.ccw_45]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, 1], y = [-1, 1]}
+degree_scalars = {angle = 45}
+[rotate_2d.canon.ccw_90]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [0, 1], y = [-1, 0]}
+degree_scalars = {angle = 90}
+[rotate_2d.canon.ccw_135]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, 1], y = [-1, -1]}
+degree_scalars = {angle = 135}
+[rotate_2d.canon.ccw_180]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, 0], y = [0, -1]}
+degree_scalars = {angle = 180}
+[rotate_2d.canon.ccw_225]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, -1], y = [1, -1]}
+degree_scalars = {angle = 225}
+[rotate_2d.canon.ccw_270]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [0, -1], y = [1, 0]}
+degree_scalars = {angle = 270}
+[rotate_2d.canon.ccw_315]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, -1], y = [1, 1]}
+degree_scalars = {angle = 315}
+[rotate_2d.canon.ccw_360]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 360}
+
+[rotate_2d.at_1_1.initial]
+vectors = {origin = [1, 1]}
+[rotate_2d.at_1_1.unrotated]
+vectors = {origin = [1, 1], x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 0}
+[rotate_2d.at_1_1.ccw_45]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, 1], y = [-1, 1]}
+degree_scalars = {angle = 45}
+[rotate_2d.at_1_1.ccw_90]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [0, 1], y = [-1, 0]}
+degree_scalars = {angle = 90}
+[rotate_2d.at_1_1.ccw_135]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, 1], y = [-1, -1]}
+degree_scalars = {angle = 135}
+[rotate_2d.at_1_1.ccw_180]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, 0], y = [0, -1]}
+degree_scalars = {angle = 180}
+[rotate_2d.at_1_1.ccw_225]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, -1], y = [1, -1]}
+degree_scalars = {angle = 225}
+[rotate_2d.at_1_1.ccw_270]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [0, -1], y = [1, 0]}
+degree_scalars = {angle = 270}
+[rotate_2d.at_1_1.ccw_315]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, -1], y = [1, 1]}
+degree_scalars = {angle = 315}
+[rotate_2d.at_1_1.ccw_360]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 360}
