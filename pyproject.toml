@@ -133,6 +133,7 @@ files = [
     "src/pancad/geometry/point.py",
     "src/pancad/geometry/line.py",
     "src/pancad/geometry/unique_lists.py",
+    "src/pancad/geometry/coordinate_system.py",
     "src/pancad/utils/trigonometry.py",
     "src/pancad/utils/pancad_types.py",
     "src/pancad/utils/solver_residuals.py",
@@ -144,5 +145,6 @@ files = [
     "tests/geometry/test_plane.py",
     "tests/geometry/test_point.py",
     "tests/geometry/test_line.py",
+    "tests/geometry/test_coordinate_system.py",
     "tests/testing_utils/plotting.py",
 ]
