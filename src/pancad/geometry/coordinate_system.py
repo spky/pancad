@@ -3,7 +3,7 @@ graphics, and other geometry use cases.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
@@ -14,95 +14,115 @@ from pancad.geometry.line import Axis
 from pancad.geometry.plane import Plane
 from pancad.utils.trigonometry import yaw_pitch_roll
 from pancad.utils.geometry import get_rotation_quat
-from pancad.utils.pancad_types import VectorLike
 from pancad.utils.text_formatting import format_vector
 from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
-    from typing import NoReturn
-    from numbers import Real
+    from collections.abc import Collection
+    from typing import Self, Literal
+    from uuid import UUID
 
-    from pancad.utils.pancad_types import (
-        SpaceVector, Space3DVector, Space2DVector
-    )
+    from pancad.utils.pancad_types import SpaceVector, Numpy2D
+
+class _CoordinateSystemRefs(TypedDict, total=False):
+    # A TypedDict used to store all CoordinateSystem cross references in a type safe way.
+    origin: Point
+    x: Axis
+    y: Axis
+    z: Axis
+    xy: Plane
+    xz: Plane
+    yz: Plane
 
 class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space.
 
     :param origin: A 2D or 3D center Point of the coordinate system.
-    :param rotation: A rotation matrix or quaternion to rotate the canonical
-        2D/3D CoordinateSystem to a desired orientation.
+    :param rotation: A rotation matrix or quaternion to rotate the canonical 2D/3D
+        CoordinateSystem to an orientation. Leaves the canonical system unrotated when None.
     :param uid: The unique ID of the coordinate system.
     """
+    _axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
+    _plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
 
-    def __init__(self,
-                 origin: Point | SpaceVector,
-                 rotation: np.ndarray | Quat=None,
-                 *, uid: str=None) -> None:
+    def __init__(self, origin: Collection[float], rotation: Numpy2D | Quat | None=None,
+                 *, uid: UUID | str | None=None) -> None:
         self.uid = uid
-        if not isinstance(origin, Point):
-            origin = Point(origin)
-        references = {CR.CORE: self, CR.ORIGIN: origin}
-        if len(origin) == 2:
-            axes = {CR.X: (1, 0), CR.Y: (0, 1)}
-        else:
-            axes = {CR.X: (1, 0, 0), CR.Y: (0, 1, 0), CR.Z: (0, 0, 1)}
-            planes = {CR.XY: (0, 0, 1), CR.XZ: (0, 1, 0), CR.YZ: (1, 0, 0)}
-            references.update({r: Plane(origin, n) for r, n in planes.items()})
-        references.update({r: Axis(origin, v) for r, v in axes.items()})
-        super().__init__(references)
+        origin = Point(origin)
+        vectors = [[0] * i + [1] + [0] * (len(origin) - i - 1) for i in range(len(origin))]
+        self._sys_refs: _CoordinateSystemRefs = {"origin": origin}
+        for axis_key, vector in zip(self._axis_names, vectors):
+            self._sys_refs[axis_key] = Axis(origin, vector)
+        if len(vectors) == 3: # 3D Coordinate System, add the planes.
+            for plane_key, vector in zip(self._plane_names, vectors, strict=True):
+                self._sys_refs[plane_key] = Plane(origin, vector)
+        # Convert the sys_refs into a plane references dictionary. TypedDict items() are of type
+        # object so the type needs to be checked with isinstance.
+        references = {CR(k): v for k, v in self._sys_refs.items()
+                      if isinstance(v, AbstractGeometry)}
+        super().__init__({CR.CORE: self, **references})
         if rotation is not None:
             self.rotate(rotation)
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | Space3DVector,
-                            yaw: Real=0, pitch: Real=0, roll: Real=0,
-                            **kwargs) -> None:
+    def from_yaw_pitch_roll(cls, position: Collection[float],
+                            yaw: float=0, pitch: float=0, roll: float=0,
+                            *, uid: str | None=None) -> Self:
         """Initializes a CoordinateSystem from yaw, pitch, and roll angles in
         radians.
         """
         rotation = yaw_pitch_roll(yaw, pitch, roll)
-        return cls(position, rotation, **kwargs)
+        return cls(position, rotation, uid=uid)
 
     # Properties
     @property
+    def axes(self) -> dict[CR, Axis]:
+        """The Axis elements of the CoordinateSystem mapped to the ConstraintReferences."""
+        return {CR(r): self._sys_refs[r] for r in self._axis_names if r in self._sys_refs}
+
+    @property
     def origin(self) -> Point:
         """The CoordinateSystem's Origin Point."""
-        return self.get_reference(CR.ORIGIN)
+        return self._sys_refs["origin"]
 
     @origin.setter
-    def origin(self, point: Point | SpaceVector):
+    def origin(self, point: Collection[float]) -> None:
         self.move_to_point(point)
+
+    @property
+    def planes(self) -> dict[CR, Plane]:
+        """The Plane elements of the CoordinateSystem mapped to the ConstraintReferences."""
+        return {CR(r): self._sys_refs[r] for r in self._plane_names if r in self._sys_refs}
 
     @property
     def x_axis(self) -> Axis:
         """The CoordinateSystem's X-Axis."""
-        return self.get_reference(CR.X)
+        return self._sys_refs["x"]
 
     @property
     def y_axis(self) -> Axis:
         """The CoordinateSystem's Y-Axis."""
-        return self.get_reference(CR.Y)
+        return self._sys_refs["y"]
 
     @property
     def z_axis(self) -> Axis:
         """The CoordinateSystem's Z-Axis."""
-        return self.get_reference(CR.Z)
+        return self._sys_refs["z"]
 
     @property
     def xy_plane(self) -> Plane:
         """The CoordinateSystem's XY-Plane."""
-        return self.get_reference(CR.XY)
+        return self._sys_refs["xy"]
 
     @property
     def xz_plane(self) -> Plane:
         """The CoordinateSystem's XZ-Plane."""
-        return self.get_reference(CR.XZ)
+        return self._sys_refs["xz"]
 
     @property
     def yz_plane(self) -> Plane:
         """The CoordinateSystem's YZ-Plane."""
-        return self.get_reference(CR.YZ)
+        return self._sys_refs["yz"]
 
     # Public Methods
     def copy(self) -> CoordinateSystem:
@@ -113,7 +133,7 @@ class CoordinateSystem(AbstractGeometry):
         """
         return CoordinateSystem(self.origin).update(self)
 
-    def is_equal(self, other: AbstractGeometry) -> bool:
+    def is_equal(self, other: CoordinateSystem) -> bool:
         comparisons = []
         for ref, geometry in self.children.items():
             if ref == CR.CORE:
@@ -131,9 +151,9 @@ class CoordinateSystem(AbstractGeometry):
             raise ValueError(msg)
         canon_cs = CoordinateSystem((0, 0, 0))
         quats = {}
-        for ref in (CR.X, CR.Y, CR.Z):
-            canon_axis = canon_cs.get_reference(ref)
-            cs_axis = self.get_reference(ref)
+        for ref, cs_axis in self.axes.items():
+            canon_axis = canon_cs.axes[ref]
+            assert len(canon_axis.direction) == 3 and len(cs_axis.direction) == 3
             quats[ref] = get_rotation_quat(canon_axis.direction, cs_axis.direction)
         quats = {ref: q for ref, q in quats.items() if not np.allclose(q, Quat(1, 0, 0, 0))}
         if not quats:
@@ -152,13 +172,11 @@ class CoordinateSystem(AbstractGeometry):
                 # The the remaining axes are flipped, but have rotations that are
                 # in opposite directions. Either will work.
                 return quats[ref_1]
-            rot_axis_1 = quats[ref_1].vector
-            rot_axis_2 = quats[ref_2].vector
-            if np.dot(rot_axis_1, rot_axis_2) == 0:
+            if np.dot(quats[ref_1].vector, quats[ref_2].vector) == 0:
                 # Both remaining axes must have been flipped around if the
                 # rotation axes are perpendicular.
-                shared_axis = np.cross(canon_cs.get_reference(ref_1).direction,
-                                       canon_cs.get_reference(ref_2).direction)
+                shared_axis = np.cross(canon_cs.axes[ref_1].direction,
+                                       canon_cs.axes[ref_2].direction)
                 return Quat(0, *shared_axis)
         msg = ("Failed to find quaternion to rotate to this CoordinateSystem's"
                f" axes: {self.x_axis}, {self.y_axis}, {self.z_axis}."
@@ -178,23 +196,18 @@ class CoordinateSystem(AbstractGeometry):
             geometry.update(other.get_reference(ref))
         return self
 
-    def rotate(self, rotation: np.ndarray | Quat) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the system with a rotation matrix or quaternion."""
-        for ref, geometry in self.children.items():
-            if ref in (CR.ORIGIN, CR.CORE):
-                continue
+        for geometry in (self.axes | self.planes).values():
             geometry.rotate(rotation) # Rotate around closest points
             geometry.move_to_point(self.origin) # Realign axes and planes
         return self
 
-    def move_to_point(self, location: Point | SpaceVector) -> Self:
+    def move_to_point(self, location: Collection[float]) -> Self:
         """Moves the system to a new location with no rotation."""
-        if not isinstance(location, Point):
-            location = Point(location)
+        location = Point(location)
         self.origin.update(location)
-        for ref, geometry in self.children.items():
-            if ref in (CR.ORIGIN, CR.CORE):
-                continue
+        for geometry in (self.axes | self.planes).values():
             geometry.move_to_point(location)
         return self
 
@@ -225,7 +238,7 @@ class Pose(AbstractGeometry):
     """The position and orientation of a 3D object."""
 
     def __init__(self, coordinate_system: CoordinateSystem,
-                 *, uid: str=None) -> None:
+                 *, uid: str | UUID | None=None) -> None:
         self.uid = uid
         if (dimensions := len(coordinate_system)) != 3:
             raise ValueError("Expected 3D coordinate system,"
@@ -246,48 +259,47 @@ class Pose(AbstractGeometry):
         )
 
     @classmethod
-    def from_yaw_pitch_roll(cls, position: Point | VectorLike,
-                            yaw: Real=0, pitch: Real=0, roll: Real=0,
-                            **kwargs) -> None:
+    def from_yaw_pitch_roll(cls, position: Collection[float],
+                            yaw: float=0, pitch: float=0, roll: float=0,
+                            uid: str | None=None) -> Self:
         """Initializes a Pose from yaw, pitch, and roll angles in radians."""
-        coordinate_system = CoordinateSystem.from_yaw_pitch_roll(
-            position, yaw, pitch, roll
-        )
-        return cls(coordinate_system, **kwargs)
+        coordinate_system = CoordinateSystem.from_yaw_pitch_roll(position, yaw, pitch, roll)
+        return cls(coordinate_system, uid=uid)
 
     @property
     def coordinate_system(self) -> CoordinateSystem:
         """Internal coordinate_system representing the the Pose."""
-        return self.get_reference(CR.CS)
+        return self._coordinate_system
 
     @property
     def origin(self) -> Point:
         """The origin point of the Pose's internal coordinate_system."""
-        return self.get_reference(CR.ORIGIN)
+        return self._coordinate_system.origin
 
     @property
     def front(self) -> Plane:
         """Front plane of the Pose."""
-        return self.get_reference(CR.FRONT)
+        return self._coordinate_system.xy_plane
 
     @property
     def right(self) -> Plane:
         """Right plane of the Pose."""
-        return self.get_reference(CR.RIGHT)
+        return self._coordinate_system.xz_plane
 
     @property
     def top(self) -> Plane:
         """Top plane of the Pose."""
-        return self.get_reference(CR.TOP)
+        return self._coordinate_system.yz_plane
 
     def is_equal(self, other: Pose) -> bool:
         return self.coordinate_system.is_equal(other.coordinate_system)
 
-    def move_to_point(self, location: Point) -> Self:
+    def move_to_point(self, location: Collection[float]) -> Self:
         """Moves the Pose to a new location with no rotation."""
         self.coordinate_system.move_to_point(location)
+        return self
 
-    def rotate(self, rotation: np.ndarray | Quat) -> Self:
+    def rotate(self, rotation: Numpy2D | Quat) -> Self:
         """Rotates the pose with a rotation matrix or quaternion."""
         self.coordinate_system.rotate(rotation)
         return self

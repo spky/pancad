@@ -38,6 +38,10 @@ class TestPointInitialization:
         """Tests Point can initialize with a numpy vector."""
         assert Point(np.array(coordinate, dtype=np.float64)).cartesian == coordinate
 
+    def test_point_init(self, coordinate: SpaceVector) -> None:
+        """Tests Point can initialize with another Point."""
+        assert Point(Point(coordinate)).cartesian == coordinate
+
     def test_tuple_iter(self, coordinate: SpaceVector) -> None:
         """Test Point can be turned into a tuple of its components."""
         assert tuple(Point(coordinate)) == coordinate

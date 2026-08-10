@@ -1,0 +1,256 @@
+# changes_csys.toml is a test data file containing definitions of starting CoordinateSystem
+# geometry and how to change its parameters post-initialization.
+
+[rotate_2d]
+[rotate_2d.canon.initial]
+vectors = {origin = [0, 0]}
+[rotate_2d.canon.unrotated]
+vectors = {origin = [0, 0], x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 0}
+[rotate_2d.canon.ccw_45]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, 1], y = [-1, 1]}
+degree_scalars = {angle = 45}
+[rotate_2d.canon.ccw_90]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [0, 1], y = [-1, 0]}
+degree_scalars = {angle = 90}
+[rotate_2d.canon.ccw_135]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, 1], y = [-1, -1]}
+degree_scalars = {angle = 135}
+[rotate_2d.canon.ccw_180]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, 0], y = [0, -1]}
+degree_scalars = {angle = 180}
+[rotate_2d.canon.ccw_225]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [-1, -1], y = [1, -1]}
+degree_scalars = {angle = 225}
+[rotate_2d.canon.ccw_270]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [0, -1], y = [1, 0]}
+degree_scalars = {angle = 270}
+[rotate_2d.canon.ccw_315]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, -1], y = [1, 1]}
+degree_scalars = {angle = 315}
+[rotate_2d.canon.ccw_360]
+vectors = {origin = [0, 0]}
+normed_vectors = {x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 360}
+
+[rotate_2d.at_1_1.initial]
+vectors = {origin = [1, 1]}
+[rotate_2d.at_1_1.unrotated]
+vectors = {origin = [1, 1], x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 0}
+[rotate_2d.at_1_1.ccw_45]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, 1], y = [-1, 1]}
+degree_scalars = {angle = 45}
+[rotate_2d.at_1_1.ccw_90]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [0, 1], y = [-1, 0]}
+degree_scalars = {angle = 90}
+[rotate_2d.at_1_1.ccw_135]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, 1], y = [-1, -1]}
+degree_scalars = {angle = 135}
+[rotate_2d.at_1_1.ccw_180]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, 0], y = [0, -1]}
+degree_scalars = {angle = 180}
+[rotate_2d.at_1_1.ccw_225]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [-1, -1], y = [1, -1]}
+degree_scalars = {angle = 225}
+[rotate_2d.at_1_1.ccw_270]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [0, -1], y = [1, 0]}
+degree_scalars = {angle = 270}
+[rotate_2d.at_1_1.ccw_315]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, -1], y = [1, 1]}
+degree_scalars = {angle = 315}
+[rotate_2d.at_1_1.ccw_360]
+vectors = {origin = [1, 1]}
+normed_vectors = {x = [1, 0], y = [0, 1]}
+degree_scalars = {angle = 360}
+
+[rotate_quat]
+[rotate_quat.canon]
+[rotate_quat.canon.initial]
+vectors = {origin = [0, 0, 0]}
+[rotate_quat.canon.unrotated_zero_axis]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 0, axis = [0, 0, 0]}}
+[rotate_quat.canon.360_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [1, 0, 0]}}
+[rotate_quat.canon.360_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [0, 1, 0]}}
+[rotate_quat.canon.360_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [0, 0, 1]}}
+[rotate_quat.canon.180_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, 0, 0], y = [0, 1, 0], z = [0, 0, -1]}
+quats = {rotation = {angle = 180, axis = [0, 1, 0]}}
+[rotate_quat.canon.180_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, 0, 0], y = [0, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 180, axis = [0, 0, 1]}}
+[rotate_quat.canon.180_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, 0], z = [0, 0, -1]}
+quats = {rotation = {angle = 180, axis = [1, 0, 0]}}
+[rotate_quat.canon.90_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [0, 1, 0], y = [-1, 0, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 90, axis = [0, 0, 1]}}
+[rotate_quat.canon.negative_90_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [0, 0, 1], y = [0, 1, 0], z = [-1, 0, 0]}
+quats = {rotation = {angle = -90, axis = [0, 1, 0]}}
+[rotate_quat.canon.45_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 1, 0], y = [-1, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 45, axis = [0, 0, 1]}}
+[rotate_quat.canon.135_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, 1, 0], y = [-1, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 135, axis = [0, 0, 1]}}
+[rotate_quat.canon.225_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, -1, 0], y = [1, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 225, axis = [0, 0, 1]}}
+[rotate_quat.canon.315_around_z]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, -1, 0], y = [1, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 315, axis = [0, 0, 1]}}
+[rotate_quat.canon.45_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, -1], y = [0, 1, 0], z = [1, 0, 1]}
+quats = {rotation = {angle = 45, axis = [0, 1, 0]}}
+[rotate_quat.canon.135_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, 0, -1], y = [0, 1, 0], z = [1, 0, -1]}
+quats = {rotation = {angle = 135, axis = [0, 1, 0]}}
+[rotate_quat.canon.225_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [-1, 0, 1], y = [0, 1, 0], z = [-1, 0, -1]}
+quats = {rotation = {angle = 225, axis = [0, 1, 0]}}
+[rotate_quat.canon.315_around_y]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 1], y = [0, 1, 0], z = [-1, 0, 1]}
+quats = {rotation = {angle = 315, axis = [0, 1, 0]}}
+[rotate_quat.canon.45_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 1], z = [0, -1, 1]}
+quats = {rotation = {angle = 45, axis = [1, 0, 0]}}
+[rotate_quat.canon.135_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, 1], z = [0, -1, -1]}
+quats = {rotation = {angle = 135, axis = [1, 0, 0]}}
+[rotate_quat.canon.225_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, -1], z = [0, 1, -1]}
+quats = {rotation = {angle = 225, axis = [1, 0, 0]}}
+[rotate_quat.canon.315_around_x]
+vectors = {origin = [0, 0, 0]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, -1], z = [0, 1, 1]}
+quats = {rotation = {angle = 315, axis = [1, 0, 0]}}
+
+[rotate_quat.at_1_1_1]
+[rotate_quat.at_1_1_1.initial]
+vectors = {origin = [1, 1, 1]}
+[rotate_quat.at_1_1_1.unrotated_zero_axis]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 0, axis = [0, 0, 0]}}
+[rotate_quat.at_1_1_1.360_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [1, 0, 0]}}
+[rotate_quat.at_1_1_1.360_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.360_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 360, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.180_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, 0, 0], y = [0, 1, 0], z = [0, 0, -1]}
+quats = {rotation = {angle = 180, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.180_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, 0, 0], y = [0, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 180, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.180_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, 0], z = [0, 0, -1]}
+quats = {rotation = {angle = 180, axis = [1, 0, 0]}}
+[rotate_quat.at_1_1_1.90_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [0, 1, 0], y = [-1, 0, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 90, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.negative_90_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [0, 0, 1], y = [0, 1, 0], z = [-1, 0, 0]}
+quats = {rotation = {angle = -90, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.45_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 1, 0], y = [-1, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 45, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.135_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, 1, 0], y = [-1, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 135, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.225_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, -1, 0], y = [1, -1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 225, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.315_around_z]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, -1, 0], y = [1, 1, 0], z = [0, 0, 1]}
+quats = {rotation = {angle = 315, axis = [0, 0, 1]}}
+[rotate_quat.at_1_1_1.45_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, -1], y = [0, 1, 0], z = [1, 0, 1]}
+quats = {rotation = {angle = 45, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.135_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, 0, -1], y = [0, 1, 0], z = [1, 0, -1]}
+quats = {rotation = {angle = 135, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.225_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [-1, 0, 1], y = [0, 1, 0], z = [-1, 0, -1]}
+quats = {rotation = {angle = 225, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.315_around_y]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 1], y = [0, 1, 0], z = [-1, 0, 1]}
+quats = {rotation = {angle = 315, axis = [0, 1, 0]}}
+[rotate_quat.at_1_1_1.45_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, 1], z = [0, -1, 1]}
+quats = {rotation = {angle = 45, axis = [1, 0, 0]}}
+[rotate_quat.at_1_1_1.135_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, 1], z = [0, -1, -1]}
+quats = {rotation = {angle = 135, axis = [1, 0, 0]}}
+[rotate_quat.at_1_1_1.225_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, -1, -1], z = [0, 1, -1]}
+quats = {rotation = {angle = 225, axis = [1, 0, 0]}}
+[rotate_quat.at_1_1_1.315_around_x]
+vectors = {origin = [1, 1, 1]}
+normed_vectors = {x = [1, 0, 0], y = [0, 1, -1], z = [0, 1, 1]}
+quats = {rotation = {angle = 315, axis = [1, 0, 0]}}

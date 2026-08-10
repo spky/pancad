@@ -325,15 +325,15 @@ def to_1d_tuple(value: Space2DVector) -> Space2DVector: ...
 @overload
 def to_1d_tuple(value: Space3DVector) -> Space3DVector: ...
 @overload
-def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector: ...
-def to_1d_tuple(value: Sequence[float] | Numpy1D | Numpy2D) -> SpaceVector:
+def to_1d_tuple(value: Collection[float]) -> SpaceVector: ...
+def to_1d_tuple(value: Collection[float]) -> SpaceVector:
     """Returns a 2D or 3D vector as a tuple from a given value."""
     tuple_value: tuple[float, ...]
     # Convert internal values based on the container type
-    if isinstance(value, Sequence):
-        tuple_value = tuple(map(float, value))
-    elif isinstance(value, np.ndarray):
+    if isinstance(value, np.ndarray):
         tuple_value = tuple(to_1d_np(value))
+    else:
+        tuple_value = tuple(map(float, value))
     # Unpack and return tuple to guarantee length
     if len(tuple_value) == 2:
         x, y = tuple_value

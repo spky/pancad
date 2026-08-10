@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable
     from numbers import Real
 
 def get_table_string(data: list[dict] | dict,
@@ -47,7 +47,7 @@ def get_table_string(data: list[dict] | dict,
                 string_rows[i] = column_delimiter.join([string_rows[i], row])
     return "\n".join(string_rows)
 
-def format_vector(vector: Sequence[Real], delim: str=",", decimals: int=3) -> str:
+def format_vector(vector: Iterable[float], delim: str=",", decimals: int=3) -> str:
     """Formats a vector of numbers into a printable string.
 
     :param vector: A sequence of Real numbers.
