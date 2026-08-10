@@ -20,6 +20,7 @@ from pancad.utils.quat import Quat
 if TYPE_CHECKING:
     from collections.abc import Collection
     from typing import Self, Literal
+    from uuid import UUID
 
     from pancad.utils.pancad_types import SpaceVector, Numpy2D
 
@@ -37,15 +38,15 @@ class CoordinateSystem(AbstractGeometry):
     """A class representing coordinate systems in 2D and 3D space.
 
     :param origin: A 2D or 3D center Point of the coordinate system.
-    :param rotation: A rotation matrix or quaternion to rotate the canonical
-        2D/3D CoordinateSystem to a desired orientation.
+    :param rotation: A rotation matrix or quaternion to rotate the canonical 2D/3D
+        CoordinateSystem to an orientation. Leaves the canonical system unrotated when None.
     :param uid: The unique ID of the coordinate system.
     """
     _axis_names: list[Literal["x", "y", "z"]] = ["x", "y", "z"]
     _plane_names: list[Literal["yz", "xz", "xy"]] = ["yz", "xz", "xy"]
 
     def __init__(self, origin: Collection[float], rotation: Numpy2D | Quat | None=None,
-                 *, uid: str | None=None) -> None:
+                 *, uid: UUID | str | None=None) -> None:
         self.uid = uid
         origin = Point(origin)
         vectors = [[0] * i + [1] + [0] * (len(origin) - i - 1) for i in range(len(origin))]
@@ -132,7 +133,7 @@ class CoordinateSystem(AbstractGeometry):
         """
         return CoordinateSystem(self.origin).update(self)
 
-    def is_equal(self, other: AbstractGeometry) -> bool:
+    def is_equal(self, other: CoordinateSystem) -> bool:
         comparisons = []
         for ref, geometry in self.children.items():
             if ref == CR.CORE:
@@ -236,7 +237,8 @@ class CoordinateSystem(AbstractGeometry):
 class Pose(AbstractGeometry):
     """The position and orientation of a 3D object."""
 
-    def __init__(self, coordinate_system: CoordinateSystem, *, uid: str | None=None) -> None:
+    def __init__(self, coordinate_system: CoordinateSystem,
+                 *, uid: str | UUID | None=None) -> None:
         self.uid = uid
         if (dimensions := len(coordinate_system)) != 3:
             raise ValueError("Expected 3D coordinate system,"
@@ -261,9 +263,7 @@ class Pose(AbstractGeometry):
                             yaw: float=0, pitch: float=0, roll: float=0,
                             uid: str | None=None) -> Self:
         """Initializes a Pose from yaw, pitch, and roll angles in radians."""
-        coordinate_system = CoordinateSystem.from_yaw_pitch_roll(
-            position, yaw, pitch, roll
-        )
+        coordinate_system = CoordinateSystem.from_yaw_pitch_roll(position, yaw, pitch, roll)
         return cls(coordinate_system, uid=uid)
 
     @property
