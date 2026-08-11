@@ -26,28 +26,24 @@ if TYPE_CHECKING:
     R = TypeVar("R")
 
 ### Wrappers
-def three_dimensional_only(func: Callable[Concatenate[S, P], R]) -> Callable[Concatenate[S, P], R]:
-    """A wrapper to raise an error when a 3d method is called on 2d geometry."""
-    @wraps(func)
-    def wrapper(obj: S, /, *args: P.args, **kwargs: P.kwargs) -> R:
-        if len(obj) != 3:
-            raise ValueError(f"{func.__name__} Method only available on 3D"
-                             f" {obj.__class__.__name__}s")
-        result = func(obj, *args, **kwargs)
-        return result
-    return wrapper
+def dimension_bounded(bound: int) -> Callable[[Callable[Concatenate[S, P], R]],
+                                              Callable[Concatenate[S, P], R]]:
+    """A wrapper to raise an error when a method that only works in 2D/3D is called on 3D/2D
+    geometry.
 
-
-def two_dimensional_only(func):
-    """A wrapper to raise an error when a 2d method is called on 3d geometry."""
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if len(self) != 2:
-            raise ValueError(f"{func.__name__} Method only available on 2D"
-                             f" {self.__class__.__name__}s")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
+    :param bound: The dimension to check for. Ex: When provided 2, any method called with 3D
+        geometry will raise a ValueError.
+    """
+    def bounder(func: Callable[Concatenate[S, P], R]) -> Callable[Concatenate[S, P], R]:
+        @wraps(func)
+        def wrapper(obj: S, /, *args: P.args, **kwargs: P.kwargs) -> R:
+            if len(obj) != bound:
+                raise ValueError(f"{func.__name__} Method only available on {bound}D"
+                                 f" {obj.__class__.__name__}s")
+            result = func(obj, *args, **kwargs)
+            return result
+        return wrapper
+    return bounder
 
 
 def three_dimensions_required(func):

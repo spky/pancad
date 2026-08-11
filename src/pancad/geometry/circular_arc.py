@@ -12,9 +12,7 @@ import numpy as np
 from pancad.abstract import AbstractGeometry
 from pancad.constants import ConstraintReference
 from pancad.geometry.point import Point
-from pancad.utils.geometry import (
-    three_dimensional_only, two_dimensional_only, no_dimensional_mismatch
-)
+from pancad.utils.geometry import dimension_bounded, no_dimensional_mismatch
 from pancad.utils.trigonometry import (
     get_unit_vector, to_1d_tuple, phi_of_cartesian, polar_to_cartesian,
 )
@@ -222,7 +220,7 @@ class CircularArc(AbstractGeometry):
         return self._parts.end
 
     @property
-    @two_dimensional_only
+    @dimension_bounded(2)
     def end_angle(self) -> Real:
         """The angle from the positive horizontal axis to the end_vector in
         radians. Bounded -pi < angle <= pi.
@@ -235,7 +233,7 @@ class CircularArc(AbstractGeometry):
         return phi_of_cartesian(self._parts.get_vector("end"))
 
     @end_angle.setter
-    @two_dimensional_only
+    @dimension_bounded(2)
     def end_angle(self, angle: Real) -> None:
         self._parts.update_with_angle("end", angle)
 
@@ -255,13 +253,13 @@ class CircularArc(AbstractGeometry):
         self._parts.update_with_vector("end", vector)
 
     @property
-    @three_dimensional_only
+    @dimension_bounded(3)
     def normal_vector(self) -> tuple[Real] | None:
         """The unit vector defining the direction of clockwise for 3D arcs."""
         return self._parts.normal
 
     @normal_vector.setter
-    @three_dimensional_only
+    @dimension_bounded(3)
     @no_dimensional_mismatch
     def normal_vector(self, vector: SpaceVector | None) -> None:
         self._parts.normal = vector
@@ -284,7 +282,7 @@ class CircularArc(AbstractGeometry):
         return self._parts.start
 
     @property
-    @two_dimensional_only
+    @dimension_bounded(2)
     def start_angle(self) -> Real:
         """The angle from the positive horizontal axis to the start_vector in
         radians. Bounded -pi < angle <= pi.
@@ -294,7 +292,7 @@ class CircularArc(AbstractGeometry):
         return phi_of_cartesian(self._parts.get_vector("start"))
 
     @start_angle.setter
-    @two_dimensional_only
+    @dimension_bounded(2)
     def start_angle(self, angle: Real) -> None:
         self._parts.update_with_angle("start", angle)
 
