@@ -46,42 +46,6 @@ def dimension_bounded(bound: int) -> Callable[[Callable[Concatenate[S, P], R]],
     return bounder
 
 
-def three_dimensions_required(func):
-    """A wrapper to raise an error when a non-3D non-string/Real argument is
-    supplied to a function that only works with 3D arguments.
-    """
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        errors = []
-        for arg in args:
-            if not isinstance(arg, (str, Real, bool)) and len(arg) != 3:
-                errors.append(arg)
-        if errors:
-            raise ValueError("Expected only 3D arguments,"
-                             f" got non-3D args: {errors}")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
-
-
-def two_dimensions_required(func):
-    """A wrapper to raise an error when a non-2D non-string/Real argument is
-    supplied to a function that only works with 2D arguments.
-    """
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        errors = []
-        for arg in args:
-            if not isinstance(arg, (str, Real, bool)) and len(arg) != 2:
-                errors.append(arg)
-        if errors:
-            raise ValueError("Expected only 2D arguments,"
-                             f" got non-2D args: {errors}")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
-
-
 def no_dimensional_mismatch(func):
     """A wrapper to raise an error when the first argument of a method does not
     match the dimension of the geometry.
