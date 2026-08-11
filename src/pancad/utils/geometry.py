@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
     P = ParamSpec("P")
     S = TypeVar("S", bound=Sized)
+    A = TypeVar("A", bound=Sized)
     R = TypeVar("R")
 
 ### Wrappers
@@ -46,19 +47,20 @@ def dimension_bounded(bound: int) -> Callable[[Callable[Concatenate[S, P], R]],
     return bounder
 
 
-def no_dimensional_mismatch(func):
+def no_dimensional_mismatch(func: Callable[Concatenate[S, A, P], R]
+                            ) -> Callable[Concatenate[S, A, P], R]:
     """A wrapper to raise an error when the first argument of a method does not
     match the dimension of the geometry.
     """
     @wraps(func)
-    def wrapper(self, value, *args, **kwargs):
-        if len(self) != len(value):
+    def wrapper(obj: S, value: A, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if len(obj) != len(value):
             raise ValueError(
                 "Input Dimensional Mismatch:"
-                f" {len(self)}D {self.__class__.__name__}"
+                f" {len(obj)}D {obj.__class__.__name__}"
                 f" and {len(value)}D {value.__class__.__name__}"
             )
-        result = func(self, value, *args, **kwargs)
+        result = func(obj, value, *args, **kwargs)
         return result
     return wrapper
 
