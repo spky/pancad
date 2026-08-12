@@ -134,6 +134,7 @@ files = [
     "src/pancad/geometry/line.py",
     "src/pancad/geometry/unique_lists.py",
     "src/pancad/geometry/coordinate_system.py",
+    "src/pancad/utils/geometry.py",
     "src/pancad/utils/trigonometry.py",
     "src/pancad/utils/pancad_types.py",
     "src/pancad/utils/solver_residuals.py",

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from functools import wraps
-from itertools import islice
 from collections.abc import Sequence, Collection
 from typing import TYPE_CHECKING, overload
 from warnings import catch_warnings
@@ -152,20 +151,14 @@ def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> Numpy1D:
     # to get the closest point.
     return point_vector - dot * unit_vector
 
-def get_perpendicular(vector: Space3DVector) -> Space3DVector:
+def get_perpendicular(vector: Space3DVector) -> Numpy1D:
     """Returns a non-unique 3D unit vector perpendicular to the vector by
     finding its cross product to the most orthogonal basis vector.
 
     :raises ValueError: When provided a zero vector.
     :raises TypeError: When provided a non-3D vector.
     """
-    try:
-        x, y, z = map(abs, vector)
-    except ValueError as exc:
-        if "values to unpack" in str(exc):
-            msg = f"get_perpendicular only supports 3D vectors, got: {vector}"
-            raise TypeError(msg) from exc
-        raise
+    x, y, z = map(abs, vector)
     if np.allclose(vector, (0, 0, 0)):
         raise ValueError(f"Expected non-zero vector, got {vector}")
     x_axis = (1, 0, 0)

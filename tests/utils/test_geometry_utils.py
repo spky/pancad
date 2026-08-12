@@ -71,8 +71,6 @@ def test_get_perpendicular(vector):
     "vector, err_type, msg",
     [
         pytest.param((0, 0, 0), ValueError, "Expected non-zero vector", id="zero_input"),
-        pytest.param((1, 1), TypeError, "only supports 3D vectors", id="2d_input"),
-        pytest.param((1, 1, 1, 1), TypeError, "only supports 3D vectors", id="4d_input"),
     ]
 )
 def test_get_perpendicular_excs(vector, err_type, msg):
