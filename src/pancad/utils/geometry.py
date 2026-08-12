@@ -5,7 +5,6 @@ from functools import wraps
 from itertools import islice
 from collections.abc import Sequence, Collection
 from typing import TYPE_CHECKING, overload
-from numbers import Real
 from warnings import catch_warnings
 
 import numpy as np
@@ -102,23 +101,27 @@ def parse_vector(*components: float | Collection[float]) -> SpaceVector:
         when 2 or more non-Real arguments.
     :raises ValueError: When provided 0 or more than 3 arguments.
     """
-    if len(components) not in [1, 2, 3]:
-        raise ValueError("components must be 1 to 3 arguments,"
-                         f" got {len(components)}")
-    if len(components) == 1:
+    tuple_vector: tuple[float, ...] | None = None
+    if len(components) == 1: # Collection case
         vector = components[0]
         if isinstance(vector, np.ndarray):
             if vector.shape not in [(2,), (3,), (2, 1), (3, 1)]:
-                raise ValueError("NumPy vectors must be 2 or 3 elements,"
-                                 f" got {vector}")
-            return tuple(float(component.squeeze()) for component in vector)
-        if isinstance(vector, Collection):
-            return tuple(vector)
-        raise TypeError(f"Expected ndarray/Sequence, got {type(components)}")
-    if all(isinstance(component, Real) for component in components):
-        return tuple(components)
-    types = [type(component) for component in components]
-    raise TypeError(f"Expected Real components, got {types}")
+                raise ValueError(f"NumPy vectors must be 2 or 3 elements, got {vector}")
+            tuple_vector = tuple(float(component.squeeze()) for component in vector)
+        elif isinstance(vector, Collection):
+            tuple_vector = tuple(vector)
+        else:
+            raise TypeError(f"Expected a Collection, got: {type(components)}")
+    if len(components) in {2, 3}: # Starred args case
+        floats = [c for c in components if isinstance(c, (int, float))]
+        if len(floats) != len(components):
+            types = [type(component) for component in components]
+            raise TypeError(f"Expected only int/float components, got: {types}")
+        tuple_vector = tuple(floats)
+    if tuple_vector:
+        assert len(tuple_vector) == 2 or len(tuple_vector) == 3
+        return tuple_vector
+    raise TypeError(f"Expected 1 to 3 components, got {components}")
 
 
 def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
