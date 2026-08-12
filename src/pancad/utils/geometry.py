@@ -123,29 +123,6 @@ def parse_vector(*components: float | Collection[float]) -> SpaceVector:
         return tuple_vector
     raise TypeError(f"Expected 1 to 3 components, got {components}")
 
-
-def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
-    """Flattens a sequence of inputs to pairs. Usually used by pancad to parse
-    (geometry, reference) pair input.
-
-    :raises ValueError: When an uneven number of inputs is provided.
-    """
-    items = []
-    for item in inputs:
-        if isinstance(item, str):
-            items.append(item)
-        elif isinstance(item, Sequence):
-            items.extend(item)
-        else:
-            items.append(item)
-    tuples = []
-    iterator = iter(items)
-    while pair := tuple(islice(iterator, 2)):
-        if len(pair) != 2:
-            raise ValueError("Uneven number of reference_pairs")
-        tuples.append(pair)
-    return tuples
-
 def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
     """Returns the point closest to the origin on a line created by a point
     and a vector.
