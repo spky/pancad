@@ -123,7 +123,7 @@ def parse_vector(*components: float | Collection[float]) -> SpaceVector:
         return tuple_vector
     raise TypeError(f"Expected 1 to 3 components, got {components}")
 
-def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
+def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> Numpy1D:
     """Returns the point closest to the origin on a line created by a point
     and a vector.
 
@@ -134,15 +134,12 @@ def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
         point and vector dimensions do not match.
     """
     if np.allclose(vector, [0] * len(vector)):
-        msg = f"Got zero vector for line direction: {tuple(vector)}"
-        raise ValueError(msg)
+        raise ValueError(f"Got zero vector for line direction: {tuple(vector)}")
     if len(point) != len(vector):
-        msg = f"Point {point} and vector {vector} dimensions are not equal"
-        raise ValueError(msg)
+        raise ValueError(f"Point {point} and vector {vector} dimensions are not equal")
     point_vector = np.array(point)
-    vector = np.array(vector)
     unit_vector = trig.get_unit_vector(vector)
-    dot = np.dot(point_vector, unit_vector)
+    dot = float(np.dot(point_vector, unit_vector))
     if dot == 0:
         # Point vector and direction are perpendicular, or the point vector
         # is zero vector. Either way the provided point is the closest.
