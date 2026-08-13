@@ -1,9 +1,15 @@
-"""A module contains utilities for creating regular expressions to parse 
-formatted data."""
+"""A module contains utilities for creating regular expressions to parse formatted text data."""
 
-from collections import namedtuple
+from typing import NamedTuple
 
-def capture_re(pattern: str, group_name: str) -> namedtuple:
+class CaptureRegex(NamedTuple):
+    """A NamedTuple used to provide different ways to capture a regular expression pattern."""
+    ca: str # A regex that will capture the pattern as a group.
+    dc: str # A regex that will *not* capture the pattern as a group.
+    na: str # A regex that will capture the pattern as a *named* group.
+    pa: str # The regex pattern by itself.
+
+def capture_re(pattern: str, group_name: str) -> CaptureRegex:
     """Initializes a namedtuple with regular expressions that contain a pattern,
     a non-grouped pattern, a grouped pattern, and a named group pattern.
     
@@ -12,10 +18,4 @@ def capture_re(pattern: str, group_name: str) -> namedtuple:
     :returns: A namedtuple with names ca (capture), dc (don't capture), na (named 
         group), and pa (plain pattern)
     """
-    CaptureRegex = namedtuple("CaptureRegex", ["ca", "dc", "na", "pa"])
-    return CaptureRegex(
-        f"({pattern})",
-        f"(?:{pattern})",
-        f"(?P<{group_name}>{pattern})",
-        pattern,
-    )
+    return CaptureRegex(f"({pattern})", f"(?:{pattern})", f"(?P<{group_name}>{pattern})", pattern)
