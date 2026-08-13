@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 from collections.abc import Sequence
-from typing import Union, overload
+from typing import Union, overload, TypedDict
 
 import numpy as np
 
@@ -19,6 +19,25 @@ Numpy2D = np.ndarray[tuple[int, int], np.dtype[np.float64]]
 """A type for a 2D numpy float64 array."""
 
 SpaceVector = Space2DVector | Space3DVector
+
+class SqliteTomlConfig(TypedDict):
+    """A dictionary of settings for storing pancad sqlite storage."""
+    conform_type: dict[str, str]
+
+class FeaturesTomlConfig(TypedDict):
+    """A dictionary of settings for pancad CAD features."""
+    default_names: dict[str, str]
+
+class PancadTomlConfig(TypedDict):
+    """The top level dictionary for the pancad.toml configuration file."""
+    filenames: dict[str, str]
+    paths: dict[str, str]
+    sqlite: SqliteTomlConfig
+    features: FeaturesTomlConfig
+
+class PancadJsonCache(TypedDict, total=False):
+    """The top level dictionary for pancad cache files."""
+    application_paths: dict[str, str]
 
 class PolarVector(Sequence[float]):
     """Class for tracking polar vector components."""
