@@ -1,6 +1,26 @@
 # data_geo_util_sample.toml is a test data file containing geometry definitions for testing the
 # pancad geometry utilities with.
 
+[closest_to_origin]
+[closest_to_origin.2d_origin_x_vector]
+vectors = {point = [0, 0], direction = [1, 0], expected = [0, 0]}
+[closest_to_origin.3d_origin_x_vector]
+vectors = {point = [0, 0, 0], direction = [1, 0, 0], expected = [0, 0, 0]}
+[closest_to_origin.2d_point_vector_parallel_to_direction]
+vectors = {point = [2, 0], direction = [1, 0], expected = [0, 0]}
+[closest_to_origin.2d_point_vector_perpendicular_to_direction]
+vectors = {point = [1, 1], direction = [-1, 1], expected = [1, 1]}
+[closest_to_origin.2d_point_clockwise_direction_upper_left]
+vectors = {point = [2, 0], direction = [-1, 1], expected = [1, 1]}
+[closest_to_origin.2d_point_clockwise_direction_bottom_right]
+vectors = {point = [2, 0], direction = [1, -1], expected = [1, 1]}
+[closest_to_origin.2d_point_counterclockwise_direction_upper_left]
+vectors = {point = [0, 2], direction = [-1, 1], expected = [1, 1]}
+[closest_to_origin.2d_point_counterclockwise_direction_bottom_right]
+vectors = {point = [0, 2], direction = [1, -1], expected = [1, 1]}
+
+
+
 [unique_vector]
 # 2D/3D Zero Vectors
 [unique_vector.2d_zero_vector]

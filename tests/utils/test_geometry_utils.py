@@ -8,75 +8,52 @@ import pytest
 import pancad.utils.geometry as geo_utils
 
 if TYPE_CHECKING:
+    from pancad.utils.pancad_types import SpaceVector, Space3DVector
     from tests._typing import GeometrySampleData
 
-# Test id abbreviations:
-# pt=point, vec=vector, para=parallel, perp=perpendicular, dir=direction
-# cw=clockwise, ccw=counter-clockwise, ul=upper left, br=bottom_right
-@pytest.mark.parametrize(
-    "point, direction, expected",
-    [ # Comment summarizes the expected results
-        # The origin because origin is provided.
-        pytest.param((0, 0), (1, 0), (0, 0), id="2d_origin"),
-        pytest.param((0, 0, 0), (1, 0, 0), (0, 0, 0), id="3d_origin"),
-        # The origin because the point is parallel to the direction vector
-        pytest.param((2, 0), (1, 0), (0, 0), id="2d_pt_vec_para"),
-        # The provided point because the point vector and direction
-        # are perpendicular.
-        pytest.param((1, 1), (-1, 1), (1, 1), id="2d_pt_vec_perp"),
-        # Point is cw/ccw of closest point, direction is pointing ul/br:
-        pytest.param((2, 0), (-1, 1), (1, 1), id="2d_cw_pt_ul_dir"),
-        pytest.param((2, 0), (1, -1), (1, 1), id="2d_cw_pt_br_dir"),
-        pytest.param((0, 2), (-1, 1), (1, 1), id="2d_ccw_pt_br_dir"),
-        pytest.param((0, 2), (1, -1), (1, 1), id="2d_ccw_pt_br_dir"),
-    ],
-)
-def test_closest_to_origin(point, direction, expected):
-    """Test function for finding the point on a line closest to the origin."""
-    result = geo_utils.closest_to_origin(point, direction)
-    np.testing.assert_array_almost_equal(result, np.array(expected))
+class TestClosestToOrigin:
+    """Tests for the function getting the closest point on a line to the origin point."""
 
-ZERO_VEC_MSG_RE = r"^Got zero vector for line"
-DIM_MISMATCH_RE = r"dimensions are not equal$"
-@pytest.mark.parametrize(
-    "point, direction, msg",
-    [
-        pytest.param((0, 0), (0, 0), ZERO_VEC_MSG_RE, id="pt0,0_zero_vec"),
-        pytest.param((0, 0, 0), (0, 0, 0), ZERO_VEC_MSG_RE, id="pt0,0,0_zero_vec"),
-        pytest.param((1, 1), (0, 0), ZERO_VEC_MSG_RE, id="pt1,1_zero_vec"),
-        pytest.param((1, 1, 1), (0, 0, 0), ZERO_VEC_MSG_RE, id="pt1,1,1_zero_vec"),
-        pytest.param((0, 0), (1, 0, 0), DIM_MISMATCH_RE, id="2d_pt_3d_vec"),
-        pytest.param((0, 0, 0), (1, 0), DIM_MISMATCH_RE, id="3d_pt_2d_vec"),
-    ]
-)
-def test_closest_to_origin_excs(point, direction, msg):
-    """Test that the closest_to_origin function produces relevant exceptions."""
-    with pytest.raises(ValueError, match=msg):
-        geo_utils.closest_to_origin(point, direction)
+    def test_nominal(self, data_geo_util_sample_closest_to_origin: GeometrySampleData) -> None:
+        """Test closest_to_origin can find the closest points that match test sample data."""
+        vectors = data_geo_util_sample_closest_to_origin["vectors"]
+        result = geo_utils.closest_to_origin(vectors["point"], vectors["direction"])
+        np.testing.assert_array_almost_equal(result, vectors["expected"])
 
-@pytest.mark.parametrize(
-    "vector",
-    [
-        (1, 0, 0), (0, 1, 0), (0, 0, 1),
-        (-1, 0, 0), (0, -1, 0), (0, 0, -1),
-        (1, 1, 1), (-1, -1, -1),
-    ]
-)
-def test_get_perpendicular(vector):
-    """Test that get_perpendicular always returns a perpendicular vector."""
-    perp = geo_utils.get_perpendicular(vector)
-    assert np.dot(vector, perp) == pytest.approx(0)
+    @pytest.mark.parametrize(
+        "point, direction",
+        [[(0, 0), (0, 0)], [(0, 0, 0), (0, 0, 0)], [(1, 1), (0, 0, 0)], [(1, 1, 1), (0, 0, 0)]]
+    )
+    def test_zero_vector_exception(self, point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that closest_to_origin raises an error when it gets a zero vector line direction.
+        """
+        with pytest.raises(ValueError, match=r"^Got zero vector for line"):
+            geo_utils.closest_to_origin(point, direction)
 
-@pytest.mark.parametrize(
-    "vector, err_type, msg",
-    [
-        pytest.param((0, 0, 0), ValueError, "Expected non-zero vector", id="zero_input"),
-    ]
-)
-def test_get_perpendicular_excs(vector, err_type, msg):
-    """Test the error handling of get_perpendicular."""
-    with pytest.raises(err_type, match=msg):
-        geo_utils.get_perpendicular(vector)
+    @pytest.mark.parametrize("point, direction", [[(0, 0), (1, 0, 0)], [(0, 0, 0), (1, 0)]])
+    def test_dimension_mismatch(self, point: SpaceVector, direction: SpaceVector) -> None:
+        """Test that closest_to_origin raises an error when it mismatched vector dimensions.
+        """
+        with pytest.raises(ValueError, match=r"dimensions are not equal$"):
+            geo_utils.closest_to_origin(point, direction)
+
+class TestGetPerpendicular:
+    """Tests for the function getting a vector perpendicular to a vector."""
+    @pytest.mark.parametrize(
+        "vector",
+        [
+            (1, 0, 0), (0, 1, 0), (0, 0, 1), (-1, 0, 0), (0, -1, 0),
+            (0, 0, -1), (1, 1, 1), (-1, -1, -1),
+        ]
+    )
+    def test_nominal(self, vector: Space3DVector) -> None:
+        """Test that get_perpendicular always returns a perpendicular vector."""
+        assert np.dot(vector, geo_utils.get_perpendicular(vector)) == pytest.approx(0)
+
+    def test_zero_vector_exception(self) -> None:
+        """Test the error handling of get_perpendicular."""
+        with pytest.raises(ValueError, match="Expected non-zero vector"):
+            geo_utils.get_perpendicular((0, 0, 0))
 
 @pytest.mark.parametrize(
     "start, target",
