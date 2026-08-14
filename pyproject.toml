@@ -141,6 +141,7 @@ files = [
     "src/pancad/utils/solver_residuals.py",
     "src/pancad/utils/quat.py",
     "src/pancad/utils/regex.py",
+    "src/pancad/utils/text_formatting.py",
     "src/pancad/_testing",
     "tests/_typing.py",
     "tests/utils/test_trigonometry.py",
