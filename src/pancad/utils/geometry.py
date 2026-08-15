@@ -188,19 +188,15 @@ def get_rotation_quat(start: Space3DVector, target: Space3DVector) -> Quat:
     with catch_warnings(action="error"):
         # NumPy only produces a warning when a 2D cross product is attempted.
         try:
-            scalar = (np.linalg.norm(start) * np.linalg.norm(target)
-                          + np.dot(start, target))
+            scalar = np.linalg.norm(start) * np.linalg.norm(target) + np.dot(start, target)
             axis = np.cross(start, target)
         except (ValueError, DeprecationWarning) as exc:
-            non_3d_msgs = ["2-dimensional vectors", "incompatible dimensions",
-                           "not aligned"]
+            non_3d_msgs = ["2-dimensional vectors", "incompatible dimensions", "not aligned"]
             if any(non_3d in str(exc) for non_3d in non_3d_msgs):
-                msg = f"start/target must be 3D, got: {start}, {target}"
-                raise TypeError(msg) from exc
+                raise TypeError(f"start/target must be 3D, got: {start}, {target}") from exc
             raise
     if any(np.allclose(vector, (0, 0, 0)) for vector in [start, target]):
-        msg = f"start/target cannot be zero vector: {start}, {target}"
-        raise ValueError(msg)
+        raise ValueError(f"start/target cannot be zero vector: {start}, {target}")
     quat = Quat(scalar, *axis)
     norm = np.linalg.norm(quat)
     if np.isclose(norm, 0):
