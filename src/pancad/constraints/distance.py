@@ -14,8 +14,6 @@ from pancad.abstract import AbstractConstraint
 from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
-    from numbers import Real
-
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
@@ -26,10 +24,10 @@ class AbstractValue(AbstractConstraint):
     VALUE_STR_FORMAT = "{value}{unit}"
     @property
     @abstractmethod
-    def value(self) -> Real:
+    def value(self) -> float:
         """The value that the constraint enforces."""
     @property
-    def unit(self) -> str:
+    def unit(self) -> str | None:
         """The unit of the constraint's value.
 
         :getter: Returns the constraint's unit.
@@ -37,7 +35,7 @@ class AbstractValue(AbstractConstraint):
         """
         return self._unit
     @unit.setter
-    def unit(self, value: str) -> None:
+    def unit(self, value: str | None) -> None:
         self._unit = value
     # Shared Public Methods #
     def get_value_string(self, include_unit: bool=True) -> str:
@@ -87,11 +85,11 @@ class Angle(AbstractValue):
 
     def __init__(self,
                  *geometry: AbstractGeometry,
-                 value: Real,
+                 value: float,
                  quadrant: int,
-                 uid: str=None,
+                 uid: str | None=None,
                  is_radians: bool=False,
-                 system: AbstractGeometrySystem=None) -> None:
+                 system: AbstractGeometrySystem | None=None) -> None:
         if len(geometry) != 2:
             raise ValueError(f"Expected 2 geometries, provided {geometry}")
         if any(len(g) != 2 for g in geometry):
@@ -122,18 +120,18 @@ class Angle(AbstractValue):
         self._quadrant = value
 
     @property
-    def value(self) -> Real:
+    def value(self) -> float:
         """Value of the angle constraint in degrees.
 
-        :raises TypeError: When the value is not a Real number.
+        :raises TypeError: When the value is not a number.
         """
         return self._value
     @value.setter
-    def value(self, value: Real) -> None:
+    def value(self, value: float) -> None:
         self._value = value
 
     # Public Methods #
-    def get_value(self, in_radians: bool=False) -> Real:
+    def get_value(self, in_radians: bool=False) -> float:
         """Returns the value of the angle constraint.
 
         :param in_radians: Whether to return the value in radians or degrees.
@@ -150,7 +148,7 @@ class AbstractDistance(AbstractValue):
     geometries that has a distance associated with it.
     """
     @property
-    def value(self) -> Real:
+    def value(self) -> float:
         """The distance the constraint enforces. When distance direction can be well-defined, the
         first direction-dependent geometry defines how positive distance is defined. Ex: The
         first plane's normal vector of two constrained planes is the direction of positive
@@ -158,7 +156,7 @@ class AbstractDistance(AbstractValue):
         """
         return self._value
     @value.setter
-    def value(self, value: Real) -> None:
+    def value(self, value: float) -> None:
         self._value = value
 
 class Abstract2GeometryDistance(AbstractDistance):
@@ -175,8 +173,8 @@ class Abstract2GeometryDistance(AbstractDistance):
         not the same dimension.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 value: Real, uid: str=None, unit: str=None,
-                 system: AbstractGeometrySystem=None) -> None:
+                 value: float, uid: str | None=None, unit: str | None=None,
+                 system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) != 2:
@@ -199,8 +197,8 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param unit: The unit of the distance value. Defaults to None.
     """
     def __init__(self, geometry: AbstractGeometry,
-                 value: Real, uid: str=None, unit: str=None,
-                 system: AbstractGeometrySystem=None) -> None:
+                 value: float, uid: str | None=None, unit: str | None=None,
+                 system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         self._geometry = [geometry]
