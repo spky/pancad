@@ -24,7 +24,7 @@ class AbstractStateConstraint(AbstractConstraint):
     :param uid: The unique id of the constraint.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
+                 uid: str | None=None, system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) != 2:
