@@ -129,6 +129,7 @@ force-build = [
 [tool.mypy]
 files = [
     "src/pancad/abstract.py",
+    "src/pancad/constraints/snapto.py",
     "src/pancad/geometry/plane.py",
     "src/pancad/geometry/point.py",
     "src/pancad/geometry/line.py",

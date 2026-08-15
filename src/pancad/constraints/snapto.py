@@ -3,7 +3,6 @@ geometry contexts. pancad defines a snapto constraint as one that can be applied
 to geometry with no additional arguments but still meaningfully constrain the
 geometry.
 """
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,7 +19,7 @@ class AbstractSingleSnapTo(AbstractConstraint):
     any further definition.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
+                 uid: str | None=None, system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) != 1:
@@ -51,7 +50,7 @@ class AbstractSnapTo(AbstractConstraint):
     :param uid: The unique id of the constraint.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 uid: str=None, system: AbstractGeometrySystem=None) -> None:
+                 uid: str | None=None, system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) not in [1, 2]:
