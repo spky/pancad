@@ -113,7 +113,7 @@ class TestSpotChecks:
         assert len(quat) == 4
 
 class TestSamples:
-    """Test initializing sample quaternions."""
+    """Test initializing sample quaternions and changing sample test data vectors."""
 
     def test_vector(self, quat_sample: Quat, quat_expected: QuatCoefficients) -> None:
         """Test the sample matches the expected vector."""
@@ -131,10 +131,8 @@ class TestSamples:
         for quat_value, expected_value in pairs:
             assert quat_value == pytest.approx(expected_value)
 
-class TestChanges:
-    """Test changing vectors with quaternions."""
-
     def test_rotate(self, changes_quat_rotate: ChangeTest) -> None:
+        """Test that Quats can rotate a vector from a starting direction to a new direction."""
         sample, change = changes_quat_rotate
         quat = Quat.from_angle(change["scalars"]["angle"], change["vectors"]["axis"])
         assert quat.rotate(sample["vectors"]["direction"]) == change["vectors"]["new"]
