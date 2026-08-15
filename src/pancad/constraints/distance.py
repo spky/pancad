@@ -15,7 +15,6 @@ from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
-    from pancad.constants import ConstraintReference
 
 class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more
@@ -218,11 +217,13 @@ class Distance(Abstract2GeometryDistance):
 ################################################################################
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
-    def __init__(self, *geometry: AbstractGeometry, **kwargs) -> None:
+    def __init__(self, *geometry: AbstractGeometry,
+                 value: float, uid: str | None=None, unit: str | None=None,
+                 system: AbstractGeometrySystem | None=None) -> None:
         if any(len(g) != 2 for g in geometry):
             non_two_dimensional = [g for g in geometry if len(g) != 2]
             raise ValueError(f"Non-2D geometry provided: {non_two_dimensional}")
-        super().__init__(*geometry, **kwargs)
+        super().__init__(*geometry, value=value, uid=uid, unit=unit, system=system)
 
 class HorizontalDistance(AbstractDistance2D):
     """A constraint that sets the horizontal distance between two elements."""
