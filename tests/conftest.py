@@ -200,6 +200,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     changes_
     """
     for data_fixture in [f for f in metafunc.fixturenames if f.startswith("data_")]:
+        if data_fixture == "data_regression":
+            continue
         ids, sample_data = _make_geometry_sample_input(data_fixture)
         metafunc.parametrize(data_fixture, sample_data, ids=ids)
 

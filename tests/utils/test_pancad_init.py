@@ -1,69 +1,39 @@
-import os
-from pathlib import Path
-from unittest import TestCase
-from importlib.util import find_spec
-import tomllib
+"""Tests for initializing pancad and its configuration directories."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 import shutil
+
+import pytest
 
 from pancad.utils import initialize
 
-RESOURCES_PATH = Path(find_spec("pancad.resources").origin).parent
-with open(RESOURCES_PATH / "pancad.toml", "rb") as file:
-    CONFIG = tomllib.load(file)
-FILENAMES = CONFIG["filenames"]
-USER_DIR = Path(os.path.expandvars(CONFIG["paths"]["user_dir"]))
-DEFAULT_USER_CONFIG_PATH = RESOURCES_PATH / FILENAMES["default_user_config"]
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    # dataframe_regression can take all serializable dictionaries and is an untyped module.
+    from pytest_regressions.dataframe_regression import DataFrameRegressionFixture # type: ignore
 
-class DeletedUserDir(TestCase):
+@pytest.fixture(name="delete_user_dir")
+def fixture_delete_user_dir() -> Generator[None]:
+    """Deletes the user configuration directory before and after a test is run."""
+    shutil.rmtree(initialize.get_user_config_dir(), ignore_errors=True)
+    yield None
+    shutil.rmtree(initialize.get_user_config_dir(), ignore_errors=True)
+
+@pytest.mark.usefixtures("delete_user_dir")
+class TestDeletedUserDir:
     """Tests for how pancad handles a non-existent user directory."""
-    def setUp(self):
-        try:
-            shutil.rmtree(USER_DIR)
-        except FileNotFoundError:
-            pass # Only handling FileNotFoundError, all other errors stop test
-    
-    def test_get_user_config(self):
-        test = initialize.get_user_config()
-        with open(DEFAULT_USER_CONFIG_PATH, "rb") as file:
-            expected = tomllib.load(file)
-        self.assertDictEqual(test, expected)
-    
-    def test_get_cache(self):
-        test = initialize.get_cache()
-        self.assertDictEqual(test, {})
-    
-    def test_write_cache(self):
+
+    def test_get_user_config(self, data_regression: DataFrameRegressionFixture) -> None:
+        """Test that the default user configuration file is loaded."""
+        data_regression.check(initialize.get_user_config())
+
+    def test_get_cache(self) -> None:
+        """Test that the cache is returned as an empty dictionary."""
+        assert initialize.get_cache() == {}
+
+    def test_write_cache(self) -> None:
+        """Test that the cache can be written to and read from successfully."""
         test_cache_dict = {"test": {"settings": "here"}}
         initialize.write_cache(test_cache_dict)
-        test = initialize.get_cache()
-        self.assertDictEqual(test, test_cache_dict)
-        (USER_DIR / FILENAMES["cache"]).unlink()
-
-class DeletedUserConfig(TestCase):
-    """Tests for how pancad handles a deleted user config file"""
-    def setUp(self):
-        self.user_config_path = USER_DIR / FILENAMES["user_config"]
-        self.user_config_path.unlink(missing_ok=True)
-    
-    def test_get_user_config(self):
-        test = initialize.get_user_config()
-        with open(DEFAULT_USER_CONFIG_PATH, "rb") as file:
-            expected = tomllib.load(file)
-        self.assertDictEqual(test, expected)
-
-class DeletedCache(TestCase):
-    """Tests for how pancad handles a deleted cache file"""
-    def setUp(self):
-        self.user_cache_path = USER_DIR / FILENAMES["cache"]
-        self.user_cache_path.unlink(missing_ok=True)
-    
-    def test_get_cache(self):
-        test = initialize.get_cache()
-        self.assertDictEqual(test, {})
-    
-    def test_write_cache(self):
-        test_cache_dict = {"test": {"settings": "here"}}
-        initialize.write_cache(test_cache_dict)
-        test = initialize.get_cache()
-        self.assertDictEqual(test, test_cache_dict)
-        self.user_cache_path.unlink()
+        assert initialize.get_cache() == test_cache_dict

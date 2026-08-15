@@ -9,11 +9,9 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from numbers import Real
 
-def get_table_string(data: list[dict] | dict,
-                     column_map: dict=None,
-                     column_delimiter: str="  ") -> str:
+def get_table_string(data: Iterable[dict[str, str]] | dict[str, str],
+                     column_map: dict[str, str] | None=None, column_delimiter: str="  ") -> str:
     """Returns the dictionary data in tabular format.
 
     :param data: A list of dictionaries, each with the same set of keys. Can
@@ -24,13 +22,13 @@ def get_table_string(data: list[dict] | dict,
     :returns: String of the data in tabular format. The dictionary keys are used
         as column titles.
     """
-    string_rows = []
+    string_rows: list[str] = []
     if isinstance(data, dict):
         # For the case where there is only one row represented as a dict
         data = [data]
     if column_map is None:
         # If no column map is given, the data keys are used as the columns
-        column_map = {key: key for key in data[0]}
+        column_map = {key: key for key in next(iter(data))}
 
     for column, key in column_map.items():
         column_width = len(column)

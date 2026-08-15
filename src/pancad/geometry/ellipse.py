@@ -15,7 +15,7 @@ from pancad.abstract import AbstractGeometry
 from pancad.geometry.point import Point
 from pancad.geometry.line import Line
 from pancad.constants import ConstraintReference
-from pancad.utils.geometry import two_dimensional_only, no_dimensional_mismatch
+from pancad.utils.geometry import dimension_bounded, no_dimensional_mismatch
 from pancad.utils.pancad_types import VectorLike
 from pancad.utils.trigonometry import angle_mod, rotation_2
 
@@ -204,7 +204,7 @@ class Ellipse(AbstractGeometry):
         return self.parts.reference_points[ConstraintReference.FOCAL_PLUS]
 
     @property
-    @two_dimensional_only
+    @dimension_bounded(2)
     def major_axis_angle(self) -> Real:
         """The angle from the positive horizontal axis of a 2D ellipse to its 
         major axis line.
@@ -218,7 +218,7 @@ class Ellipse(AbstractGeometry):
         return self.major_axis_line.phi
 
     @major_axis_angle.setter
-    @two_dimensional_only
+    @dimension_bounded(2)
     @updates_reference_points
     def major_axis_angle(self, angle: Real) -> None:
         self.parts.major_axis.move_to_point(self.center, angle)
@@ -264,7 +264,7 @@ class Ellipse(AbstractGeometry):
         return self.parts.reference_points[ConstraintReference.X_MIN]
 
     @property
-    @two_dimensional_only
+    @dimension_bounded(2)
     def minor_axis_angle(self) -> Real:
         """The angle from the positive horizontal axis of a 2D ellipse to its 
         minor axis line in radians.
@@ -277,7 +277,7 @@ class Ellipse(AbstractGeometry):
         """
         return self.parts.minor_axis.phi
     @minor_axis_angle.setter
-    @two_dimensional_only
+    @dimension_bounded(2)
     @updates_reference_points
     def minor_axis_angle(self, angle: Real) -> None:
         self.parts.minor_axis.move_to_point(self.center, angle)
@@ -380,7 +380,7 @@ class Ellipse(AbstractGeometry):
         self.parts.minor_axis.update(other.parts.minor_axis)
 
     # Private Methods #
-    @two_dimensional_only
+    @dimension_bounded(2)
     def _get_point_at_angle(self, angle: Real) -> Point:
         """Returns a Point on the 2D ellipse that is at the angle, in radians, 
         relative to the x-axis of the Ellipse.

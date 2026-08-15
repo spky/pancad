@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 from functools import wraps
-from itertools import islice
 from collections.abc import Sequence, Collection
 from typing import TYPE_CHECKING, overload
-from numbers import Real
 from warnings import catch_warnings
 
 import numpy as np
@@ -14,86 +12,53 @@ from pancad.utils import trigonometry as trig
 from pancad.utils.quat import Quat
 
 if TYPE_CHECKING:
-    from typing import Any
+    from collections.abc import Callable, Sized
+    from typing import Any, ParamSpec, TypeVar, Concatenate
 
     import numpy.typing as npt
 
     from pancad.utils.pancad_types import SpaceVector, Space3DVector, Numpy1D
 
+    P = ParamSpec("P")
+    S = TypeVar("S", bound=Sized)
+    A = TypeVar("A", bound=Sized)
+    R = TypeVar("R")
+
 ### Wrappers
-def three_dimensional_only(func):
-    """A wrapper to raise an error when a 3d method is called on 2d geometry."""
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if len(self) != 3:
-            raise ValueError(f"{func.__name__} Method only available on 3D"
-                             f" {self.__class__.__name__}s")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
+def dimension_bounded(bound: int) -> Callable[[Callable[Concatenate[S, P], R]],
+                                              Callable[Concatenate[S, P], R]]:
+    """A wrapper to raise an error when a method that only works in 2D/3D is called on 3D/2D
+    geometry.
 
-
-def two_dimensional_only(func):
-    """A wrapper to raise an error when a 2d method is called on 3d geometry."""
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if len(self) != 2:
-            raise ValueError(f"{func.__name__} Method only available on 2D"
-                             f" {self.__class__.__name__}s")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
-
-
-def three_dimensions_required(func):
-    """A wrapper to raise an error when a non-3D non-string/Real argument is
-    supplied to a function that only works with 3D arguments.
+    :param bound: The dimension to check for. Ex: When provided 2, any method called with 3D
+        geometry will raise a ValueError.
     """
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        errors = []
-        for arg in args:
-            if not isinstance(arg, (str, Real, bool)) and len(arg) != 3:
-                errors.append(arg)
-        if errors:
-            raise ValueError("Expected only 3D arguments,"
-                             f" got non-3D args: {errors}")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
+    def bounder(func: Callable[Concatenate[S, P], R]) -> Callable[Concatenate[S, P], R]:
+        @wraps(func)
+        def wrapper(obj: S, /, *args: P.args, **kwargs: P.kwargs) -> R:
+            if len(obj) != bound:
+                raise ValueError(f"{func.__name__} Method only available on {bound}D"
+                                 f" {obj.__class__.__name__}s")
+            result = func(obj, *args, **kwargs)
+            return result
+        return wrapper
+    return bounder
 
 
-def two_dimensions_required(func):
-    """A wrapper to raise an error when a non-2D non-string/Real argument is
-    supplied to a function that only works with 2D arguments.
-    """
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        errors = []
-        for arg in args:
-            if not isinstance(arg, (str, Real, bool)) and len(arg) != 2:
-                errors.append(arg)
-        if errors:
-            raise ValueError("Expected only 2D arguments,"
-                             f" got non-2D args: {errors}")
-        result = func(self, *args, **kwargs)
-        return result
-    return wrapper
-
-
-def no_dimensional_mismatch(func):
+def no_dimensional_mismatch(func: Callable[Concatenate[S, A, P], R]
+                            ) -> Callable[Concatenate[S, A, P], R]:
     """A wrapper to raise an error when the first argument of a method does not
     match the dimension of the geometry.
     """
     @wraps(func)
-    def wrapper(self, value, *args, **kwargs):
-        if len(self) != len(value):
+    def wrapper(obj: S, value: A, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if len(obj) != len(value):
             raise ValueError(
                 "Input Dimensional Mismatch:"
-                f" {len(self)}D {self.__class__.__name__}"
+                f" {len(obj)}D {obj.__class__.__name__}"
                 f" and {len(value)}D {value.__class__.__name__}"
             )
-        result = func(self, value, *args, **kwargs)
+        result = func(obj, value, *args, **kwargs)
         return result
     return wrapper
 
@@ -135,48 +100,29 @@ def parse_vector(*components: float | Collection[float]) -> SpaceVector:
         when 2 or more non-Real arguments.
     :raises ValueError: When provided 0 or more than 3 arguments.
     """
-    if len(components) not in [1, 2, 3]:
-        raise ValueError("components must be 1 to 3 arguments,"
-                         f" got {len(components)}")
-    if len(components) == 1:
+    tuple_vector: tuple[float, ...] | None = None
+    if len(components) == 1: # Collection case
         vector = components[0]
         if isinstance(vector, np.ndarray):
             if vector.shape not in [(2,), (3,), (2, 1), (3, 1)]:
-                raise ValueError("NumPy vectors must be 2 or 3 elements,"
-                                 f" got {vector}")
-            return tuple(float(component.squeeze()) for component in vector)
-        if isinstance(vector, Collection):
-            return tuple(vector)
-        raise TypeError(f"Expected ndarray/Sequence, got {type(components)}")
-    if all(isinstance(component, Real) for component in components):
-        return tuple(components)
-    types = [type(component) for component in components]
-    raise TypeError(f"Expected Real components, got {types}")
-
-
-def parse_pairs(*inputs: Sequence[Any, Any] | Any) -> list[tuple[Any, Any]]:
-    """Flattens a sequence of inputs to pairs. Usually used by pancad to parse
-    (geometry, reference) pair input.
-
-    :raises ValueError: When an uneven number of inputs is provided.
-    """
-    items = []
-    for item in inputs:
-        if isinstance(item, str):
-            items.append(item)
-        elif isinstance(item, Sequence):
-            items.extend(item)
+                raise ValueError(f"NumPy vectors must be 2 or 3 elements, got {vector}")
+            tuple_vector = tuple(float(component.squeeze()) for component in vector)
+        elif isinstance(vector, Collection):
+            tuple_vector = tuple(vector)
         else:
-            items.append(item)
-    tuples = []
-    iterator = iter(items)
-    while pair := tuple(islice(iterator, 2)):
-        if len(pair) != 2:
-            raise ValueError("Uneven number of reference_pairs")
-        tuples.append(pair)
-    return tuples
+            raise TypeError(f"Expected a Collection, got: {type(components)}")
+    if len(components) in {2, 3}: # Starred args case
+        floats = [c for c in components if isinstance(c, (int, float))]
+        if len(floats) != len(components):
+            types = [type(component) for component in components]
+            raise TypeError(f"Expected only int/float components, got: {types}")
+        tuple_vector = tuple(floats)
+    if tuple_vector:
+        assert len(tuple_vector) == 2 or len(tuple_vector) == 3
+        return tuple_vector
+    raise TypeError(f"Expected 1 to 3 components, got {components}")
 
-def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
+def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> Numpy1D:
     """Returns the point closest to the origin on a line created by a point
     and a vector.
 
@@ -187,15 +133,12 @@ def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
         point and vector dimensions do not match.
     """
     if np.allclose(vector, [0] * len(vector)):
-        msg = f"Got zero vector for line direction: {tuple(vector)}"
-        raise ValueError(msg)
+        raise ValueError(f"Got zero vector for line direction: {tuple(vector)}")
     if len(point) != len(vector):
-        msg = f"Point {point} and vector {vector} dimensions are not equal"
-        raise ValueError(msg)
+        raise ValueError(f"Point {point} and vector {vector} dimensions are not equal")
     point_vector = np.array(point)
-    vector = np.array(vector)
     unit_vector = trig.get_unit_vector(vector)
-    dot = np.dot(point_vector, unit_vector)
+    dot = float(np.dot(point_vector, unit_vector))
     if dot == 0:
         # Point vector and direction are perpendicular, or the point vector
         # is zero vector. Either way the provided point is the closest.
@@ -208,20 +151,14 @@ def closest_to_origin(point: SpaceVector, vector: SpaceVector) -> np.ndarray:
     # to get the closest point.
     return point_vector - dot * unit_vector
 
-def get_perpendicular(vector: Space3DVector) -> Space3DVector:
+def get_perpendicular(vector: Space3DVector) -> Numpy1D:
     """Returns a non-unique 3D unit vector perpendicular to the vector by
     finding its cross product to the most orthogonal basis vector.
 
     :raises ValueError: When provided a zero vector.
     :raises TypeError: When provided a non-3D vector.
     """
-    try:
-        x, y, z = map(abs, vector)
-    except ValueError as exc:
-        if "values to unpack" in str(exc):
-            msg = f"get_perpendicular only supports 3D vectors, got: {vector}"
-            raise TypeError(msg) from exc
-        raise
+    x, y, z = map(abs, vector)
     if np.allclose(vector, (0, 0, 0)):
         raise ValueError(f"Expected non-zero vector, got {vector}")
     x_axis = (1, 0, 0)
@@ -251,19 +188,15 @@ def get_rotation_quat(start: Space3DVector, target: Space3DVector) -> Quat:
     with catch_warnings(action="error"):
         # NumPy only produces a warning when a 2D cross product is attempted.
         try:
-            scalar = (np.linalg.norm(start) * np.linalg.norm(target)
-                          + np.dot(start, target))
+            scalar = np.linalg.norm(start) * np.linalg.norm(target) + np.dot(start, target)
             axis = np.cross(start, target)
         except (ValueError, DeprecationWarning) as exc:
-            non_3d_msgs = ["2-dimensional vectors", "incompatible dimensions",
-                           "not aligned"]
+            non_3d_msgs = ["2-dimensional vectors", "incompatible dimensions", "not aligned"]
             if any(non_3d in str(exc) for non_3d in non_3d_msgs):
-                msg = f"start/target must be 3D, got: {start}, {target}"
-                raise TypeError(msg) from exc
+                raise TypeError(f"start/target must be 3D, got: {start}, {target}") from exc
             raise
     if any(np.allclose(vector, (0, 0, 0)) for vector in [start, target]):
-        msg = f"start/target cannot be zero vector: {start}, {target}"
-        raise ValueError(msg)
+        raise ValueError(f"start/target cannot be zero vector: {start}, {target}")
     quat = Quat(scalar, *axis)
     norm = np.linalg.norm(quat)
     if np.isclose(norm, 0):
