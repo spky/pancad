@@ -20,11 +20,14 @@ class AbstractValue(AbstractConstraint):
     """An abstract class of constraints that can be applied to one or more
     geometries that has a value associated with it.
     """
+
     VALUE_STR_FORMAT = "{value}{unit}"
+
     @property
     @abstractmethod
     def value(self) -> float:
         """The value that the constraint enforces."""
+
     @property
     def unit(self) -> str | None:
         """The unit of the constraint's value.
@@ -33,10 +36,12 @@ class AbstractValue(AbstractConstraint):
         :setter: Sets the constraints unit.
         """
         return self._unit
+
     @unit.setter
     def unit(self, value: str | None) -> None:
         self._unit = value
-    # Shared Public Methods #
+
+    # Public Methods
     def get_value_string(self, include_unit: bool=True) -> str:
         """Returns a string of the value of the constraint.
 
@@ -48,7 +53,7 @@ class AbstractValue(AbstractConstraint):
         if include_unit:
             return self.VALUE_STR_FORMAT.format(value=self.value, unit=self.unit)
         return str(self.value)
-    # Shared Dunder Methods
+
     def __str__(self) -> str:
         super_str = super().__str__().removesuffix(">")
         return f"{super_str}[{self.value}{self.unit}]>"
@@ -104,7 +109,6 @@ class Angle(AbstractValue):
         else:
             self.value = value
 
-    # Properties
     @property
     def quadrant(self) -> int:
         """The quadrant that the angle constraint is applied to.
@@ -112,6 +116,7 @@ class Angle(AbstractValue):
         :raises ValueError: If the quadrant is not 1, 2, 3, or 4.
         """
         return self._quadrant
+
     @quadrant.setter
     def quadrant(self, value: int) -> None:
         if value not in self.quadrants:
@@ -125,11 +130,12 @@ class Angle(AbstractValue):
         :raises TypeError: When the value is not a number.
         """
         return self._value
+
     @value.setter
     def value(self, value: float) -> None:
         self._value = value
 
-    # Public Methods #
+    # Public Methods
     def get_value(self, in_radians: bool=False) -> float:
         """Returns the value of the angle constraint.
 
@@ -146,6 +152,7 @@ class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more
     geometries that has a distance associated with it.
     """
+
     @property
     def value(self) -> float:
         """The distance the constraint enforces. When distance direction can be well-defined, the
@@ -154,6 +161,7 @@ class AbstractDistance(AbstractValue):
         distance. Distance should be nonnegative when distance direction cannot be well-defined.
         """
         return self._value
+
     @value.setter
     def value(self, value: float) -> None:
         self._value = value
@@ -211,6 +219,7 @@ class Distance(Abstract2GeometryDistance):
     """A constraint that defines the direct distance between two elements in 2D
     or 3D.
     """
+
     type_name = SketchConstraint.DISTANCE
 
 # 2D Only Classes #
