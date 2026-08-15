@@ -11,6 +11,8 @@ from pancad.abstract import AbstractConstraint
 from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
     from pancad.constants import ConstraintReference
 
@@ -19,7 +21,7 @@ class AbstractSingleSnapTo(AbstractConstraint):
     any further definition.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 uid: str | None=None, system: AbstractGeometrySystem | None=None) -> None:
+                 uid: UUID | str | None=None, system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) != 1:
@@ -50,7 +52,7 @@ class AbstractSnapTo(AbstractConstraint):
     :param uid: The unique id of the constraint.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 uid: str | None=None, system: AbstractGeometrySystem | None=None) -> None:
+                 uid: UUID| str | None=None, system: AbstractGeometrySystem | None=None) -> None:
         self.uid = uid
         super().__init__(system)
         if len(geometry) not in [1, 2]:

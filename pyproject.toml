@@ -132,6 +132,7 @@ files = [
     "src/pancad/constraints/snapto.py",
     "src/pancad/constraints/state_constraint.py",
     "src/pancad/constraints/distance.py",
+    "src/pancad/constraints/_generator.py",
     "src/pancad/geometry/plane.py",
     "src/pancad/geometry/point.py",
     "src/pancad/geometry/line.py",

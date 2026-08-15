@@ -13,6 +13,8 @@ from pancad.abstract import AbstractConstraint
 from pancad.constants import SketchConstraint
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
 
 class AbstractValue(AbstractConstraint):
@@ -79,7 +81,7 @@ class Angle(AbstractValue):
                  *geometry: AbstractGeometry,
                  value: float,
                  quadrant: int,
-                 uid: str | None=None,
+                 uid: UUID | str | None=None,
                  is_radians: bool=False,
                  system: AbstractGeometrySystem | None=None) -> None:
         if len(geometry) != 2:
@@ -134,7 +136,25 @@ class Angle(AbstractValue):
 class AbstractDistance(AbstractValue):
     """An abstract class of constraints that can be applied to one or more geometries that has a
     distance associated with it.
+
+    :param geometry: The geometry elements to be constrained.
+    :param value: Distance value.
+    :param uid: Unique identifier of the constraint. Defaults to None.
+    :param unit: The unit of the distance value. Defaults to None.
+    :param system: The geometry system the constraint will be in.
+    :raises ValueError: When the geometry elements' dimensions do not match.
     """
+
+    def __init__(self, *geometry: AbstractGeometry,
+                 value: float, uid: UUID | str | None=None, unit: str | None=None,
+                 system: AbstractGeometrySystem | None=None) -> None:
+        self.uid = uid
+        super().__init__(system)
+        if len(set(len(g) for g in geometry)) != 1:
+            raise ValueError(f"Geometry not all the same dimension: {geometry}")
+        self._geometry = geometry
+        self.unit = unit
+        self.value = value
 
     @property
     def value(self) -> float:
@@ -161,17 +181,11 @@ class Abstract2GeometryDistance(AbstractDistance):
     :raises ValueError: When not provided 2 elements or the elements are not the same dimension.
     """
     def __init__(self, *geometry: AbstractGeometry,
-                 value: float, uid: str | None=None, unit: str | None=None,
+                 value: float, uid: UUID | str | None=None, unit: str | None=None,
                  system: AbstractGeometrySystem | None=None) -> None:
-        self.uid = uid
-        super().__init__(system)
         if len(geometry) != 2:
             raise ValueError(f"Expected 2 geometries, provided {geometry}")
-        if len(set(len(g) for g in geometry)) != 1:
-            raise ValueError(f"Geometry not all the same dimension: {geometry}")
-        self._geometry = geometry
-        self.unit = unit
-        self.value = value
+        super().__init__(*geometry, value=value, uid=uid, unit=unit, system=system)
 
 class Abstract1GeometryDistance(AbstractDistance):
     """An abstract class of constraints that can be applied **exactly one**
@@ -184,14 +198,12 @@ class Abstract1GeometryDistance(AbstractDistance):
     :param unit: The unit of the distance value. Defaults to None.
     :param system: The geometry system the constraint will be in.
     """
-    def __init__(self, geometry: AbstractGeometry,
-                 value: float, uid: str | None=None, unit: str | None=None,
+    def __init__(self, *geometry: AbstractGeometry,
+                 value: float, uid: UUID | str | None=None, unit: str | None=None,
                  system: AbstractGeometrySystem | None=None) -> None:
-        self.uid = uid
-        super().__init__(system)
-        self._geometry = [geometry]
-        self.unit = unit
-        self.value = value
+        if len(geometry) != 1:
+            raise ValueError(f"Expected 2 geometries, provided {geometry}")
+        super().__init__(*geometry, value=value, uid=uid, unit=unit, system=system)
 
 # 2D and 3D Distance Classes #
 ################################################################################
@@ -208,7 +220,7 @@ class Distance(Abstract2GeometryDistance):
 class AbstractDistance2D(Abstract2GeometryDistance):
     """An abstract class for 2D distance constraints."""
     def __init__(self, *geometry: AbstractGeometry,
-                 value: float, uid: str | None=None, unit: str | None=None,
+                 value: float, uid: UUID | str | None=None, unit: str | None=None,
                  system: AbstractGeometrySystem | None=None) -> None:
         if any(len(g) != 2 for g in geometry):
             non_two_dimensional = [g for g in geometry if len(g) != 2]
