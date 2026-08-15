@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
@@ -55,47 +56,33 @@ class TestGetPerpendicular:
         with pytest.raises(ValueError, match="Expected non-zero vector"):
             geo_utils.get_perpendicular((0, 0, 0))
 
-@pytest.mark.parametrize(
-    "start, target",
-    [
-        pytest.param((1, 0, 0), (1, 0, 0), id="unrotated_x"),
-        pytest.param((0, 1, 0), (0, 1, 0), id="unrotated_y"),
-        pytest.param((0, 0, 1), (0, 0, 1), id="unrotated_z"),
-        pytest.param((1, 0, 0), (-1, 0, 0), id="x_to_-x"),
-        pytest.param((1, 0, 0), (0, 1, 0), id="x_to_y"),
-        pytest.param((1, 0, 0), (1/np.sqrt(2), 1/np.sqrt(2), 0), id="x_to_(1,1,0)normed"),
-        pytest.param((1, 0, 0), (-1/np.sqrt(2), 1/np.sqrt(2), 0), id="x_to_(-1,1,0)normed"),
-        pytest.param((1, 0, 0), (-1/np.sqrt(2), -1/np.sqrt(2), 0), id="x_to_(-1,-1,0)normed"),
-        pytest.param((1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
-                     (-1/np.sqrt(3), -1/np.sqrt(3), -1/np.sqrt(3)),
-                     id="(1,1,1)normed_to_(-1,-1,-1)normed"),
-    ]
-)
-def test_get_rotation_quat(start, target):
-    """Test that the quaternions returned by get_rotation_quat actually rotate
-    the start vector to the target vector.
+class TestGetRotationQuat:
+    """Tests for the function getting the quaternion to rotate a vector to point in the same
+    direction as another.
     """
-    q = geo_utils.get_rotation_quat(start, target)
-    rotated = q.rotate(start)
-    print(f"{q} | Rotated: {rotated}")
-    assert rotated == pytest.approx(target)
 
-MUST_BE_3D_MSG = "start/target must be 3D"
-START_TARGET_ZERO_MSG = "start/target cannot be zero vector"
-@pytest.mark.parametrize(
-    "start, target, err_type, msg",
-    [
-        pytest.param((1, 0), (0, 1), TypeError, MUST_BE_3D_MSG, id="2d_input"),
-        pytest.param((1, 0), (0, 1, 0), TypeError, MUST_BE_3D_MSG, id="2d3d_start_target"),
-        pytest.param((1, 1, 1, 1), (2, 2, 2, 2), TypeError, MUST_BE_3D_MSG, id="4d_input"),
-        pytest.param((0, 0, 0), (1, 1, 1), ValueError, START_TARGET_ZERO_MSG, id="zero_start"),
-        pytest.param((1, 1, 1), (0, 0, 0), ValueError, START_TARGET_ZERO_MSG, id="zero_target"),
-    ]
-)
-def test_get_rotation_quat_excs(start, target, err_type, msg):
-    """Test the error handling of get_rotation_quat."""
-    with pytest.raises(err_type, match=msg):
-        geo_utils.get_rotation_quat(start, target)
+    def test_nominal(self, data_geo_util_sample_get_rotation_quat: GeometrySampleData) -> None:
+        """Test that the returned quaternions rotate the start vector to the target vector."""
+        vectors = data_geo_util_sample_get_rotation_quat["vectors"]
+        start, target = vectors["start"], vectors["target"]
+        assert len(start) == 3 and len(target) == 3
+        quat = geo_utils.get_rotation_quat(start, target)
+        assert quat.rotate(start) == pytest.approx(target)
+
+    @pytest.mark.parametrize(
+        "start, target",
+        [[(1, 0), (0, 1)], [(1, 0), (0, 1, 0)], [(1, 1, 1, 1), (2, 2, 2, 2)]],
+    )
+    def test_non_3d_exception(self, start: SpaceVector, target: SpaceVector) -> None:
+        """Test that when the function is provided non-3D input it raises a TypeError."""
+        with pytest.raises(TypeError, match="start/target must be 3D"):
+            geo_utils.get_rotation_quat(start, target) # type: ignore # Testing for error
+
+    @pytest.mark.parametrize("start, target", [[(0, 0, 0), (1, 1, 1)], [(1, 1, 1), (0, 0, 0)]])
+    def test_zero_vector_exception(self, start: Space3DVector, target: Space3DVector) -> None:
+        """Test that a ValueError is raised when a zero vector is provided as an inputs."""
+        with pytest.raises(ValueError, match="start/target cannot be zero vector"):
+            geo_utils.get_rotation_quat(start, target)
 
 class TestGetUniqueVector:
     """Tests for calcuating the unique versions of vectors."""

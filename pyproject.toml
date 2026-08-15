@@ -144,6 +144,7 @@ files = [
     "src/pancad/utils/text_formatting.py",
     "src/pancad/_testing",
     "tests/_typing.py",
+    "tests/utils/test_geometry_utils.py",
     "tests/utils/test_trigonometry.py",
     "tests/utils/test_quat.py",
     "tests/geometry/test_plane.py",

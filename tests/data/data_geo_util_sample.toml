@@ -19,7 +19,23 @@ vectors = {point = [0, 2], direction = [-1, 1], expected = [1, 1]}
 [closest_to_origin.2d_point_counterclockwise_direction_bottom_right]
 vectors = {point = [0, 2], direction = [1, -1], expected = [1, 1]}
 
-
+[get_rotation_quat]
+[get_rotation_quat.unrotated_x]
+normed_vectors = {start = [1, 0, 0], target = [1, 0, 0]}
+[get_rotation_quat.unrotated_y]
+normed_vectors = {start = [0, 1, 0], target = [0, 1, 0]}
+[get_rotation_quat.unrotated_z]
+normed_vectors = {start = [0, 0, 1], target = [0, 0, 1]}
+[get_rotation_quat.x_to_negative_x]
+normed_vectors = {start = [1, 0, 0], target = [-1, 0, 0]}
+[get_rotation_quat.x_to_y]
+normed_vectors = {start = [1, 0, 0], target = [0, 1, 0]}
+[get_rotation_quat.x_to_1_1_0]
+normed_vectors = {start = [1, 0, 0], target = [1, 1, 0]}
+[get_rotation_quat.x_to_n1_n1_0]
+normed_vectors = {start = [1, 0, 0], target = [-1, -1, 0]}
+[get_rotation_quat.1_1_1_to_n1_n1_n1]
+normed_vectors = {start = [1, 1, 1], target = [-1, -1, -1]}
 
 [unique_vector]
 # 2D/3D Zero Vectors
