@@ -11,7 +11,7 @@ from pancad.constants import ConstraintReference
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Self, Optional, Any, Type, TypeVar
+    from typing import Self, Optional, Any, Type, TypeVar, ClassVar
     from uuid import UUID
 
     T = TypeVar("T")
@@ -282,6 +282,10 @@ class AbstractConstraint(PancadThing):
     """A class defining the interfaces provided by all pancad Constraint
     Elements.
     """
+
+    type_name: ClassVar[SketchConstraint]
+    """The SketchConstraint enum value for the constraint type."""
+
     def __init__(self,
                  system: Optional[AbstractGeometrySystem]=None) -> None:
         super().__init__(system)
@@ -329,12 +333,6 @@ class AbstractConstraint(PancadThing):
     @system.setter
     def system(self, value: Optional[AbstractGeometrySystem]) -> None:
         self._system = value
-
-    # Abstract Properties
-    @property
-    @abstractmethod
-    def type_name(self) -> SketchConstraint:
-        """Returns the SketchConstraint enum value for the constraint type."""
 
     # Public Methods
     def get_dependencies(self) -> list[PancadThing]:
