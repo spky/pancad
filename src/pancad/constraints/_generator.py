@@ -5,46 +5,39 @@ from __future__ import annotations
 
 from typing import overload, TYPE_CHECKING
 
+from pancad.abstract import AbstractConstraint
 from pancad.constants import SketchConstraint
-from pancad.constraints.distance import (
-    Angle, Diameter, Distance, HorizontalDistance, Radius, VerticalDistance
-)
-from pancad.constraints.snapto import Horizontal, Vertical, Fixed, Unique
-from pancad.constraints.state_constraint import (
-    Coincident, Equal, Parallel, Perpendicular, AlignAxes, Antiparallel, Codirectional
-)
+from pancad.constraints import distance, snapto, state_constraint
+from pancad.constraints.distance import AbstractDistance, Angle
+from pancad.constraints.snapto import AbstractSnapTo, AbstractSingleSnapTo
+from pancad.constraints.state_constraint import AbstractStateConstraint
 
 if TYPE_CHECKING:
     from typing import Type, NoReturn
     from uuid import UUID
 
-    from pancad.abstract import AbstractGeometry, AbstractConstraint, AbstractGeometrySystem
-    from pancad.constraints.distance import AbstractDistance
-    from pancad.constraints.state_constraint import AbstractStateConstraint
-    from pancad.constraints.snapto import AbstractSnapTo, AbstractSingleSnapTo
+    from pancad.abstract import AbstractGeometry, AbstractGeometrySystem
 
     NonValueConstraint = AbstractStateConstraint | AbstractSnapTo | AbstractSingleSnapTo
 
-_DISTANCE_MAP: dict[SketchConstraint, Type[AbstractDistance]] = {
-    SketchConstraint.DISTANCE: Distance,
-    SketchConstraint.DISTANCE_DIAMETER: Diameter,
-    SketchConstraint.DISTANCE_RADIUS: Radius,
-    SketchConstraint.DISTANCE_HORIZONTAL: HorizontalDistance,
-    SketchConstraint.DISTANCE_VERTICAL: VerticalDistance,
-}
+def _all_constraints() -> list[Type[AbstractConstraint]]:
+    # Returns a list of all concrete constraint types in pancad.
+    constraints = []
+    for module in (distance, snapto, state_constraint):
+        for name in dir(module):
+            attr = getattr(module, name, None)
+            if not isinstance(attr, type):
+                # Not a class, skip
+                continue
+            if issubclass(attr, AbstractConstraint) and hasattr(attr, "type_name"):
+                # A concrete subclass of AbstractConstraint
+                constraints.append(attr)
+    return constraints
 
-_NON_VALUE_CONSTRAINT_MAP: dict[SketchConstraint, Type[NonValueConstraint]] = {
-    SketchConstraint.ALIGN_AXES: AlignAxes,
-    SketchConstraint.ANTIPARALLEL: Antiparallel,
-    SketchConstraint.CODIRECTIONAL: Codirectional,
-    SketchConstraint.COINCIDENT: Coincident,
-    SketchConstraint.HORIZONTAL: Horizontal,
-    SketchConstraint.EQUAL: Equal,
-    SketchConstraint.FIXED: Fixed,
-    SketchConstraint.PARALLEL: Parallel,
-    SketchConstraint.PERPENDICULAR: Perpendicular,
-    SketchConstraint.UNIQUE: Unique,
-    SketchConstraint.VERTICAL: Vertical,
+_DISTANCE_MAP = {t.type_name: t for t in _all_constraints() if issubclass(t, AbstractDistance)}
+_NON_VALUE_CONSTRAINT_MAP = {
+    t.type_name: t for t in _all_constraints()
+    if issubclass(t, (AbstractStateConstraint, AbstractSnapTo, AbstractSingleSnapTo))
 }
 
 # Non Value Constraint Overloads
