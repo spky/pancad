@@ -156,5 +156,6 @@ files = [
     "tests/geometry/test_point.py",
     "tests/geometry/test_line.py",
     "tests/geometry/test_coordinate_system.py",
+    "tests/geometry/test_make_constraint.py",
     "tests/testing_utils/plotting.py",
 ]
