@@ -35,7 +35,7 @@ from pancad.utils import solver_residuals as pcres
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Literal, Type, Optional
+    from typing import Literal, Type
     from uuid import UUID
 
     from pancad.abstract import AbstractGeometrySystem, AbstractConstraint, PancadThing
@@ -44,8 +44,7 @@ if TYPE_CHECKING:
     GeoCombo = frozenset[Type[AbstractGeometry]]
     VariableMap = dict[Type[AbstractGeometry], list[CVN]]
 
-def get_length(segment: LineSegment,
-               along: Optional[Literal["x", "y", "z"]]=None) -> float:
+def get_length(segment: LineSegment, along: Literal["x", "y", "z"] | None=None) -> float:
     """Returns the length of the line segment, defined as the distance between
     the start and end points.
 
@@ -56,7 +55,7 @@ def get_length(segment: LineSegment,
     """
     if along is None:
         start_to_end = np.array(segment.end) - np.array(segment.start)
-        return np.linalg.norm(start_to_end)
+        return float(np.linalg.norm(start_to_end))
     lengths = {"x": abs(segment.start.x - segment.end.x),
                "y": abs(segment.start.y - segment.end.y)}
     if len(segment) == 3:
@@ -74,7 +73,7 @@ def get_length(segment: LineSegment,
 def set_length(segment: LineSegment,
                value: float,
                from_: Literal["start", "end"],
-               along: Optional[Literal["x", "y", "z"]]=None) -> LineSegment:
+               along: Literal["x", "y", "z"] | None=None) -> LineSegment:
     """Sets the length of the line segment.
 
     .. note:: Cases similar to setting the y direction of a line segment
@@ -316,8 +315,8 @@ class SystemSolver:
             raise
 
     def solve(self, method: str="lm",
-              fun_wrap: Optional[Callable[[Callable[[Numpy1D], Numpy1D]],
-                                          Callable[[Numpy1D], Numpy1D]]]=None,
+              fun_wrap: Callable[[Callable[[Numpy1D], Numpy1D]],
+                                 Callable[[Numpy1D], Numpy1D]] | None=None,
               **kwargs) -> Numpy1D:
         """Returns the roots of the system's functions as a 1D numpy array.
 
@@ -667,7 +666,7 @@ class SystemSolver:
                            constraint: AbstractConstraint,
                            eq: CEN,
                            var_map: VariableMap,
-                           constants: Optional[dict[str, np.float64]]=None,
+                           constants: dict[str, np.float64] | None=None,
                            ) -> ConstraintEquation:
         if constants is None:
             constants = {}
