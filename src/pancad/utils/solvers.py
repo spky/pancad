@@ -151,13 +151,6 @@ def _line_segment(geometry: LineSegment) -> FitBox2D:
                   max(geometry.start.y, geometry.end.y))
     return FitBox2D(min_coords, max_coords)
 
-def _norm_with_zero(vector: Numpy1D | SpaceVector) -> Numpy1D:
-    """Normalizes a vector if its magnitude is not zero or returns it as is if it is zero."""
-    if np.isclose(norm := np.linalg.norm(vector), 0):
-        return np.array(vector)
-    return np.array(vector) / norm
-
-
 ################################################################################
 # Residual Calculators
 ################################################################################
@@ -204,7 +197,7 @@ class ConstraintVariable:
         return self._value
 
     @value.setter
-    def value(self, new_value: Numpy1D):
+    def value(self, new_value: Numpy1D) -> None:
         if self.fixed:
             raise RuntimeError("Cannot update variable value, variable is fixed")
         if len(new_value) != len(self):
@@ -287,8 +280,8 @@ class SystemSolver:
 
     def __init__(self, system: AbstractGeometrySystem) -> None:
         self._system = system
-        self._equations = []
-        self._variables = []
+        self._equations: list[ConstraintEquation] = []
+        self._variables: list[ConstraintVariable] = []
         for c in self._system.constraints:
             for geo in c.get_parents():
                 # Make sure the geometry variables/constraints have been added
@@ -384,16 +377,6 @@ class SystemSolver:
             start = end
         raise LookupError(f"Could not find variable {var} in system's variables")
 
-    def get_eq_slice(self, eq: ConstraintEquation) -> tuple[int, int]:
-        """Returns the start and end indicies of a equation in the fun output vector."""
-        start = 0
-        for system_eq in self._equations:
-            end = start + len(system_eq.calc())
-            if system_eq == eq:
-                return start, end
-            start = end
-        raise LookupError(f"Could not find equation {eq} in system's equations")
-
     def get_variables(self, include_fixed: bool=False) -> list[ConstraintVariable]:
         """Returns the system's variables.
 
@@ -475,7 +458,7 @@ class SystemSolver:
         i = 0
         for f in self._equations:
             try:
-                end = start + len(f.calc())
+                end = start + len(f.calc(f.params))
             except TypeError:
                 end = start + 1
             for i, value in enumerate(results[slice(start, end)], start):
@@ -521,25 +504,25 @@ class SystemSolver:
 
     @_add_constraint.register
     def _codirectional(self, constraint: Codirectional) -> None:
-        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        var_map: VariableMap = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.CODIRECTIONAL, var_map=var_map)
         self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _antiparallel(self, constraint: Antiparallel) -> None:
-        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        var_map: VariableMap = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.ANTIPARALLEL, var_map=var_map)
         self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _parallel(self, constraint: Parallel) -> None:
-        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        var_map: VariableMap = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.PARALLEL, var_map=var_map)
         self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _perpendicular(self, constraint: Perpendicular) -> None:
-        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        var_map: VariableMap = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         combos = [
             ({Axis}, CEN.PERPENDICULAR),
             ({Axis, Plane}, CEN.PARALLEL),
@@ -551,13 +534,13 @@ class SystemSolver:
 
     @_add_constraint.register
     def _unique(self, constraint: Unique) -> None:
-        var_map = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
+        var_map: VariableMap = {Axis: [CVN.DIRECTION], Plane: [CVN.NORMAL]}
         func = partial(self._new_constraint_eq, eq=CEN.UNIQUE_VECTOR, var_map=var_map)
         self._add_equation(constraint, {frozenset({c}): func for c in var_map})
 
     @_add_constraint.register
     def _distance(self, constraint: Distance) -> None:
-        var_map = {Plane: [CVN.REF_POINT, CVN.NORMAL]}
+        var_map: VariableMap = {Plane: [CVN.REF_POINT, CVN.NORMAL]}
         combos = [
             ({Axis, Plane}, CEN.PLANE_LINE_DISTANCE),
             ({Line, Plane}, CEN.PLANE_LINE_DISTANCE),
@@ -581,7 +564,7 @@ class SystemSolver:
 
     @_add_constraint.register
     def _coincident(self, constraint: Coincident) -> None:
-        var_map = {
+        var_map: VariableMap = {
             Axis: [CVN.REF_POINT, CVN.DIRECTION],
             Line: [CVN.REF_POINT, CVN.DIRECTION],
             Plane: [CVN.REF_POINT, CVN.NORMAL],
@@ -615,7 +598,7 @@ class SystemSolver:
     @_add_constraint.register
     def _fixed(self, constraint: Fixed) -> None:
         geo = constraint.get_geometry()[0] # Fixed must have only one geometry element
-        vector_name_map = {
+        vector_name_map: VariableMap = {
             Point: [CVN.LOCATION],
             Axis: [CVN.REF_POINT, CVN.DIRECTION],
             Line: [CVN.REF_POINT, CVN.DIRECTION],
