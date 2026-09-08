@@ -16,12 +16,11 @@ from pancad.geometry.point import Point
 from pancad.utils.geometry import get_unique_vector
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Collection
     from typing import Literal, Type
 
     from pancad.abstract import PancadThing
     from pancad.utils.pancad_types import Numpy1D
-
 
 ################################################################################
 # Helpers
@@ -88,6 +87,56 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
 # Residuals
 ################################################################################
 
+def calc_residual(name: CEN, *,
+                  vectors: dict[str, Collection[float]] | None=None,
+                  scalars: dict[str, float] | None=None) -> dict[str, float]:
+    """Returns the residual values of a constraint equation.
+
+    :param name: The name of the residual equation to evaluate.
+    :param vectors: The mapping of names to vector inputs for the residual.
+    :param scalars: The mapping of names to scalar inputs for the residual.
+    """
+    if not vectors:
+        vectors = {}
+    if not scalars:
+        scalars = {}
+    arrays: dict[str, Numpy1D] = {k: np.array(v) for k, v in vectors.items()}
+    if not scalars: # Vector Input Only Cases
+        match len(arrays):
+            case 1:
+                return _single_vector(name, arrays)
+            case 2:
+                return _two_vector(name, arrays)
+        raise ValueError(f"Unexpected number of vectors: {vectors}")
+    raise ValueError(f"Unexpected input combo: {name} - {vectors} - {scalars}")
+
+def _single_vector(name: CEN, arrays: dict[str, Numpy1D]) -> dict[str, float]:
+    # Returns the residual values for residuals that only take a single vector input.
+    vector = arrays["vector"]
+    match name:
+        case CEN.UNIT_VECTOR:
+            return {"value": unit_vector(vector)}
+        case CEN.NON_ZERO:
+            return {"value": non_zero_vector(vector)}
+        case CEN.UNIQUE_VECTOR:
+            # Zip together component names. 2D vectors will stop before adding z.
+            return dict(zip(("x", "y", "z"), unique_vector(vector)))
+    raise ValueError(f"Unexpected single vector equation name: {name}")
+
+def _two_vector(name: CEN, arrays: dict[str, Numpy1D]) -> dict[str, float]:
+    # Returns the residual values for residuals that take exactly 2 vectors as input.
+    vector_1, vector_2 = arrays["vector_1"], arrays["vector_2"]
+    result: Numpy1D
+    if name in {CEN.CODIRECTIONAL, CEN.ANTIPARALLEL, CEN.PARALLEL}:
+        result = _direction(vector_1, vector_2, SC(name))
+    elif name == CEN.EQUAL_VECTOR:
+        result = equal_vector(vector_1, vector_2)
+    elif name == CEN.PERPENDICULAR:
+        return {"value": perpendicular(vector_1, vector_2)}
+    else:
+        raise ValueError(f"Unexpected two vector equation name: {name}")
+    return dict(zip(("x", "y", "z"), result))
+
 _param_order_map: dict[CEN, tuple[Type[PancadThing], ...]] = {}
 """Mapping for ordering parameters by their geometry type for cases where the order matters.
 Any residual function where ordering does not matter are omitted from the mapping.
@@ -97,37 +146,32 @@ def unit_vector(vector: Numpy1D) -> float:
     """Calculates how far a vector is from being a unit vector."""
     return float(np.linalg.norm(vector) - 1)
 
-def non_zero_vector(vector: Numpy1D, zero_atol: float=1e-15) -> np.float64:
+def non_zero_vector(vector: Numpy1D, zero_atol: float=1e-15) -> float:
     """Produces a residual to constrain a vector to being non-zero."""
-    if np.isclose(np.linalg.norm(vector), 0, atol=zero_atol):
-        return np.float64(1)
-    return np.float64(0)
+    return 1 if np.isclose(np.linalg.norm(vector), 0, atol=zero_atol) else 0
 
-def _direction(v1: Numpy1D, v2: Numpy1D,
-               comp: Literal[SC.CODIRECTIONAL, SC.ANTIPARALLEL, SC.PARALLEL]) -> Numpy1D:
+def _direction(vector_1: Numpy1D, vector_2: Numpy1D, comp: SC) -> Numpy1D:
     """Calculates how close a second vector is to pointing in the same direction (codirectional),
     opposite directions (antiparallel), or in the generically parallel direction as the first
     vector.
 
-    :param v1: An n-dimensional vector.
-    :param v2: Another n-dimensional vector.
+    :param vector_1: An n-dimensional vector.
+    :param vector_2: Another n-dimensional vector.
     :param comp: Which direction constraint to calculate residuals for.
     :raises TypeError: When provided an unexpected comp(arison) value.
     """
-    norm1, norm2 = map(np.linalg.norm, (v1, v2))
-    dot = float(np.dot(v1, v2))
-    comp_signs = {SC.CODIRECTIONAL: 1, SC.ANTIPARALLEL: -1, SC.PARALLEL: int(np.copysign(1, dot))}
+    norm1, norm2 = map(np.linalg.norm, (vector_1, vector_2))
+    dot = float(np.dot(vector_1, vector_2))
+    comp_map = {SC.CODIRECTIONAL: 1, SC.ANTIPARALLEL: -1, SC.PARALLEL: int(np.copysign(1, dot))}
     try:
-        # Get the sign for the respective comparison difference equation.
-        sign = comp_signs[comp]
+        sign = comp_map[comp]
     except KeyError as exc:
-        msg = (f"Unexpected comparison {comp}."
-               f" Expected {SC.CODIRECTIONAL}, {SC.ANTIPARALLEL}, or {SC.PARALLEL}")
-        raise TypeError(msg) from exc
+        msg = f"Unexpected comparison {comp}. Expected one of: {comp_map.keys()}"
+        raise ValueError(msg) from exc
     if sign * dot > 0:
         try:
             with np.errstate(divide="raise", invalid="raise"):
-                return v1 / norm1 - sign * v2 / norm2
+                return vector_1 / norm1 - sign * vector_2 / norm2
         except FloatingPointError as exc:
             if not any(s in str(exc) for s in ("invalid value", "divide by zero")):
                 # Ensure unexpected warnings are still raised.
@@ -135,37 +179,37 @@ def _direction(v1: Numpy1D, v2: Numpy1D,
     # sign * dot being less than or equal to 0 indicates the vectors are pointing in opposite
     # directions to the goal of being codirection or antiparallel. Return the difference to get
     # the solver to switch them.
-    return v1 - sign * v2
+    return vector_1 - sign * vector_2
 
 codirectional: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.CODIRECTIONAL)
 codirectional.__doc__ = """
     Calculates how close two vectors are to pointing in the same direction.
 
-    :param v1: An n-dimensional vector.
-    :param v2: Another n-dimensional vector.
+    :param vector_1: An n-dimensional vector.
+    :param vector_2: Another n-dimensional vector.
 """.strip()
 
 antiparallel: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.ANTIPARALLEL)
 antiparallel.__doc__ = """
     Calculates how close two vectors are to pointing in opposite directions.
 
-    :param v1: An n-dimensional vector.
-    :param v2: Another n-dimensional vector.
+    :param vector_1: An n-dimensional vector.
+    :param vector_2: Another n-dimensional vector.
 """.strip()
 
 parallel: Callable[[Numpy1D, Numpy1D], Numpy1D] = partial(_direction, comp=SC.PARALLEL)
 parallel.__doc__ = """
     Calculates how close two vectors are to pointing in the same or opposite directions.
 
-    :param v1: An n-dimensional vector.
-    :param v2: Another n-dimensional vector.
+    :param vector_1: An n-dimensional vector.
+    :param vector_2: Another n-dimensional vector.
 """.strip()
 
-def equal_vector(v1: Numpy1D, v2: Numpy1D) -> Numpy1D:
+def equal_vector(vector_1: Numpy1D, vector_2: Numpy1D) -> Numpy1D:
     """Calculates how close a each component of a second vector is to being equal to the first
     vector's components.
     """
-    return v1 - v2
+    return vector_1 - vector_2
 
 def perpendicular(vector_1: Numpy1D, vector_2: Numpy1D) -> float:
     """Calculates how close the second vector is to being on the plane created by the first vector
@@ -201,17 +245,17 @@ def perpendicular(vector_1: Numpy1D, vector_2: Numpy1D) -> float:
     return point_plane_coincident(np.array([0,0,0], dtype=np.float64), vector_1, unit_vector_2)
 
 
-def point_line_distance(line_pt: Numpy1D, direction: Numpy1D,
-                        pt: Numpy1D, distance: float) -> float:
+def point_line_distance(line_point: Numpy1D, direction: Numpy1D,
+                        point: Numpy1D, distance: float) -> float:
     """Calculates how close a point is to being a specified closest distance from a line.
 
-    :param line_pt: A point on the line.
+    :param line_point: A point on the line.
     :param direction: A vector in the direction of the line.
-    :param pt: The point's position vector.
+    :param point: The point's position vector.
     :param distance: The distance the point should be from the line.
     """
     unit_d = direction / np.linalg.norm(direction)
-    line_pt_sub_pt = line_pt - pt
+    line_pt_sub_pt = line_point - point
     actual_distance = np.linalg.norm(line_pt_sub_pt - np.dot(line_pt_sub_pt, unit_d) * unit_d)
     return float(actual_distance) - distance
 
@@ -220,9 +264,9 @@ point_line_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D],
 point_line_coincident.__doc__ = """
     Calculates how close a point is to being on a line.
 
-    :param line_pt: A point on the line.
+    :param line_point: A point on the line.
     :param direction: A vector in the direction of the line.
-    :param pt: The point's position vector.
+    :param point: The point's position vector.
 """.strip()
 
 _param_order_map[CEN.POINT_LINE_DISTANCE] = (Axis, Line, Point)
@@ -245,9 +289,9 @@ point_plane_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D],
 point_plane_coincident.__doc__ = """
     Calculates how close a point is to being on a plane.
 
-    :param pln_pt: The plane's closest to the origin reference point position vector.
+    :param plane_point: The plane's closest to the origin reference point position vector.
     :param normal: The plane's normal vector.
-    :param pt: The point's position vector.
+    :param point: The point's position vector.
 """.strip()
 
 _param_order_map[CEN.POINT_PLANE_DISTANCE] = (Plane, Point)
@@ -276,9 +320,10 @@ plane_line_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D, Numpy1D],
 plane_line_coincident.__doc__ = """
     Calculates how close a line or axis is to being on a plane.
 
-    :param pln_pt: The plane's closest to the origin reference point position vector.
+    :param plane_point: The plane's closest to the origin reference point position vector.
     :param normal: The plane's normal vector.
-    :param pt: The point's position vector.
+    :param line_point: A point on the line.
+    :param direction: A vector in the direction of the line.
 """.strip()
 
 _param_order_map[CEN.PLANE_LINE_DISTANCE] = (Plane, Axis, Line)
@@ -319,16 +364,19 @@ plane_plane_coincident: Callable[[Numpy1D, Numpy1D, Numpy1D, Numpy1D],
 plane_plane_coincident.__doc__ = """
     Calculates how close two planes are to being coincident with each other.
 
-    :param p1: A point on the first Plane.
-    :param n1: The normal vector of the first Plane.
-    :param p2: A point on the second Plane.
-    :param n2: The normal vector of the second Plane.
+    :param point_1: A point on the first Plane.
+    :param normal_1: The normal vector of the first Plane.
+    :param point_2: A point on the second Plane.
+    :param normal_2: The normal vector of the second Plane.
 """.strip()
 
-def line_line_coincident(p1: Numpy1D, d1: Numpy1D, p2: Numpy1D, d2: Numpy1D) -> Numpy1D:
+def line_line_coincident(point_1: Numpy1D, direction_1: Numpy1D,
+                         point_2: Numpy1D, direction_2: Numpy1D) -> Numpy1D:
     """Calculates how close two lines are to being coincident with each other."""
-    offset_p = p2 + d2 / np.linalg.norm(d2)
-    return np.array([point_line_coincident(p1, d1, point) for point in (p2, offset_p)])
+    offset_p = point_2 + direction_2 / np.linalg.norm(direction_2)
+    return np.array(
+        [point_line_coincident(point_1, direction_1, point) for point in (point_2, offset_p)]
+    )
 
 
 def line_ref_point(ref_pt: Numpy1D, direction: Numpy1D) -> float:
