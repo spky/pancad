@@ -27,6 +27,9 @@ class ConstraintVariableName(StrEnum):
 class ConstraintEquationName(StrEnum):
     """An enumeration of constraint equation function names."""
 
+    COINCIDENT = auto()
+    """Coincident constraint between geometries."""
+
     POINT_POINT_COINCIDENT = auto()
     """Point to Point coincident."""
 

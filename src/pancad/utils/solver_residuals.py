@@ -3,24 +3,54 @@ systems.
 """
 from __future__ import annotations
 
-from functools import partial
-from typing import TYPE_CHECKING
+from functools import partial, cached_property, singledispatchmethod
+from typing import TYPE_CHECKING, NamedTuple, Generic, TypeVar
 
 import math
 import numpy as np
 
+from pancad.abstract import AbstractConstraint
 from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
+from pancad.constraints.state_constraint import Coincident, Parallel, Codirectional, Antiparallel
 from pancad.geometry.line import Axis, Line
 from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.utils.geometry import get_unique_vector
 
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection
-    from typing import Literal, Type
+    from typing import Type, Self
 
-    from pancad.abstract import PancadThing
-    from pancad.utils.pancad_types import Numpy1D
+    from pancad.abstract import PancadThing, AbstractGeometry
+    from pancad.utils.pancad_types import Numpy1D, SpaceVector
+
+T = TypeVar("T")
+
+NamedScalar = NamedTuple("NamedScalar", [("name", str), ("scalar", float)])
+"""A numerical value with a name.
+
+:param name: The name.
+:param scalar: The scalar value.
+"""
+
+class ValueSource(NamedTuple):
+    """The metadata indicating where a system value originated.
+
+    :param thing: The pancad element.
+    :param name: The name of the value in the thing's context.
+    """
+    thing: PancadThing
+    name: str
+
+class SystemValue(NamedTuple, Generic[T]):
+    """A value inside a pancad geometry system.
+
+    :param source: The ValueSource for where the value is from.
+    :param value: The value.
+    """
+    source: ValueSource
+    value: T
 
 ################################################################################
 # Helpers
@@ -87,55 +117,222 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
 # Residuals
 ################################################################################
 
-def calc_residual(name: CEN, *,
-                  vectors: dict[str, Collection[float]] | None=None,
-                  scalars: dict[str, float] | None=None) -> dict[str, float]:
-    """Returns the residual values of a constraint equation.
+class SolverConstraint:
+    """A solver-only constraint asserting that system vectors/scalars must meet a geometric
+    condition.
 
-    :param name: The name of the residual equation to evaluate.
-    :param vectors: The mapping of names to vector inputs for the residual.
-    :param scalars: The mapping of names to scalar inputs for the residual.
+    :param type_: The name of the constraint type.
+    :param vectors: The source and initial values of the constrained system vectors.
+    :param scalars: The source and initial values of the constrained system scalars.
     """
-    if not vectors:
-        vectors = {}
-    if not scalars:
-        scalars = {}
-    arrays: dict[str, Numpy1D] = {k: np.array(v) for k, v in vectors.items()}
-    if not scalars: # Vector Input Only Cases
-        match len(arrays):
-            case 1:
-                return _single_vector(name, arrays)
-            case 2:
-                return _two_vector(name, arrays)
-        raise ValueError(f"Unexpected number of vectors: {vectors}")
-    raise ValueError(f"Unexpected input combo: {name} - {vectors} - {scalars}")
 
-def _single_vector(name: CEN, arrays: dict[str, Numpy1D]) -> dict[str, float]:
-    # Returns the residual values for residuals that only take a single vector input.
-    vector = arrays["vector"]
-    match name:
-        case CEN.UNIT_VECTOR:
-            return {"value": unit_vector(vector)}
-        case CEN.NON_ZERO:
-            return {"value": non_zero_vector(vector)}
-        case CEN.UNIQUE_VECTOR:
-            # Zip together component names. 2D vectors will stop before adding z.
-            return dict(zip(("x", "y", "z"), unique_vector(vector)))
-    raise ValueError(f"Unexpected single vector equation name: {name}")
+    def __init__(self, type_: CEN, *,
+                 vectors: tuple[SystemValue[SpaceVector], ...] | None=None,
+                 scalars: tuple[SystemValue[float], ...] | None=None,
+                 ) -> None:
+        self._type = type_
+        self._vectors = vectors if vectors else tuple()
+        self._scalars = scalars if scalars else tuple()
+        self._vector_method_map = {CEN.COINCIDENT: self._coincident,}
 
-def _two_vector(name: CEN, arrays: dict[str, Numpy1D]) -> dict[str, float]:
-    # Returns the residual values for residuals that take exactly 2 vectors as input.
-    vector_1, vector_2 = arrays["vector_1"], arrays["vector_2"]
-    result: Numpy1D
-    if name in {CEN.CODIRECTIONAL, CEN.ANTIPARALLEL, CEN.PARALLEL}:
-        result = _direction(vector_1, vector_2, SC(name))
-    elif name == CEN.EQUAL_VECTOR:
-        result = equal_vector(vector_1, vector_2)
-    elif name == CEN.PERPENDICULAR:
-        return {"value": perpendicular(vector_1, vector_2)}
-    else:
-        raise ValueError(f"Unexpected two vector equation name: {name}")
-    return dict(zip(("x", "y", "z"), result))
+    @singledispatchmethod
+    @classmethod
+    def from_constraint(cls, constraint: AbstractConstraint) -> tuple[Self, ...]:
+        """Produces one or more solver constraints from an AbstractConstraint."""
+        raise NotImplementedError(f"Cannot produce a solver constraint from {constraint}")
+
+    @from_constraint.register(Coincident)
+    @classmethod
+    def _(cls, constraint: Coincident) -> tuple[Self, ...]:
+        vectors: list[SystemValue[SpaceVector]] = []
+        geometry = constraint.get_geometry()
+        types = {type(g) for g in geometry}
+        cls._add_point_vector(vectors, geometry, types)
+        cls._add_line_like_vectors(vectors, geometry, types, ("direction", "reference"))
+        cls._add_plane_vectors(vectors, geometry, types, ("normal", "reference"))
+        if types:
+            raise NotImplementedError(f"Unsupported geometry type(s): {types}")
+        return (cls(CEN(constraint.type_name), vectors=tuple(vectors)),)
+
+    @from_constraint.register(Parallel)
+    @from_constraint.register(Antiparallel)
+    @from_constraint.register(Codirectional)
+    @classmethod
+    def _(cls, constraint: Parallel | Codirectional | Antiparallel) -> tuple[Self, ...]:
+        vectors: list[SystemValue[SpaceVector]] = []
+        geometry = constraint.get_geometry()
+        types = {type(g) for g in geometry}
+        cls._add_line_like_vectors(vectors, geometry, types, "direction")
+        cls._add_plane_vectors(vectors, geometry, types, "normal")
+        if types:
+            raise NotImplementedError(f"Unsupported geometry type(s): {types}")
+        return (cls(CEN(constraint.type_name), vectors=tuple(vectors)),)
+
+    def calc(self, *,
+             vectors: tuple[SystemValue[SpaceVector], ...] | None=None,
+             scalars: tuple[SystemValue[float], ...] | None=None
+             ) -> tuple[NamedScalar, ...]:
+        """Returns the residuals of the constraint for the given values."""
+        vectors = vectors if vectors else tuple()
+        scalars = scalars if scalars else tuple()
+        if self.sources != self._get_sources(vectors, scalars):
+            msg = f"Expected {self.sources} sources, got: {self._get_sources(vectors, scalars)}"
+            raise ValueError(msg)
+        if scalars:
+            raise NotImplementedError("Scalars not yet supported")
+        return self._vector_method_map[self._type](vectors)
+
+    def _coincident(self, vectors: tuple[SystemValue[SpaceVector], ...]
+                    ) -> tuple[NamedScalar, ...]:
+        types = {next(iter(c)) for c in self.category}
+        if types == {Point}:
+            cartesians = tuple(v.value for v in vectors)
+            return tuple(NamedScalar(n, c)
+                         for n, c in zip(("x", "y", "z"), self._equal_vectors(*cartesians)))
+        raise NotImplementedError(f"Unsupported type combo: {types}")
+
+    @cached_property
+    def category(self) -> frozenset[tuple[Type[PancadThing], str]]:
+        """The constraint's residual calculation categorization properties."""
+        categories: set[tuple[Type[PancadThing], str]] = set()
+        for source, *_ in self.values:
+            if not isinstance(type_ := type(source.thing), AbstractConstraint):
+                categories.add((type_, source.name))
+        return frozenset(categories)
+
+    @cached_property
+    def sources(self) -> frozenset[ValueSource]:
+        """Returns the sources of all variable values for the constraint."""
+        return self._get_sources(self._vectors, self._scalars)
+
+    @cached_property
+    def constants(self) -> tuple[SystemValue[float], ...]:
+        """The sources and values of the constraint's constant scalars."""
+        return tuple(s for s in self._scalars if isinstance(s.source.thing, AbstractConstraint))
+
+    @property
+    def scalars(self) -> tuple[SystemValue[float], ...]:
+        """The constrained scalar sources and their initial values."""
+        return self._scalars
+
+    @property
+    def type_(self) -> CEN:
+        """The name of the constraint type."""
+        return self._type
+
+    @property
+    def values(self) -> tuple[SystemValue[float] | SystemValue[SpaceVector], ...]:
+        """Returns all variable sources and their initial values."""
+        return self._scalars + self._vectors
+
+    @property
+    def vectors(self) -> tuple[SystemValue[SpaceVector], ...]:
+        """The constrained vector sources and their initial values."""
+        return self._vectors
+
+    @staticmethod
+    def _get_sources(vectors: tuple[SystemValue[SpaceVector], ...],
+                     scalars: tuple[SystemValue[float], ...]
+                     ) -> frozenset[ValueSource]:
+        # Returns the sources of the values for a given constraint input.
+        return frozenset(source for group in (vectors, scalars) for source, *_ in group)
+
+    @staticmethod
+    def _add_point_vector(vectors: list[SystemValue[SpaceVector]],
+                          geometry: Collection[AbstractGeometry],
+                          types: set[Type[AbstractGeometry]]) -> None:
+        # Adds point vectors in the geometry to the vectors list and removes Point from types
+        for element in geometry:
+            if not isinstance(element, Point):
+                continue
+            vectors.append(SystemValue(ValueSource(element, "cartesian"), element.cartesian))
+        types.discard(Point)
+
+    @staticmethod
+    def _add_line_like_vectors(vectors: list[SystemValue[SpaceVector]],
+                               geometry: Collection[AbstractGeometry],
+                               types: set[Type[AbstractGeometry]],
+                               names: Collection[str] | str) -> None:
+        # Adds line-like vectors in geometry to the vectors list and removes line-likes from types
+        names = (names,) if isinstance(names, str) else names
+        line_like_types = (Axis, Line)
+        if "direction" in names:
+            vectors.extend(SystemValue(ValueSource(g, "direction"), g.direction)
+                           for g in geometry if isinstance(g, line_like_types))
+        if "reference" in names:
+            vectors.extend(SystemValue(ValueSource(g, "reference"), g.reference_point.cartesian)
+                           for g in geometry if isinstance(g, line_like_types))
+        for type_ in line_like_types:
+            types.discard(type_)
+
+    @staticmethod
+    def _add_plane_vectors(vectors: list[SystemValue[SpaceVector]],
+                           geometry: Collection[AbstractGeometry],
+                           types: set[Type[AbstractGeometry]],
+                           names: Collection[str] | str) -> None:
+        # Adds plane vectors in geometry to the vectors list and removes line-likes from types
+        names = (names,) if isinstance(names, str) else names
+        if "normal" in names:
+            vectors.extend(SystemValue(ValueSource(g, "normal"), g.normal)
+                           for g in geometry if isinstance(g, Plane))
+        if "reference" in names:
+            vectors.extend(SystemValue(ValueSource(g, "reference"), g.reference_point.cartesian)
+                           for g in geometry if isinstance(g, Plane))
+        types.discard(Plane)
+
+    @classmethod
+    def _codirection(cls, a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Residuals for how close vector a is to pointing in the same direction as vector b.
+        return cls._equal_vectors(cls._unitize(a), cls._unitize(b))
+
+    @classmethod
+    def _antiparallel(cls, a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Residuals for how close vector a is to pointing in the opposite direction of vector b.
+        return cls._equal_vectors(cls._unitize(a), tuple(-c for c in cls._unitize(b)))
+
+    @classmethod
+    def _parallel(cls, a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Residuals for how close vector a is to pointing codirectional/antiparallel to vector b.
+        sign = int(math.copysign(1, cls._dot(a, b)))
+        return cls._equal_vectors(cls._unitize(a), tuple(sign * c for c in cls._unitize(b)))
+
+    @staticmethod
+    def _equal_vectors(a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Residual for how close vector a is to vector b.
+        return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
+
+    @classmethod
+    def _norm_value(cls, vector: Collection[float], value: float, /) -> float:
+        # Residual for how close the norm of a vector is to the value.
+        return cls._norm(vector) - value
+
+    @classmethod
+    def _dot_value(cls, a: Collection[float], b: Collection[float], value: float, /) -> float:
+        # Residual for how close the dot product of two vectors is to the value.
+        return cls._dot(a, b) - value
+
+    @classmethod
+    def _unitize(cls, vector: Collection[float]) -> tuple[float, ...]:
+        # Returns a unit vector in the same direction as the vector.
+        norm = cls._norm(vector)
+        return tuple(c / norm for c in vector)
+
+    @classmethod
+    def _dot(cls, a: Collection[float], b: Collection[float], /) -> float:
+        # Returns the dot product of vectors a and b.
+        try:
+            return sum(ca * cb for ca, cb in zip(a, b, strict=True)) / cls._norm(a) * cls._norm(b)
+        except ZeroDivisionError as exc:
+            raise ValueError(f"Cannot normalize: got a zero vector: {a}, {b}") from exc
+        except ValueError as exc:
+            if len(a) != len(b):
+                raise ValueError(f"Vector lengths do not match: {a}, {b}") from exc
+            raise
+
+    @staticmethod
+    def _norm(vector: Collection[float]) -> float:
+        # Returns the 2-norm of the vector.
+        return math.sqrt(sum(c**2 for c in vector))
 
 _param_order_map: dict[CEN, tuple[Type[PancadThing], ...]] = {}
 """Mapping for ordering parameters by their geometry type for cases where the order matters.
