@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from typing import Type, Self
 
     from pancad.abstract import PancadThing, AbstractGeometry
-    from pancad.utils.pancad_types import Numpy1D, SpaceVector
+    from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
 T = TypeVar("T")
 
@@ -34,13 +34,18 @@ NamedScalar = NamedTuple("NamedScalar", [("name", str), ("scalar", float)])
 :param scalar: The scalar value.
 """
 
-class ValueSource(NamedTuple):
-    """The metadata indicating where a system value originated.
+LineLike = NamedTuple("LineLike", [("ref", "SpaceVector"), ("direction", "SpaceVector")])
+PlaneParam = NamedTuple("PlaneParam",
+                        [("ref", "Space3DVector"), ("normal", "Space3DVector")])
 
-    :param thing: The pancad element.
-    :param name: The name of the value in the thing's context.
-    """
+class ValueSource(NamedTuple):
+    """The metadata indicating where a system value originated."""
     thing: PancadThing
+    name: str
+
+class ValueCategory(NamedTuple):
+    """The metadata indicating the source type and name of a value."""
+    type_: Type[PancadThing]
     name: str
 
 class SystemValue(NamedTuple, Generic[T]):
@@ -148,8 +153,8 @@ class SolverConstraint:
         geometry = constraint.get_geometry()
         types = {type(g) for g in geometry}
         cls._add_point_vector(vectors, geometry, types)
-        cls._add_line_like_vectors(vectors, geometry, types, ("direction", "reference"))
-        cls._add_plane_vectors(vectors, geometry, types, ("normal", "reference"))
+        cls._add_line_like_vectors(vectors, geometry, types, ("direction", "ref"))
+        cls._add_plane_vectors(vectors, geometry, types, ("normal", "ref"))
         if types:
             raise NotImplementedError(f"Unsupported geometry type(s): {types}")
         return (cls(CEN(constraint.type_name), vectors=tuple(vectors)),)
@@ -184,20 +189,30 @@ class SolverConstraint:
 
     def _coincident(self, vectors: tuple[SystemValue[SpaceVector], ...]
                     ) -> tuple[NamedScalar, ...]:
-        types = {next(iter(c)) for c in self.category}
-        if types == {Point}:
+        types = {c.type_ for c in self.category}
+        linelike_types = (Line, Axis)
+        if types == {Point}: # 2 Coincident points
             cartesians = tuple(v.value for v in vectors)
             return tuple(NamedScalar(n, c)
                          for n, c in zip(("x", "y", "z"), self._equal_vectors(*cartesians)))
+        if Point in types: # Single Point coincident to other type.
+            point = next(v.value for v in vectors if isinstance(v.source.thing, Point))
+            if any(ll in types for ll in linelike_types): # Point/LineLike
+                linelike = LineLike(
+                    next(v.value for v in vectors if v.source.name == "ref"),
+                    next(v.value for v in vectors if v.source.name == "direction"),
+                )
+                return (NamedScalar("distance",
+                                    self._point_to_linelike_distance_value(linelike, point, 0)),)
         raise NotImplementedError(f"Unsupported type combo: {types}")
 
     @cached_property
-    def category(self) -> frozenset[tuple[Type[PancadThing], str]]:
+    def category(self) -> frozenset[ValueCategory]:
         """The constraint's residual calculation categorization properties."""
-        categories: set[tuple[Type[PancadThing], str]] = set()
+        categories: set[ValueCategory] = set()
         for source, *_ in self.values:
             if not isinstance(type_ := type(source.thing), AbstractConstraint):
-                categories.add((type_, source.name))
+                categories.add(ValueCategory(type_, source.name))
         return frozenset(categories)
 
     @cached_property
@@ -255,14 +270,14 @@ class SolverConstraint:
                                names: Collection[str] | str) -> None:
         # Adds line-like vectors in geometry to the vectors list and removes line-likes from types
         names = (names,) if isinstance(names, str) else names
-        line_like_types = (Axis, Line)
+        linelike_types = (Axis, Line)
         if "direction" in names:
             vectors.extend(SystemValue(ValueSource(g, "direction"), g.direction)
-                           for g in geometry if isinstance(g, line_like_types))
-        if "reference" in names:
-            vectors.extend(SystemValue(ValueSource(g, "reference"), g.reference_point.cartesian)
-                           for g in geometry if isinstance(g, line_like_types))
-        for type_ in line_like_types:
+                           for g in geometry if isinstance(g, linelike_types))
+        if "ref" in names:
+            vectors.extend(SystemValue(ValueSource(g, "ref"), g.reference_point.cartesian)
+                           for g in geometry if isinstance(g, linelike_types))
+        for type_ in linelike_types:
             types.discard(type_)
 
     @staticmethod
@@ -275,8 +290,8 @@ class SolverConstraint:
         if "normal" in names:
             vectors.extend(SystemValue(ValueSource(g, "normal"), g.normal)
                            for g in geometry if isinstance(g, Plane))
-        if "reference" in names:
-            vectors.extend(SystemValue(ValueSource(g, "reference"), g.reference_point.cartesian)
+        if "ref" in names:
+            vectors.extend(SystemValue(ValueSource(g, "ref"), g.reference_point.cartesian)
                            for g in geometry if isinstance(g, Plane))
         types.discard(Plane)
 
@@ -302,6 +317,12 @@ class SolverConstraint:
         return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
 
     @classmethod
+    def _point_to_linelike_distance_value(cls, line: LineLike, point: SpaceVector,
+                                          value: float) -> float:
+        # Residual for how close a linelike and point are to being a set distance from each other.
+        return cls._point_to_linelike_distance(line, point) - value
+
+    @classmethod
     def _norm_value(cls, vector: Collection[float], value: float, /) -> float:
         # Residual for how close the norm of a vector is to the value.
         return cls._norm(vector) - value
@@ -312,22 +333,57 @@ class SolverConstraint:
         return cls._dot(a, b) - value
 
     @classmethod
+    def _point_to_linelike_distance(cls, line: LineLike, point: SpaceVector) -> float:
+        # Returns the magniture of distance from a line to a point.
+        try:
+            direction = cls._unitize(line.direction) # unit vector of the linelike's direction.
+        except ZeroDivisionError as exc:
+            raise ValueError(f"Line direction is a zero vector: {line.direction}") from exc
+        point_to_line_ref = cls._sub(line.ref, point) # vector: p_L - p_p
+        # Multiply the unit direction vector by the amount of (p_L - p_p) in linelike's direction
+        try:
+            dotted_direction = cls._scalar_mul(cls._dot(point_to_line_ref, direction), direction)
+        except ZeroDivisionError:
+            # Can only occur when the point is already on the line's ref since the direction has
+            # already been turned into a unit vector.
+            return 0
+        return cls._norm(cls._sub(point_to_line_ref, dotted_direction))
+
+    @classmethod
     def _unitize(cls, vector: Collection[float]) -> tuple[float, ...]:
         # Returns a unit vector in the same direction as the vector.
         norm = cls._norm(vector)
         return tuple(c / norm for c in vector)
 
     @classmethod
-    def _dot(cls, a: Collection[float], b: Collection[float], /) -> float:
-        # Returns the dot product of vectors a and b.
+    def _dot(cls, a: Collection[float], b: Collection[float], /,
+             accept_zero: bool=False) -> float:
+        """Returns the dot product of two vectors.
+
+        :param accept_zero: Sets whether a zero vector can be provided to return 0.
+        :raises ZeroDivisionError: When either vector's norm is 0.
+        :raises ValueError: When the vector lengths do not match.
+        """
         try:
             return sum(ca * cb for ca, cb in zip(a, b, strict=True)) / cls._norm(a) * cls._norm(b)
         except ZeroDivisionError as exc:
-            raise ValueError(f"Cannot normalize: got a zero vector: {a}, {b}") from exc
+            if accept_zero:
+                return 0
+            raise ZeroDivisionError(f"Cannot normalize: got a zero vector: {a}, {b}") from exc
         except ValueError as exc:
             if len(a) != len(b):
                 raise ValueError(f"Vector lengths do not match: {a}, {b}") from exc
             raise
+
+    @staticmethod
+    def _sub(a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Returns the vector subtraction a - b
+        return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
+
+    @staticmethod
+    def _scalar_mul(scalar: float, vector: Collection[float], /) -> tuple[float, ...]:
+        # Returns a vector multiplied by a scalar.
+        return tuple(scalar * c for c in vector)
 
     @staticmethod
     def _norm(vector: Collection[float]) -> float:
