@@ -35,8 +35,7 @@ NamedScalar = NamedTuple("NamedScalar", [("name", str), ("scalar", float)])
 """
 
 LineLike = NamedTuple("LineLike", [("ref", "SpaceVector"), ("direction", "SpaceVector")])
-PlaneParam = NamedTuple("PlaneParam",
-                        [("ref", "Space3DVector"), ("normal", "Space3DVector")])
+PlaneParam = NamedTuple("PlaneParam", [("ref", "Space3DVector"), ("normal", "Space3DVector")])
 
 class ValueSource(NamedTuple):
     """The metadata indicating where a system value originated."""
@@ -185,7 +184,8 @@ class SolverConstraint:
             raise ValueError(msg)
         if scalars:
             raise NotImplementedError("Scalars not yet supported")
-        return self._vector_method_map[self._type](vectors)
+        with np.errstate(all="raise"): # Context used in case any of the values use numpy floats.
+            return self._vector_method_map[self._type](vectors)
 
     def _coincident(self, vectors: tuple[SystemValue[SpaceVector], ...]
                     ) -> tuple[NamedScalar, ...]:
@@ -203,7 +203,7 @@ class SolverConstraint:
                     next(v.value for v in vectors if v.source.name == "direction"),
                 )
                 return (NamedScalar("distance",
-                                    self._point_to_linelike_distance_value(linelike, point, 0)),)
+                                    self._point_linelike_distance_value(linelike, point, 0)),)
         raise NotImplementedError(f"Unsupported type combo: {types}")
 
     @cached_property
@@ -317,10 +317,17 @@ class SolverConstraint:
         return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
 
     @classmethod
-    def _point_to_linelike_distance_value(cls, line: LineLike, point: SpaceVector,
+    def _point_linelike_distance_value(cls, line: LineLike, point: SpaceVector,
                                           value: float) -> float:
         # Residual for how close a linelike and point are to being a set distance from each other.
-        return cls._point_to_linelike_distance(line, point) - value
+        return cls._point_linelike_distance(line, point) - value
+
+    @classmethod
+    def _point_plane_distance_value(cls, plane: PlaneParam, point: SpaceVector,
+                                       value: float) -> float:
+        # Residual for how close a plane and point are to being a set signed distance from each
+        # other.
+        return cls._point_plane_distance(plane, point) - value
 
     @classmethod
     def _norm_value(cls, vector: Collection[float], value: float, /) -> float:
@@ -333,21 +340,30 @@ class SolverConstraint:
         return cls._dot(a, b) - value
 
     @classmethod
-    def _point_to_linelike_distance(cls, line: LineLike, point: SpaceVector) -> float:
-        # Returns the magniture of distance from a line to a point.
+    def _point_linelike_distance(cls, line: LineLike, point: SpaceVector) -> float:
+        # Returns the magnitude of distance from a line to a point.
         try:
             direction = cls._unitize(line.direction) # unit vector of the linelike's direction.
         except ZeroDivisionError as exc:
             raise ValueError(f"Line direction is a zero vector: {line.direction}") from exc
         point_to_line_ref = cls._sub(line.ref, point) # vector: p_L - p_p
         # Multiply the unit direction vector by the amount of (p_L - p_p) in linelike's direction
-        try:
-            dotted_direction = cls._scalar_mul(cls._dot(point_to_line_ref, direction), direction)
-        except ZeroDivisionError:
-            # Can only occur when the point is already on the line's ref since the direction has
-            # already been turned into a unit vector.
-            return 0
+        dotted_direction = cls._scalar_mul(cls._dot(point_to_line_ref, direction, True),
+                                           direction)
         return cls._norm(cls._sub(point_to_line_ref, dotted_direction))
+
+    @classmethod
+    def _point_plane_distance(cls, plane: PlaneParam, point: SpaceVector) -> float:
+        # Returns the distance from a plane to a point. The distance's sign is positive in the
+        # plane's normal direction.
+        try:
+            normal = cls._unitize(plane.normal)
+        except ValueError as exc:
+            raise ValueError(f"Plane normal is a zero vector: {plane.normal}") from exc
+        plane_point_to_point = cls._sub(point, plane.ref) # Vector from Plane's Point to Point.
+        distance_vector = cls._scalar_mul(cls._dot(normal, plane_point_to_point, True), normal)
+        # Make the norm positive if it's in the direction of the plane's normal vector.
+        return math.copysign(cls._norm(distance_vector), cls._dot(distance_vector, normal))
 
     @classmethod
     def _unitize(cls, vector: Collection[float]) -> tuple[float, ...]:
@@ -360,7 +376,7 @@ class SolverConstraint:
              accept_zero: bool=False) -> float:
         """Returns the dot product of two vectors.
 
-        :param accept_zero: Sets whether a zero vector can be provided to return 0.
+        :param accept_zero: Sets whether a zero vector can be provided to return 0 dot product.
         :raises ZeroDivisionError: When either vector's norm is 0.
         :raises ValueError: When the vector lengths do not match.
         """
@@ -370,6 +386,10 @@ class SolverConstraint:
             if accept_zero:
                 return 0
             raise ZeroDivisionError(f"Cannot normalize: got a zero vector: {a}, {b}") from exc
+        except FloatingPointError as exc: # Invalid numpy error handling.
+            if "invalid value encountered in scalar divide" in str(exc) and accept_zero:
+                return 0
+            raise
         except ValueError as exc:
             if len(a) != len(b):
                 raise ValueError(f"Vector lengths do not match: {a}, {b}") from exc
