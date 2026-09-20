@@ -30,6 +30,9 @@ class ConstraintEquationName(StrEnum):
     COINCIDENT = auto()
     """Coincident constraint between geometries."""
 
+    FIXED = auto()
+    """Constraint forcing a geometry to lock to its location and orientation."""
+
     POINT_POINT_COINCIDENT = auto()
     """Point to Point coincident."""
 

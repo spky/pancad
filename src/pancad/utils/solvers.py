@@ -7,13 +7,13 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 import textwrap
-from itertools import repeat
-from functools import cached_property, singledispatch, singledispatchmethod, partial
+from itertools import repeat, count
+from functools import cached_property, singledispatch, singledispatchmethod, partial, reduce
 
 import numpy as np
 from scipy.optimize import root as find_root
 
-from pancad.abstract import AbstractGeometry
+from pancad.abstract import AbstractGeometry, AbstractFeature
 from pancad.constants import ConstraintVariableName as CVN, ConstraintEquationName as CEN
 
 from pancad.constraints.state_constraint import (
@@ -32,9 +32,10 @@ from pancad.geometry.point import Point
 from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
 from pancad.utils import solver_residuals as pcres
+from pancad.utils.solver_residuals import SolverConstraint, SystemValue, ValueSource, NamedScalar
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from typing import Literal, Type
     from uuid import UUID
 
@@ -262,6 +263,147 @@ class ConstraintEquation:
         if isinstance(result, np.ndarray):
             return result
         return np.array([result])
+
+class SystemEvaluator:
+    """Analyzes and provides an evaluable vector residual function for a geometry system's
+    constraints.
+    """
+
+    def __init__(self, system: AbstractGeometrySystem) -> None:
+        constraints: list[SolverConstraint] = []
+        constant_vectors: set[SystemValue[SpaceVector]] = set()
+        constant_scalars: set[SystemValue[float]] = set()
+        sources: set[ValueSource] = set()
+        for constraint in system.constraints:
+            solver_constraints = SolverConstraint.from_constraint(constraint)
+            for solver_constraint in solver_constraints:
+                if solver_constraint.type_ == CEN.FIXED:
+                    constant_vectors.update(solver_constraint.vectors)
+                    constant_scalars.update(solver_constraint.scalars)
+                constraints.append(solver_constraint)
+        for element in system.elements:
+            if isinstance(element, AbstractFeature):
+                raise NotImplementedError("Feature solving not yet supported")
+            sources.update(self._geometry_sources(element))
+        self._constant_vectors = frozenset(constant_vectors)
+        self._constant_scalars = frozenset(constant_scalars)
+        self._constraints = tuple(constraints)
+        self._sources = frozenset(sources)
+
+    def calc(self, vector: Sequence[float]) -> tuple[float, ...]:
+        """Returns the residual vector results from the input vector."""
+        inputs = self._process_input_vector(tuple(vector)) | self.constants
+        return tuple(v.scalar for c in self._constraints for v in c.calc(inputs))
+
+    @cached_property
+    def input_order(self) -> tuple[tuple[ValueSource, int], ...]:
+        """The order the values must be provided for the evaluator to distribute the inputs to
+        their respective constraints.
+
+        .. note:: Sorts the inputs by the source PancadThing and then by the name of the vector.
+            Once sorted, all vectors are split into their components and numbered starting from 0.
+            All non-vector-component numbers are paired with -1.
+        """
+        ordered_inputs = []
+        for variable in sorted(self.variables, key=lambda v: (v.thing.uid, v.name)):
+            value = self._initial(variable)
+            if isinstance(value, (int, float)):
+                ordered_inputs.append((variable, -1))
+            else:
+                ordered_inputs.extend((variable, i) for i in range(len(value)))
+        return tuple(ordered_inputs)
+
+    @cached_property
+    def output_order(self) -> tuple[tuple[SolverConstraint, str], ...]:
+        """The order the output values will be placed in when returned from constraint
+        calculations.
+        """
+        ordered_outputs: list[tuple[SolverConstraint, str]] = []
+        for constraint in self._constraints:
+            ordered_outputs.extend(
+                (constraint, name) for name, _ in constraint.calc(constraint.values)
+            )
+        return tuple(ordered_outputs)
+
+    @cached_property
+    def variables(self) -> frozenset[ValueSource]:
+        """The system's variable sources."""
+        return self._constraint_sources - {c.source for c in self.constants}
+
+    @cached_property
+    def constants(self) -> frozenset[SystemValue[SpaceVector] | SystemValue[float]]:
+        """The system's constant scalar and vector sources and values."""
+        return self._constant_scalars | self._constant_vectors
+
+    @cached_property
+    def initial_vector(self) -> tuple[float, ...]:
+        """The initial input vector in the input_order order."""
+        vector: list[float] = []
+        for source, index in self.input_order:
+            value = self._initial(source)
+            if isinstance(value, (float, int)):
+                vector.append(value)
+            elif index != -1:
+                vector.append(value[index])
+            else:
+                raise RuntimeError(f"Invalid Input Order, failed source/index: {source}/{index}")
+        return tuple(vector)
+
+    @property
+    def sources(self) -> frozenset[ValueSource]:
+        """The system's sources of geometric values."""
+        return self._sources
+
+    @property
+    def _constraint_values(self) -> frozenset[SystemValue[SpaceVector] | SystemValue[float]]:
+        # All the system values of all solver constraints.
+        return reduce(lambda a, b:  a | b, [frozenset(c.values) for c in self._constraints])
+
+    @property
+    def _constraint_sources(self) -> frozenset[ValueSource]:
+        # All the sources of all solver constraints.
+        return reduce(lambda a, b:  a | b, [c.sources for c in self._constraints])
+
+    def _process_input_vector(self, vector: tuple[float, ...]
+                              ) -> frozenset[SystemValue[SpaceVector] | SystemValue[float]]:
+        # Packs the input vector's values into SystemValues
+        return frozenset({self._read_vector_variable(vector, v) for v in self.variables})
+
+    def _read_vector_variable(self, vector: tuple[float, ...], variable: ValueSource
+                              ) -> SystemValue[SpaceVector] | SystemValue[float]:
+        if isinstance(self._initial(variable), (int, float)):
+            return SystemValue(variable, vector[self.input_order.index((variable, -1))])
+        value = vector[self._slicer(variable)]
+        assert len(value) == 2 or len(value) == 3
+        return SystemValue(variable, value)
+
+    def _initial(self, source: ValueSource) -> float | SpaceVector:
+        # Returns the initial value of the source.
+        return next(cv.value for cv in self._constraint_values if cv.source == source)
+
+    def _slicer(self, variable: ValueSource) -> slice:
+        value = next(cv.value for cv in self._constraint_values if cv.source == variable)
+        if isinstance(value, (int, float)):
+            raise ValueError(f"variable must be a vector to return a slice. Got: {variable}")
+        first = next(i for i, (v, _) in enumerate(self.input_order) if v == variable)
+        return slice(first, first + len(value))
+
+    def _sources_constrained(self) -> bool:
+        # Returns whether all source values are used in at least one constraint. This does not
+        # mean the sources are fully constrained.
+        return not bool(self._sources - self._constraint_sources)
+
+    @staticmethod
+    def _geometry_sources(geometry: AbstractGeometry) -> frozenset[ValueSource]:
+        # Returns all the sources of values from a geometry.
+        sources: set[ValueSource]
+        if isinstance(geometry, Point):
+            return frozenset({ValueSource(geometry, "cartesian")})
+        if isinstance(geometry, pcres.LINE_LIKE_TYPES):
+            return frozenset({ValueSource(geometry, n) for n in ("direction", "ref")})
+        if isinstance(geometry, Plane):
+            return frozenset({ValueSource(geometry, n) for n in ("normal", "ref")})
+        raise NotImplementedError(f"Unsupported geometry type: {type(geometry)}")
 
 class SystemSolver:
     """A class that solves a geometry system's internal and imposed constraints
