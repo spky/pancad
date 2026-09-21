@@ -140,8 +140,13 @@ class SolverConstraint:
         self._type = type_
         self._vectors = tuple(vectors) if vectors else tuple()
         self._scalars = tuple(scalars) if scalars else tuple()
-        self._vector_method_map = {CEN.COINCIDENT: self._coincident,}
+        self._vector_method_map = {
+            CEN.COINCIDENT: self._coincident,
+            CEN.ZERO_DOT: self._zero_dot,
+            CEN.NON_ZERO: self._non_zero,
+        }
 
+    # Constraint Addition ########################################################################
     @singledispatchmethod
     @classmethod
     def from_constraint(cls, constraint: AbstractConstraint) -> tuple[Self, ...]:
@@ -187,6 +192,33 @@ class SolverConstraint:
                                    tuple(ValueCategory(*c) for c in categories))
         return (cls(CEN(constraint.type_name), vectors=vectors),)
 
+    # Geometry Addition ##########################################################################
+    @singledispatchmethod
+    @classmethod
+    def from_geometry(cls, geometry: AbstractGeometry) -> tuple[Self, ...]:
+        """Produces one or more solver constraints from an AbstractGeometry."""
+        raise NotImplementedError(f"Cannot produce a solver constraint from {geometry}")
+
+    @from_geometry.register(Point)
+    @classmethod
+    def _(cls, geometry: Point) -> tuple[Self, ...]:
+        return () # Points have no internal constraints
+
+    @from_geometry.register(Line)
+    @from_geometry.register(Axis)
+    @classmethod
+    def _(cls, geometry: Axis | Line) -> tuple[Self, ...]:
+        categories: tuple[tuple[Type[AbstractGeometry], str], ...] = (
+            *tuple((t, "direction") for t in LINE_LIKE_TYPES),
+            *tuple((t, "ref") for t in LINE_LIKE_TYPES),
+        )
+        vectors = cls._add_vectors((geometry,), tuple(ValueCategory(*c) for c in categories))
+        return (
+            cls(CEN.NON_ZERO, vectors=tuple(v for v in vectors if v.source.name == "direction")),
+            cls(CEN.ZERO_DOT, vectors=vectors),
+        )
+
+    # Residual Calculation #######################################################################
     def calc(self, values: Collection[SystemValue[SpaceVector] | SystemValue[float]]
              ) -> tuple[NamedScalar, ...]:
         """Returns the residuals of the constraint for the given values."""
@@ -204,7 +236,7 @@ class SolverConstraint:
             return self._vector_method_map[self._type](vectors)
 
     def _coincident(self, vectors: Sequence[SystemValue[SpaceVector]]) -> tuple[NamedScalar, ...]:
-        assert len(self._things) == 2 # Should always be the case per equation name.
+        assert len(self.things) == 2 # Should always be the case per equation name.
         if self._thing_types == frozenset({Point}): # 2 Coincident points
             cartesians = tuple(next(v.value for v in vectors if v.source == s)
                                for s in self._value_sources())
@@ -217,9 +249,18 @@ class SolverConstraint:
                     next(v.value for v in vectors if v.source.name == "ref"),
                     next(v.value for v in vectors if v.source.name == "direction"),
                 )
-                return (NamedScalar("distance",
-                                    self._point_linelike_distance_value(linelike, point, 0)),)
+                residuals = self._point_linelike_distance_value(linelike, point, 0)
+                return (NamedScalar("distance", residuals),)
         raise NotImplementedError(f"Unsupported type combo: {self._thing_types}")
+
+    def _non_zero(self, vectors: Sequence[SystemValue[SpaceVector]]) -> tuple[NamedScalar, ...]:
+        assert len(vectors) == 1 # Residual can only apply to a single vector
+        return (NamedScalar("value", self._non_zero_vector_value(vectors[0].value)),)
+
+    def _zero_dot(self, vectors: Sequence[SystemValue[SpaceVector]]) -> tuple[NamedScalar, ...]:
+        values = tuple(v.value for v in vectors)
+        assert len(values) == 2 # Residual can only apply to a pair of vectors
+        return (NamedScalar("value", self._dot_value(*values, 0)),)
 
     @cached_property
     def category(self) -> frozenset[ValueCategory]:
@@ -261,7 +302,7 @@ class SolverConstraint:
         return self._vectors
 
     @cached_property
-    def _things(self) -> frozenset[PancadThing]:
+    def things(self) -> frozenset[PancadThing]:
         # The *unordered* unique things being constrained
         return frozenset({s.thing for s in self.sources})
 
@@ -346,10 +387,25 @@ class SolverConstraint:
         return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
 
     @classmethod
+    def _non_zero_vector_value(cls, vector: Collection[float], /) -> float:
+        # Residual for whether a vector is too close to the zero vector.
+        try:
+            cls._unitize(vector)
+        except ValueError:
+            return 1
+        return 0
+
+    @classmethod
     def _point_linelike_distance_value(cls, line: LineLike, point: SpaceVector,
                                           value: float) -> float:
         # Residual for how close a linelike and point are to being a set distance from each other.
         return cls._point_linelike_distance(line, point) - value
+
+    @classmethod
+    def _point_linelike_coincident(cls, line: LineLike, point: SpaceVector) -> SpaceVector:
+        point_to_projected = cls._sub(cls._projected_linelike_point(line, point), point)
+        assert len(point_to_projected) == 2 or len(point_to_projected) == 3
+        return point_to_projected
 
     @classmethod
     def _point_plane_distance_value(cls, plane: PlaneParam, point: SpaceVector,
@@ -438,6 +494,11 @@ class SolverConstraint:
         return tuple(c_a - c_b for c_a, c_b in zip(a, b, strict=True))
 
     @staticmethod
+    def _add(a: Collection[float], b: Collection[float], /) -> tuple[float, ...]:
+        # Returns the vector addition a - b
+        return tuple(c_a + c_b for c_a, c_b in zip(a, b, strict=True))
+
+    @staticmethod
     def _scalar_mul(scalar: float, vector: Collection[float], /) -> tuple[float, ...]:
         # Returns a vector multiplied by a scalar.
         return tuple(scalar * c for c in vector)
@@ -446,6 +507,20 @@ class SolverConstraint:
     def _norm(vector: Collection[float]) -> float:
         # Returns the 2-norm of the vector.
         return math.sqrt(sum(c**2 for c in vector))
+
+    @classmethod
+    def _projected_linelike_point(cls, line: LineLike, point: SpaceVector) -> SpaceVector:
+        try:
+            direction = cls._unitize(line.direction) # unit vector of the linelike's direction.
+        except ZeroDivisionError as exc:
+            raise ValueError(f"Line direction is a zero vector: {line.direction}") from exc
+        point_to_line_ref_vector = cls._sub(line.ref, point) # vector: p_L - p_p
+        # Multiply the unit direction vector by the amount of (p_L - p_p) in linelike's direction
+        projected_vector_length = cls._dot(point_to_line_ref_vector, direction)
+        perpendicular_vector = cls._scalar_mul(projected_vector_length, direction)
+        projected_point = cls._add(line.ref, perpendicular_vector)
+        assert len(projected_point) == 2 or len(projected_point) == 3
+        return projected_point
 
     def __repr__(self) -> str:
         source_things = list(dict.fromkeys(repr(v.source.thing).strip("<>") for v in self.values))

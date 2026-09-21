@@ -100,3 +100,6 @@ class ConstraintEquationName(StrEnum):
 
     NON_ZERO = auto()
     """This vector must be non zero."""
+
+    ZERO_DOT = auto()
+    """These two vectors must have a dot product equal to zero."""

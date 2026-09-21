@@ -285,6 +285,9 @@ class SystemEvaluator:
             if isinstance(element, AbstractFeature):
                 raise NotImplementedError("Feature solving not yet supported")
             sources.update(self._geometry_sources(element))
+            if any(c.type_ == CEN.FIXED and element in c.things for c in constraints):
+                continue # Do not add additional constraints for fixed geometry.
+            constraints.extend(SolverConstraint.from_geometry(element))
         self._constant_vectors = frozenset(constant_vectors)
         self._constant_scalars = frozenset(constant_scalars)
         self._constraints = tuple(constraints)
@@ -294,6 +297,11 @@ class SystemEvaluator:
         """Returns the residual vector results from the input vector."""
         inputs = self._process_input_vector(tuple(vector)) | self.constants
         return tuple(v.scalar for c in self._constraints for v in c.calc(inputs))
+
+    def solve(self, method: str="lm") -> tuple[float, ...]:
+        solution = find_root(self.calc, self.initial_vector, method=method)
+        print(solution)
+        return tuple(solution.x)
 
     @cached_property
     def input_order(self) -> tuple[tuple[ValueSource, int], ...]:
