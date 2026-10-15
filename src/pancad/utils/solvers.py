@@ -7,7 +7,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 import textwrap
-from itertools import repeat, count
+from itertools import repeat
 from functools import cached_property, singledispatch, singledispatchmethod, partial, reduce
 
 import numpy as np
@@ -32,7 +32,7 @@ from pancad.geometry.point import Point
 from pancad.utils.pancad_types import FitBox2D
 from pancad.utils.text_formatting import get_table_string
 from pancad.utils import solver_residuals as pcres
-from pancad.utils.solver_residuals import SolverConstraint, SystemValue, ValueSource, NamedScalar
+from pancad.utils.solver_residuals import SolverConstraint, SystemValue, ValueSource
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -299,8 +299,8 @@ class SystemEvaluator:
         return tuple(v.scalar for c in self._constraints for v in c.calc(inputs))
 
     def solve(self, method: str="lm") -> tuple[float, ...]:
+        """Solves for the inputs to the system that minimizes its residuals."""
         solution = find_root(self.calc, self.initial_vector, method=method)
-        print(solution)
         return tuple(solution.x)
 
     @cached_property
@@ -404,7 +404,6 @@ class SystemEvaluator:
     @staticmethod
     def _geometry_sources(geometry: AbstractGeometry) -> frozenset[ValueSource]:
         # Returns all the sources of values from a geometry.
-        sources: set[ValueSource]
         if isinstance(geometry, Point):
             return frozenset({ValueSource(geometry, "cartesian")})
         if isinstance(geometry, pcres.LINE_LIKE_TYPES):
