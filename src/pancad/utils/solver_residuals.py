@@ -145,18 +145,6 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
 # Residuals
 ################################################################################
 
-def combo_products(combos: tuple[tuple[T, ...], ...]) -> set[frozenset[T]]:
-    """Returns all possible combos for a given sequence of combination options."""
-    return {frozenset(c) for c in itertools.product(*combos)}
-
-def tuplify_mixed(*terms: T | Collection[T]) -> list[tuple[T, ...]]:
-    """Returns a list of tuples from an iterator containing some singletons and some iterables."""
-    return list(tuple(t) if isinstance(t, Collection) else (t,) for t in terms)
-
-def mixed_product(*terms: T | Collection[T], repeat: int=1) -> tuple[frozenset[T], ...]:
-    tupled = tuplify_mixed(*terms)
-    return tuple(frozenset(result) for result in itertools.product(*tupled, repeat=repeat))
-
 def geo_product(*terms: GeoTerm) -> list[tuple[Type[AbstractGeometry], ...]]:
     """Returns the cartesian-like-product of geometry types and tuples of types recursively."""
     while len(terms) == 1 and isinstance(terms[0], Iterable):
@@ -194,7 +182,7 @@ class CalcMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]]
         # Split the CalcAppSpec tuple key into a new dict per combo and dimension.
         new = {}
         for (geo_spec, dims), v in specs.items():
-            geo_combos = mixed_product(*geo_spec)
+            geo_combos = set(frozenset(p) for p in geo_product(geo_spec))
             new.update(dict.fromkeys(itertools.product(geo_combos, dims), v))
         return new
 
@@ -233,7 +221,8 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
                              ) -> dict[frozenset[Type[AbstractGeometry]], T]:
             new: dict[frozenset[Type[AbstractGeometry]], T] = {}
             for combo_spec, v in spec.items():
-                new.update(dict.fromkeys(mixed_product(*combo_spec), v))
+                combos = set(frozenset(p) for p in geo_product(combo_spec))
+                new.update(dict.fromkeys(combos, v))
             return new
 
         def __getitem__(self, key: Type[AbstractGeometry]) -> tuple[str, ...]:
