@@ -4,13 +4,15 @@ systems.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, Collection, Iterable
+import itertools
 from functools import partial, cached_property, singledispatchmethod
-from typing import TYPE_CHECKING, NamedTuple, Generic, TypeVar, TypedDict
+from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict, Union
 
 import math
 import numpy as np
 
-from pancad.abstract import AbstractConstraint
+from pancad.abstract import AbstractConstraint, AbstractGeometry, PancadThing
 from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
 from pancad.constraints.snapto import Fixed
 from pancad.constraints.state_constraint import Coincident, Parallel, Codirectional, Antiparallel
@@ -19,15 +21,42 @@ from pancad.geometry.plane import Plane
 from pancad.geometry.point import Point
 from pancad.utils.geometry import get_unique_vector
 
+T = TypeVar("T")
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Sequence
-    from typing import Type, Self
+    from collections.abc import Callable, Iterator, Sequence
+    from typing import Self, NotRequired
 
-    from pancad.abstract import PancadThing, AbstractGeometry
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
-T = TypeVar("T")
+    GeoTerm = Type[AbstractGeometry] | Iterable["GeoTerm"]
+
+    # A cartesian product expression of geometry tuples. Specifies geometry type combos.
+    GeoComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
+
+    # A mapping from geometry type product expression to variable names.
+    ValueDefSpec = dict[GeoComboSpec, tuple[str, ...]]
+
+    # A cartesian product expression of geometry combos and applicable dimensions.
+    CalcAppSpec = tuple[GeoComboSpec, tuple[int, ...]]
+
+    # Geometry combo and the dimension(s) its applicable to
+    CalcMapSpec = dict[tuple[GeoComboSpec, tuple[int, ...]], Type["ResidualCalculation"]]
+
+    ComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
+    # A geometry combo is specified as the unique results of a cartesian product of all its tuples
+    # turned into frozensets.
+
+
+# _residuals: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
+                 # Type[ResidualCalculation]] = {
+    # Coincident: {
+        # ((Point,), 2): EqualVectors2D,
+        # ((Point, (Axis, Line)), 2): CoincidentLinePoint2D,
+    # }
+    # (Coincident, {Point}, 2): EqualVectors2D
+# }
+
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -127,6 +156,191 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
 # Residuals
 ################################################################################
 
+def combo_products(combos: tuple[tuple[T, ...], ...]) -> set[frozenset[T]]:
+    """Returns all possible combos for a given sequence of combination options."""
+    return {frozenset(c) for c in itertools.product(*combos)}
+
+def tuplify_mixed(*terms: T | Collection[T]) -> list[tuple[T, ...]]:
+    """Returns a list of tuples from an iterator containing some singletons and some iterables."""
+    return list(tuple(t) if isinstance(t, Collection) else (t,) for t in terms)
+
+def mixed_product(*terms: T | Collection[T], repeat: int=1) -> tuple[frozenset[T], ...]:
+    tupled = tuplify_mixed(*terms)
+    return tuple(frozenset(result) for result in itertools.product(*tupled, repeat=repeat))
+
+def geo_product(*terms: GeoTerm) -> list[tuple[Type[AbstractGeometry], ...]]:
+    """Returns the cartesian-like-product of geometry types and tuples of types recursively."""
+    while len(terms) == 1 and isinstance(terms[0], Iterable):
+        terms = tuple(terms[0]) # Single nested-nested elements have to be elevated.
+    tuples: list[tuple[Type[AbstractGeometry], ...]] = []
+    for term in terms:
+        if isinstance(term, Iterable): # Expand nested term expressions recursively.
+            tuples.append(tuple(*geo_product(*term)))
+        else:
+            tuples.append((term,)) # Turn plain types into tuples for itertools.product
+    return list(tuple(p) for p in itertools.product(*tuples))
+
+class CalcMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
+                      "ResidualCalculation"]):
+    """A mapping of types, geometry combos, and applicable dimensions to a calculation method."""
+
+    def __init__(self,
+                 defs: dict[tuple[Type[PancadThing], ...],
+                            dict[CalcAppSpec, "ResidualCalculation"]]):
+        self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
+                        "ResidualCalculation"]= {}
+        for thing, app_specs in self._split_things(defs).items():
+            for (geo_combo, dim), calc in self._split_app_spec(app_specs).items():
+                self._map[thing, geo_combo, dim] = calc
+
+    @staticmethod
+    def _split_things(defs: dict[tuple[Type[PancadThing], ...], T]
+                           ) -> dict[Type[PancadThing], T]:
+        # Split the PancadThing types tuple key into a new dict with same value.
+        return {type_: v for types, v in defs.items() for type_ in types}
+
+    @staticmethod
+    def _split_app_spec(specs: dict[CalcAppSpec, T]
+                        ) -> dict[tuple[frozenset[Type[AbstractGeometry]], int], T]:
+        # Split the CalcAppSpec tuple key into a new dict per combo and dimension.
+        new = {}
+        for (geo_spec, dims), v in specs.items():
+            geo_combos = mixed_product(*geo_spec)
+            new.update(dict.fromkeys(itertools.product(geo_combos, dims), v))
+        return new
+
+    def __getitem__(self,
+                    key: tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]
+                    ) -> "ResidualCalculation":
+        return self._map[key]
+
+    def __iter__(self
+                 ) -> Iterator[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]]:
+        yield from self._map
+
+    def __len__(self) -> int:
+        return len(self._map)
+
+class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
+                                     frozenset[Type[AbstractGeometry]],
+                                     Type[AbstractGeometry]],
+                               tuple[str, ...]]):
+    """A mapping of constraint types and geometry combos to the value names specific to each
+    geometry in a combo.
+    """
+
+    class _ValueMap(Mapping[Type[AbstractGeometry], tuple[str, ...]]):
+        """Mapping from geometry types to value names. Maps the cartesian product of possible
+        geometry type combinations to the same value names.
+        """
+
+        # Example A: Point, Line/Axis Combo:
+        # 1. Example start:
+        #    (Point,) and (Line, Axis)
+        # 2. Simplify any nested input tuples to a single tuple. In this case, it's already there
+        #      so the types only need to be turned to tuples:
+        #    ((Point,)) and ((Line,), (Axis,))
+        # 3. Multiply the terms together with itertools.product, repeat=1 to get:
+        #    (Point,) X ((Line,), (Axis,)) = ((Point,) X (Line,), (Point,) X (Axis,))
+        #    (Point,) X (Line,) = (Point, Line)
+        #    (Point,) X (Axis,) = (Point, Axis)
+        #    Result: ((Point, Line), (Point, Axis))
+
+        # Example B: Line/Axis to Line/Axis Combo:
+        # 1. Example start:
+        #    ((Line, Axis),)
+        # 2. Simplify nested input tuples to a single tuple using itertools.product, repeat=2:
+        #    (Line, Axis) X (Line, Axis) = ((Line,), (Line, Axis), (Axis,))
+        # 3. Multiply the terms together with itertools.product repeat=1. In this case there's
+        #    only 1 term:
+        #    Result: ((Line,), (Line, Axis), (Axis,))
+
+        # Input Types:
+        # Example A's: Collection[Collection[Type[AbstractGeometry]]]
+        # Example B's: Collection[Collection[Collection[Type[AbstractGeometry]]]]
+        # Together:
+        #   Collection[ # Geometry Combination Specification, ex: ((Point,), (Line, Axis))
+        #     Collection[ # Specification for one or more types, ex: (Point,) or ((Line, Axis),)
+        #       Collection[Type[AbstractGeometry]] # Specification for multiple type options
+        #                                          # ex: (Line, Axis)
+        #       | Type[AbstractGeometry] # Specification for a single type. ex: Point
+        #
+        # Result:
+        # Collection[Collection[Type[AbstractGeometry] | Collection[Type[AbstractGeometry]]]]
+        # If T = Type[AbstractGeometry] Then
+        # Collection[Collection[T | Collection[T]]]
+
+        # Alternative 01: Unnest the initial Point input and use nested product expressions:
+        # Example A01_A: Point, Line/Axis Combo:
+        # 1. Example start:
+        #    Point and (Line, Axis)
+        # 2. Create a nested product expression
+        #    (Point, (Line, Axis))
+        # The type would then need to be per Python 3.11:
+        # NestedProduct[T] = Union[T, NestedProduct[T]
+
+        # 2. Simplify any nested input tuples to a single tuple. In this case, it's already there
+        #      so the types only need to be turned to tuples:
+        #    ((Point,)) and ((Line,), (Axis,))
+        # 3. Multiply the terms together with itertools.product, repeat=1 to get:
+        #    (Point,) X ((Line,), (Axis,)) = ((Point,) X (Line,), (Point,) X (Axis,))
+        #    (Point,) X (Line,) = (Point, Line)
+        #    (Point,) X (Axis,) = (Point, Axis)
+        #    Result: ((Point, Line), (Point, Axis))
+
+        def __init__(self, spec: ValueDefSpec) -> None:
+            self.groups = frozenset(frozenset(p) for p in geo_product(spec))
+            combo_map = self._split_geo_combo(spec)
+            self._map = {g: v for combo, v in combo_map.items() for g in combo}
+
+        @staticmethod
+        def _split_geo_combo(spec: dict[GeoComboSpec, T]
+                             ) -> dict[frozenset[Type[AbstractGeometry]], T]:
+            new: dict[frozenset[Type[AbstractGeometry]], T] = {}
+            for combo_spec, v in spec.items():
+                new.update(dict.fromkeys(mixed_product(*combo_spec), v))
+            return new
+
+        def __getitem__(self, key: Type[AbstractGeometry]) -> tuple[str, ...]:
+            return self._map[key]
+
+        def __iter__(self) -> Iterator[Type[AbstractGeometry]]:
+            yield from self._map
+
+        def __len__(self) -> int:
+            return len(self._map)
+
+    def __init__(self,
+                 spec: dict[tuple[Type[AbstractConstraint], ...], Collection[ValueDefSpec]]):
+        # constraint_map = {constraint: v for group, v in spec.items() for constraint in group}
+        group_map = {}
+        for constraints, value_def_specs in spec.items():
+            for value_def_spec in value_def_specs:
+                group_map.update(self._split_def(constraints, value_def_spec))
+        # Only include the keys whose geometry are in their respective groups (g below).
+        self._map = {(c, g, geo): v for (c, g), vm in group_map.items() for geo, v in vm.items()
+                     if geo in g}
+
+    @classmethod
+    def _split_def(cls, cons: Sequence[Type[AbstractConstraint]], spec: ValueDefSpec
+                   ) -> dict[tuple[Type[AbstractConstraint], frozenset[Type[AbstractGeometry]]],
+                             _ValueMap]:
+        value_map = cls._ValueMap(spec)
+        return dict.fromkeys(itertools.product(cons, value_map.groups), value_map)
+
+    def __getitem__(self, key: tuple[Type[AbstractConstraint],
+                                     frozenset[Type[AbstractGeometry]],
+                                     Type[AbstractGeometry]]) -> tuple[str, ...]:
+        return self._map[key]
+
+    def __iter__(self) -> Iterator[tuple[Type[AbstractConstraint],
+                                         frozenset[Type[AbstractGeometry]],
+                                         Type[AbstractGeometry]]]:
+        yield from self._map
+
+    def __len__(self) -> int:
+        return len(self._map)
+
 class SolverConstraint:
     """A solver-only constraint asserting that system vectors/scalars must meet a geometric
     condition.
@@ -135,6 +349,46 @@ class SolverConstraint:
     :param vectors: The ordered sources and initial values of the constrained system vectors.
     :param scalars: The ordered sources and initial values of the constrained system scalars.
     """
+
+    class _CategoryValues(TypedDict):
+        vectors: dict[Type[AbstractGeometry], tuple[str, ...]]
+        scalars: NotRequired[dict[Type[PancadThing], tuple[str, ...]]]
+
+    class _ConstraintSettings(TypedDict):
+        combos: dict[frozenset[Type[AbstractGeometry]], _CategoryValues]
+
+    # _constraint_values: dict[Type[AbstractConstraint], _ConstraintSettings] = {
+        # Coincident: {
+            # "combos": {
+                # (frozenset({Point}),): {"vectors": {(Point,): ("cartesian",)}},
+                # (frozenset({Point, Line}), frozenset({Point, Axis})): {
+                    # "vectors": {(Point,): ("cartesian",), (Line, Axis): ("ref", "direction")}
+                # }
+            # }
+        # },
+    # }
+
+    # Need a map from things requiring a constraint to the valid geometry combos and applicable dimension
+    # TODO: Test error handling for cases where the combos do not exist for GeometryComboMap
+    # _residuals: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
+                     # Type[ResidualCalculation]] = {
+        # Coincident: {
+            # ((Point,), 2): EqualVectors2D,
+            # ((Point, (Axis, Line)), 2): CoincidentLinePoint2D,
+        # }
+        # (Coincident, {Point}, 2): EqualVectors2D
+    # }
+
+    # TODO: Create a system specially for returning the vector order from a constraint and a combo
+    #       of geometry
+    # Problem: There are a lot of shared combos like {Point, Line}, {Point, Axis}.
+
+    # 1. Get a constraint (Ex: Coincident between two points)
+    # 2. Get the vectors/scalars of the geometry and place them into a deterministic Sequence.
+    # 3. Map the Sequence inputs to the constraint's corresponding ResidualCalculation type(s)
+    # 3. When provided a Collection of SystemValues, order them according to the Sequence
+    # 4. Input Sequence into the corresponding ResidualCalculation type from_floats classmethod
+    # 5. Map the ResidualCalculation gradients to the vectors/scalars
 
     def __init__(self, type_: CEN, *,
                  vectors: Sequence[SystemValue[SpaceVector]] | None=None,
@@ -159,6 +413,7 @@ class SolverConstraint:
     @from_constraint.register(Coincident)
     @classmethod
     def _(cls, constraint: Coincident) -> tuple[Self, ...]:
+        # TODO: Rework point-point coincident to work with EqualScalar ResidualCalculations
         categories: tuple[tuple[Type[AbstractGeometry], str], ...] = (
             (Point, "cartesian"),
             (Plane, "normal"),
@@ -852,6 +1107,16 @@ class ResidualCalculation(ABC):
         self._dimension = dimension
         self._scale = scale
 
+    @classmethod
+    @abstractmethod
+    def from_floats(cls, inputs: Sequence[float], scale: float=1) -> Self:
+        """Creates a new calculation from the raw float values.
+
+        :param inputs: The ordered input values.
+        :param scale: The scale factor for the residual.
+        :raises ValueError: When the length of inputs is not valid for the residual.
+        """
+
     class ReadableData(TypedDict):
         """A dictionary format allowing residual inputs and outputs to be printed easily."""
         type_: type
@@ -907,6 +1172,14 @@ class EqualScalars(ResidualCalculation):
         super().__init__((a, b), ("a", "b"), 0, 1, scale)
         self.__inputs: tuple[float, float] = (a, b)
 
+    @classmethod
+    def from_floats(cls, inputs: Sequence[float], scale: float=1) -> Self:
+        try:
+            a, b = inputs
+        except ValueError as exc:
+            raise ValueError(f"Got {len(inputs)} inputs for {cls}, expected 2.") from exc
+        return cls(a, b, scale)
+
     @property
     def residual(self) -> float:
         return self._residual(*self.__inputs, self._scale)
@@ -935,6 +1208,14 @@ class EqualVectors2D(ResidualCalculation):
         inputs = tuple(f for v in (v0, v1) for f in v)
         super().__init__(inputs, ("v0", "v1"), 2, 2, scale)
         self.__inputs = (Vector2D(*v0), Vector2D(*v1))
+
+    @classmethod
+    def from_floats(cls, inputs: Sequence[float], scale: float=1) -> Self:
+        try:
+            x0, y0, x1, y1 = inputs
+        except ValueError as exc:
+            raise ValueError(f"Got {len(inputs)} inputs for {cls}, expected 4.") from exc
+        return cls((x0, y0), (x1, y1), scale)
 
     @property
     def residual(self) -> float:
@@ -977,6 +1258,14 @@ class CoincidentLinePoint2D(ResidualCalculation):
         super().__init__(inputs, ("p0", "p1", "p2"), 3, 2, scale)
         self.__inputs = (Vector2D(*p0), Vector2D(*p1), Vector2D(*p2))
 
+    @classmethod
+    def from_floats(cls, inputs: Sequence[float], scale: float=1) -> Self:
+        try:
+            x0, y0, x1, y1, x2, y2 = inputs
+        except ValueError as exc:
+            raise ValueError(f"Got {len(inputs)} inputs for {cls}, expected 6.") from exc
+        return cls((x0, y0), (x1, y1), (x2, y2), scale)
+
     @property
     def residual(self) -> float:
         return self._residual(*self.__inputs, self._scale)
@@ -1005,3 +1294,4 @@ class CoincidentLinePoint2D(ResidualCalculation):
             scale * (d_s * (p0.y - p1.y) - n_s * (p2.x - p1.x)) / d_s**(3/2),
             scale * (d_s * (p1.x - p0.x) - n_s * (p2.y - p1.y)) / d_s**(3/2),
         )
+
