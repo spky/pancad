@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Collection, Iterable
 import itertools
 from functools import partial, cached_property, singledispatchmethod
-from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict, Union
+from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict
 
 import math
 import numpy as np
@@ -46,17 +46,6 @@ if TYPE_CHECKING:
     ComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
     # A geometry combo is specified as the unique results of a cartesian product of all its tuples
     # turned into frozensets.
-
-
-# _residuals: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
-                 # Type[ResidualCalculation]] = {
-    # Coincident: {
-        # ((Point,), 2): EqualVectors2D,
-        # ((Point, (Axis, Line)), 2): CoincidentLinePoint2D,
-    # }
-    # (Coincident, {Point}, 2): EqualVectors2D
-# }
-
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -234,60 +223,6 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
         geometry type combinations to the same value names.
         """
 
-        # Example A: Point, Line/Axis Combo:
-        # 1. Example start:
-        #    (Point,) and (Line, Axis)
-        # 2. Simplify any nested input tuples to a single tuple. In this case, it's already there
-        #      so the types only need to be turned to tuples:
-        #    ((Point,)) and ((Line,), (Axis,))
-        # 3. Multiply the terms together with itertools.product, repeat=1 to get:
-        #    (Point,) X ((Line,), (Axis,)) = ((Point,) X (Line,), (Point,) X (Axis,))
-        #    (Point,) X (Line,) = (Point, Line)
-        #    (Point,) X (Axis,) = (Point, Axis)
-        #    Result: ((Point, Line), (Point, Axis))
-
-        # Example B: Line/Axis to Line/Axis Combo:
-        # 1. Example start:
-        #    ((Line, Axis),)
-        # 2. Simplify nested input tuples to a single tuple using itertools.product, repeat=2:
-        #    (Line, Axis) X (Line, Axis) = ((Line,), (Line, Axis), (Axis,))
-        # 3. Multiply the terms together with itertools.product repeat=1. In this case there's
-        #    only 1 term:
-        #    Result: ((Line,), (Line, Axis), (Axis,))
-
-        # Input Types:
-        # Example A's: Collection[Collection[Type[AbstractGeometry]]]
-        # Example B's: Collection[Collection[Collection[Type[AbstractGeometry]]]]
-        # Together:
-        #   Collection[ # Geometry Combination Specification, ex: ((Point,), (Line, Axis))
-        #     Collection[ # Specification for one or more types, ex: (Point,) or ((Line, Axis),)
-        #       Collection[Type[AbstractGeometry]] # Specification for multiple type options
-        #                                          # ex: (Line, Axis)
-        #       | Type[AbstractGeometry] # Specification for a single type. ex: Point
-        #
-        # Result:
-        # Collection[Collection[Type[AbstractGeometry] | Collection[Type[AbstractGeometry]]]]
-        # If T = Type[AbstractGeometry] Then
-        # Collection[Collection[T | Collection[T]]]
-
-        # Alternative 01: Unnest the initial Point input and use nested product expressions:
-        # Example A01_A: Point, Line/Axis Combo:
-        # 1. Example start:
-        #    Point and (Line, Axis)
-        # 2. Create a nested product expression
-        #    (Point, (Line, Axis))
-        # The type would then need to be per Python 3.11:
-        # NestedProduct[T] = Union[T, NestedProduct[T]
-
-        # 2. Simplify any nested input tuples to a single tuple. In this case, it's already there
-        #      so the types only need to be turned to tuples:
-        #    ((Point,)) and ((Line,), (Axis,))
-        # 3. Multiply the terms together with itertools.product, repeat=1 to get:
-        #    (Point,) X ((Line,), (Axis,)) = ((Point,) X (Line,), (Point,) X (Axis,))
-        #    (Point,) X (Line,) = (Point, Line)
-        #    (Point,) X (Axis,) = (Point, Axis)
-        #    Result: ((Point, Line), (Point, Axis))
-
         def __init__(self, spec: ValueDefSpec) -> None:
             self.groups = frozenset(frozenset(p) for p in geo_product(spec))
             combo_map = self._split_geo_combo(spec)
@@ -312,7 +247,6 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
 
     def __init__(self,
                  spec: dict[tuple[Type[AbstractConstraint], ...], Collection[ValueDefSpec]]):
-        # constraint_map = {constraint: v for group, v in spec.items() for constraint in group}
         group_map = {}
         for constraints, value_def_specs in spec.items():
             for value_def_spec in value_def_specs:
@@ -355,7 +289,7 @@ class SolverConstraint:
         scalars: NotRequired[dict[Type[PancadThing], tuple[str, ...]]]
 
     class _ConstraintSettings(TypedDict):
-        combos: dict[frozenset[Type[AbstractGeometry]], _CategoryValues]
+        combos: dict[frozenset[Type[AbstractGeometry]], "_CategoryValues"]
 
     # _constraint_values: dict[Type[AbstractConstraint], _ConstraintSettings] = {
         # Coincident: {
@@ -368,7 +302,8 @@ class SolverConstraint:
         # },
     # }
 
-    # Need a map from things requiring a constraint to the valid geometry combos and applicable dimension
+    # Need a map from things requiring a constraint to the valid geometry combos and applicable
+    # dimension
     # TODO: Test error handling for cases where the combos do not exist for GeometryComboMap
     # _residuals: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
                      # Type[ResidualCalculation]] = {
@@ -1294,4 +1229,3 @@ class CoincidentLinePoint2D(ResidualCalculation):
             scale * (d_s * (p0.y - p1.y) - n_s * (p2.x - p1.x)) / d_s**(3/2),
             scale * (d_s * (p1.x - p0.x) - n_s * (p2.y - p1.y)) / d_s**(3/2),
         )
-
