@@ -184,6 +184,9 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
     def __len__(self) -> int:
         return len(self._map)
 
+    def __repr__(self) -> str:
+        return repr(self._map)
+
 class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
                                      frozenset[Type[AbstractGeometry]],
                                      Type[AbstractGeometry]],
@@ -240,6 +243,9 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
 
     def __len__(self) -> int:
         return len(self._map)
+
+    def __repr__(self) -> str:
+        return repr(self._map)
 
 class SolverConstraint:
     """A solver-only constraint asserting that system vectors/scalars must meet a geometric
