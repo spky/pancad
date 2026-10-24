@@ -22,6 +22,7 @@ from pancad.geometry.point import Point
 from pancad.utils.geometry import get_unique_vector
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -32,14 +33,12 @@ if TYPE_CHECKING:
     # A geometry types or recursively nested tuples of geometry types.
     GeometryTerm = Type[AbstractGeometry] | Iterable["GeometryTerm"]
 
-    # A cartesian product expression of geometry tuples. Specifies geometry type combos.
-    GeoComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
-
-    # A mapping from geometry type product expression to variable names.
-    ValueDefSpec = dict[GeoComboSpec, tuple[str, ...]]
+    # A cartesian product expression of geometry type tuples. Specifies geometry type combos.
+    GeoComboSpec = (Type[AbstractGeometry]
+                    | tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...])
 
     # A cartesian product expression of geometry combos and applicable dimensions.
-    CalcAppSpec = tuple[GeoComboSpec, tuple[int, ...]]
+    ComboDimSpec = tuple[GeoComboSpec, tuple[int, ...]]
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -155,7 +154,7 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
     """Mapping from groups of PancadThing type, a geometry combo, and a dimension to anything."""
 
     def __init__(self,
-                 specs: dict[tuple[Type[PancadThing], ...], dict[CalcAppSpec, T]]):
+                 specs: Mapping[tuple[Type[PancadThing], ...], dict[ComboDimSpec, T]]):
         self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int], T]= {}
         things_to_applicability = {type_: v for types, v in specs.items() for type_ in types}
         for thing, app_specs in things_to_applicability.items():
@@ -163,7 +162,7 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
                 self._map[thing, geo_combo, dim] = calc
 
     @staticmethod
-    def _split_app_specs(specs: dict[CalcAppSpec, T]
+    def _split_app_specs(specs: Mapping[ComboDimSpec, T]
                         ) -> dict[tuple[frozenset[Type[AbstractGeometry]], int], T]:
         """Splits a mapping of geometry combo specification tuples and dimension integer tuples
         into a mapping for each possible geometry combo and dimension.
@@ -188,26 +187,24 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
 class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
                                      frozenset[Type[AbstractGeometry]],
                                      Type[AbstractGeometry]],
-                               tuple[str, ...]]):
-    """A mapping of constraint types and geometry combos to the value names specific to each
-    geometry in a combo.
-    """
+                               T]):
+    """A mapping of constraint types and geometry combos to anything."""
 
-    class _ValueMap(Mapping[Type[AbstractGeometry], tuple[str, ...]]):
-        """Mapping from geometry types to value names. Also maps the cartesian product of possible
-        geometry type combinations to the same value names in groups.
+    class _ValueMap(Mapping[Type[AbstractGeometry], U]):
+        """Mapping from geometry types to anything. Also maps the cartesian product of possible
+        geometry type combinations to the same thing in groups.
         """
 
-        def __init__(self, spec: ValueDefSpec) -> None:
+        def __init__(self, spec: Mapping[GeoComboSpec, U]) -> None:
             self.groups = frozenset(frozenset(p) for p in geo_product(spec))
-            combo_map: dict[frozenset[Type[AbstractGeometry]], tuple[str, ...]] = {}
+            combo_map: dict[frozenset[Type[AbstractGeometry]], U] = {}
             # Split geometry combo spec map to every possible combo
             for combo_spec, v in spec.items():
                 combos = set(frozenset(p) for p in geo_product(combo_spec))
                 combo_map.update(dict.fromkeys(combos, v))
             self._map = {g: v for combo, v in combo_map.items() for g in combo}
 
-        def __getitem__(self, key: Type[AbstractGeometry]) -> tuple[str, ...]:
+        def __getitem__(self, key: Type[AbstractGeometry]) -> U:
             return self._map[key]
 
         def __iter__(self) -> Iterator[Type[AbstractGeometry]]:
@@ -217,25 +214,23 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
             return len(self._map)
 
     def __init__(self,
-                 spec: dict[tuple[Type[AbstractConstraint], ...], Collection[ValueDefSpec]]):
+                 spec: Mapping[tuple[Type[AbstractConstraint], ...],
+                               Collection[dict[GeoComboSpec, T]]]):
         group_map = {}
         for constraints, value_def_specs in spec.items():
             for value_def_spec in value_def_specs:
-                group_map.update(self._split_def(constraints, value_def_spec))
+                value_map = self._ValueMap(value_def_spec)
+                # Map every possible constraint and geometry combo to the value_map.
+                con_geo_map = dict.fromkeys(itertools.product(constraints, value_map.groups),
+                                            value_map)
+                group_map.update(con_geo_map)
         # Only include the keys whose geometry are in their respective groups (g below).
         self._map = {(c, g, geo): v for (c, g), vm in group_map.items() for geo, v in vm.items()
                      if geo in g}
 
-    @classmethod
-    def _split_def(cls, cons: Sequence[Type[AbstractConstraint]], spec: ValueDefSpec
-                   ) -> dict[tuple[Type[AbstractConstraint], frozenset[Type[AbstractGeometry]]],
-                             _ValueMap]:
-        value_map = cls._ValueMap(spec)
-        return dict.fromkeys(itertools.product(cons, value_map.groups), value_map)
-
     def __getitem__(self, key: tuple[Type[AbstractConstraint],
                                      frozenset[Type[AbstractGeometry]],
-                                     Type[AbstractGeometry]]) -> tuple[str, ...]:
+                                     Type[AbstractGeometry]]) -> T:
         return self._map[key]
 
     def __iter__(self) -> Iterator[tuple[Type[AbstractConstraint],
