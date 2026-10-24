@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
+    # A geometry types or recursively nested tuples of geometry types.
     GeoTerm = Type[AbstractGeometry] | Iterable["GeoTerm"]
 
     # A cartesian product expression of geometry tuples. Specifies geometry type combos.
@@ -39,13 +40,6 @@ if TYPE_CHECKING:
 
     # A cartesian product expression of geometry combos and applicable dimensions.
     CalcAppSpec = tuple[GeoComboSpec, tuple[int, ...]]
-
-    # Geometry combo and the dimension(s) its applicable to
-    CalcMapSpec = dict[tuple[GeoComboSpec, tuple[int, ...]], Type["ResidualCalculation"]]
-
-    ComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
-    # A geometry combo is specified as the unique results of a cartesian product of all its tuples
-    # turned into frozensets.
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -162,32 +156,28 @@ class CalcMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]]
     """A mapping of types, geometry combos, and applicable dimensions to a calculation method."""
 
     def __init__(self,
-                 defs: dict[tuple[Type[PancadThing], ...],
+                 specs: dict[tuple[Type[PancadThing], ...],
                             dict[CalcAppSpec, "ResidualCalculation"]]):
         self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
                         "ResidualCalculation"]= {}
-        for thing, app_specs in self._split_things(defs).items():
-            for (geo_combo, dim), calc in self._split_app_spec(app_specs).items():
+        things_to_applicability = {type_: v for types, v in specs.items() for type_ in types}
+        for thing, app_specs in things_to_applicability.items():
+            for (geo_combo, dim), calc in self._split_app_specs(app_specs).items():
                 self._map[thing, geo_combo, dim] = calc
 
     @staticmethod
-    def _split_things(defs: dict[tuple[Type[PancadThing], ...], T]
-                           ) -> dict[Type[PancadThing], T]:
-        # Split the PancadThing types tuple key into a new dict with same value.
-        return {type_: v for types, v in defs.items() for type_ in types}
-
-    @staticmethod
-    def _split_app_spec(specs: dict[CalcAppSpec, T]
+    def _split_app_specs(specs: dict[CalcAppSpec, T]
                         ) -> dict[tuple[frozenset[Type[AbstractGeometry]], int], T]:
-        # Split the CalcAppSpec tuple key into a new dict per combo and dimension.
+        """Splits a mapping of geometry combo specification tuples and dimension integer tuples
+        into a mapping for each possible geometry combo and dimension.
+        """
         new = {}
-        for (geo_spec, dims), v in specs.items():
-            geo_combos = set(frozenset(p) for p in geo_product(geo_spec))
-            new.update(dict.fromkeys(itertools.product(geo_combos, dims), v))
+        for (geometry_spec, dimensions), v in specs.items():
+            geometry_combos = set(frozenset(p) for p in geo_product(geometry_spec))
+            new.update(dict.fromkeys(itertools.product(geometry_combos, dimensions), v))
         return new
 
-    def __getitem__(self,
-                    key: tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]
+    def __getitem__(self, key: tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]
                     ) -> "ResidualCalculation":
         return self._map[key]
 
@@ -213,17 +203,12 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
 
         def __init__(self, spec: ValueDefSpec) -> None:
             self.groups = frozenset(frozenset(p) for p in geo_product(spec))
-            combo_map = self._split_geo_combo(spec)
-            self._map = {g: v for combo, v in combo_map.items() for g in combo}
-
-        @staticmethod
-        def _split_geo_combo(spec: dict[GeoComboSpec, T]
-                             ) -> dict[frozenset[Type[AbstractGeometry]], T]:
-            new: dict[frozenset[Type[AbstractGeometry]], T] = {}
+            combo_map: dict[frozenset[Type[AbstractGeometry]], tuple[str, ...]] = {}
+            # Split geometry combo spec map to every possible combo
             for combo_spec, v in spec.items():
                 combos = set(frozenset(p) for p in geo_product(combo_spec))
-                new.update(dict.fromkeys(combos, v))
-            return new
+                combo_map.update(dict.fromkeys(combos, v))
+            self._map = {g: v for combo, v in combo_map.items() for g in combo}
 
         def __getitem__(self, key: Type[AbstractGeometry]) -> tuple[str, ...]:
             return self._map[key]
