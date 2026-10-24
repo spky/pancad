@@ -151,15 +151,12 @@ def geo_product(*terms: GeometryTerm) -> list[tuple[Type[AbstractGeometry], ...]
             tuples.append((term,)) # Turn plain types into tuples for itertools.product
     return list(tuple(p) for p in itertools.product(*tuples))
 
-class CalcMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
-                      "ResidualCalculation"]):
-    """A mapping of types, geometry combos, and applicable dimensions to a calculation method."""
+class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int], T]):
+    """Mapping from groups of PancadThing type, a geometry combo, and a dimension to anything."""
 
     def __init__(self,
-                 specs: dict[tuple[Type[PancadThing], ...],
-                            dict[CalcAppSpec, "ResidualCalculation"]]):
-        self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
-                        "ResidualCalculation"]= {}
+                 specs: dict[tuple[Type[PancadThing], ...], dict[CalcAppSpec, T]]):
+        self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int], T]= {}
         things_to_applicability = {type_: v for types, v in specs.items() for type_ in types}
         for thing, app_specs in things_to_applicability.items():
             for (geo_combo, dim), calc in self._split_app_specs(app_specs).items():
@@ -178,7 +175,7 @@ class CalcMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]]
         return new
 
     def __getitem__(self, key: tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]
-                    ) -> "ResidualCalculation":
+                    ) -> T:
         return self._map[key]
 
     def __iter__(self
