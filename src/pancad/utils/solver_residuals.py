@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
     # A geometry types or recursively nested tuples of geometry types.
-    GeoTerm = Type[AbstractGeometry] | Iterable["GeoTerm"]
+    GeometryTerm = Type[AbstractGeometry] | Iterable["GeometryTerm"]
 
     # A cartesian product expression of geometry tuples. Specifies geometry type combos.
     GeoComboSpec = tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...]
@@ -139,7 +139,7 @@ def get_plane_to_point_distance(plane_point: Numpy1D, normal: Numpy1D, point: Nu
 # Residuals
 ################################################################################
 
-def geo_product(*terms: GeoTerm) -> list[tuple[Type[AbstractGeometry], ...]]:
+def geo_product(*terms: GeometryTerm) -> list[tuple[Type[AbstractGeometry], ...]]:
     """Returns the cartesian-like-product of geometry types and tuples of types recursively."""
     while len(terms) == 1 and isinstance(terms[0], Iterable):
         terms = tuple(terms[0]) # Single nested-nested elements have to be elevated.
@@ -197,8 +197,8 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
     """
 
     class _ValueMap(Mapping[Type[AbstractGeometry], tuple[str, ...]]):
-        """Mapping from geometry types to value names. Maps the cartesian product of possible
-        geometry type combinations to the same value names.
+        """Mapping from geometry types to value names. Also maps the cartesian product of possible
+        geometry type combinations to the same value names in groups.
         """
 
         def __init__(self, spec: ValueDefSpec) -> None:
@@ -265,33 +265,9 @@ class SolverConstraint:
     class _ConstraintSettings(TypedDict):
         combos: dict[frozenset[Type[AbstractGeometry]], "_CategoryValues"]
 
-    # _constraint_values: dict[Type[AbstractConstraint], _ConstraintSettings] = {
-        # Coincident: {
-            # "combos": {
-                # (frozenset({Point}),): {"vectors": {(Point,): ("cartesian",)}},
-                # (frozenset({Point, Line}), frozenset({Point, Axis})): {
-                    # "vectors": {(Point,): ("cartesian",), (Line, Axis): ("ref", "direction")}
-                # }
-            # }
-        # },
-    # }
-
-    # Need a map from things requiring a constraint to the valid geometry combos and applicable
-    # dimension
     # TODO: Test error handling for cases where the combos do not exist for GeometryComboMap
-    # _residuals: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int],
-                     # Type[ResidualCalculation]] = {
-        # Coincident: {
-            # ((Point,), 2): EqualVectors2D,
-            # ((Point, (Axis, Line)), 2): CoincidentLinePoint2D,
-        # }
-        # (Coincident, {Point}, 2): EqualVectors2D
-    # }
-
     # TODO: Create a system specially for returning the vector order from a constraint and a combo
     #       of geometry
-    # Problem: There are a lot of shared combos like {Point, Line}, {Point, Axis}.
-
     # 1. Get a constraint (Ex: Coincident between two points)
     # 2. Get the vectors/scalars of the geometry and place them into a deterministic Sequence.
     # 3. Map the Sequence inputs to the constraint's corresponding ResidualCalculation type(s)
