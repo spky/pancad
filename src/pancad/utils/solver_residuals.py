@@ -4,6 +4,7 @@ systems.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import Counter
 from collections.abc import Mapping, Collection, Iterable
 import itertools
 from functools import partial, cached_property, singledispatchmethod
@@ -23,6 +24,12 @@ from pancad.utils.geometry import get_unique_vector
 
 T = TypeVar("T")
 U = TypeVar("U")
+V = TypeVar("V")
+
+# An unordered list of distinct geometry types. Indicates applicability.
+GeoCombo = frozenset[Type[AbstractGeometry]]
+
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -30,15 +37,27 @@ if TYPE_CHECKING:
 
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
-    # A geometry types or recursively nested tuples of geometry types.
+    # A geometry type or recursively nested tuples of geometry types.
     GeometryTerm = Type[AbstractGeometry] | Iterable["GeometryTerm"]
 
-    # A cartesian product expression of geometry type tuples. Specifies geometry type combos.
-    GeoComboSpec = (Type[AbstractGeometry]
-                    | tuple[Type[AbstractGeometry] | tuple[Type[AbstractGeometry], ...], ...])
+    # In this file, 'Mixed' means an iterable consisting of types and an iterable of the types.
+    # Mixed of PancadThing types and iterables of PancadThing types. Indicates applicability.
+    MixedThing = Type[PancadThing] | Iterable[Type[PancadThing]]
+    MixedGeo = Type[AbstractGeometry] | Iterable[Type[AbstractGeometry]]
+    MixedStr = str | Iterable[str]
+
+    # A cartesian product expression of geometry types. Used to specify GeoCombos succinctly.
+    GeoComboSpec = Type[AbstractGeometry] | Iterable[MixedGeo]
+
+    # A specification for a mapping from geometry types to an iterable of value names.
+    ValueMapSpec = Mapping[MixedGeo, MixedStr]
 
     # A cartesian product expression of geometry combos and applicable dimensions.
-    ComboDimSpec = tuple[GeoComboSpec, tuple[int, ...]]
+    ComboDimSpec = tuple[GeoComboSpec, Iterable[int]]
+
+    # A mapping key consisting of a calculation source, geometry combination, and dimension
+    # integer. Represents a context for a calculation.
+    CalcKey = tuple[Type[PancadThing], GeoCombo, int]
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -150,12 +169,95 @@ def geo_product(*terms: GeometryTerm) -> list[tuple[Type[AbstractGeometry], ...]
             tuples.append((term,)) # Turn plain types into tuples for itertools.product
     return list(tuple(p) for p in itertools.product(*tuples))
 
-class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int], T]):
+def tuplify_keys(mapping: Mapping[T | Iterable[T], U], /) -> dict[tuple[T, ...], U]:
+    """Converts all iterable and non-iterables of a generic mapping key type into tuples."""
+    return {tuple(k) if isinstance(k, Iterable) else (k,): v for k, v in mapping.items()}
+
+class SpecMap(Mapping[T, U]):
+    """A mapping that just contains an internal dictionary, usually created from a smaller form of
+    data."""
+    def __init__(self, spec: Mapping[T, U]) -> None:
+        self._map: dict[T, U] = dict(spec)
+
+    @staticmethod
+    def _tuplify(v: V | Iterable[V], /) -> tuple[V, ...]:
+        # Turns mixed values into tuples and prevents strings from counting as Iterables.
+        return tuple(v) if isinstance(v, Iterable) and not isinstance(v, str) else (v,)
+
+    def __getitem__(self, key: T) -> U:
+        return self._map[key]
+
+    def __iter__(self) -> Iterator[T]:
+        yield from self._map
+
+    def __len__(self) -> int:
+        return len(self._map)
+
+class SplitKeyMap(SpecMap[T, U]):
+    """A SpecMap that splits its specification keys into individual entries."""
+    def __init__(self, spec: Mapping[T | Iterable[T], U]) -> None:
+        mapping: dict[T, U] = {}
+        for key, value in spec.items():
+            for split_key in self._tuplify(key):
+                mapping[split_key] = value
+        super().__init__(mapping)
+
+class MixedKeyMap(SpecMap[tuple[T, ...], U]):
+    """A SpecMap that ensures its keys are only made of tuples."""
+    def __init__(self, spec: Mapping[T | Iterable[T], U]) -> None:
+        mapping: dict[tuple[T, ...], U] = {}
+        for key, value in spec.items():
+            mapping[self._tuplify(key)] = value
+        super().__init__(mapping)
+
+class MixedValueMap(SpecMap[T, tuple[U, ...]]):
+    """A SpecMap that ensures its values are only made of tuples."""
+    def __init__(self, spec: Mapping[T, U | Iterable[U]]) -> None:
+        mapping: dict[T, tuple[U, ...]] = {}
+        for key, value in spec.items():
+            mapping[key] = self._tuplify(value)
+        super().__init__(mapping)
+
+class GeoProductMap(SpecMap[GeoCombo, U]):
+    """A SpecMap that creates a key for each possible geometry combination in a cartesian product
+    of geometry types.
+    """
+    def __init__(self, spec: Mapping[GeoComboSpec, U]) -> None:
+        mapping: dict[GeoCombo, U] = {}
+        for combo_spec, value in spec.items():
+            combos = set(frozenset(p) for p in geo_product(combo_spec))
+            mapping.update(dict.fromkeys(combos, value))
+        super().__init__(mapping)
+
+class ValueMap(Mapping[Type[AbstractGeometry], U]):
+    """Mapping from geometry types to anything. Also maps the cartesian product of possible
+    geometry type combinations to the same thing in groups.
+    """
+
+    def __init__(self, spec: Mapping[GeoComboSpec, U]) -> None:
+        self.groups = frozenset(frozenset(p) for p in geo_product(spec))
+        combo_map: dict[GeoCombo, U] = {}
+        # Split geometry combo spec map to every possible combo
+        for combo_spec, v in spec.items():
+            combos = set(frozenset(p) for p in geo_product(combo_spec))
+            combo_map.update(dict.fromkeys(combos, v))
+        self._map = {g: v for combo, v in combo_map.items() for g in combo}
+
+    def __getitem__(self, key: Type[AbstractGeometry]) -> U:
+        return self._map[key]
+
+    def __iter__(self) -> Iterator[Type[AbstractGeometry]]:
+        yield from self._map
+
+    def __len__(self) -> int:
+        return len(self._map)
+
+class ComboDimMap(Mapping[tuple[Type[PancadThing], GeoCombo, int], T]):
     """Mapping from groups of PancadThing type, a geometry combo, and a dimension to anything."""
 
     def __init__(self,
                  specs: Mapping[tuple[Type[PancadThing], ...], dict[ComboDimSpec, T]]):
-        self._map: dict[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int], T]= {}
+        self._map: dict[tuple[Type[PancadThing], GeoCombo, int], T]= {}
         things_to_applicability = {type_: v for types, v in specs.items() for type_ in types}
         for thing, app_specs in things_to_applicability.items():
             for (geo_combo, dim), calc in self._split_app_specs(app_specs).items():
@@ -163,7 +265,7 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
 
     @staticmethod
     def _split_app_specs(specs: Mapping[ComboDimSpec, T]
-                        ) -> dict[tuple[frozenset[Type[AbstractGeometry]], int], T]:
+                        ) -> dict[tuple[GeoCombo, int], T]:
         """Splits a mapping of geometry combo specification tuples and dimension integer tuples
         into a mapping for each possible geometry combo and dimension.
         """
@@ -173,12 +275,12 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
             new.update(dict.fromkeys(itertools.product(geometry_combos, dimensions), v))
         return new
 
-    def __getitem__(self, key: tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]
+    def __getitem__(self, key: tuple[Type[PancadThing], GeoCombo, int]
                     ) -> T:
         return self._map[key]
 
     def __iter__(self
-                 ) -> Iterator[tuple[Type[PancadThing], frozenset[Type[AbstractGeometry]], int]]:
+                 ) -> Iterator[tuple[Type[PancadThing], GeoCombo, int]]:
         yield from self._map
 
     def __len__(self) -> int:
@@ -187,42 +289,16 @@ class ComboDimMap(Mapping[tuple[Type[PancadThing], frozenset[Type[AbstractGeomet
     def __repr__(self) -> str:
         return repr(self._map)
 
-class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
-                                     frozenset[Type[AbstractGeometry]],
-                                     Type[AbstractGeometry]],
+class GeometryComboMap(Mapping[tuple[Type[PancadThing], GeoCombo, Type[AbstractGeometry]],
                                T]):
     """A mapping of constraint types and geometry combos to anything."""
 
-    class _ValueMap(Mapping[Type[AbstractGeometry], U]):
-        """Mapping from geometry types to anything. Also maps the cartesian product of possible
-        geometry type combinations to the same thing in groups.
-        """
-
-        def __init__(self, spec: Mapping[GeoComboSpec, U]) -> None:
-            self.groups = frozenset(frozenset(p) for p in geo_product(spec))
-            combo_map: dict[frozenset[Type[AbstractGeometry]], U] = {}
-            # Split geometry combo spec map to every possible combo
-            for combo_spec, v in spec.items():
-                combos = set(frozenset(p) for p in geo_product(combo_spec))
-                combo_map.update(dict.fromkeys(combos, v))
-            self._map = {g: v for combo, v in combo_map.items() for g in combo}
-
-        def __getitem__(self, key: Type[AbstractGeometry]) -> U:
-            return self._map[key]
-
-        def __iter__(self) -> Iterator[Type[AbstractGeometry]]:
-            yield from self._map
-
-        def __len__(self) -> int:
-            return len(self._map)
-
     def __init__(self,
-                 spec: Mapping[tuple[Type[AbstractConstraint], ...],
-                               Collection[dict[GeoComboSpec, T]]]):
+                 spec: Mapping[Iterable[Type[PancadThing]], Iterable[Mapping[GeoComboSpec, T]]]):
         group_map = {}
         for constraints, value_def_specs in spec.items():
             for value_def_spec in value_def_specs:
-                value_map = self._ValueMap(value_def_spec)
+                value_map = ValueMap(value_def_spec)
                 # Map every possible constraint and geometry combo to the value_map.
                 con_geo_map = dict.fromkeys(itertools.product(constraints, value_map.groups),
                                             value_map)
@@ -231,13 +307,12 @@ class GeometryComboMap(Mapping[tuple[Type[AbstractConstraint],
         self._map = {(c, g, geo): v for (c, g), vm in group_map.items() for geo, v in vm.items()
                      if geo in g}
 
-    def __getitem__(self, key: tuple[Type[AbstractConstraint],
-                                     frozenset[Type[AbstractGeometry]],
-                                     Type[AbstractGeometry]]) -> T:
+    def __getitem__(self, key: tuple[Type[PancadThing], GeoCombo, Type[AbstractGeometry]]
+                    ) -> T:
         return self._map[key]
 
-    def __iter__(self) -> Iterator[tuple[Type[AbstractConstraint],
-                                         frozenset[Type[AbstractGeometry]],
+    def __iter__(self) -> Iterator[tuple[Type[PancadThing],
+                                         GeoCombo,
                                          Type[AbstractGeometry]]]:
         yield from self._map
 
@@ -261,7 +336,7 @@ class SolverConstraint:
         scalars: NotRequired[dict[Type[PancadThing], tuple[str, ...]]]
 
     class _ConstraintSettings(TypedDict):
-        combos: dict[frozenset[Type[AbstractGeometry]], "_CategoryValues"]
+        combos: dict[GeoCombo, "_CategoryValues"]
 
     # TODO: Test error handling for cases where the combos do not exist for GeometryComboMap
     # TODO: Create a system specially for returning the vector order from a constraint and a combo
@@ -978,6 +1053,9 @@ class ResidualCalculation(ABC):
     :param scale: The scale factor for the residual.
     """
 
+    dimensions: tuple[int, ...] = ()
+    """The dimensions this calculation can support."""
+
     def __init__(self,
                  inputs: Sequence[float],
                  names: Sequence[str],
@@ -1043,6 +1121,86 @@ class ResidualCalculation(ABC):
             "gradient": self._map_names_to_vector(self.gradient),
         }
 
+class CalculationSchema:
+
+    class GeometryValueNameMap(SpecMap[tuple["CalcKey", Type[AbstractGeometry]],
+                                       tuple[str, ...]]):
+        """Mapping from a calculation scenario and a geometry in the scenario to its names."""
+
+        def __init__(self, spec: Mapping[Type[ResidualCalculation],
+                                         Mapping[MixedThing,
+                                                 Mapping[GeoComboSpec, ValueMapSpec]]]) -> None:
+            mapping: dict[tuple[CalcKey, Type[AbstractGeometry]], tuple[str, ...]] = {}
+            for calc, thing_spec in spec.items(): # Split MixedThings to PancadThing
+                for thing, combo_spec in SplitKeyMap(thing_spec).items():
+                    mapping.update(self._app_map_to_name_map(calc.dimensions, thing, combo_spec))
+            super().__init__(mapping)
+
+        def _app_map_to_name_map(self, dimensions: Iterable[int], thing: Type[PancadThing],
+                                 spec: Mapping[GeoComboSpec, ValueMapSpec]
+                                 ) -> Mapping[tuple[CalcKey, Type[AbstractGeometry]],
+                                              tuple[str, ...]]:
+            mapping: dict[tuple[CalcKey, Type[AbstractGeometry]], tuple[str, ...]] = {}
+            geo_to_value: Mapping[Type[AbstractGeometry], tuple[str, ...]]
+            for geo_combo, value_map_spec in GeoProductMap(spec).items():
+                calc_keys = [(thing, geo_combo, dim) for dim in dimensions]
+                geo_to_value = SplitKeyMap(MixedValueMap(value_map_spec))
+                for geo_type, names in geo_to_value.items():
+                    keys = [(key, geo_type) for key in calc_keys if geo_type in geo_combo]
+                    mapping.update(dict.fromkeys(keys, names))
+            return mapping
+
+    class ContextMap(SpecMap[Type[ResidualCalculation], tuple["CalcKey", ...]]):
+
+        def __init__(self, spec: Mapping[Type[ResidualCalculation],
+                                         Mapping[MixedThing,
+                                                 Mapping[GeoComboSpec, ValueMapSpec]]]) -> None:
+            mapping: dict[Type[ResidualCalculation], tuple[CalcKey, ...]] = {}
+            seen_calc_keys: set[CalcKey] = set()
+            for calc, thing_spec in spec.items(): # Split MixedThings to PancadThing
+                calc_keys: list[CalcKey] = []
+                for thing, combo_spec in SplitKeyMap(thing_spec).items():
+                    new_calc_keys = self._app_map_to_calc_keys(calc.dimensions, thing, combo_spec)
+                    if duped := seen_calc_keys.intersection(new_calc_keys):
+                        # Duplicate calculation scenarios would cause uncontrolled behavior by
+                        # overwriting some calculations.
+                        raise ValueError(f"Duplicate calculation scenarios: {duped}")
+                    seen_calc_keys.update(new_calc_keys)
+                    calc_keys.extend(new_calc_keys)
+                mapping[calc] = tuple(calc_keys)
+            super().__init__(mapping)
+
+        def _app_map_to_calc_keys(self, dimensions: Iterable[int], thing: Type[PancadThing],
+                              spec: Mapping[GeoComboSpec, ValueMapSpec]) -> tuple[CalcKey, ...]:
+            # Splits a mapping of geometry combo specs into combos
+            keys: list[CalcKey] = []
+            for geo_combo in GeoProductMap(spec):
+                keys.extend((thing, geo_combo, dim) for dim in dimensions)
+            return tuple(keys)
+
+    class OrderMap(SpecMap[tuple["CalcKey", Type[AbstractGeometry], str], int]):
+
+        def __init__(self, contexts: CalculationSchema.ContextMap,
+                     values: CalculationSchema.GeometryValueNameMap) -> None:
+            mapping: dict[tuple[CalcKey, Type[AbstractGeometry], str], int] = {}
+
+
+    def __init__(self, spec: Mapping[Type[ResidualCalculation],
+                                     Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]):
+        self._contexts = self.ContextMap(spec)
+        self._values = self.GeometryValueNameMap(spec)
+
+    @property
+    def contexts(self) -> ContextMap:
+        """Returns the mapping of calculation types to calculation scenario keys."""
+        return self._contexts
+
+    @property
+    def values(self) -> GeometryValueNameMap:
+        """Returns the mapping of calculation scenario key and geometry type combos to names."""
+        return self._values
+
+
 class EqualScalars(ResidualCalculation):
     """The residuals and gradient of a constraint holding 2 scalars equal.
 
@@ -1050,6 +1208,8 @@ class EqualScalars(ResidualCalculation):
     :param b: Another scalar value.
     :param scale: Solver scale factor.
     """
+
+    dimensions = (2, 3)
 
     def __init__(self, a: float, b: float, /, scale: float=1):
         super().__init__((a, b), ("a", "b"), 0, 1, scale)
@@ -1086,6 +1246,8 @@ class EqualVectors2D(ResidualCalculation):
     :param v1: Another 2D Vector.
     :param scale: Solver scale factor.
     """
+
+    dimensions = (2,)
 
     def __init__(self, v0: tuple[float, float], v1: tuple[float, float], /, scale: float=1):
         inputs = tuple(f for v in (v0, v1) for f in v)
@@ -1131,6 +1293,10 @@ class CoincidentLinePoint2D(ResidualCalculation):
     :param p2: The second line point.
     :param scale: Solver scale factor.
     """
+
+    dimensions = (2,)
+
+    # TODO: Revise the calculation to calculate the second point based on the line's direction.
 
     def __init__(self,
                  p0: tuple[float, float],
