@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import Counter
-from collections.abc import Mapping, Collection, Iterable
+from collections.abc import Mapping, Collection, Iterable, Sequence
 import itertools
 from functools import partial, cached_property, singledispatchmethod
-from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict
+from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict, overload
 
 import math
 import numpy as np
@@ -32,8 +32,8 @@ GeoCombo = frozenset[Type[AbstractGeometry]]
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
-    from typing import Self, NotRequired
+    from collections.abc import Callable, Iterator
+    from typing import Self, NotRequired, Final, Never
 
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
@@ -218,6 +218,19 @@ class MixedValueMap(SpecMap[T, tuple[U, ...]]):
             mapping[key] = self._tuplify(value)
         super().__init__(mapping)
 
+class FlippedMultiMap(SpecMap[T, U]):
+    """A SpecMap that splits an iterable value into keys and flips the key to the new values."""
+    def __init__(self, spec: Mapping[U, Iterable[T]]) -> None:
+        mapping: dict[T, U] = {}
+        seen_keys: set[T] = set()
+        for value, keys in spec.items():
+            if duped := seen_keys.intersection(keys):
+                # Duplicate keys would overwrite old values and cause unpredictable behavior.
+                raise ValueError(f"Duplicated keys: {duped}")
+            seen_keys.update(keys)
+            mapping.update(dict.fromkeys(keys, value))
+        super().__init__(mapping)
+
 class GeoProductMap(SpecMap[GeoCombo, U]):
     """A SpecMap that creates a key for each possible geometry combination in a cartesian product
     of geometry types.
@@ -338,16 +351,6 @@ class SolverConstraint:
     class _ConstraintSettings(TypedDict):
         combos: dict[GeoCombo, "_CategoryValues"]
 
-    # TODO: Test error handling for cases where the combos do not exist for GeometryComboMap
-    # TODO: Create a system specially for returning the vector order from a constraint and a combo
-    #       of geometry
-    # 1. Get a constraint (Ex: Coincident between two points)
-    # 2. Get the vectors/scalars of the geometry and place them into a deterministic Sequence.
-    # 3. Map the Sequence inputs to the constraint's corresponding ResidualCalculation type(s)
-    # 3. When provided a Collection of SystemValues, order them according to the Sequence
-    # 4. Input Sequence into the corresponding ResidualCalculation type from_floats classmethod
-    # 5. Map the ResidualCalculation gradients to the vectors/scalars
-
     def __init__(self, type_: CEN, *,
                  vectors: Sequence[SystemValue[SpaceVector]] | None=None,
                  scalars: Sequence[SystemValue[float]] | None=None,
@@ -371,7 +374,6 @@ class SolverConstraint:
     @from_constraint.register(Coincident)
     @classmethod
     def _(cls, constraint: Coincident) -> tuple[Self, ...]:
-        # TODO: Rework point-point coincident to work with EqualScalar ResidualCalculations
         categories: tuple[tuple[Type[AbstractGeometry], str], ...] = (
             (Point, "cartesian"),
             (Plane, "normal"),
@@ -1044,7 +1046,8 @@ RESIDUAL_FUNCS = {
 }
 
 class ResidualCalculation(ABC):
-    """A calculation of residual error and its gradient vectors evaluated at a sequence of inputs.
+    """A calculation of one or more residual errors and the respective gradient vectors evaluated
+    at a sequence of inputs.
 
     :param inputs: The ordered input values.
     :param names: The ordered input value names.
@@ -1052,7 +1055,6 @@ class ResidualCalculation(ABC):
     :param dimension: The dimension the residual is calculated for, e.g., 1, 2, or 3.
     :param scale: The scale factor for the residual.
     """
-
     dimensions: tuple[int, ...] = ()
     """The dimensions this calculation can support."""
 
@@ -1062,11 +1064,11 @@ class ResidualCalculation(ABC):
                  no_vectors: int,
                  dimension: int,
                  scale: float=1):
-        self._inputs = tuple(inputs)
-        self._names = tuple(names)
-        self._no_vectors = no_vectors
-        self._dimension = dimension
-        self._scale = scale
+        self._inputs: Final[tuple[float, ...]] = tuple(inputs)
+        self._names: Final[tuple[str, ...]] = tuple(names)
+        self._no_vectors: Final[int] = no_vectors
+        self._dimension: Final[int] = dimension
+        self._scale: Final[float] = scale
 
     @classmethod
     @abstractmethod
@@ -1085,18 +1087,18 @@ class ResidualCalculation(ABC):
         dimension: int
         scale: float
         inputs: dict[str, float | tuple[float, ...]]
-        residual: float
-        gradient: dict[str, float | tuple[float, ...]]
+        residual: tuple[float, ...]
+        gradient: tuple[dict[str, float | tuple[float, ...]], ...]
 
     @property
     @abstractmethod
-    def residual(self) -> float:
-        """The error of the residual function's current state."""
+    def residual(self) -> tuple[float, ...]:
+        """The error of the residual functions current state(s)."""
 
     @property
     @abstractmethod
-    def gradient(self) -> tuple[float, ...]:
-        """The gradient of the residual function in its current state."""
+    def gradient(self) -> tuple[tuple[float, ...], ...]:
+        """The gradient(s) of the residual function(s) in the current state."""
 
     def _map_names_to_vector(self, v: Sequence[float], /) -> dict[str, float | tuple[float, ...]]:
         # Maps the names of the input vector to the input/gradient vector.
@@ -1118,10 +1120,11 @@ class ResidualCalculation(ABC):
             "scale": self._scale,
             "inputs": self._map_names_to_vector(self._inputs),
             "residual": self.residual,
-            "gradient": self._map_names_to_vector(self.gradient),
+            "gradient": tuple(self._map_names_to_vector(g) for g in self.gradient),
         }
 
 class CalculationSchema:
+    """Multiple maps specified by calculation types and their applicable scenarios/values."""
 
     class GeometryValueNameMap(SpecMap[tuple["CalcKey", Type[AbstractGeometry]],
                                        tuple[str, ...]]):
@@ -1151,6 +1154,7 @@ class CalculationSchema:
             return mapping
 
     class ContextMap(SpecMap[Type[ResidualCalculation], tuple["CalcKey", ...]]):
+        """Mapping from a calculation type to its valid calculation scenarios."""
 
         def __init__(self, spec: Mapping[Type[ResidualCalculation],
                                          Mapping[MixedThing,
@@ -1179,27 +1183,211 @@ class CalculationSchema:
             return tuple(keys)
 
     class OrderMap(SpecMap[tuple["CalcKey", Type[AbstractGeometry], str], int]):
+        """Mapping from a calculation type to its valid calculation scenarios."""
 
-        def __init__(self, contexts: CalculationSchema.ContextMap,
-                     values: CalculationSchema.GeometryValueNameMap) -> None:
+        def __init__(self, values: CalculationSchema.GeometryValueNameMap) -> None:
             mapping: dict[tuple[CalcKey, Type[AbstractGeometry], str], int] = {}
-
+            key_count: Counter[CalcKey] = Counter()
+            for (calc_key, geometry), names in values.items():
+                for name in names:
+                    mapping[calc_key, geometry, name] = key_count[calc_key]
+                    key_count[calc_key] += 1
+            super().__init__(mapping)
 
     def __init__(self, spec: Mapping[Type[ResidualCalculation],
                                      Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]):
-        self._contexts = self.ContextMap(spec)
-        self._values = self.GeometryValueNameMap(spec)
+        #: The mapping of calculation types to calculation scenario keys.
+        self.contexts: Final[CalculationSchema.ContextMap] = self.ContextMap(spec)
+        #: The mapping of calculation scenario key and geometry type combos to names.
+        self.values: Final[CalculationSchema.GeometryValueNameMap] = (
+            self.GeometryValueNameMap(spec)
+        )
+        #: The mapping of calculation scenario key, geometry type, and name to its integer order.
+        self.order: Final[CalculationSchema.OrderMap] = self.OrderMap(self.values)
+        #: The mapping of constraint calculation scenario keys to the calculation type.
+        self.calcs: Final[FlippedMultiMap[CalcKey, Type[ResidualCalculation]]]  = (
+            FlippedMultiMap(self.contexts)
+        )
+
+class SpecSequence(Sequence[T]):
+    """A sequence that just contains an internal tuple, usually created from smaller form of
+    data.
+    """
+    def __init__(self, values: Sequence[T]):
+        self._values: Final[tuple[T, ...]] = tuple(values)
+
+    @overload
+    def __getitem__(self, index: int) -> T: ...
+    @overload
+    def __getitem__(self, index: slice[int | None, int | None, int | None]
+                    ) -> tuple[T, ...]: ...
+    def __getitem__(self, index: int | slice[int | None, int | None, int | None]
+                    ) -> T | tuple[T, ...]:
+        return self._values[index]
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+class GeometryValue(SpecSequence[float]):
+    """A named value inside a geometry element. Scalar values are treated as single element
+    tuples.
+    """
+
+    def __init__(self, geometry: AbstractGeometry, name: str):
+        self.geometry: Final[AbstractGeometry] = geometry
+        self.name: Final[str] = name
+        super().__init__(self._read_value(geometry, name))
+
+    def _missing_property(self) -> Never:
+        raise ValueError(f"{type(self.geometry)} does not have a property named '{self.name}'")
+
+    @singledispatchmethod
+    def _read_value(self, geometry: AbstractGeometry, name: str) -> tuple[float, ...]:
+        raise NotImplementedError(f"{type(geometry)} not supported")
+
+    @_read_value.register
+    def _(self, geometry: Point, name: str) -> tuple[float, ...]:
+        if name != "cartesian":
+            self._missing_property()
+        return geometry.cartesian
+
+    @_read_value.register
+    def _(self, geometry: Line | Axis, name: str) -> tuple[float, ...]:
+        match name:
+            case "ref":
+                return geometry.reference_point.cartesian
+            case "direction":
+                return geometry.direction
+        self._missing_property()
+
+def constraint_calc_key(constraint: AbstractConstraint) -> CalcKey:
+    """Returns a key used to indicate the unique calculation scenario for a constraint.
+
+    :raises ValueError: When the constraint has a mix of 2D and 3D geometry.
+    """
+    geometry = constraint.get_geometry()
+    geo_combo = frozenset(type(geo) for geo in geometry)
+    if len(set(len(geo) for geo in geometry)) != 1:
+        raise ValueError("All constraint geometry must be the same dimension")
+    return (type(constraint), geo_combo, len(next(iter(geometry))))
+
+class GuessVector(SpecSequence[tuple[AbstractGeometry, str, int]]):
+    """A vector that can be fed to a equation solving system. Sets the vector value order for the
+    solver's input.
+
+    :param constraints: A geometry system's constraints.
+    :param schema: A schema to set what calculations are performed and the order of their
+        inputs for each constraint.
+    """
+
+    def __init__(self, constraints: Iterable[AbstractConstraint], schema: CalculationSchema):
+        vector = []
+        fixed_geo: list[AbstractGeometry] = []
+        self.constraints: Final[tuple[AbstractConstraint, ...]] = tuple(constraints)
+        self.schema: Final[CalculationSchema] = schema
+        seen: set[tuple[AbstractGeometry, str]] = set()
+        for constraint in constraints:
+            if isinstance(constraint, Fixed):
+                fixed_geo.extend(constraint.get_geometry()) # Store so geometry can be removed.
+                continue # Fixed constraints do not need to be included in Guesses.
+            calc_key = constraint_calc_key(constraint)
+            values = {g: schema.values[calc_key, type(g)] for g in constraint.get_geometry()}
+            keys = [(geometry, name) for geometry, names in values.items() for name in names]
+            # Sorting the keys is not needed here since the order is deterministically read from
+            # first the constraint appearance and then the value name order in the schema.
+            # Calculation inputs can do their own sorting.
+            for geometry, name in keys:
+                if (geometry, name) in seen:
+                    continue # Geometry Values should never be repeated in the vector
+                for i in range(len(GeometryValue(geometry, name))):
+                    vector.append((geometry, name, i))
+                seen.add((geometry, name))
+        self.fixed_values: Final[tuple[tuple[AbstractGeometry, str, int], ...]] = tuple(
+            key for f in fixed_geo for key in vector if f in key
+        )
+        vector = [v for v in vector if v not in self.fixed_values]
+        super().__init__(vector)
+        # Create a backwards mapping from the geometry, name, and index to the vector index to
+        # enable external cross-referencing.
+        self.sources: Final[Mapping[tuple[AbstractGeometry, str, int], int]] = {
+            key: i for i, key in enumerate(tuple(self) + self.fixed_values)
+        }
 
     @property
-    def contexts(self) -> ContextMap:
-        """Returns the mapping of calculation types to calculation scenario keys."""
-        return self._contexts
+    def initial(self) -> tuple[float, ...]:
+        """The initial variable geometry values as read from the constraints' geometry."""
+        return tuple(GeometryValue(g, n)[i] for g, n, i in self)
 
     @property
-    def values(self) -> GeometryValueNameMap:
-        """Returns the mapping of calculation scenario key and geometry type combos to names."""
-        return self._values
+    def fixed(self) -> tuple[float, ...]:
+        """The fixed geometry values in the full guess vector."""
+        return tuple(GeometryValue(g, n)[i] for g, n, i in self.fixed_values)
 
+class CalcInput(SpecSequence[tuple[AbstractGeometry, str, int]]):
+    """The ordered input sources for a constraint's calculation.
+
+    :param constraints: A geometry system's constraints.
+    :param schema: A schema to set what calculations are performed and the order of their
+        inputs for each constraint.
+    """
+
+    def __init__(self, constraint: AbstractConstraint, schema: CalculationSchema):
+        vector: list[tuple[AbstractGeometry, str, int]] = []
+        calc_key = constraint_calc_key(constraint)
+        self.calc: Final[Type[ResidualCalculation]] = schema.calcs[calc_key]
+        self.constraint: Final[AbstractConstraint] = constraint
+        values = {g: schema.values[calc_key, type(g)] for g in constraint.get_geometry()}
+        # Construct the geometry value input keys and sort them first by the schema and second
+        # by their appearance in the constraint. Sorting by the schema ensures geometric
+        # calculations can be performed and sorting by constraint appearance ensures vector
+        # determinism.
+        keys = [(geometry, name) for geometry, names in values.items() for name in names]
+        keys.sort(key=lambda key: schema.order[calc_key, type(key[0]), key[1]])
+        for geometry, name in keys:
+            for i in range(len(GeometryValue(geometry, name))):
+                vector.append((geometry, name, i))
+        super().__init__(vector)
+
+class ResidualFactory(SpecSequence[tuple[AbstractConstraint, int]]):
+    """A factory for producing geometry system residual vectors.
+
+    :param guess: The guess vector that sets the constraints and schema.
+    """
+
+    def __init__(self, guess: GuessVector):
+        self.guess: Final[GuessVector] = guess
+        calc_map: dict[AbstractConstraint, CalcInput] = {}
+        vector: list[tuple[AbstractConstraint, int]] = []
+        for constraint in guess.constraints:
+            if isinstance(constraint, Fixed):
+                continue # Fixed constraints have no residual value
+            calc_input = CalcInput(constraint, guess.schema)
+            calc_map[constraint] = calc_input
+            for i in range(len(self._eval_residual(calc_input, guess.initial + guess.fixed))):
+                vector.append((constraint, i))
+        self.calcs: Final[Mapping[AbstractConstraint, CalcInput]] = calc_map
+        super().__init__(vector)
+
+    @property
+    def constrained(self) -> bool:
+        """Whether the number of residuals meets or exceeds the number of inputs."""
+        return len(self) >= len(self.guess)
+
+    def make(self, x: Sequence[float], /) -> tuple[float, ...]:
+        """Returns the values of the residuals for a given input vector."""
+        with_fixed = tuple(x) + self.guess.fixed
+        residuals: list[float] = []
+        for constraint, calc_input in self.calcs.items():
+            if isinstance(constraint, Fixed):
+                continue # Fixed constraints have no residual value
+            residuals.extend(self._eval_residual(calc_input, with_fixed))
+        return tuple(residuals)
+
+    def _make_input(self, calc_input: CalcInput, vector: Sequence[float]) -> tuple[float, ...]:
+        return tuple(vector[self.guess.sources[key]] for key in calc_input)
+
+    def _eval_residual(self, calc_input: CalcInput, vector: Sequence[float]) -> tuple[float, ...]:
+        return calc_input.calc.from_floats(self._make_input(calc_input, vector)).residual
 
 class EqualScalars(ResidualCalculation):
     """The residuals and gradient of a constraint holding 2 scalars equal.
@@ -1208,7 +1396,6 @@ class EqualScalars(ResidualCalculation):
     :param b: Another scalar value.
     :param scale: Solver scale factor.
     """
-
     dimensions = (2, 3)
 
     def __init__(self, a: float, b: float, /, scale: float=1):
@@ -1224,11 +1411,11 @@ class EqualScalars(ResidualCalculation):
         return cls(a, b, scale)
 
     @property
-    def residual(self) -> float:
-        return self._residual(*self.__inputs, self._scale)
+    def residual(self) -> tuple[float]:
+        return (self._residual(*self.__inputs, self._scale),)
 
     @property
-    def gradient(self) -> tuple[float, float]:
+    def gradient(self) -> tuple[tuple[float, float]]:
         return self._gradient(self._scale)
 
     @staticmethod
@@ -1236,17 +1423,16 @@ class EqualScalars(ResidualCalculation):
         return scale * (b - a)
 
     @staticmethod
-    def _gradient(scale: float=1) -> tuple[float, float]:
-        return (-scale, scale) # Gradient is (-1, 1)
+    def _gradient(scale: float=1) -> tuple[tuple[float, float]]:
+        return ((-scale, scale),) # Gradient is (-1, 1)
 
-class EqualVectors2D(ResidualCalculation):
-    """The residuals and gradient of a constraint holding 2 2D vectors equal.
+class EqualVectorComponents2D(ResidualCalculation):
+    """The residuals/gradients of a constraint holding 2 2D vectors equal, solved component-wise.
 
     :param v0: A 2D Vector.
     :param v1: Another 2D Vector.
     :param scale: Solver scale factor.
     """
-
     dimensions = (2,)
 
     def __init__(self, v0: tuple[float, float], v1: tuple[float, float], /, scale: float=1):
@@ -1263,11 +1449,57 @@ class EqualVectors2D(ResidualCalculation):
         return cls((x0, y0), (x1, y1), scale)
 
     @property
-    def residual(self) -> float:
+    def residual(self) -> tuple[float, float]:
         return self._residual(*self.__inputs, self._scale)
 
     @property
-    def gradient(self) -> tuple[float, float, float, float]:
+    def gradient(self) -> tuple[tuple[float, float, float, float],
+                                tuple[float, float, float, float]]:
+        return self._gradient(*self.__inputs, self._scale)
+
+    @staticmethod
+    def _residual(v0: Vector2D, v1: Vector2D, scale: float=1) -> tuple[float, float]:
+        return (*EqualScalars(v0.x, v1.x, scale).residual,
+                *EqualScalars(v0.y, v1.y, scale).residual)
+
+    @staticmethod
+    def _gradient(v0: Vector2D, v1: Vector2D, /,
+                  scale: float=1) -> tuple[tuple[float, float, float, float],
+                                           tuple[float, float, float, float]]:
+        # The respective component residual inputs are independent of each other, e.g., the
+        # gradients of the x residual are independent of y so they're always 0.
+        dr0dx0, dr0dx1 = EqualScalars(v0.x, v1.x, scale).gradient[0]
+        dr1dy0, dr1dy1 = EqualScalars(v0.x, v1.x, scale).gradient[0]
+        return ((dr0dx0, 0, dr0dx1, 0), (0, dr1dy0, 0, dr1dy1))
+
+class EqualVectors2D(ResidualCalculation):
+    """The residuals and gradient of a constraint holding 2 2D vectors equal.
+
+    :param v0: A 2D Vector.
+    :param v1: Another 2D Vector.
+    :param scale: Solver scale factor.
+    """
+    dimensions = (2,)
+
+    def __init__(self, v0: tuple[float, float], v1: tuple[float, float], /, scale: float=1):
+        inputs = tuple(f for v in (v0, v1) for f in v)
+        super().__init__(inputs, ("v0", "v1"), 2, 2, scale)
+        self.__inputs = (Vector2D(*v0), Vector2D(*v1))
+
+    @classmethod
+    def from_floats(cls, inputs: Sequence[float], scale: float=1) -> Self:
+        try:
+            x0, y0, x1, y1 = inputs
+        except ValueError as exc:
+            raise ValueError(f"Got {len(inputs)} inputs for {cls}, expected 4.") from exc
+        return cls((x0, y0), (x1, y1), scale)
+
+    @property
+    def residual(self) -> tuple[float]:
+        return (self._residual(*self.__inputs, self._scale),)
+
+    @property
+    def gradient(self) -> tuple[tuple[float, float, float, float]]:
         return self._gradient(*self.__inputs, self._scale)
 
     @staticmethod
@@ -1276,13 +1508,15 @@ class EqualVectors2D(ResidualCalculation):
 
     @staticmethod
     def _gradient(v0: Vector2D, v1: Vector2D, /,
-                  scale: float=1) -> tuple[float, float, float, float]:
+                  scale: float=1) -> tuple[tuple[float, float, float, float]]:
         distance = EqualVectors2D._residual(v0, v1)
         return (
-            scale * (v0.x - v1.x) / distance,
-            scale * (v0.y - v1.y) / distance,
-            scale * (v1.x - v0.x) / distance,
-            scale * (v1.y - v0.y) / distance
+            (
+                scale * (v0.x - v1.x) / distance,
+                scale * (v0.y - v1.y) / distance,
+                scale * (v1.x - v0.x) / distance,
+                scale * (v1.y - v0.y) / distance
+            ),
         )
 
 class CoincidentLinePoint2D(ResidualCalculation):
@@ -1293,7 +1527,6 @@ class CoincidentLinePoint2D(ResidualCalculation):
     :param p2: The second line point.
     :param scale: Solver scale factor.
     """
-
     dimensions = (2,)
 
     # TODO: Revise the calculation to calculate the second point based on the line's direction.
@@ -1316,11 +1549,11 @@ class CoincidentLinePoint2D(ResidualCalculation):
         return cls((x0, y0), (x1, y1), (x2, y2), scale)
 
     @property
-    def residual(self) -> float:
-        return self._residual(*self.__inputs, self._scale)
+    def residual(self) -> tuple[float]:
+        return (self._residual(*self.__inputs, self._scale),)
 
     @property
-    def gradient(self) -> tuple[float, float, float, float, float, float]:
+    def gradient(self) -> tuple[tuple[float, float, float, float, float, float]]:
         return self._gradient(*self.__inputs, self._scale)
 
     @staticmethod
@@ -1332,14 +1565,16 @@ class CoincidentLinePoint2D(ResidualCalculation):
 
     @classmethod
     def _gradient(cls, p0: Vector2D, p1: Vector2D, p2: Vector2D, /,
-                  scale: float=1) -> tuple[float, float, float, float, float, float]:
+                  scale: float=1) -> tuple[tuple[float, float, float, float, float, float]]:
         n_s = -p0.x * (p1.y - p2.y) - p1.x * (p0.y + p2.y) + p2.x * (p0.y - p1.y)
         d_s = p2.x**2 + p2.y**2 + p1.x**2 + p1.y**2 - 2 * (p1.x * p2.x + p1.y * p2.y)
         return (
-            scale * (p1.y + p2.y) / math.sqrt(d_s),
-            scale * (p2.x - p1.x) / math.sqrt(d_s),
-            2*scale * (d_s * (p2.y - p0.y) - n_s * (p1.x - p2.x)) / d_s**(3/2),
-            -scale * (d_s * (p0.x - p2.x) - n_s * (p1.x - p2.x)) / d_s**(3/2),
-            scale * (d_s * (p0.y - p1.y) - n_s * (p2.x - p1.x)) / d_s**(3/2),
-            scale * (d_s * (p1.x - p0.x) - n_s * (p2.y - p1.y)) / d_s**(3/2),
+            (
+                scale * (p1.y + p2.y) / math.sqrt(d_s),
+                scale * (p2.x - p1.x) / math.sqrt(d_s),
+                2*scale * (d_s * (p2.y - p0.y) - n_s * (p1.x - p2.x)) / d_s**(3/2),
+                -scale * (d_s * (p0.x - p2.x) - n_s * (p1.x - p2.x)) / d_s**(3/2),
+                scale * (d_s * (p0.y - p1.y) - n_s * (p2.x - p1.x)) / d_s**(3/2),
+                scale * (d_s * (p1.x - p0.x) - n_s * (p2.y - p1.y)) / d_s**(3/2),
+            ),
         )
