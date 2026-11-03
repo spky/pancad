@@ -12,8 +12,11 @@ from typing import TYPE_CHECKING, NamedTuple, Generic, Type, TypeVar, TypedDict,
 
 import math
 import numpy as np
+import scipy
 
-from pancad.abstract import AbstractConstraint, AbstractGeometry, PancadThing
+from pancad.abstract import (
+    AbstractConstraint, AbstractGeometry, AbstractGeometrySystem, PancadThing
+)
 from pancad.constants import SketchConstraint as SC, ConstraintEquationName as CEN
 from pancad.constraints.snapto import Fixed
 from pancad.constraints.state_constraint import Coincident, Parallel, Codirectional, Antiparallel
@@ -33,7 +36,7 @@ GeoCombo = frozenset[Type[AbstractGeometry]]
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
-    from typing import Self, NotRequired, Final, Never
+    from typing import Self, NotRequired, Final, Never, Literal
 
     from pancad.utils.pancad_types import Numpy1D, SpaceVector, Space3DVector
 
@@ -58,6 +61,18 @@ if TYPE_CHECKING:
     # A mapping key consisting of a calculation source, geometry combination, and dimension
     # integer. Represents a context for a calculation.
     CalcKey = tuple[Type[PancadThing], GeoCombo, int]
+
+    ScipyMethod = Literal[
+        'lm',
+        'hybr',
+        'broyden1',
+        'broyden2',
+        'anderson',
+        'linearmixing',
+        'diagbroyden',
+        'excitingmixing',
+        'krylov'
+    ]
 
 LINE_LIKE_TYPES = (Axis, Line)
 
@@ -1373,8 +1388,8 @@ class ResidualFactory(SpecSequence[tuple[AbstractConstraint, int]]):
         """Whether the number of residuals meets or exceeds the number of inputs."""
         return len(self) >= len(self.guess)
 
-    def make(self, x: Sequence[float], /) -> tuple[float, ...]:
-        """Returns the values of the residuals for a given input vector."""
+    def __call__(self, x: Sequence[float] | np.ndarray[tuple[int], np.dtype[np.float64]], /
+                 ) -> tuple[float, ...]:
         with_fixed = tuple(x) + self.guess.fixed
         residuals: list[float] = []
         for constraint, calc_input in self.calcs.items():
@@ -1578,3 +1593,52 @@ class CoincidentLinePoint2D(ResidualCalculation):
                 scale * (d_s * (p1.x - p0.x) - n_s * (p2.y - p1.y)) / d_s**(3/2),
             ),
         )
+
+class SystemSolution(SpecSequence[float]):
+    """The solution to a geometry system with constraints."""
+
+    _schemas: Mapping[str, Mapping[Type[ResidualCalculation],
+                                   Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]
+    ] = {
+        "pancad_default": {
+            CoincidentLinePoint2D: {
+                Coincident: {
+                    (Point, (Line, Axis)): {
+                        Point: "cartesian",
+                        (Line, Axis): ("ref", "direction"),
+                    },
+                }
+            },
+            EqualVectorComponents2D: {
+                Coincident: {Point: {Point: "cartesian"}},
+            },
+        }
+    }
+
+    _methods: Mapping[str, Literal["lm", "hybr"]] = {"lm": "lm", "hybr": "hybr"}
+
+    def __init__(self,
+                 system: AbstractGeometrySystem,
+                 method: str="lm",
+                 schema: str="pancad_default"):
+        self.system: Final[AbstractGeometrySystem] = system
+        try:
+            schema_spec = self._schemas[schema]
+        except KeyError as err:
+            msg = f"Invalid schema '{schema}'. Must be one of: {tuple(self._schemas)}"
+            raise ValueError(msg) from err
+        try:
+            self.method: Final[ScipyMethod] = self._methods[method]
+        except KeyError as err:
+            msg = f"Invalid method '{method}'. Must be one of: {tuple(self._methods)}"
+            raise ValueError(msg) from err
+        guess = GuessVector(self.system.constraints, CalculationSchema(schema_spec))
+        self.factory: Final[ResidualFactory] = ResidualFactory(guess)
+        self.solution = scipy.optimize.root(fun=self.factory.__call__,
+                                            x0=np.array(self.factory.guess.initial),
+                                            method=self.method)
+        super().__init__(tuple(i.item() for i in self.solution.x)) # Breakout array into floats
+
+    def to_dict(self) -> dict[tuple[AbstractGeometry, str, int], float]:
+        """Returns dictionary mapping the source to each value in the solution vector."""
+        return dict(zip(self.factory.guess, self, strict=True))
