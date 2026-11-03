@@ -1362,6 +1362,8 @@ class CalcInput(SpecSequence[tuple[AbstractGeometry, str, int]]):
             for i in range(len(GeometryValue(geometry, name))):
                 vector.append((geometry, name, i))
         super().__init__(vector)
+        self.inputs: Final[Mapping[tuple[AbstractGeometry, str, int],
+                                   int]] = {key: i for i, key in enumerate(self)}
 
 class ResidualFactory(SpecSequence[tuple[AbstractConstraint, int]]):
     """A factory for producing geometry system residual vectors.
@@ -1382,24 +1384,60 @@ class ResidualFactory(SpecSequence[tuple[AbstractConstraint, int]]):
                 vector.append((constraint, i))
         self.calcs: Final[Mapping[AbstractConstraint, CalcInput]] = calc_map
         super().__init__(vector)
+        self.residuals: Final[Mapping[tuple[AbstractConstraint, int],
+                              int]] = {key: i for i, key in enumerate(self)}
 
     @property
     def constrained(self) -> bool:
         """Whether the number of residuals meets or exceeds the number of inputs."""
         return len(self) >= len(self.guess)
 
+    @cached_property
+    def jacobian(self) -> tuple[tuple[tuple[AbstractConstraint, int, int], ...], ...]:
+        """The definition matrix of the residual jacobian matrix that indicates which constraint,
+        result index, and gradient index each matrix element came from.
+        """
+        matrix = []
+        for constraint, calc_result_index in self:
+            row: list[tuple[AbstractConstraint, int, int]] = []
+            calc_input = self.calcs[constraint]
+            for value_key in self.guess:
+                gradient_index = calc_input.inputs.get(value_key, 0) # Values not in gradient = 0
+                row.append((constraint, calc_result_index, gradient_index))
+            matrix.append(tuple(row))
+        return tuple(matrix)
+
+    def make_jac(self, x: Sequence[float] | np.ndarray[tuple[int], np.dtype[np.float64]], /
+                 ) -> tuple[tuple[float, ...], ...]:
+        """Creates the jacobian matrix corresponding to the system's result at the input."""
+        calcs = self._make_calcs(x)
+        matrix = []
+        for row_definition in self.jacobian:
+            row: list[float] = []
+            for constraint, result_index, grad_index in row_definition:
+                residual_index = self.residuals[constraint, result_index]
+                row.append(calcs[residual_index].gradient[result_index][grad_index])
+            matrix.append(tuple(row))
+        return tuple(matrix)
+
     def __call__(self, x: Sequence[float] | np.ndarray[tuple[int], np.dtype[np.float64]], /
                  ) -> tuple[float, ...]:
-        with_fixed = tuple(x) + self.guess.fixed
         residuals: list[float] = []
-        for constraint, calc_input in self.calcs.items():
-            if isinstance(constraint, Fixed):
-                continue # Fixed constraints have no residual value
-            residuals.extend(self._eval_residual(calc_input, with_fixed))
+        for (_, residual_index), calc in zip(self, self._make_calcs(x), strict=True):
+            residuals.append(calc.residual[residual_index])
         return tuple(residuals)
 
     def _make_input(self, calc_input: CalcInput, vector: Sequence[float]) -> tuple[float, ...]:
         return tuple(vector[self.guess.sources[key]] for key in calc_input)
+
+    def _make_calcs(self, x: Sequence[float] | np.ndarray[tuple[int], np.dtype[np.float64]]
+                    ) -> tuple[ResidualCalculation, ...]:
+        # Sets up all the ResidualCalculations for an input vector without evaluating them.
+        with_fixed = tuple(x) + self.guess.fixed
+        calcs: dict[AbstractConstraint, ResidualCalculation] = {}
+        for constraint, input_ in self.calcs.items():
+            calcs[constraint] = input_.calc.from_floats(self._make_input(input_, with_fixed))
+        return tuple(calcs[constraint] for constraint, _ in self)
 
     def _eval_residual(self, calc_input: CalcInput, vector: Sequence[float]) -> tuple[float, ...]:
         return calc_input.calc.from_floats(self._make_input(calc_input, vector)).residual
@@ -1636,6 +1674,7 @@ class SystemSolution(SpecSequence[float]):
         self.factory: Final[ResidualFactory] = ResidualFactory(guess)
         self.solution = scipy.optimize.root(fun=self.factory.__call__,
                                             x0=np.array(self.factory.guess.initial),
+                                            jac=self.factory.make_jac,
                                             method=self.method)
         super().__init__(tuple(i.item() for i in self.solution.x)) # Breakout array into floats
 
