@@ -1302,11 +1302,10 @@ class GuessVector(SpecSequence[tuple[AbstractGeometry, str, int]]):
 
     def __init__(self, constraints: Iterable[AbstractConstraint], schema: CalculationSchema):
         vector = []
-        fixed_geo: list[AbstractGeometry] = []
-        # TODO: Ensure all constraints are in the same system.
-        # TODO: Add system coordinate system and all its subgeometry to the fixed_geo list.
         self.constraints: Final[tuple[AbstractConstraint, ...]] = tuple(constraints)
         self.schema: Final[CalculationSchema] = schema
+        # Initialize fixed geometry with the always fixed geometry in the system.
+        fixed_geo: list[AbstractGeometry] = self._fixed_sys_geo(self.constraints)
         seen: set[tuple[AbstractGeometry, str]] = set()
         for constraint in constraints:
             if isinstance(constraint, Fixed):
@@ -1344,6 +1343,23 @@ class GuessVector(SpecSequence[tuple[AbstractGeometry, str, int]]):
     def fixed(self) -> tuple[float, ...]:
         """The fixed geometry values in the full guess vector."""
         return tuple(GeometryValue(g, n)[i] for g, n, i in self.fixed_values)
+
+    @staticmethod
+    def _system(constraints: Iterable[AbstractConstraint]) -> AbstractGeometrySystem:
+        # Returns the geometry system containing the constraints.
+        if not constraints:
+            raise ValueError("No constraints were provided")
+        if len(systems := {c.system for c in constraints}) != 1:
+            raise ValueError("Got constraints from multiple systems")
+        if system := next(iter(systems)):
+            return system
+        raise ValueError("Constraints must be in a system to be solved.")
+
+    @staticmethod
+    def _fixed_sys_geo(constraints: Iterable[AbstractConstraint]) -> list[AbstractGeometry]:
+        # Returns the default fixed coordinate system geometry from the constraints' system.
+        system = GuessVector._system(constraints)
+        return list(set(system.coordinate_system.children.values()))
 
 class CalcInput(SpecSequence[tuple[AbstractGeometry, str, int]]):
     """The ordered input sources for a constraint's calculation.
@@ -1588,8 +1604,6 @@ class CoincidentLinePoint2D(ResidualCalculation):
     :param scale: Solver scale factor.
     """
     dimensions = (2,)
-
-    # TODO: Revise the calculation to calculate the second point based on the line's direction.
 
     def __init__(self,
                  p0: tuple[float, float],
