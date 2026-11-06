@@ -88,6 +88,11 @@ NamedScalar = NamedTuple("NamedScalar", [("name", str), ("scalar", float)])
 LineLike = NamedTuple("LineLike", [("ref", "SpaceVector"), ("direction", "SpaceVector")])
 PlaneParam = NamedTuple("PlaneParam", [("ref", "Space3DVector"), ("normal", "Space3DVector")])
 
+class GeometryData(NamedTuple):
+    """The vectors and values defining geometry."""
+    vectors: dict[str, SpaceVector]
+    scalars: dict[str, float]
+
 class ValueSource(NamedTuple):
     """The metadata indicating where a system value originated."""
     thing: PancadThing
@@ -1298,6 +1303,8 @@ class GuessVector(SpecSequence[tuple[AbstractGeometry, str, int]]):
     def __init__(self, constraints: Iterable[AbstractConstraint], schema: CalculationSchema):
         vector = []
         fixed_geo: list[AbstractGeometry] = []
+        # TODO: Ensure all constraints are in the same system.
+        # TODO: Add system coordinate system and all its subgeometry to the fixed_geo list.
         self.constraints: Final[tuple[AbstractConstraint, ...]] = tuple(constraints)
         self.schema: Final[CalculationSchema] = schema
         seen: set[tuple[AbstractGeometry, str]] = set()
@@ -1660,6 +1667,7 @@ class SystemSolution(SpecSequence[float]):
                  method: str="lm",
                  schema: str="pancad_default"):
         self.system: Final[AbstractGeometrySystem] = system
+        self.updates: list[GeometryUpdate] = [] # Will only be filled after calling update()
         try:
             schema_spec = self._schemas[schema]
         except KeyError as err:
@@ -1681,3 +1689,47 @@ class SystemSolution(SpecSequence[float]):
     def to_dict(self) -> dict[tuple[AbstractGeometry, str, int], float]:
         """Returns dictionary mapping the source to each value in the solution vector."""
         return dict(zip(self.factory.guess, self, strict=True))
+
+    def update(self) -> None:
+        """Update the geometry system using the solution's values."""
+        for geometry in {g for g, *_ in self.factory.guess}:
+            self.updates.append(GeometryUpdate(geometry, self))
+
+class GeometryUpdate:
+    """An update to a geometry element after a system has been solved."""
+
+    def __init__(self, geometry: AbstractGeometry, solution: SystemSolution):
+        self.geometry: Final[AbstractGeometry] = geometry
+        self.solution: Final[SystemSolution] = solution
+        self.old = self._group(self.solution.factory.guess.initial)
+        self.new = self._group(self.solution)
+        self._update(geometry)
+
+    def _group(self, vector: Sequence[float]) -> GeometryData:
+        components: dict[str, list[float]] = {}
+        for value_index, (guess_geo, name, _) in enumerate(self.solution.factory.guess):
+            # The guess already has the value indicies sorted, so it is not sorted here.
+            if guess_geo == self.geometry:
+                components.setdefault(name, []).append(vector[value_index])
+        vectors: dict[str, SpaceVector] = {}
+        scalars: dict[str, float] = {}
+        for name, values in components.items():
+            candidate = tuple(values)
+            if len(candidate) == 1:
+                scalars[name] = candidate[0]
+            elif len(candidate) == 2 or len(candidate) == 3:
+                vectors[name] = candidate
+            else:
+                raise ValueError(f"Expected values 1 to 3 long, got: {candidate}")
+        return GeometryData(vectors, scalars)
+
+    @singledispatchmethod
+    def _update(self, geo: AbstractGeometry) -> None:
+        raise NotImplementedError(f"Cannot update {geo} geometry types yet.")
+
+    @_update.register
+    def _(self, geo: Point) -> None:
+        cartesian = self.new.vectors["cartesian"]
+        if len(cartesian) != len(geo):
+            raise ValueError("Point update vector dimension mismatch.")
+        geo.cartesian = cartesian
