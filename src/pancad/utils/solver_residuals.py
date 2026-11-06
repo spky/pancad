@@ -1724,9 +1724,19 @@ class GeometryUpdate:
     def __init__(self, geometry: AbstractGeometry, solution: SystemSolution):
         self.geometry: Final[AbstractGeometry] = geometry
         self.solution: Final[SystemSolution] = solution
-        self.old = self._group(self.solution.factory.guess.initial)
-        self.new = self._group(self.solution)
-        self._update(geometry)
+        self._initial = self.solution.factory.guess.initial # Save the initial vector beforehand.
+        self._post = tuple(self.solution) # Save the new vector in case there are future updates.
+        self._update(geometry, self.new)
+
+    @cached_property
+    def old(self) -> GeometryData:
+        """The geometry's values before the update."""
+        return self._group(self._initial)
+
+    @cached_property
+    def new(self) -> GeometryData:
+        """The geometry's values after the update."""
+        return self._group(self._post)
 
     def _group(self, vector: Sequence[float]) -> GeometryData:
         components: dict[str, list[float]] = {}
@@ -1747,12 +1757,12 @@ class GeometryUpdate:
         return GeometryData(vectors, scalars)
 
     @singledispatchmethod
-    def _update(self, geo: AbstractGeometry) -> None:
+    def _update(self, geo: AbstractGeometry, new: GeometryData) -> None:
         raise NotImplementedError(f"Cannot update {geo} geometry types yet.")
 
     @_update.register
-    def _(self, geo: Point) -> None:
-        cartesian = self.new.vectors["cartesian"]
+    def _(self, geo: Point, new: GeometryData) -> None:
+        cartesian = new.vectors["cartesian"]
         if len(cartesian) != len(geo):
             raise ValueError("Point update vector dimension mismatch.")
         geo.cartesian = cartesian
