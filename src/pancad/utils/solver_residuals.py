@@ -1216,18 +1216,27 @@ class CalculationSchema:
 
     def __init__(self, spec: Mapping[Type[ResidualCalculation],
                                      Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]):
-        #: The mapping of calculation types to calculation scenario keys.
-        self.contexts: Final[CalculationSchema.ContextMap] = self.ContextMap(spec)
-        #: The mapping of calculation scenario key and geometry type combos to names.
-        self.values: Final[CalculationSchema.GeometryValueNameMap] = (
-            self.GeometryValueNameMap(spec)
-        )
-        #: The mapping of calculation scenario key, geometry type, and name to its integer order.
-        self.order: Final[CalculationSchema.OrderMap] = self.OrderMap(self.values)
-        #: The mapping of constraint calculation scenario keys to the calculation type.
-        self.calcs: Final[FlippedMultiMap[CalcKey, Type[ResidualCalculation]]]  = (
-            FlippedMultiMap(self.contexts)
-        )
+        self._spec = spec
+
+    @cached_property
+    def contexts(self) -> CalculationSchema.ContextMap:
+        """The mapping of calculation types to calculation scenario keys."""
+        return self.ContextMap(self._spec)
+
+    @cached_property
+    def values(self) -> CalculationSchema.GeometryValueNameMap:
+        """The mapping of calculation scenario key and geometry type combos to names."""
+        return self.GeometryValueNameMap(self._spec)
+
+    @cached_property
+    def order(self) -> CalculationSchema.OrderMap:
+        """The mapping of calculation scenario key, geometry type, and name to its int order."""
+        return self.OrderMap(self.values)
+
+    @cached_property
+    def calcs(self) -> FlippedMultiMap[CalcKey, Type[ResidualCalculation]]:
+        """The mapping of constraint calculation scenario keys to the calculation type."""
+        return FlippedMultiMap(self.contexts)
 
 class SpecSequence(Sequence[T]):
     """A sequence that just contains an internal tuple, usually created from smaller form of
