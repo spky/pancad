@@ -6,25 +6,26 @@ from typing import TYPE_CHECKING, Type
 
 import pytest
 
-from pancad.abstract import AbstractGeometry, AbstractConstraint, PancadThing
+from pancad.abstract import AbstractGeometry, PancadThing
 from pancad.constraints.state_constraint import Coincident, Parallel, Antiparallel, Codirectional
 from pancad.constraints.snapto import Fixed
 from pancad.api import Axis, Line, Point, Plane, Sketch
 
+from pancad.utils.solver_schemas import SCHEMAS
 from pancad.utils.solver_residuals import (
     ComboDimMap,
-    CoincidentLinePoint2D,
-    EqualScalars,
-    EqualVectors2D,
-    EqualVectorComponents2D,
-    GeometryComboMap,
-    ResidualCalculation,
     geo_product,
     CalculationSchema,
     GuessVector,
     CalcInput,
     ResidualFactory,
     SystemSolution,
+    GeometryComboMap,
+)
+from pancad.utils.residual_calculations import (
+    CoincidentLinePoint2D,
+    EqualScalars,
+    EqualVectors2D,
 )
 
 from tests.testing_utils.data_collectors import make_feature_sample_input
@@ -32,9 +33,9 @@ from tests.testing_utils.thing_factory import make_feature
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Iterable
-    from pancad.utils.solver_residuals import (
-        GeometryTerm, GeoComboSpec, GeometryComboMap, ComboDimSpec, ValueMapSpec, MixedThing
-    )
+    from pancad.utils.residual_calculations import ResidualCalculation
+    from pancad.utils.solver_schemas import GeoComboSpec, ValueMapSpec, MixedThing
+    from pancad.utils.solver_residuals import GeometryTerm, ComboDimSpec
     from tests._typing import TestGroup
 
 
@@ -168,19 +169,7 @@ class TestCalculationSchema:
     @pytest.fixture(scope="class")
     def spec(cls) -> Mapping[Type[ResidualCalculation],
                                      Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]:
-        return {
-            CoincidentLinePoint2D: {
-                Coincident: {
-                    (Point, (Line, Axis)): {
-                        Point: "cartesian",
-                        (Line, Axis): ("ref", "direction"),
-                    },
-                }
-            },
-            EqualVectorComponents2D: {
-                Coincident: {Point: {Point: "cartesian"}},
-            },
-        }
+        return SCHEMAS["pancad_default"]
 
     @classmethod
     @pytest.fixture(scope="class")
