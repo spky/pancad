@@ -1,0 +1,27 @@
+guess:
+- - <Point'point'(1,1)>
+  - cartesian
+  - 0
+- - <Point'point'(1,1)>
+  - cartesian
+  - 1
+initial:
+- 1.0
+- 1.0
+sources:
+  ? - <Point'point'(1,1)>
+    - cartesian
+    - 0
+  : 0
+  ? - <Point'point'(1,1)>
+    - cartesian
+    - 1
+  : 1
+  ? - <Point(0,0)>
+    - cartesian
+    - 0
+  : 2
+  ? - <Point(0,0)>
+    - cartesian
+    - 1
+  : 3

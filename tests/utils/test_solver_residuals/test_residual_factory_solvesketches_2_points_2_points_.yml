@@ -1,0 +1,24 @@
+constrained: true
+fixed_sources:
+- - <Point'point_0'(0,0)>
+  - cartesian
+  - 0
+- - <Point'point_0'(0,0)>
+  - cartesian
+  - 1
+fixed_values:
+- 0.0
+- 0.0
+guess:
+- - <Point'point_1'(1,1)>
+  - cartesian
+  - 0
+- - <Point'point_1'(1,1)>
+  - cartesian
+  - 1
+initial_guess:
+- 1.0
+- 1.0
+initial_result:
+- 1.0
+- 1.0

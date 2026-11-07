@@ -32,6 +32,10 @@ from tests.testing_utils.thing_factory import make_feature
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Iterable
+
+    # pytest-regressions doesn't have an type implementation for data_regression
+    from pytest_regressions.data_regression import DataRegressionFixture # type: ignore
+
     from pancad.utils.residual_calculations import ResidualCalculation
     from pancad.utils.solver_schemas import GeoComboSpec, ValueMapSpec, MixedThing
     from pancad.utils.solver_residuals import GeometryTerm, ComboDimSpec
@@ -87,7 +91,7 @@ def test_res_calc_to_dict(res_calc: ResidualCalculation) -> None:
 )
 def test_geo_product(terms: GeometryTerm,
                      expected: list[tuple[Type[AbstractGeometry], ...]]) -> None:
-    """geo_product must produce the cartesian product of geometry types and nested tuples of 
+    """geo_product must produce the cartesian product of geometry types and nested tuples of
     geometry types.
     """
     assert set(geo_product(terms)) == set(expected)
@@ -99,6 +103,7 @@ class TestGeometryComboMap:
     @pytest.fixture(scope="class")
     def spec(cls) -> Mapping[Iterable[Type[PancadThing]],
                              Iterable[Mapping[GeoComboSpec, str | tuple[str, ...]]]]:
+        """A geometry combination mapping specification dictionary."""
         return {
             (Coincident,): (
                 {Point: ("cartesian",)},
@@ -119,15 +124,20 @@ class TestGeometryComboMap:
     def mapping(cls, spec: Mapping[Iterable[Type[PancadThing]],
                                    Iterable[Mapping[GeoComboSpec, str | tuple[str, ...]]]]
                 ) -> GeometryComboMap[str | tuple[str, ...]]:
+        """A sample GeometryComboMap to test the functionality of GeometryComboMap with."""
         return GeometryComboMap(spec)
 
     def test_getitem(self, mapping: GeometryComboMap[str | tuple[str, ...]]) -> None:
+        """GeometryComboMap must account for product produced keys and singular keys."""
         # Test that products between keys are accounted for
         assert mapping[Coincident, frozenset({Point, Axis}), Axis] == ("direction", "ref")
         # Test that products in one key are accounted for
         assert mapping[Coincident, frozenset({Line}), Line] == ("direction", "ref")
 
     def test_iter(self, mapping: GeometryComboMap[tuple[str, str]]) -> None:
+        """GeometryComboMap must produce every possible constraint, combo, and value tuple from a
+        specification.
+        """
         print()
         pp(tuple(
             tuple(
@@ -135,14 +145,16 @@ class TestGeometryComboMap:
                 for m in mapping
             )
         )
-        print(len(mapping))
+        assert len(mapping) == 39
 
 class TestCalculationSchema:
+    """Tests for the ability to use CalculationSchemas to solve geometry systems."""
 
     @classmethod
     @pytest.fixture(scope="class")
     def spec(cls) -> Mapping[Type[ResidualCalculation],
                                      Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]:
+        """A CalculationSchema dictionary specification."""
         return SCHEMAS["pancad_default"]
 
     @classmethod
@@ -150,9 +162,11 @@ class TestCalculationSchema:
     def schema(cls, spec: Mapping[Type[ResidualCalculation],
                                      Mapping[MixedThing, Mapping[GeoComboSpec, ValueMapSpec]]]
                 ) -> CalculationSchema:
+        """A CalculationSchema schema produced from a specification to test with."""
         return CalculationSchema(spec)
 
     def test_iter(self, schema: CalculationSchema) -> None:
+        """All CalculationSchema mappings must be possible to turn into dictionaries."""
         print("\nValues:")
         pp(dict(schema.values))
         print("Contexts:")
@@ -163,53 +177,70 @@ class TestCalculationSchema:
         pp(dict(schema.calcs))
 
     def test_values(self, schema: CalculationSchema) -> None:
+        """CalculationSchema must be able to return the value names required for a geometry in a
+        calculation scenario defined by a cosntraint, geometry combo, and dimension.
+        """
         assert schema.values[(Coincident, frozenset([Point, Line]), 2), Point] == ("cartesian",)
 
-    def test_guess_sorting(self, sample_sketch: Sketch, schema: CalculationSchema) -> None:
+    def test_guess_sorting(self,
+                           sample_sketch: Sketch,
+                           schema: CalculationSchema,
+                           data_regression: DataRegressionFixture) -> None:
+        """GuessVector must deterministically sort its elements, sources, and initial vector."""
         guess = GuessVector(sample_sketch.geometry_system.constraints, schema)
-        print("Guess:")
-        pp(tuple(guess))
-        print("Guess Sources:")
-        pp(guess.sources)
-        print("Initial Vector:")
-        pp(guess.initial)
+        keys = [(str(geo), name, dim) for geo, name, dim  in guess]
+        sources = {(str(geo), name, dim): i for (geo, name, dim), i in guess.sources.items()}
+        data = {"guess": keys, "sources": sources, "initial": guess.initial}
+        data_regression.check(data)
 
-    def test_result_sorting(self, sample_sketch: Sketch, schema: CalculationSchema) -> None:
+    def test_calc_input_sorting(self,
+                            sample_sketch: Sketch,
+                            schema: CalculationSchema,
+                            data_regression: DataRegressionFixture) -> None:
+        """CalcInputs must deterministically sort its source inputs."""
         sources = {}
         for constraint in sample_sketch.geometry_system.constraints:
             if isinstance(constraint, Fixed):
                 continue
             calc_input = CalcInput(constraint, schema)
-            sources[constraint.name] = (calc_input.calc, tuple(calc_input))
-        print("Sources:")
-        pp(sources)
+            calc_sources = [(str(geo), name, i) for geo, name, i in calc_input]
+            sources[constraint.name] = (calc_input.calc.__name__, calc_sources)
+        data_regression.check(sources)
 
-    def test_residual_factory(self, sample_sketch: Sketch, schema: CalculationSchema) -> None:
+    def test_residual_factory(self,
+                              sample_sketch: Sketch,
+                              schema: CalculationSchema,
+                              data_regression: DataRegressionFixture) -> None:
+        """ResidualFactory must confirm that its constrained based on its inputs versus results
+        and be able to evaluate its initial guess value.
+        """
         guess = GuessVector(sample_sketch.geometry_system.constraints, schema)
         factory = ResidualFactory(guess)
-        print("Guess:")
-        pp(tuple(guess))
-        print("Guess Fixed Values:")
-        pp(guess.fixed_values)
-        print("Guess Fixed :")
-        pp(guess.fixed)
-        print("Factory:")
-        pp(tuple(factory))
-        print(f"Constrained: {factory.constrained}")
-        print("call result:")
-        pp(factory(guess.initial))
+        keys = [(str(geo), name, dim) for geo, name, dim  in guess]
+        fixed_keys = [(str(geo), name, dim) for geo, name, dim  in guess.fixed_values]
+        data = {
+            "guess": keys,
+            "fixed_sources": fixed_keys,
+            "fixed_values": guess.fixed,
+            "initial_guess": guess.initial,
+            "initial_result": factory(guess.initial),
+            "constrained": factory.constrained,
+        }
+        data_regression.check(data)
+        assert factory.constrained # Catch unconstrained in case a new calculation doesn't work.
 
-    def test_solution(self, sample_sketch: Sketch) -> None:
+    def test_solution(self, sample_sketch: Sketch, data_regression:DataRegressionFixture) -> None:
+        """SolutionVector solutions must be deterministic."""
+        old_geometry = [str(geo) for geo in sample_sketch.geometry_system.geometry]
         sol = SystemSolution(sample_sketch.geometry_system)
-        print("Solution Vector:"); pp(tuple(sol))
-        print("Scipy Solution:"); print(sol.solution)
-        print("Jacobian Definition:"); pp(sol.factory.jacobian)
-        print("Initial Jacobian:"); pp(sol.factory.make_jac(sol.factory.guess.initial))
+        initial_jac = sol.factory.make_jac(sol.factory.guess.initial)
         sol.update()
-        print("Updates:")
-        for update in sol.updates:
-            print(f"Old {update.geometry.name}:")
-            pp(update.old)
-            print(f"New {update.geometry.name}:")
-            pp(update.new)
-        # breakpoint()
+        new_geometry = [str(geo) for geo in sample_sketch.geometry_system.geometry]
+        data = {
+            "old_geometry": old_geometry,
+            "new_geometry": new_geometry,
+            "initial": sol.factory.guess.initial,
+            "solution": tuple(sol),
+            "initial_jacobian": initial_jac,
+        }
+        data_regression.check(data)

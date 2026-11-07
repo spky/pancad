@@ -1,0 +1,14 @@
+points_coincident:
+- EqualVectorComponents2D
+- - - <Point'point_0'(0,0)>
+    - cartesian
+    - 0
+  - - <Point'point_0'(0,0)>
+    - cartesian
+    - 1
+  - - <Point'point_1'(1,1)>
+    - cartesian
+    - 0
+  - - <Point'point_1'(1,1)>
+    - cartesian
+    - 1
