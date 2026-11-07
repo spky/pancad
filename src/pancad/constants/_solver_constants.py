@@ -27,6 +27,12 @@ class ConstraintVariableName(StrEnum):
 class ConstraintEquationName(StrEnum):
     """An enumeration of constraint equation function names."""
 
+    COINCIDENT = auto()
+    """Coincident constraint between geometries."""
+
+    FIXED = auto()
+    """Constraint forcing a geometry to lock to its location and orientation."""
+
     POINT_POINT_COINCIDENT = auto()
     """Point to Point coincident."""
 
@@ -94,3 +100,6 @@ class ConstraintEquationName(StrEnum):
 
     NON_ZERO = auto()
     """This vector must be non zero."""
+
+    ZERO_DOT = auto()
+    """These two vectors must have a dot product equal to zero."""

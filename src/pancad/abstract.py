@@ -446,21 +446,13 @@ class AbstractConstraint(PancadThing):
         self._feature = value
 
     @property
-    def _geometry(self) -> list[AbstractGeometry]:
+    def _geometry(self) -> tuple[AbstractGeometry, ...]:
         """The geometry being constrained"""
         return self.__geometry
 
     @_geometry.setter
     def _geometry(self, values: Sequence[AbstractGeometry]) -> None:
-        self.__geometry = list(values)
-
-    @property
-    def _pairs(self) -> list[tuple[AbstractGeometry, ConstraintReference]]:
-        return self.__pairs
-
-    @_pairs.setter
-    def _pairs(self, value: list[tuple[AbstractGeometry, ConstraintReference]]) -> None:
-        self.__pairs = value
+        self.__geometry = tuple(values)
 
     @property
     def system(self) -> AbstractGeometrySystem | None:
@@ -503,7 +495,7 @@ class AbstractConstraint(PancadThing):
                 parents.append(geometry.parent)
         return parents
 
-    def get_geometry(self) -> list[AbstractGeometry]:
+    def get_geometry(self) -> tuple[AbstractGeometry, ...]:
         """Returns the portions of the constrained geometry being constrained.
 
         Examples: The x axis of a :class:`~pancad.geometry.CoordinateSystem` or

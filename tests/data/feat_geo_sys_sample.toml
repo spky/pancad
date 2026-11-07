@@ -33,3 +33,86 @@ geometry = ["x", "line::core"]
 # rotation constraints may require quaternions or vectors.
 degree_scalars = {value = 45} # Use the GeometrySampleData system with standardized names.
 quadrant = 4
+
+[solvesketches]
+    [solvesketches.2_points] # Two points defined in this file, held coincident.
+        type = "sketch"
+        pose = {vectors = {origin = [0, 0, 0]}, quats = {rotation = {angle=0, axis = [1, 0, 0]}}}
+        [solvesketches.2_points.geometry]
+            [solvesketches.2_points.geometry.point_0]
+                type = "point"
+                vectors = {vector = [0, 0]}
+            [solvesketches.2_points.geometry.point_1]
+                type = "point"
+                vectors = {vector = [1, 1]}
+        [solvesketches.2_points.constraints]
+            [solvesketches.2_points.constraints.fix_point]
+                type = "fixed"
+                geometry = ["point_0"]
+            [solvesketches.2_points.constraints.points_coincident]
+                type = "coincident"
+                geometry = ["point_0", "point_1"]
+    [solvesketches.point_to_origin] # A single point held coincident to the system's origin
+        type = "sketch"
+        pose = {vectors = {origin = [0, 0, 0]}, quats = {rotation = {angle=0, axis = [1, 0, 0]}}}
+        [solvesketches.point_to_origin.geometry]
+            [solvesketches.point_to_origin.geometry.point]
+            type = "point"
+            vectors = {vector = [1, 1]}
+        [solvesketches.point_to_origin.constraints]
+            [solvesketches.point_to_origin.constraints.points_coincident]
+                type = "coincident"
+                geometry = ["origin", "point"]
+    # The tests below are commented out to execute not yet supported tests in the future.
+    # [solvesketches.2_points_and_a_line]
+        # type = "sketch"
+        # pose = {vectors = {origin = [0, 0, 0]}, quats = {rotation = {angle=0, axis = [1, 0, 0]}}}
+        # [solvesketches.2_points_and_a_line.geometry]
+            # [solvesketches.2_points_and_a_line.geometry.point_0]
+                # type = "point"
+                # vectors = {vector = [0, 0]}
+            # [solvesketches.2_points_and_a_line.geometry.point_1]
+                # type = "point"
+                # vectors = {vector = [1, 1]}
+            # [solvesketches.2_points_and_a_line.geometry.line]
+                # type = "line"
+                # vectors = {point = [0, 0], direction = [1, 1]}
+        # [solvesketches.2_points_and_a_line.constraints]
+            # [solvesketches.2_points_and_a_line.constraints.fix_point_0]
+                # type = "fixed"
+                # geometry = ["point_0"]
+            # [solvesketches.2_points_and_a_line.constraints.fix_point_1]
+                # type = "fixed"
+                # geometry = ["point_1"]
+            # [solvesketches.2_points_and_a_line.constraints.point_0_on_line]
+                # type = "coincident"
+                # geometry = ["point_0", "line"]
+            # [solvesketches.2_points_and_a_line.constraints.point_1_on_line]
+                # type = "coincident"
+                # geometry = ["point_1", "line"]
+    # [solvesketches.3d_2_points_and_a_line]
+        # type = "sketch"
+        # pose = {vectors = {origin = [0, 0, 0]}, quats = {rotation = {angle=0, axis = [1, 0, 0]}}}
+        # [solvesketches.3d_2_points_and_a_line.geometry]
+            # [solvesketches.3d_2_points_and_a_line.geometry.point_0]
+                # type = "point"
+                # vectors = {vector = [0, 0, 0]}
+            # [solvesketches.3d_2_points_and_a_line.geometry.point_1]
+                # type = "point"
+                # vectors = {vector = [1, 1, 1]}
+            # [solvesketches.3d_2_points_and_a_line.geometry.line]
+                # type = "line"
+                # vectors = {point = [0, 0, 0], direction = [1, 1, 1]}
+        # [solvesketches.3d_2_points_and_a_line.constraints]
+            # [solvesketches.3d_2_points_and_a_line.constraints.fix_point_0]
+                # type = "fixed"
+                # geometry = ["point_0"]
+            # [solvesketches.3d_2_points_and_a_line.constraints.fix_point_1]
+                # type = "fixed"
+                # geometry = ["point_1"]
+            # [solvesketches.3d_2_points_and_a_line.constraints.point_0_on_line]
+                # type = "coincident"
+                # geometry = ["point_0", "line"]
+            # [solvesketches.3d_2_points_and_a_line.constraints.point_1_on_line]
+                # type = "coincident"
+                # geometry = ["point_1", "line"]
