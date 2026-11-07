@@ -211,7 +211,7 @@ class GeoProductMap(SpecMap["GeoCombo", "U"]):
             mapping.update(dict.fromkeys(combos, value))
         super().__init__(mapping)
 
-class ValueMap(Mapping[Type[AbstractGeometry], "U"]):
+class ValueMap(SpecMap[Type[AbstractGeometry], "U"]):
     """Mapping from geometry types to anything. Also maps the cartesian product of possible
     geometry type combinations to the same thing in groups.
     """
@@ -223,60 +223,14 @@ class ValueMap(Mapping[Type[AbstractGeometry], "U"]):
         for combo_spec, v in spec.items():
             combos = set(frozenset(p) for p in geo_product(combo_spec))
             combo_map.update(dict.fromkeys(combos, v))
-        self._map = {g: v for combo, v in combo_map.items() for g in combo}
+        super().__init__({g: v for combo, v in combo_map.items() for g in combo})
 
-    def __getitem__(self, key: Type[AbstractGeometry]) -> U:
-        return self._map[key]
-
-    def __iter__(self) -> Iterator[Type[AbstractGeometry]]:
-        yield from self._map
-
-    def __len__(self) -> int:
-        return len(self._map)
-
-class ComboDimMap(Mapping[tuple[Type[PancadThing], "GeoCombo", int], "T"]):
-    """Mapping from groups of PancadThing type, a geometry combo, and a dimension to anything."""
-
-    def __init__(self,
-                 specs: Mapping[tuple[Type[PancadThing], ...], dict[ComboDimSpec, T]]):
-        self._map: dict[tuple[Type[PancadThing], GeoCombo, int], T]= {}
-        things_to_applicability = {type_: v for types, v in specs.items() for type_ in types}
-        for thing, app_specs in things_to_applicability.items():
-            for (geo_combo, dim), calc in self._split_app_specs(app_specs).items():
-                self._map[thing, geo_combo, dim] = calc
-
-    @staticmethod
-    def _split_app_specs(specs: Mapping[ComboDimSpec, T]
-                        ) -> dict[tuple[GeoCombo, int], T]:
-        """Splits a mapping of geometry combo specification tuples and dimension integer tuples
-        into a mapping for each possible geometry combo and dimension.
-        """
-        new = {}
-        for (geometry_spec, dimensions), v in specs.items():
-            geometry_combos = set(frozenset(p) for p in geo_product(geometry_spec))
-            new.update(dict.fromkeys(itertools.product(geometry_combos, dimensions), v))
-        return new
-
-    def __getitem__(self, key: tuple[Type[PancadThing], GeoCombo, int]
-                    ) -> T:
-        return self._map[key]
-
-    def __iter__(self
-                 ) -> Iterator[tuple[Type[PancadThing], GeoCombo, int]]:
-        yield from self._map
-
-    def __len__(self) -> int:
-        return len(self._map)
-
-    def __repr__(self) -> str:
-        return repr(self._map)
-
-class GeometryComboMap(Mapping[tuple[Type[PancadThing], "GeoCombo", Type[AbstractGeometry]],
-                               "T"]):
+class GeometryComboMap(SpecMap[tuple[Type[PancadThing], "GeoCombo", Type[AbstractGeometry]],
+                               "U"]):
     """A mapping of constraint types and geometry combos to anything."""
 
     def __init__(self,
-                 spec: Mapping[Iterable[Type[PancadThing]], Iterable[Mapping[GeoComboSpec, T]]]):
+                 spec: Mapping[Iterable[Type[PancadThing]], Iterable[Mapping[GeoComboSpec, U]]]):
         group_map = {}
         for constraints, value_def_specs in spec.items():
             for value_def_spec in value_def_specs:
@@ -286,23 +240,9 @@ class GeometryComboMap(Mapping[tuple[Type[PancadThing], "GeoCombo", Type[Abstrac
                                             value_map)
                 group_map.update(con_geo_map)
         # Only include the keys whose geometry are in their respective groups (g below).
-        self._map = {(c, g, geo): v for (c, g), vm in group_map.items() for geo, v in vm.items()
-                     if geo in g}
-
-    def __getitem__(self, key: tuple[Type[PancadThing], GeoCombo, Type[AbstractGeometry]]
-                    ) -> T:
-        return self._map[key]
-
-    def __iter__(self) -> Iterator[tuple[Type[PancadThing],
-                                         GeoCombo,
-                                         Type[AbstractGeometry]]]:
-        yield from self._map
-
-    def __len__(self) -> int:
-        return len(self._map)
-
-    def __repr__(self) -> str:
-        return repr(self._map)
+        mapping = {(c, g, geo): v for (c, g), vm in group_map.items() for geo, v in vm.items()
+                   if geo in g}
+        super().__init__(mapping)
 
 class CalculationSchema:
     """Multiple maps specified by calculation types and their applicable scenarios/values."""

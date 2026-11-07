@@ -13,7 +13,6 @@ from pancad.api import Axis, Line, Point, Plane, Sketch
 
 from pancad.utils.solver_schemas import SCHEMAS
 from pancad.utils.solver_residuals import (
-    ComboDimMap,
     geo_product,
     CalculationSchema,
     GuessVector,
@@ -62,6 +61,7 @@ def _solve_sketches(fixture_name: str) -> TestGroup[Sketch]:
     return sketches
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Generates sample sketch and residual calculation result fixtures for tests in this file."""
     if "sample_sketch" in metafunc.fixturenames:
         ids, sketches = _solve_sketches("feat_geo_sys_sample_solvesketches")
         metafunc.parametrize("sample_sketch", sketches, ids=ids)
@@ -69,12 +69,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         ids, calcs = _make_residuals("res_calc")
         metafunc.parametrize("res_calc", calcs, ids=ids)
 
-class TestResidualCalculationShared:
-    """ResidualCalculation shared functionality tests."""
 
-    def test_to_dict(self, res_calc: ResidualCalculation) -> None:
-        dict_ = res_calc.to_dict()
-        print(dict_)
+def test_res_calc_to_dict(res_calc: ResidualCalculation) -> None:
+    """ResidualCalculation must be able to transfer its data to a readable dict."""
+    res_calc.to_dict()
 
 
 @pytest.mark.parametrize(
@@ -93,30 +91,6 @@ def test_geo_product(terms: GeometryTerm,
     geometry types.
     """
     assert set(geo_product(terms)) == set(expected)
-
-class TestCalcMap:
-    """Tests for CalcMap creation and usage."""
-
-    @classmethod
-    @pytest.fixture(scope="class")
-    def mapping(cls) -> ComboDimMap[Type[ResidualCalculation]]:
-        specs: dict[tuple[Type[PancadThing], ...], dict[ComboDimSpec, Type[ResidualCalculation]]] = {
-            (Coincident,): {
-                ((Point,), (2,)): EqualVectors2D,
-                (((Point,), (Axis, Line)), (2,)): CoincidentLinePoint2D,
-            },
-            (Parallel, Antiparallel, Codirectional): {
-                (((Line, Axis), (Line, Axis)), (2,)): EqualVectors2D, # Not the real residual
-            }
-        }
-        return ComboDimMap(specs)
-
-    def test_getitem(self, mapping: ComboDimMap[Type[ResidualCalculation]]) -> None:
-        assert mapping[Coincident, frozenset({Point, Axis}), 2] == CoincidentLinePoint2D
-
-    def test_iter(self, mapping: ComboDimMap[Type[ResidualCalculation]]) -> None:
-        pp(mapping)
-        print(len(mapping))
 
 class TestGeometryComboMap:
     """Tests for GeometryComboMap creation and usage."""
