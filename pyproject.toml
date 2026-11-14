@@ -129,6 +129,7 @@ force-build = [
 [tool.mypy]
 files = [
     "src/pancad/abstract.py",
+    "src/pancad/cad/freecad/shape_map.py",
     "src/pancad/constraints/snapto.py",
     "src/pancad/constraints/state_constraint.py",
     "src/pancad/constraints/distance.py",
@@ -154,6 +155,7 @@ files = [
     "src/pancad/utils/text_formatting.py",
     "src/pancad/_testing",
     "tests/_typing.py",
+    "tests/cad/freecad/test_shape_map.py",
     "tests/utils/test_geometry_utils.py",
     "tests/utils/test_trigonometry.py",
     "tests/utils/test_quat.py",

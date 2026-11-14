@@ -6,7 +6,11 @@
 # it can't be used as an escape character.
 ignore-paths=^docs/.*$,
              ^dist/.*$,
-             ^tests/cad/.*$,
+             ^tests/cad/freecad/test_api_utils.py$,
+             ^tests/cad/freecad/test_bootstrap.py$,
+             ^tests/cad/freecad/test_error_detection.py$,
+             ^tests/cad/freecad/test_sql_interface.py$,
+             ^tests/cad/freecad/test_translation.py$,
              ^tests/filetypes/.*$,
              ^tests/geometry/test_circle.py$,
              ^tests/geometry/test_circular_arc.py$,
