@@ -3,6 +3,7 @@ program.
 """
 
 from typing import TypedDict, NamedTuple, TypeVar, Union
+from pathlib import Path
 
 from pancad.constants import SketchConstraint
 from pancad.utils.quat import Quat
@@ -11,6 +12,11 @@ from pancad.utils.pancad_types import SpaceVector
 T = TypeVar("T")
 TestGroup = tuple[list[str], list[T]] # A pairing of the list of test ids and the list of inputs.
 ChangeTest = tuple["GeometrySampleData", "GeometrySampleData"] # Pair of initial and change data
+
+class ArchiveFile(NamedTuple):
+    """A path to an archive (e.g., a '.zip' file) and file relative path inside the archive."""
+    path: Path
+    sub: Path
 
 class GeometrySampleData(TypedDict):
     """A dictionary containing inputs for an element of sample geometry.

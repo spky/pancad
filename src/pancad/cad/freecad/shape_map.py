@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing import Final
-    from io import IOBase
+    from typing import Final, IO
     from os import PathLike
 
     NumberedLineIter = Iterator[tuple[int, bytes]]
@@ -37,7 +36,7 @@ class ShapeMapError(Exception):
 class ShapeMap(Mapping[int, "ElementMap"]):
     """The shape map defined by a txt file inside a FreeCAD fcstd file."""
 
-    def __init__(self, filelike: IOBase):
+    def __init__(self, filelike: IO[bytes]):
         self._version: str | None = None
         self._id: int | None = None
         self.postfixes: tuple[str, ...] = ()
